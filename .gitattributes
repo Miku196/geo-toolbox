@@ -1,0 +1,8 @@
+# GitHub linguist: 标记仓库为 Rust 项目
+*.rs linguist-language=Rust
+
+# 排除 vendored/生成文件
+Cargo.lock linguist-generated=true
+*.sql linguist-detectable=false
+*.qgs linguist-detectable=false
+examples/chengdu-carbon/* linguist-documentation=true
