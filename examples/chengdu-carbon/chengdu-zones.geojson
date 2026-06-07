@@ -1,0 +1,93 @@
+{
+  "type": "FeatureCollection",
+  "name": "成都主要开发区",
+  "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "cd-gaoxin",
+      "properties": {
+        "name": "成都高新区",
+        "name_cn": "成都高新技术产业开发区",
+        "established": 1988,
+        "area_km2": 130.0,
+        "location": "武侯区/双流区",
+        "baseline_year": 2000,
+        "target_year": 2020
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [104.040, 30.630], [104.070, 30.630], [104.085, 30.610],
+          [104.090, 30.580], [104.070, 30.555], [104.045, 30.550],
+          [104.020, 30.560], [104.010, 30.580], [104.015, 30.610],
+          [104.040, 30.630]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "cd-tianfu",
+      "properties": {
+        "name": "天府新区 (成都片区)",
+        "name_cn": "四川天府新区成都直管区",
+        "established": 2014,
+        "area_km2": 564.0,
+        "location": "双流区/龙泉驿区/简阳市",
+        "baseline_year": 2010,
+        "target_year": 2020
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [104.050, 30.550], [104.140, 30.550], [104.180, 30.500],
+          [104.190, 30.430], [104.160, 30.380], [104.100, 30.360],
+          [104.040, 30.380], [104.010, 30.430], [104.020, 30.500],
+          [104.050, 30.550]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "cd-jingkai",
+      "properties": {
+        "name": "成都经开区",
+        "name_cn": "成都经济技术开发区 (龙泉驿)",
+        "established": 2000,
+        "area_km2": 55.0,
+        "location": "龙泉驿区",
+        "baseline_year": 2000,
+        "target_year": 2020
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [104.250, 30.610], [104.290, 30.610], [104.300, 30.580],
+          [104.290, 30.550], [104.260, 30.540], [104.240, 30.550],
+          [104.235, 30.575], [104.250, 30.610]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "cd-dongbu",
+      "properties": {
+        "name": "成都东部新区",
+        "name_cn": "成都东部新区",
+        "established": 2020,
+        "area_km2": 920.0,
+        "location": "简阳市",
+        "baseline_year": 2015,
+        "target_year": 2020
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [104.380, 30.480], [104.500, 30.480], [104.520, 30.400],
+          [104.500, 30.310], [104.420, 30.290], [104.350, 30.300],
+          [104.340, 30.370], [104.360, 30.440], [104.380, 30.480]
+        ]]
+      }
+    }
+  ]
+}

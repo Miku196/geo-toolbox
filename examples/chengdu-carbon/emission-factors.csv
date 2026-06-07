@@ -1,0 +1,19 @@
+source,category,subcategory,factor_value,unit,valid_from_year,valid_to_year,region,citation
+IPCC_2006,forest,evergreen_broadleaf,-350.0,tCO2e/ha,2000,2030,CN-51,IPCC 2006 Vol.4 Ch.4
+IPCC_2006,forest,mixed_forest,-250.0,tCO2e/ha,2000,2030,CN-51,IPCC 2006 Vol.4 Ch.4
+IPCC_2006,cropland,paddy_rice,-80.0,tCO2e/ha,2000,2030,CN-51,IPCC 2006 Vol.4 Ch.5
+IPCC_2006,cropland,dry_farmland,-50.0,tCO2e/ha,2000,2030,CN-51,IPCC 2006 Vol.4 Ch.5
+IPCC_2006,grassland,shrub_grass,-30.0,tCO2e/ha,2000,2030,CN-51,IPCC 2006 Vol.4 Ch.6
+IPCC_2006,wetland,marsh,-200.0,tCO2e/ha,2000,2030,CN-51,IPCC 2006 Vol.4 Ch.7
+IPCC_2006,settlement,urban_builtup,0.0,tCO2e/ha,2000,2030,CN-51,IPCC 2006 Vol.4 Ch.8
+IPCC_2006,settlement,industrial,450.0,tCO2e/ha/yr,2000,2030,CN-51,IPCC 2006 Vol.4 Ch.8
+IPCC_2019,forest,evergreen_broadleaf,-380.0,tCO2e/ha,2019,2030,CN-51,IPCC 2019 Refinement
+IPCC_2019,forest,mixed_forest,-280.0,tCO2e/ha,2019,2030,CN-51,IPCC 2019 Refinement
+IPCC_2019,cropland,paddy_rice,-90.0,tCO2e/ha,2019,2030,CN-51,IPCC 2019 Refinement
+IPCC_2019,cropland,dry_farmland,-60.0,tCO2e/ha,2019,2030,CN-51,IPCC 2019 Refinement
+IPCC_2019,grassland,shrub_grass,-35.0,tCO2e/ha,2019,2030,CN-51,IPCC 2019 Refinement
+IPCC_2019,wetland,marsh,-220.0,tCO2e/ha,2019,2030,CN-51,IPCC 2019 Refinement
+IPCC_2019,settlement,urban_builtup,0.0,tCO2e/ha,2019,2030,CN-51,IPCC 2019 Refinement
+IPCC_2019,settlement,industrial,480.0,tCO2e/ha/yr,2019,2030,CN-51,IPCC 2019 Refinement
+中国省级指南_2023,forest,evergreen_broadleaf,-360.0,tCO2e/ha,2023,2030,CN-51,四川省碳排放核算指南 2023
+中国省级指南_2023,cropland,paddy_rice,-85.0,tCO2e/ha,2023,2030,CN-51,四川省碳排放核算指南 2023

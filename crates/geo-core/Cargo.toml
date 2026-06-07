@@ -1,0 +1,28 @@
+[package]
+name = "geo-core"
+version.workspace = true
+description = "Shared types, CRS registry, geometry helpers, and unified error types for the geo-toolbox workspace"
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = []
+# Enable PROJ-based coordinate transforms (requires system libproj or cmake + C compiler)
+proj = ["dep:proj"]
+
+[dependencies]
+geo.workspace = true
+geo-types.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+proj = { workspace = true, optional = true }
+rustc-hash.workspace = true
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "crs_transform"
+harness = false
+required-features = ["proj"]

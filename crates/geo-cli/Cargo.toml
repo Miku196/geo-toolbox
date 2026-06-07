@@ -1,0 +1,38 @@
+[package]
+name = "geo-cli"
+version.workspace = true
+description = "CLI entry point and MCP server for the geo-toolbox geospatial pipeline"
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "geo-toolbox"
+path = "src/main.rs"
+
+[dependencies]
+geo-core = { path = "../geo-core" }
+geo-store = { path = "../geo-store" }
+geo-ingest = { path = "../geo-ingest" }
+geo-carbon = { path = "../geo-carbon" }
+geo-output = { path = "../geo-output" }
+geo-gee = { path = "../geo-gee", optional = true }
+geo-gdal = { path = "../geo-gdal", optional = true }
+geo-qgis = { path = "../geo-qgis", optional = true }
+clap.workspace = true
+sqlx.workspace = true
+uuid.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+chrono = { version = "0.4", features = ["serde"] }
+futures.workspace = true
+
+[features]
+default = ["gee", "qgis", "gdal"]
+gee = ["geo-gee"]
+qgis = ["geo-qgis"]
+gdal = ["geo-gdal"]
+mqtt = ["geo-ingest/mqtt"]
+minimal = []
