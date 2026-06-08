@@ -1,0 +1,26 @@
+[package]
+name = "geo-parquet"
+version.workspace = true
+description = "GeoParquet reader/writer — cloud-native vector format with spatial predicate pushdown"
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = ["arrow"]
+# Full Arrow/Parquet support for cloud-native pipelines
+arrow = ["dep:parquet", "dep:arrow", "dep:arrow-array", "dep:arrow-schema", "dep:arrow-csv"]
+
+[dependencies]
+geo-core = { path = "../geo-core" }
+geo-types.workspace = true
+geo.workspace = true
+serde = { workspace = true }
+serde_json.workspace = true
+thiserror.workspace = true
+
+# Arrow ecosystem (optional — enables full Parquet I/O)
+parquet = { version = "53", optional = true, features = ["arrow"] }
+arrow = { version = "53", optional = true }
+arrow-array = { version = "53", optional = true }
+arrow-schema = { version = "53", optional = true }
+arrow-csv = { version = "53", optional = true }

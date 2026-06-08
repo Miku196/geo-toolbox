@@ -71,7 +71,8 @@ enum CrsAction {
         epsg: u16,
     },
 
-    /// Transform a coordinate or WKT geometry between CRS
+    /// Transform a coordinate or WKT geometry between CRS.
+    /// Use --batch to read points from stdin (one "x,y" per line).
     Transform {
         /// Source EPSG code
         #[arg(long, default_value = "4326")]
@@ -79,10 +80,13 @@ enum CrsAction {
         /// Target EPSG code
         #[arg(long, default_value = "4326")]
         to: u16,
-        /// X / longitude
-        x: f64,
-        /// Y / latitude
-        y: f64,
+        /// X / longitude (ignored if --batch)
+        x: Option<f64>,
+        /// Y / latitude (ignored if --batch)
+        y: Option<f64>,
+        /// Batch mode: read "x,y" pairs from stdin, output "x,y" per line
+        #[arg(long)]
+        batch: bool,
     },
 
     /// Register a new CRS (adds to runtime — not persisted yet)
@@ -368,16 +372,24 @@ enum OutputAction {
         #[arg(long, default_value = "Data")]
         sheet: String,
     },
-    /// Export GeoJSON from SQL spatial query
+    /// Export GeoJSON from SQL spatial query or local file.
+    /// With --from-file: validate/compact/reproject a local GeoJSON file.
     Geojson {
         /// SQL query (must return a 'feature' or 'geojson' column)
-        sql: String,
+        #[arg(required_unless_present = "from_file")]
+        sql: Option<String>,
         /// Output GeoJSON path
         #[arg(long)]
         output: String,
         /// Use aggregate mode (PostGIS builds FeatureCollection)
         #[arg(long)]
         aggregate: bool,
+        /// Read from local file instead of SQL (validate + compact + reproject)
+        #[arg(long)]
+        from_file: Option<String>,
+        /// Reproject to EPSG when using --from-file
+        #[arg(long)]
+        to_epsg: Option<u16>,
     },
     /// Export PostGIS vectors to DXF (CAD format)
     Dxf {

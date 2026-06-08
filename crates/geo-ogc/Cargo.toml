@@ -1,0 +1,16 @@
+[package]
+name = "geo-ogc"
+version.workspace = true
+description = "OGC standard service interfaces — WMS, WFS, WPS as pure-Rust HTTP handlers"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+geo-core = { path = "../geo-core" }
+geo-types.workspace = true
+geo.workspace = true
+serde = { workspace = true }
+serde_json.workspace = true
+thiserror.workspace = true
+uuid = { workspace = true, features = ["v4"] }
+chrono.workspace = true

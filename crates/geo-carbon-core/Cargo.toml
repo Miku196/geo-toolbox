@@ -1,0 +1,16 @@
+[package]
+name = "geo-carbon-core"
+version.workspace = true
+description = "Pure-Rust carbon accounting engine (IPCC Tier 1) — zero database dependencies, usable in WASM and embedded contexts"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+geo.workspace = true
+geo-types.workspace = true
+serde = { workspace = true }
+serde_json.workspace = true
+uuid = { workspace = true, features = ["v4"] }
+thiserror.workspace = true
+csv.workspace = true
+chrono.workspace = true

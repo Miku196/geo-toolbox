@@ -9,7 +9,11 @@ members = [
     "crates/geo-gdal",
     "crates/geo-qgis",
     "crates/geo-carbon",
+    "crates/geo-carbon-core",
     "crates/geo-output",
+    "crates/geo-wasm",
+    "crates/geo-parquet",
+    "crates/geo-ogc",
 ]
 
 [workspace.dependencies]

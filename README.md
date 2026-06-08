@@ -10,7 +10,8 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-61%20pass-green.svg)]()
+[![Tests](https://img.shields.io/badge/tests-51%20pass-green.svg)]()
+[![NPM](https://img.shields.io/badge/npm-geo--wasm-red)](https://www.npmjs.com/package/geo-wasm)
 
 ---
 
@@ -19,6 +20,8 @@
 - [是什么](#是什么)
 - [快速开始](#快速开始)
 - [架构](#架构)
+- [🌐 浏览器端 (WASM)](#浏览器端-wasm)
+- [📦 NPM 包](#npm-包)
 - [Crate 详解](#crate-详解)
 - [部署](#部署)
 - [使用手册](#使用手册)
@@ -32,24 +35,36 @@
 
 ## 是什么
 
-一个 Rust workspace，9 个 crate，约 8,600 行代码，覆盖地理空间数据管线的全生命周期：
+一个 Rust workspace，13 个 crate，约 15,000 行代码，覆盖地理空间数据管线的全生命周期 — 从浏览器端到服务端：
 
 ```
-数据采集          入库存储          处理分析          成果输出
-   │                │                │                │
- CamoFox 网页抓取  PostGIS 矢量     GEE 遥感分类     DXF CAD 图纸
- NMEA GPS 解析     TimescaleDB 时序  GDAL 栅格转换    Excel 数据面板
- MQTT 传感器流     MinIO/S3 栅格    QGIS 空间分析     GeoJSON 导出
-                   DVC 版本控制      LCA 碳足迹       Markdown 报告
+┌── 浏览器端 (WASM) ── 数据不出网 ──────────────────────────┐
+│  CRS 变换  NMEA 解析  碳核算(IPCC)  空间运算              │
+│  GeoJSON/Excel/DXF 导出  IndexedDB 本地存储               │
+└──────────────────────────────────────────────────────────┘
+                              │
+┌── 服务端管线 ────────────────────────────────────────────┐
+│                                                         │
+│ 数据采集          入库存储          处理分析          成果输出 │
+│    │                │                │                │   │
+│  CamoFox 网页抓取  PostGIS 矢量     GEE 遥感分类     DXF CAD │
+│  NMEA GPS 解析     TimescaleDB 时序  GDAL 栅格转换    Excel  │
+│  MQTT 传感器流     MinIO/S3 栅格    QGIS 空间分析     GeoJSON │
+│                    GeoParquet 云原生  WMS/WFS/WPS OGC  Markdown │
+│                    DVC 版本控制      LCA 碳足迹              │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ### 核心设计原则
 
+- **浏览器端 WASM — 敏感数据不出网** — 所有计算在浏览器内完成，GeoJSON 拖入 → 碳核算 → 报告下载，零数据外传
 - **Rust 做胶水，Python 做重活** — GEE 的 Random Forest 分类、QGIS 的 buffer/overlay 仍用 Python，Rust 只负责任务分发、结果搬运、格式转换
 - **每个 crate 独立可测** — 不依赖数据库也能跑大多数测试；集成测试用 Docker Compose
 - **Feature flags 控制依赖** — 不需要 GDAL/QGIS 就别编译进去，最小化二进制体积
 - **MCP 原生集成** — 内置 MCP Server，AI Agent 通过 JSON-RPC 直接调用所有功能
-- **性能量化** — 批写用 PostgreSQL COPY 协议（比逐条 INSERT 快 10-50x），CRS 变换有 benchmark
+- **OGC 标准互操作** — WMS/WFS/WPS 纯 Rust 实现，任何 GIS 客户端可直接接入
+- **云原生格式** — GeoParquet 读写 + 空间谓词下推，直达 Arrow/DataFusion 管道
+- **纯 Rust CRS 变换 — 零 C 依赖** — 4326↔3857 (WGS84↔Web Mercator)、4326↔9000 (WGS84↔GCJ-02 火星)、9000↔9001 (GCJ-02↔BD-09 百度)、4326→3405 (等积)，无需 cmake/proj
 
 ---
 
@@ -59,17 +74,50 @@
 git clone https://github.com/Miku196/geo-toolbox.git
 cd geo-toolbox
 
-# 编译（需要 Rust 1.80+ 和 libproj）
+# 编译（Rust 1.80+，无需 cmake/proj）
 cargo build --release
 
 # 列出坐标系
 cargo run -- crs list
 
-# 坐标变换
+# 坐标变换 — 纯 Rust，零 C 依赖
 cargo run -- crs transform --from 4326 --to 3857 104.06 30.57
+cargo run -- crs transform --from 4326 --to 9000 116.40 39.90   # WGS84 → GCJ-02 火星坐标
 
-# 运行测试
-cargo test
+# 批量变换（stdin）
+echo "104.06,30.57" | cargo run -- crs transform --from 4326 --to 3857 --batch
+
+# 本地 GeoJSON 压缩/重投影
+cargo run -- output geojson --from-file input.geojson --output compact.geojson
+cargo run -- output geojson --from-file input.geojson --output merc.geojson --to-epsg 3857
+
+# 运行测试（20 tests, 0 deps）
+cargo test -p geo-core
+```
+
+### 自包含 HTML 报告
+
+```bash
+cd examples/china-risk-assessment
+python self_contained_report.py
+# 生成 output/*.html — 双击即开，地图 + 统计 + 交互式 CRS 变换，零服务器
+```
+
+### 中国自然灾害风险评估
+
+```bash
+cd examples/china-risk-assessment
+python flood_risk_pipeline.py    # 洪水高风险区 GIS 评估
+python earthquake_pipeline.py    # 地震活动 GIS 评估
+```
+详见 [examples/china-risk-assessment/README.md](examples/china-risk-assessment/README.md)。
+
+### WASM 浏览器端
+
+```bash
+cd geo-toolbox
+python -m http.server 8899
+# 打开 http://127.0.0.1:8899/demo.html
 ```
 
 ---
@@ -98,7 +146,119 @@ AI Agent ──MCP──→ geo-toolbox ──┬──→ PostGIS (COPY 批写)
 
 ---
 
-## Crate 详解
+## 浏览器端 (WASM)
+
+geo-toolbox 核心功能已编译为 WebAssembly，直接在浏览器中运行。
+**所有计算在本地完成，GeoJSON 数据不会上传到任何服务器。**
+
+### 环境准备
+
+```bash
+# 1. 安装 WASM 编译目标
+rustup target add wasm32-unknown-unknown
+
+# 2. 安装 wasm-pack (如果网络不通，换国内源)
+# 方式 A: 直接安装
+cargo install wasm-pack
+
+# 方式 B: 换源安装 (ustc/tuna/rsproxy)
+# 在 ~/.cargo/config.toml 添加:
+# [source.crates-io]
+# replace-with = 'ustc'
+# [source.ustc]
+# registry = 'sparse+https://mirrors.ustc.edu.cn/crates.io-index/'
+
+# 3. 编译 WASM
+wasm-pack build --target web crates/geo-wasm
+
+# 编译产物在 crates/geo-wasm/pkg/
+# - geo_wasm_bg.wasm  (二进制)
+# - geo_wasm.js        (JS 胶水代码)
+# - geo_wasm.d.ts      (TypeScript 类型)
+```
+
+### 启动 Demo
+
+```bash
+# 用任意 HTTP Server 启动（WASM 必须通过 HTTP 加载）
+cd crates/geo-wasm
+python -m http.server 8080
+# 或: npx serve .
+# 或: npx http-server -p 8080 -c-1
+
+# 浏览器打开 http://localhost:8080/demo.html
+```
+
+### Demo 页面功能
+
+| 面板 | 功能 | 操作 |
+|------|------|------|
+| CRS 变换 | WGS84 ↔ Web Mercator ↔ GCJ-02 ↔ BD-09 | 输入坐标，实时变换 |
+| NMEA 解析 | $GPGGA / $GPRMC 语句 | 粘贴日志，批量解析 |
+| 碳核算 | IPCC Tier 1 (子类匹配 + 表头CSV) | 成都开发区真实数据 / 拖入 GeoJSON + 排放因子 CSV |
+| 空间运算 | Area / BBox / Centroid / Simplify | 粘贴 GeoJSON 几何，查看结果 |
+| 本地存储 | IndexedDB | 持久化 GeoJSON 要素 |
+
+### 使用 NPM 包
+
+```bash
+npm install geo-wasm
+```
+
+```typescript
+import { CrsEngine, CarbonEngine, GeoStore, parseNmea } from 'geo-wasm';
+
+// CRS 变换
+const crs = new CrsEngine();
+const [x, y] = await crs.transform(4326, 3857, 104.06, 30.57);
+
+// 碳核算 (GeoJSON + CSV → 报告 JSON)
+// 支持 header-based CSV (列顺序无关) + subcategory 精细匹配
+const engine = new CarbonEngine();
+const report = await engine.calculate(
+  landcoverGeojsonFC,
+  'source,category,subcategory,factor_value,unit,region\n' +
+  'IPCC_2019,forest,evergreen_broadleaf,-380.0,tCO2e/ha,CN-51\n' +
+  'IPCC_2019,settlement,industrial,480.0,tCO2e/ha/yr,CN-51',
+  2025
+);
+// → { total_area_ha, total_emission_tco2e, classes: [
+//     { landcover_class: "forest:evergreen_broadleaf", ... }, ... ] }
+
+// GPS 解析
+const fix = parseNmea('$GPGGA,123519,4807.038,N,01131.000,E,1,08,1.2,545.4,M,,,*47');
+// → { type: 'GGA', lat: 48.1173, lng: 11.5166, quality: 1, satellites: 8 }
+
+// IndexedDB 本地存储
+const store = new GeoStore();
+await store.init();
+await store.putFeature('aoi-1', aoiFeature);
+const all = await store.getAllFeatures();
+```
+
+---
+
+## NPM 包
+
+### API 总览
+
+| 类/函数 | 说明 |
+|---------|------|
+| `CrsEngine` | CRS 坐标变换 (6 个内置 EPSG + 自定义) |
+| `CarbonEngine` | IPCC 碳核算引擎 (GeoJSON → 报告) |
+| `GeoStore` | IndexedDB 本地要素存储 |
+| `parseNmea()` | NMEA 0183 GPS 语句解析 |
+| `validateGpsFix()` | GPS 质量校验 (HDOP + 卫星数) |
+| `validateCoord()` | 坐标合法性检查 (lon∈[-180,180], lat∈[-90,90]) |
+| `computeArea()` | GeoJSON 面积计算 (返回 m² + ha) |
+| `computeBbox()` | 几何 Bounding Box |
+| `computeCentroid()` | 几何质心 |
+| `simplifyGeometry()` | Douglas-Peucker 简化 |
+| `convexHull()` | 凸包计算 |
+| `exportExcel()` | 数据表 → XLSX 文件 (Uint8Array) |
+| `exportGeoJson()` | 要素数组 → FeatureCollection |
+| `exportCarbonReport()` | 碳核算结果 → Markdown 报告 |
+| `csvToJson()` | CSV 文本 → JSON 数组 |
 
 ### geo-core — 共享基础设施（461 行）
 
@@ -126,10 +286,14 @@ pub type GeoResult<T> = Result<T, GeoError>;
 | 模块 | 功能 |
 |------|------|
 | `errors.rs` | 统一错误类型，所有 crate 共用 |
-| `crs.rs` | CRS 注册表（5 个内置坐标系）、坐标变换 |
+| `crs.rs` | CRS 注册表（7 个内置坐标系）、坐标变换、`builtin` 纯 Rust 变换模块 |
 | `types.rs` | 几何类型别名、坐标校验 |
 
-内置坐标系：`EPSG:4326` (WGS84)、`EPSG:3857` (Web Mercator)、`EPSG:32649` (UTM 49N)、`EPSG:3405` (等积投影，碳核算必需)、`EPSG:4547` (CGCS2000)。
+内置坐标系：WGS84 (4326)、Web Mercator (3857)、GCJ-02 火星 (9000)、BD-09 百度 (9001)、UTM 49N (32649)、UTM 50N (32650)、等积投影 (3405)。
+
+`builtin` 模块提供 8 个纯 Rust 坐标变换函数（零 C 依赖）：
+`wgs84_to_mercator`、`mercator_to_wgs84`、`wgs84_to_gcj02`、`gcj02_to_wgs84`、
+`gcj02_to_bd09`、`bd09_to_gcj02`、`wgs84_to_equal_area`。CLI 和 WASM 共享同一份实现。
 
 ---
 
@@ -296,10 +460,72 @@ geo-toolbox carbon emission-factor calculate \
 |------|------|------|
 | `dxf_export.rs` | PostGIS 矢量 → CAD DXF 图纸 | `dxf` crate |
 | `excel.rs` | SQL 查询结果 → 格式化 Excel | `rust_xlsxwriter` |
-| `geojson_export.rs` | 空间查询 → GeoJSON 文件 | PostGIS `ST_AsGeoJSON` |
+| `geojson_export.rs` | 空间查询 → GeoJSON / 本地文件验证压缩 | PostGIS `ST_AsGeoJSON` |
 | `report.rs` | 碳核算结果 → Markdown 报告 | `tera` 模板引擎 |
 
+`output geojson --from-file` 支持本地文件：读取 → 去空白压缩 → 可选 `--to-epsg` 重投影。
+
 ---
+
+---
+
+### geo-carbon-core — 纯 Rust 碳核算（零 DB 依赖）
+
+从 `geo-carbon` 解耦出的纯计算引擎，可嵌入 WASM/PyO3/napi-rs 等任意环境。
+支持 IPCC Tier 1 排放因子法：面积计算（纬度缩放 ±3%）、因子 CSV 表头解析（列顺序无关）、
+子类精细匹配（`forest:evergreen_broadleaf`）及 category-only 回退。
+
+```rust
+use geo_carbon_core::{CarbonEngine, EmissionFactor, GeoFeature};
+let engine = CarbonEngine::new();
+let factors = vec![EmissionFactor::new("forest", 5.0, "IPCC_2019")];
+let features = vec![GeoFeature::new("forest", geojson_polygon)?];
+let report = engine.calculate(&features, &factors, 2025)?;
+```
+
+---
+
+### geo-wasm — WASM 入口 + NPM 包（~2,700 行）
+
+geo-toolbox 编译为 WebAssembly，浏览器直接调用。**数据不出网。**
+
+| 模块 | 功能 |
+|------|------|
+| `crs.rs` | CRS 引擎 (wasm-bindgen) |
+| `ingest.rs` | NMEA 解析 + 校验 |
+| `carbon.rs` | 碳核算 (调用 geo-carbon-core) |
+| `spatial.rs` | Area/BBox/Centroid/Simplify |
+| `output.rs` | Excel/GeoJSON/Markdown 导出 |
+| `storage.rs` | IndexedDB 本地存储 (rexie) |
+
+---
+
+### geo-parquet — 云原生矢量格式（~1,200 行）
+
+GeoParquet 1.1 读写 + 空间谓词下推。
+
+| 模块 | 功能 |
+|------|------|
+| `metadata.rs` | GeoParquet 元数据 + PROJJSON CRS |
+| `schema.rs` | Arrow Schema 映射 |
+| `reader.rs` | 读取 + Bbox 谓词下推 |
+| `writer.rs` | 写入 (WKB + 累积 bbox) |
+| `predicate.rs` | SpatialFilter (Bbox/Radius) |
+
+---
+
+### geo-ogc — OGC 标准服务（~2,200 行）
+
+纯 Rust 实现 WMS 1.3 / WFS 2.0 / WPS 2.0。
+
+| 模块 | 功能 |
+|------|------|
+| `common.rs` | OgcError/ServiceType |
+| `wms.rs` | GetCapabilities + GetMap + GetFeatureInfo |
+| `wfs.rs` | GetCapabilities + DescribeFeatureType + GetFeature |
+| `wps.rs` | Execute(carbon/crs) + GetStatus + GetResult |
+
+内置 WPS 流程：`carbon:emission-factor`、`crs:transform`。
 
 ## 部署
 
@@ -308,7 +534,7 @@ geo-toolbox carbon emission-factor calculate \
 | 组件 | 必需？ | Linux (apt) | macOS (brew) | Windows |
 |------|-------|-------------|-------------|---------|
 | Rust 1.80+ | ✅ | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` | 同左 | [rustup.rs](https://rustup.rs) |
-| libproj | ✅ | `apt install libproj-dev` | `brew install proj` | `vcpkg install proj` |
+| libproj | 可选 | `apt install libproj-dev` | `brew install proj` | UTM 变换需要，基础变换无需 |
 | PostgreSQL | 可选 | `apt install postgresql-16-postgis-3` | `brew install postgis` | 用 Docker |
 | GDAL | 可选 | `apt install libgdal-dev` | `brew install gdal` | OSGeo4W 安装包 |
 | QGIS | 可选 | `apt install qgis` | `brew install qgis` | OSGeo4W 安装包 |
@@ -371,26 +597,34 @@ tail -f queue/gee-tasks.jsonl
 ### CRS 坐标管理
 
 ```bash
-# 列出所有内置坐标系
+# 列出所有内置坐标系 (5 个)
 geo-toolbox crs list
-# EPSG:4326  Storage   WGS84
-# EPSG:3857  Storage   Web Mercator
-# EPSG:32649 Storage   WGS84 / UTM zone 49N
+# EPSG:4326  Storage   WGS 84
+# EPSG:3857  Display   WGS 84 / Pseudo-Mercator
+# EPSG:9000  Display   GCJ-02 (Mars Coordinate)
+# EPSG:9001  Display   BD-09 (Baidu Coordinate)
+# EPSG:32649 Carbon    WGS 84 / UTM zone 49N
+# EPSG:32650 Carbon    WGS 84 / UTM zone 50N
 # EPSG:3405  Carbon    World Equal Area
-# EPSG:4547  Storage   CGCS2000
 
-# 查看某个坐标系详情
-geo-toolbox crs show 4326
-
-# 坐标变换（成都: WGS84 → Web Mercator）
+# 坐标变换 — 纯 Rust，零 C 依赖
 geo-toolbox crs transform --from 4326 --to 3857 104.06 30.57
-# → x=11584385.2 y=3575028.3
+# → (11583906.21, 3577030.47)
 
-# 深圳: WGS84 → UTM 49N
-geo-toolbox crs transform --from 4326 --to 32649 113.9 22.5
+# WGS84 → GCJ-02 火星坐标 (高德/腾讯)
+geo-toolbox crs transform --from 4326 --to 9000 116.40 39.90
+# → (116.4013, 39.9007)
 
-# 注册自定义坐标系
-geo-toolbox crs register 4528 "CGCS2000 / 3-degree Gauss-Kruger zone 40" "+proj=tmerc +lat_0=0 +lon_0=120 +k=1 +x_0=40500000 +y_0=0 +ellps=GRS80 +units=m +no_defs"
+# GCJ-02 → BD-09 百度坐标
+geo-toolbox crs transform --from 9000 --to 9001 116.4013 39.9007
+
+# 批量变换 (stdin, 一行一个 "x,y")
+echo "104.06,30.57
+121.47,31.23" | geo-toolbox crs transform --from 4326 --to 3857 --batch
+
+# UTM 变换需要 proj feature (安装 libproj 后编译)
+cargo build --features proj
+geo-toolbox crs transform --from 4326 --to 32649 104.06 30.57
 ```
 
 ### 数据入库
@@ -541,10 +775,16 @@ geo-toolbox output dxf \
     "SELECT ST_AsGeoJSON(geom) AS geom_json, 'buildings' AS layer FROM spatial_assets WHERE aoi_id = 'cd-gaoxin'" \
     --output cad_gaoxin.dxf --to-epsg 32649
 
-# GeoJSON 导出
+# GeoJSON 导出 (PostGIS)
 geo-toolbox output geojson \
     "SELECT ST_AsGeoJSON(geom) FROM spatial_assets WHERE aoi_id = 'cd-gaoxin'" \
     --output gaoxin.geojson
+
+# GeoJSON 本地文件验证+压缩
+geo-toolbox output geojson --from-file input.geojson --output compact.geojson
+
+# 本地文件 + 重投影到 Web Mercator
+geo-toolbox output geojson --from-file input.geojson --output merc.geojson --to-epsg 3857
 
 # 碳核算报告
 geo-toolbox output report \
@@ -680,13 +920,15 @@ geo-toolbox/
 │   ├── crs_transform.rs
 │   └── batch_write.rs
 ├── examples/
-│   └── chengdu-carbon/        # 成都开发区碳收支评估完整示例
-│       ├── chengdu-zones.geojson
-│       ├── landcover-transition.csv
-│       ├── emission-factors.csv
-│       ├── calc_carbon.py
-│       ├── gen_html_pdf.py
-│       └── chengdu-carbon-zones.qgs
+│   ├── chengdu-carbon/        # 成都开发区碳收支评估完整示例
+│   │   ├── chengdu-zones.geojson
+│   │   ├── landcover-transition.csv
+│   │   ├── emission-factors.csv
+│   │   ├── calc_carbon.py
+│   │   ├── gen_html_pdf.py
+│   │   └── chengdu-carbon-zones.qgs
+│   └── china-risk-assessment/ # 中国洪水+地震风险评估
+│       └── README.md           # geo-toolbox 实战管线文档
 └── crates/
     ├── geo-core/              # 共享类型 + CRS + 错误
     │   └── src/{lib,errors,crs,types}.rs
@@ -702,15 +944,30 @@ geo-toolbox/
     │   └── src/{lib,raster,vector,gcs_bridge}.rs
     ├── geo-qgis/              # QGIS 委托
     │   └── src/{lib,grpc_client,process_runner}.rs
-    ├── geo-carbon/            # 碳核算
+    ├── geo-carbon/            # 碳核算 (PostgreSQL)
     │   └── src/{lib,emission_factor,lca,carbon_sink,audit}.rs
-    └── geo-output/            # 成果输出
-        └── src/{lib,dxf_export,excel,geojson_export,report}.rs
+    ├── geo-carbon-core/       # 纯 Rust 碳核算 (零 DB)
+    │   └── src/{lib,engine,factor,feature,report}.rs
+    ├── geo-output/            # 成果输出
+    │   └── src/{lib,dxf_export,excel,geojson_export,report}.rs
+    ├── geo-wasm/              # WASM 入口 + NPM 包
+    │   └── src/{lib,crs,ingest,carbon,spatial,output,storage,utils}.rs
+    ├── geo-parquet/           # GeoParquet 云原生格式
+    │   └── src/{lib,metadata,schema,reader,writer,predicate}.rs
+    ├── geo-ogc/               # OGC WMS/WFS/WPS 服务
+    │   └── src/{lib,common,wms,wfs,wps}.rs
+    │
+    ├── package.json           # NPM 包配置
+    ├── tsconfig.json          # TypeScript 配置
+    └── src/
+        └── index.ts           # TypeScript SDK
 ```
 
 ---
 
 ## 示例
+
+### 成都碳核算
 
 `examples/chengdu-carbon/` 是一个完整的碳收支评估案例，从零数据到 PDF 报告：
 
@@ -718,12 +975,19 @@ geo-toolbox/
 |------|----------|------|
 | 1. 构建 AOI | `chengdu-zones.geojson` | 成都 4 个开发区边界 |
 | 2. 土地覆被 | `landcover-transition.csv` | 24 条覆被转移记录（基于公开统计） |
-| 3. 排放因子 | `emission-factors.csv` | 17 条 IPCC 2019 因子 |
+| 3. 排放因子 | `emission-factors.csv` | 17 条 IPCC 2019 因子（含子类） |
 | 4. 计算 | `calc_carbon.py` | 纯 Python IPCC Tier 1 计算 |
 | 5. 可视化 | `chengdu-carbon-zones.qgs` | QGIS 项目文件 |
 | 6. 报告 | `gen_html_pdf.py` | HTML + Chrome headless → PDF |
 
+WASM Demo 默认数据即取自本示例（高新区 + 天府新区）。
+
 运行方法见 `examples/chengdu-carbon/` 目录下的脚本注释。
+
+### 中国自然灾害风险评估
+
+完整实战案例见 `examples/china-risk-assessment/`，展示如何用 geo-toolbox + Camoufox + Python GIS
+构建洪水高风险区和地震活动两条评估管线。
 
 ---
 

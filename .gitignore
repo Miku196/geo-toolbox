@@ -3,6 +3,20 @@
 **/*.rs.bk
 *.pdb
 
+# Node
+node_modules/
+package-lock.json
+
+# Python
+__pycache__/
+*.pyc
+
+# Example outputs (large generated files)
+examples/*/output/
+
+# Example data (download separately)
+examples/china-risk-assessment/data/
+
 # IDE
 .vscode/
 .idea/

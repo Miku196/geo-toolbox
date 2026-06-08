@@ -35,15 +35,40 @@ pub fn handle(action: CrsAction) -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        CrsAction::Transform { from, to, x, y } => {
+        CrsAction::Transform { from, to, x, y, batch } => {
             let reg = CrsRegistry::new();
-            match reg.transform_point(from, to, x, y) {
-                Ok((out_x, out_y)) => {
-                    println!("Source (EPSG:{from}):  x={x}, y={y}");
-                    println!("Target (EPSG:{to}):  x={out_x:.4}, y={out_y:.4}");
+
+            if batch {
+                // Read "x,y" from stdin, one per line, write transformed result
+                use std::io::{self, BufRead};
+                let stdin = io::stdin();
+                for line in stdin.lock().lines() {
+                    let line = line?;
+                    let line = line.trim();
+                    if line.is_empty() || line.starts_with('#') { continue; }
+                    let parts: Vec<&str> = line.split(',').collect();
+                    if parts.len() < 2 {
+                        eprintln!("Skipping invalid line (expected x,y): {line}");
+                        continue;
+                    }
+                    let px: f64 = parts[0].trim().parse()?;
+                    let py: f64 = parts[1].trim().parse()?;
+                    match reg.transform_point(from, to, px, py) {
+                        Ok((ox, oy)) => println!("{ox:.6},{oy:.6}"),
+                        Err(e) => eprintln!("Error ({px},{py}): {e}"),
+                    }
                 }
-                Err(e) => {
-                    eprintln!("Transform failed: {e}");
+            } else {
+                let x = x.ok_or("x coordinate required (or use --batch)")?;
+                let y = y.ok_or("y coordinate required (or use --batch)")?;
+                match reg.transform_point(from, to, x, y) {
+                    Ok((out_x, out_y)) => {
+                        println!("Source (EPSG:{from}):  x={x}, y={y}");
+                        println!("Target (EPSG:{to}):  x={out_x:.4}, y={out_y:.4}");
+                    }
+                    Err(e) => {
+                        eprintln!("Transform failed: {e}");
+                    }
                 }
             }
         }

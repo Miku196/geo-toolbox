@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>geo-wasm Demo — 浏览器端地理空间处理</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+.header{background:#1e293b;padding:14px 20px;border-bottom:1px solid #334155;display:flex;align-items:center;gap:10px}
+.header h1{font-size:18px}
+.badge{background:#2563eb;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px}
+.tabs{display:flex;gap:0;padding:0 20px;background:#1e293b;border-bottom:1px solid #334155;overflow-x:auto}
+.tab{padding:10px 14px;border:none;background:none;color:#94a3b8;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;white-space:nowrap}
+.tab.active{color:#60a5fa;border-bottom-color:#60a5fa}
+.tab:hover{color:#e2e8f0}
+.main{padding:20px;max-width:1000px;margin:0 auto}
+.panel{display:none}
+.panel.active{display:block}
+.card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:14px}
+.card h2{font-size:15px;margin-bottom:10px;color:#93c5fd}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.col{flex:1;min-width:200px}
+label{display:block;font-size:12px;color:#94a3b8;margin-bottom:4px}
+input,select,textarea{width:100%;padding:7px 10px;background:#0f172a;border:1px solid #334155;border-radius:5px;color:#e2e8f0;font-size:13px;font-family:monospace}
+textarea{resize:vertical;min-height:80px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#2563eb}
+.btn{padding:7px 16px;background:#2563eb;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px}
+.btn:hover{background:#1d4ed8}
+.btn:disabled{background:#475569;cursor:not-allowed}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-danger{background:#dc2626}.btn-danger:hover{background:#b91c1c}
+.result{margin-top:10px;background:#0f172a;border:1px solid #334155;border-radius:5px;padding:10px;font-family:monospace;font-size:12px;white-space:pre-wrap;max-height:350px;overflow:auto}
+.result.ok{border-color:#22c55e}
+.result.err{border-color:#ef4444}
+.status{display:inline-flex;align-items:center;gap:4px;font-size:12px}
+.dot{width:7px;height:7px;border-radius:50%}
+.dot.ok{background:#22c55e}
+.dot.err{background:#ef4444}
+.dot.loading{background:#f59e0b;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:6px 10px;text-align:left;border-bottom:1px solid #334155}
+th{color:#94a3b8}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span style="font-size:22px">🌍</span>
+  <h1>geo-toolbox</h1>
+  <span class="badge">WASM</span>
+  <span style="flex:1"></span>
+  <span class="status" id="initStatus"><span class="dot loading"></span> 初始化...</span>
+</div>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-panel="crs">📍 CRS 变换</button>
+  <button class="tab" data-panel="nmea">🛰️ NMEA 解析</button>
+  <button class="tab" data-panel="carbon">🌿 碳核算</button>
+  <button class="tab" data-panel="spatial">📐 空间运算</button>
+</div>
+
+<div class="main">
+
+  <!-- CRS Panel -->
+  <div class="panel active" id="panel-crs">
+    <div class="card">
+      <h2>坐标系变换 (纯 Rust，无 C 依赖)</h2>
+      <div class="row">
+        <div class="col"><label>源 EPSG</label>
+          <select id="fromEpsg"><option value="4326">EPSG:4326 — WGS84</option><option value="3857">EPSG:3857 — Web Mercator</option><option value="9000">EPSG:9000 — GCJ-02 火星坐标</option><option value="9001">EPSG:9001 — BD-09 百度坐标</option></select></div>
+        <div class="col"><label>目标 EPSG</label>
+          <select id="toEpsg"><option value="3857">EPSG:3857 — Web Mercator</option><option value="4326">EPSG:4326 — WGS84</option><option value="9000">EPSG:9000 — GCJ-02 火星坐标</option><option value="9001">EPSG:9001 — BD-09 百度坐标</option></select></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="col"><label>经度 X</label><input id="crsX" value="104.06" step="any"></div>
+        <div class="col"><label>纬度 Y</label><input id="crsY" value="30.57" step="any"></div>
+        <div class="col" style="display:flex;align-items:flex-end"><button class="btn" id="btnCrs" style="width:100%">变换</button></div>
+      </div>
+      <div class="result" id="crsResult">点击「变换」查看结果</div>
+    </div>
+  </div>
+
+  <!-- NMEA Panel -->
+  <div class="panel" id="panel-nmea">
+    <div class="card">
+      <h2>NMEA 0183 GPS 语句解析</h2>
+      <textarea id="nmeaInput">$GPGGA,123519,4807.038,N,01131.000,E,1,08,1.2,545.4,M,,,*47
+$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A</textarea>
+      <button class="btn" id="btnNmea" style="margin-top:8px">解析全部</button>
+      <div class="result" id="nmeaResult">点击「解析全部」查看结果</div>
+    </div>
+  </div>
+
+  <!-- Carbon Panel -->
+  <div class="panel" id="panel-carbon">
+    <div class="card">
+      <h2>IPCC 碳核算 (数据不出浏览器)</h2>
+      <div class="row">
+        <div class="col">
+          <label>GeoJSON 土地覆被要素 <button class="btn btn-sm" id="btnUploadGeojson" style="margin-left:6px;padding:2px 8px;font-size:11px">📂 上传 .geojson</button></label>
+          <input type="file" id="fileGeojson" accept=".geojson,.json" style="display:none">
+          <textarea id="geojsonInput" rows="5">{"type":"FeatureCollection","features":[{"type":"Feature","id":"cd-gaoxin","properties":{"name":"成都高新区","category":"settlement","subcategory":"industrial","area_km2":130},"geometry":{"type":"Polygon","coordinates":[[[104.04,30.63],[104.09,30.63],[104.09,30.54],[104.04,30.54],[104.04,30.63]]]}},{"type":"Feature","id":"cd-tianfu","properties":{"name":"天府新区","category":"forest","subcategory":"mixed_forest","area_km2":560},"geometry":{"type":"Polygon","coordinates":[[[104.05,30.5],[104.15,30.5],[104.15,30.4],[104.05,30.4],[104.05,30.5]]]}}]}</textarea>
+        </div>
+        <div class="col">
+          <label>排放因子 CSV <button class="btn btn-sm" id="btnUploadCsv" style="margin-left:6px;padding:2px 8px;font-size:11px">📂 上传 .csv</button></label>
+          <input type="file" id="fileCsv" accept=".csv" style="display:none">
+          <textarea id="factorsCsv" rows="5">source,category,subcategory,factor_value,unit,valid_from_year,valid_to_year,region
+IPCC_2019,forest,mixed_forest,-280.0,tCO2e/ha,2019,2030,CN-51
+IPCC_2019,settlement,industrial,480.0,tCO2e/ha/yr,2019,2030,CN-51
+IPCC_2019,cropland,dry_farmland,-60.0,tCO2e/ha,2019,2030,CN-51
+IPCC_2019,grassland,shrub_grass,-35.0,tCO2e/ha,2019,2030,CN-51</textarea>
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px;align-items:flex-end">
+        <div class="col" style="max-width:100px"><label>年份</label><input id="carbonYear" value="2025"></div>
+        <div><button class="btn" id="btnCarbon">计算碳排放</button></div>
+      </div>
+      <div class="result" id="carbonResult">点击「计算碳排放」查看结果</div>
+    </div>
+  </div>
+
+  <!-- Spatial Panel -->
+  <div class="panel" id="panel-spatial">
+    <div class="card">
+      <h2>空间运算</h2>
+      <label>GeoJSON 几何体</label>
+      <textarea id="spatialGeom" rows="3">{"type":"Polygon","coordinates":[[[104.0,30.5],[104.1,30.5],[104.1,30.6],[104.0,30.6],[104.0,30.5]]]}</textarea>
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn btn-sm" id="btnArea">📏 面积</button>
+        <button class="btn btn-sm" id="btnBbox">📦 BBox</button>
+        <button class="btn btn-sm" id="btnCentroid">🎯 质心</button>
+        <button class="btn btn-sm" id="btnSimplify">✂️ 简化</button>
+        <button class="btn btn-sm" id="btnConvexHull">🔺 凸包</button>
+      </div>
+      <div class="result" id="spatialResult">点击按钮查看结果</div>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+import init, {
+  initPanicHook, CrsEngine, CarbonEngine,
+  parseNmea, computeArea, computeBbox, computeCentroid,
+  simplifyGeometry, convexHull
+} from './pkg/geo_wasm.js';
+
+// ── Init ─────────────────────────────────────────────────────────
+const st = document.getElementById('initStatus');
+try {
+  await init();
+  initPanicHook();
+  st.innerHTML = '<span class="dot ok"></span> WASM 就绪';
+} catch(e) {
+  st.innerHTML = '<span class="dot err"></span> ' + e;
+  console.error('WASM init:', e);
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────
+document.getElementById('tabs').addEventListener('click', e => {
+  if (!e.target.classList.contains('tab')) return;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  e.target.classList.add('active');
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + e.target.dataset.panel).classList.add('active');
+});
+
+// ── CRS ──────────────────────────────────────────────────────────
+let crsEngine = null;
+document.getElementById('btnCrs').addEventListener('click', async () => {
+  const from = +document.getElementById('fromEpsg').value;
+  const to = +document.getElementById('toEpsg').value;
+  const x = +document.getElementById('crsX').value;
+  const y = +document.getElementById('crsY').value;
+  const el = document.getElementById('crsResult');
+  try {
+    if (!crsEngine) crsEngine = new CrsEngine();
+    const [rx, ry] = await crsEngine.transform(from, to, x, y);
+    el.innerHTML = `✅ EPSG:${from} → EPSG:${to}\n输入: (${x}, ${y})\n输出: (${rx.toFixed(2)}, ${ry.toFixed(2)})`;
+    el.className = 'result ok';
+  } catch(e) {
+    el.textContent = 'Error: ' + e;
+    el.className = 'result err';
+  }
+});
+
+// ── NMEA ─────────────────────────────────────────────────────────
+document.getElementById('btnNmea').addEventListener('click', () => {
+  const el = document.getElementById('nmeaResult');
+  try {
+    const results = document.getElementById('nmeaInput').value.trim().split('\n')
+      .filter(l => l.trim()).map(l => parseNmea(l.trim()));
+    el.textContent = JSON.stringify(results, null, 2);
+    el.className = 'result ok';
+  } catch(e) {
+    el.textContent = 'Error: ' + e;
+    el.className = 'result err';
+  }
+});
+
+// ── File upload helpers ─────────────────────────────────────────
+function setupFileUpload(btnId, fileId, textareaId) {
+  const btn = document.getElementById(btnId);
+  const file = document.getElementById(fileId);
+  const ta = document.getElementById(textareaId);
+  btn.addEventListener('click', () => file.click());
+  file.addEventListener('change', () => {
+    const f = file.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => { ta.value = reader.result; };
+    reader.onerror = () => { alert('读取文件失败: ' + reader.error); };
+    reader.readAsText(f);
+  });
+}
+setupFileUpload('btnUploadGeojson', 'fileGeojson', 'geojsonInput');
+setupFileUpload('btnUploadCsv', 'fileCsv', 'factorsCsv');
+
+// ── Carbon ───────────────────────────────────────────────────────
+let carbonEngine = null;
+document.getElementById('btnCarbon').addEventListener('click', async () => {
+  const geojson = document.getElementById('geojsonInput').value.trim();
+  const csv = document.getElementById('factorsCsv').value.trim();
+  const year = +document.getElementById('carbonYear').value;
+  const el = document.getElementById('carbonResult');
+  if (!geojson) { el.textContent = '请先输入 GeoJSON 数据'; el.className = 'result err'; return; }
+  try {
+    if (!carbonEngine) carbonEngine = new CarbonEngine();
+    const json = carbonEngine.calculate(geojson, csv, year);
+    const r = JSON.parse(json);
+
+    let h = `✅ 计算完成 (${r.year} 年)\n`;
+    h += `🌍 总面积: ${r.total_area_ha.toLocaleString()} ha\n`;
+    h += `🏭 净排放: ${r.total_emission_tco2e.toLocaleString()} tCO₂e (${r.total_emission_tco2e < 0 ? '碳汇' : '碳源'})\n`;
+    h += `📊 ${r.classified_features}/${r.total_features} 个要素匹配`;
+    if (r.skipped_features > 0) h += ` (${r.skipped_features} 跳过)`;
+    h += '\n\n';
+    h += '| 覆被类型 | 面积(ha) | 因子 | 排放(tCO₂e) | 要素 |\n';
+    h += '|---------|---------|-----|-----------|-----|\n';
+    for (const c of r.classes) {
+      h += `| ${c.landcover_class} | ${c.area_ha.toLocaleString()} | ${c.factor_value} | ${c.emission_tco2e.toLocaleString()} | ${c.feature_count} |\n`;
+    }
+    h += `\n🌿 方法论: ${r.methodology || 'IPCC Tier 1'}\n`;
+    h += `🔍 因子来源: ${r.classes[0]?.factor_source?.source || 'IPCC'}`;
+    el.innerHTML = h.replace(/\n/g, '<br>');
+    el.className = 'result ok';
+  } catch(e) {
+    el.textContent = 'Error: ' + e;
+    el.className = 'result err';
+  }
+});
+
+// ── Spatial ──────────────────────────────────────────────────────
+async function spatialOp(op) {
+  const geom = document.getElementById('spatialGeom').value.trim();
+  const el = document.getElementById('spatialResult');
+  if (!geom) { el.textContent = '请输入几何体'; el.className = 'result err'; return; }
+  try {
+    let r;
+    switch(op) {
+      case 'area': r = JSON.parse(computeArea(geom)); break;
+      case 'bbox': r = JSON.parse(computeBbox(geom)); break;
+      case 'centroid': r = JSON.parse(computeCentroid(geom)); break;
+      case 'simplify': r = JSON.parse(simplifyGeometry(geom, 0.01)); break;
+      case 'convexhull': r = JSON.parse(convexHull(geom)); break;
+    }
+    el.textContent = JSON.stringify(r, null, 2);
+    el.className = 'result ok';
+  } catch(e) {
+    el.textContent = 'Error: ' + e;
+    el.className = 'result err';
+  }
+}
+['btnArea','btnBbox','btnCentroid','btnSimplify','btnConvexHull'].forEach((id, i) => {
+  document.getElementById(id).addEventListener('click', () => spatialOp(['area','bbox','centroid','simplify','convexhull'][i]));
+});
+</script>
+</body>
+</html>

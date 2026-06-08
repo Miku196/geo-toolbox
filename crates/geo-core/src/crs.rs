@@ -49,6 +49,18 @@ pub const BUILTIN_CRS: &[CrsDef] = &[
         category: CrsCategory::Display,
     },
     CrsDef {
+        epsg: 9000,
+        name: "GCJ-02 (Mars Coordinate)",
+        proj4: "+proj=longlat +datum=WGS84 +no_defs",
+        category: CrsCategory::Display,
+    },
+    CrsDef {
+        epsg: 9001,
+        name: "BD-09 (Baidu Coordinate)",
+        proj4: "+proj=longlat +datum=WGS84 +no_defs",
+        category: CrsCategory::Display,
+    },
+    CrsDef {
         epsg: 32649,
         name: "WGS 84 / UTM zone 49N",
         proj4: "+proj=utm +zone=49 +datum=WGS84 +units=m +no_defs",
@@ -149,7 +161,9 @@ impl CrsRegistry {
         })
     }
 
-    /// Without proj feature: identity check only.
+    /// Without proj feature: pure Rust built-in transforms.
+    /// Supports: 4326↔3857, 4326↔9000(GCJ-02), 9000↔9001(BD-09),
+    /// 4326↔9001, 4326→3405, identity. UTM projections still need proj.
     #[cfg(not(feature = "proj"))]
     pub fn transform_point(
         &self,
@@ -161,12 +175,43 @@ impl CrsRegistry {
         if from_epsg == to_epsg {
             return Ok((x, y));
         }
-        Err(GeoError::Unimplemented(
-            "coordinate transform requires the `proj` feature.\n\
-             Build with: cargo build --features proj\n\
-             This requires cmake + a C compiler to build libproj from source."
-                .into(),
-        ))
+
+        use crate::crs::builtin;
+        match (from_epsg, to_epsg) {
+            // WGS84 ↔ Web Mercator
+            (4326, 3857) => Ok(builtin::wgs84_to_mercator(x, y)),
+            (3857, 4326) => Ok(builtin::mercator_to_wgs84(x, y)),
+
+            // WGS84 ↔ GCJ-02 (Mars coordinate)
+            (4326, 9000) => Ok(builtin::wgs84_to_gcj02(x, y)),
+            (9000, 4326) => Ok(builtin::gcj02_to_wgs84(x, y)),
+
+            // GCJ-02 ↔ BD-09
+            (9000, 9001) => Ok(builtin::gcj02_to_bd09(x, y)),
+            (9001, 9000) => Ok(builtin::bd09_to_gcj02(x, y)),
+
+            // WGS84 ↔ BD-09 (two-step via GCJ-02)
+            (4326, 9001) => {
+                let (gx, gy) = builtin::wgs84_to_gcj02(x, y);
+                Ok(builtin::gcj02_to_bd09(gx, gy))
+            }
+            (9001, 4326) => {
+                let (gx, gy) = builtin::bd09_to_gcj02(x, y);
+                Ok(builtin::gcj02_to_wgs84(gx, gy))
+            }
+
+            // WGS84 → Equal Area (carbon accounting)
+            (4326, 3405) => Ok(builtin::wgs84_to_equal_area(x, y)),
+
+            _ => Err(GeoError::Unimplemented(
+                format!(
+                    "Transform EPSG:{from_epsg}→{to_epsg} not built-in.\n\
+                     Built-in: 4326↔3857, 4326↔9000(GCJ-02), 9000↔9001(BD-09),\n\
+                     4326↔9001, 4326→3405.\n\
+                     For UTM/proj-based transforms, build with: cargo build --features proj"
+                )
+            )),
+        }
     }
 
     /// Total count of registered CRS.
@@ -183,6 +228,96 @@ impl CrsRegistry {
 impl Default for CrsRegistry {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// ── Pure Rust built-in transforms (zero C dependency) ────────────
+pub mod builtin {
+    use std::f64::consts::PI;
+
+    const EARTH_RADIUS: f64 = 6_378_137.0;
+    const DEG_TO_RAD: f64 = PI / 180.0;
+
+    pub fn wgs84_to_mercator(lon: f64, lat: f64) -> (f64, f64) {
+        let x = lon * DEG_TO_RAD * EARTH_RADIUS;
+        let y = ((90.0 + lat) * DEG_TO_RAD / 2.0).tan().ln() * EARTH_RADIUS;
+        (x, y)
+    }
+
+    pub fn mercator_to_wgs84(x: f64, y: f64) -> (f64, f64) {
+        let lon = (x / EARTH_RADIUS) / DEG_TO_RAD;
+        let lat = (2.0 * (y / EARTH_RADIUS).exp().atan() - PI / 2.0) / DEG_TO_RAD;
+        (lon, lat)
+    }
+
+    pub fn wgs84_to_equal_area(lon: f64, lat: f64) -> (f64, f64) {
+        let sp = 30.0_f64.to_radians();
+        (lon * DEG_TO_RAD * EARTH_RADIUS * sp.cos(), lat.sin() * EARTH_RADIUS)
+    }
+
+    // ── Chinese coordinate systems (GCJ-02 / BD-09) ───────────
+    const X_PI: f64 = PI * 3000.0 / 180.0;
+    const A: f64 = 6378245.0;
+    const EE: f64 = 0.00669342162296594323;
+
+    pub fn wgs84_to_gcj02(lon: f64, lat: f64) -> (f64, f64) {
+        if out_of_china(lon, lat) { return (lon, lat); }
+        let (dlon, dlat) = delta(lon, lat);
+        (lon + dlon, lat + dlat)
+    }
+
+    pub fn gcj02_to_wgs84(lon: f64, lat: f64) -> (f64, f64) {
+        if out_of_china(lon, lat) { return (lon, lat); }
+        let (mut wx, mut wy) = (lon, lat);
+        for _ in 0..5 {
+            let (gx, gy) = wgs84_to_gcj02(wx, wy);
+            wx += lon - gx;
+            wy += lat - gy;
+        }
+        (wx, wy)
+    }
+
+    pub fn gcj02_to_bd09(lon: f64, lat: f64) -> (f64, f64) {
+        let z = (lon*lon + lat*lat).sqrt() + 0.00002*(lat*X_PI).sin();
+        let t = lat.atan2(lon) + 0.000003*(lon*X_PI).cos();
+        (z*t.cos() + 0.0065, z*t.sin() + 0.006)
+    }
+
+    pub fn bd09_to_gcj02(lon: f64, lat: f64) -> (f64, f64) {
+        let x = lon - 0.0065;
+        let y = lat - 0.006;
+        let z = (x*x + y*y).sqrt() - 0.00002*(y*X_PI).sin();
+        let t = y.atan2(x) - 0.000003*(x*X_PI).cos();
+        (z*t.cos(), z*t.sin())
+    }
+
+    fn out_of_china(lon: f64, lat: f64) -> bool {
+        lon < 72.004 || lon > 137.8347 || lat < 0.8293 || lat > 55.8271
+    }
+
+    fn delta(lon: f64, lat: f64) -> (f64, f64) {
+        let dl = tl(lon - 105.0, lat - 35.0);
+        let db = tb(lon - 105.0, lat - 35.0);
+        let r = lat * PI / 180.0;
+        let m = 1.0 - EE * r.sin() * r.sin();
+        let s = m.sqrt();
+        ((dl*180.0)/(A/s*r.cos()*PI), (db*180.0)/((A*(1.0-EE))/(m*s)*PI))
+    }
+
+    fn tb(x: f64, y: f64) -> f64 {
+        let mut r = -100.0 + 2.0*x + 3.0*y + 0.2*y*y + 0.1*x*y + 0.2*x.abs().sqrt();
+        r += (20.0*(6.0*x*PI).sin()+20.0*(2.0*x*PI).sin())*2.0/3.0;
+        r += (20.0*(y*PI).sin()+40.0*(y/3.0*PI).sin())*2.0/3.0;
+        r += (160.0*(y/12.0*PI).sin()+320.0*(y*PI/30.0).sin())*2.0/3.0;
+        r
+    }
+
+    fn tl(x: f64, y: f64) -> f64 {
+        let mut r = 300.0 + x + 2.0*y + 0.1*x*x + 0.1*x*y + 0.1*x.abs().sqrt();
+        r += (20.0*(6.0*x*PI).sin()+20.0*(2.0*x*PI).sin())*2.0/3.0;
+        r += (20.0*(x*PI).sin()+40.0*(x/3.0*PI).sin())*2.0/3.0;
+        r += (150.0*(x/12.0*PI).sin()+300.0*(x/30.0*PI).sin())*2.0/3.0;
+        r
     }
 }
 
@@ -222,5 +357,72 @@ mod tests {
         let reg = CrsRegistry::new();
         let carbon = reg.by_category(CrsCategory::Carbon);
         assert!(!carbon.is_empty());
+    }
+
+    #[test]
+    fn test_wgs84_to_mercator_chengdu() {
+        let (x, y) = builtin::wgs84_to_mercator(104.06, 30.57);
+        assert!((x - 11_583_906.0).abs() < 10.0);
+        assert!((y - 3_577_030.0).abs() < 10.0);
+    }
+
+    #[test]
+    fn test_mercator_roundtrip() {
+        let (mx, my) = builtin::wgs84_to_mercator(104.06, 30.57);
+        let (lx, ly) = builtin::mercator_to_wgs84(mx, my);
+        assert!((lx - 104.06).abs() < 0.0001);
+        assert!((ly - 30.57).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_wgs84_to_gcj02_offset() {
+        let (gx, gy) = builtin::wgs84_to_gcj02(104.06, 30.57);
+        assert!((gx - 104.06).abs() > 0.001);
+        assert!((gy - 30.57).abs() > 0.001);
+    }
+
+    #[test]
+    fn test_gcj02_wgs84_roundtrip() {
+        let (gx, gy) = builtin::wgs84_to_gcj02(104.06, 30.57);
+        let (wx, wy) = builtin::gcj02_to_wgs84(gx, gy);
+        assert!((wx - 104.06).abs() < 0.000001);
+        assert!((wy - 30.57).abs() < 0.000001);
+    }
+
+    #[test]
+    fn test_bd09_gcj02_roundtrip() {
+        let (gx, gy) = builtin::wgs84_to_gcj02(104.06, 30.57);
+        let (bx, by) = builtin::gcj02_to_bd09(gx, gy);
+        let (gx2, gy2) = builtin::bd09_to_gcj02(bx, by);
+        assert!((gx2 - gx).abs() < 0.000001);
+        assert!((gy2 - gy).abs() < 0.000001);
+    }
+
+    #[test]
+    fn test_cli_transform_4326_to_3857() {
+        let reg = CrsRegistry::new();
+        let (x, y) = reg.transform_point(4326, 3857, 104.06, 30.57).unwrap();
+        assert!((x - 11_583_906.0).abs() < 10.0);
+        assert!((y - 3_577_030.0).abs() < 10.0);
+    }
+
+    #[test]
+    fn test_cli_transform_4326_to_9000() {
+        let reg = CrsRegistry::new();
+        let (gx, gy) = reg.transform_point(4326, 9000, 104.06, 30.57).unwrap();
+        assert!((gx - 104.06).abs() > 0.001, "GCJ-02 should differ from WGS84");
+    }
+
+    #[test]
+    fn test_cli_transform_4326_to_9001() {
+        let reg = CrsRegistry::new();
+        let (bx, by) = reg.transform_point(4326, 9001, 104.06, 30.57).unwrap();
+        assert!((bx - 104.06).abs() > 0.001, "BD-09 should differ from WGS84");
+    }
+
+    #[test]
+    fn test_cli_transform_unsupported() {
+        let reg = CrsRegistry::new();
+        assert!(reg.transform_point(4326, 32649, 104.0, 30.0).is_err());
     }
 }

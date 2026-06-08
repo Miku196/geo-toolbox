@@ -1,0 +1,46 @@
+{
+  "name": "geo-wasm",
+  "version": "0.1.0",
+  "description": "Browser-side geospatial processing via WebAssembly — CRS transforms, NMEA parsing, carbon accounting, GeoJSON/DXF/Excel export. Sensitive data never leaves the user's machine.",
+  "main": "pkg/geo_wasm.js",
+  "types": "pkg/geo_wasm.d.ts",
+  "files": [
+    "pkg/geo_wasm_bg.wasm",
+    "pkg/geo_wasm.js",
+    "pkg/geo_wasm.d.ts",
+    "pkg/geo_wasm_bg.js",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "wasm-pack build --target bundler crates/geo-wasm --out-dir ../../pkg --out-name geo_wasm",
+    "build:web": "wasm-pack build --target web crates/geo-wasm --out-dir ../../pkg --out-name geo_wasm",
+    "build:node": "wasm-pack build --target nodejs crates/geo-wasm --out-dir ../../pkg --out-name geo_wasm",
+    "test": "wasm-pack test --node crates/geo-wasm",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "gis",
+    "geospatial",
+    "wasm",
+    "webassembly",
+    "crs",
+    "coordinate-transform",
+    "gps",
+    "nmea",
+    "carbon-accounting",
+    "ipcc",
+    "geojson",
+    "dxf",
+    "indexeddb"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Miku196/geo-toolbox"
+  },
+  "license": "MIT",
+  "author": "Miku196",
+  "sideEffects": false,
+  "dependencies": {
+    "pdfkit": "^0.19.0"
+  }
+}

@@ -3,6 +3,37 @@
 use super::super::OutputAction;
 use uuid::Uuid;
 
+/// Recursively transform all coordinate pairs in a GeoJSON geometry.
+fn transform_geojson_coords(
+    reg: &geo_core::crs::CrsRegistry,
+    value: &mut serde_json::Value,
+    from_epsg: u16,
+    to_epsg: u16,
+) {
+    match value {
+        serde_json::Value::Array(arr) => {
+            // Check if this is a coordinate pair [x, y]
+            if arr.len() == 2
+                && arr[0].is_number()
+                && arr[1].is_number()
+                && !arr[0].is_array()
+            {
+                let x = arr[0].as_f64().unwrap_or(0.0);
+                let y = arr[1].as_f64().unwrap_or(0.0);
+                if let Ok((nx, ny)) = reg.transform_point(from_epsg, to_epsg, x, y) {
+                    arr[0] = serde_json::json!(nx);
+                    arr[1] = serde_json::json!(ny);
+                }
+            } else {
+                for item in arr.iter_mut() {
+                    transform_geojson_coords(reg, item, from_epsg, to_epsg);
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
 /// Handle `output excel | geojson | dxf | report`.
 pub async fn handle(action: OutputAction) -> Result<(), Box<dyn std::error::Error>> {
     let db_url = std::env::var("DATABASE_URL")
@@ -20,7 +51,46 @@ pub async fn handle(action: OutputAction) -> Result<(), Box<dyn std::error::Erro
             println!("Excel dashboard: {output}");
         }
 
-        OutputAction::Geojson { sql, output, aggregate } => {
+        OutputAction::Geojson { sql, output, aggregate, from_file, to_epsg } => {
+            // --from-file mode: local file validation/compaction/reprojection
+            if let Some(path) = from_file {
+                let content = std::fs::read_to_string(&path)?;
+                let mut geojson: serde_json::Value = serde_json::from_str(&content)?;
+                let in_size = content.len();
+
+                // Compact: remove extra whitespace for smaller file
+                let count = geojson.get("features")
+                    .and_then(|f| f.as_array())
+                    .map(|f| f.len()).unwrap_or(0);
+
+                // Reproject if requested
+                if let Some(epsg) = to_epsg {
+                    if epsg != 4326 {
+                        let reg = geo_core::crs::CrsRegistry::new();
+                        if let Some(features) = geojson.get_mut("features")
+                            .and_then(|f| f.as_array_mut())
+                        {
+                            for feat in features.iter_mut() {
+                                if let Some(geom) = feat.get_mut("geometry") {
+                                    if let Some(coords) = geom.get_mut("coordinates") {
+                                        transform_geojson_coords(&reg, coords, 4326, epsg);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let compact = serde_json::to_string(&geojson)?;
+                let out_size = compact.len();
+                std::fs::write(&output, &compact)?;
+                println!("GeoJSON: {output} ({count} features, {in_size}→{out_size} bytes, {:.0}%)",
+                    out_size as f64 / in_size as f64 * 100.0);
+                return Ok(());
+            }
+
+            // SQL mode (requires PostGIS)
+            let sql = sql.ok_or("--sql required for PostGIS mode")?;
             let pool = sqlx::postgres::PgPoolOptions::new()
                 .max_connections(2)
                 .connect(&db_url)
