@@ -1,12 +1,12 @@
 [package]
-name = "geo-adapter-cad"
+name = "geo-plugin-cad"
 version.workspace = true
 description = "Output layer: DXF CAD export, Excel dashboard, GeoJSON serialization, and Markdown report generation"
 edition.workspace = true
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
-geo-adapter-postgis = { path = "../geo-adapter-postgis" }
+geo-adapter-postgis = { path = "../../adapters/geo-adapter-postgis" }
 sqlx = { workspace = true, features = ["postgres", "runtime-tokio"] }
 rust_xlsxwriter = { workspace = true }
 dxf = { workspace = true }

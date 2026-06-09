@@ -1,4 +1,4 @@
-//! geo-adapter-cad: DXF/Excel/GeoJSON export.
+//! geo-plugin-output: DXF/Excel/GeoJSON export plugin.
 #![allow(missing_docs)]
 pub mod dxf_export;
 pub mod excel;

@@ -36,7 +36,7 @@ members = [
     "adapters/geo-adapter-postgis",
     "adapters/geo-adapter-gee",
     "adapters/geo-adapter-qgis",
-    "adapters/geo-adapter-cad",
+    "plugins/geo-plugin-cad",
     "adapters/geo-adapter-cli",
     "adapters/geo-adapter-mcp",
     "adapters/geo-adapter-iot",
