@@ -15,7 +15,6 @@ pub fn get_build_info() -> String {
         "version": env!("CARGO_PKG_VERSION"),
         "rustc": env!("CARGO_PKG_RUST_VERSION"),
         "features": {
-            "proj4rs": cfg!(feature = "proj4rs"),
             "console_error_panic_hook": cfg!(feature = "console_error_panic_hook"),
         }
     }).to_string()

@@ -1,19 +1,45 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/geo-core",
+    # ── 原有 crate ──
+    "core/geo-core",
     "crates/geo-cli",
-    "crates/geo-store",
-    "crates/geo-ingest",
-    "crates/geo-gee",
-    "crates/geo-gdal",
-    "crates/geo-qgis",
-    "crates/geo-carbon",
-    "crates/geo-carbon-core",
-    "crates/geo-output",
     "crates/geo-wasm",
-    "crates/geo-parquet",
-    "crates/geo-ogc",
+    "core/geo-parquet",
+    "core/geo-ogc",
+
+    # ── Round 1: Core 层新增 ──
+    "core/geo-carbon-math",
+    "core/geo-raster",
+    "core/geo-stats",
+    "core/geo-io",
+
+    # ── Round 1: Plugin 层新增 ──
+    "plugins/geo-plugin-carbon",
+    "plugins/geo-plugin-ecology",
+
+    # ── Round 2: Core 层补齐 ──
+    "core/geo-vector",
+    "core/geo-index",
+    "core/geo-report",
+
+    # ── Round 2: Plugin 层补齐 ──
+    "plugins/geo-plugin-survey",
+    "plugins/geo-plugin-urban",
+    "plugins/geo-plugin-hydro",
+    "plugins/geo-plugin-geohazard",
+    "plugins/geo-plugin-agri",
+    # ── Round 3: Registry ──
+    "core/geo-registry",
+
+    # ── Round 3: Adapters ──
+    "adapters/geo-adapter-postgis",
+    "adapters/geo-adapter-gee",
+    "adapters/geo-adapter-qgis",
+    "adapters/geo-adapter-cad",
+    "adapters/geo-adapter-cli",
+    "adapters/geo-adapter-mcp",
+    "adapters/geo-adapter-iot",
 ]
 
 [workspace.dependencies]

@@ -1,0 +1,15 @@
+[package]
+name = "geo-plugin-survey"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "测绘插件 — 控制网平差、土方量计算、等值线生成、断面图"
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-vector = { path = "../../core/geo-vector" }
+geo-stats = { path = "../../core/geo-stats" }
+geo-io = { path = "../../core/geo-io" }
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true

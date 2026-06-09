@@ -1,0 +1,12 @@
+[package]
+name = "geo-stats"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "纯 Rust 空间统计基类 — 分区统计、线性回归、时间序列插值"
+
+[dependencies]
+geo-core = { path = "../geo-core" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

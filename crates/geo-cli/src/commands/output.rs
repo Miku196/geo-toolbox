@@ -46,7 +46,7 @@ pub async fn handle(action: OutputAction) -> Result<(), Box<dyn std::error::Erro
                 .connect(&db_url)
                 .await?;
 
-            let dashboard = geo_output::ExcelDashboard::new(pool);
+            let dashboard = geo_adapter_cad::ExcelDashboard::new(pool);
             dashboard.from_sql(&sql, &output, &sheet).await?;
             println!("Excel dashboard: {output}");
         }
@@ -96,7 +96,7 @@ pub async fn handle(action: OutputAction) -> Result<(), Box<dyn std::error::Erro
                 .connect(&db_url)
                 .await?;
 
-            let exporter = geo_output::GeoJsonExporter::new(pool);
+            let exporter = geo_adapter_cad::GeoJsonExporter::new(pool);
 
             let count = if aggregate {
                 exporter.from_aggregate_sql(&sql, &output).await?
@@ -112,7 +112,7 @@ pub async fn handle(action: OutputAction) -> Result<(), Box<dyn std::error::Erro
                 .connect(&db_url)
                 .await?;
 
-            let exporter = geo_output::DxfExporter::new(pool);
+            let exporter = geo_adapter_cad::DxfExporter::new(pool);
             let count = exporter.from_sql(&sql, &output, from_epsg, to_epsg).await?;
             println!("DXF: {output} ({count} entities)");
         }
@@ -125,14 +125,14 @@ pub async fn handle(action: OutputAction) -> Result<(), Box<dyn std::error::Erro
 
             // Query carbon results for the AOI
             let aoi_id = Uuid::parse_str(&aoi)?;
-            let engine = geo_carbon::CarbonEngine::new(pool);
+            let engine = geo_plugin_carbon::CarbonEngine::new(pool);
             let results = engine.query_by_aoi(aoi_id).await?;
 
             let total: f64 = results.iter().map(|r| r.emission_tco2e).sum();
 
-            let breakdown: Vec<geo_output::report::LandcoverBreakdown> = results
+            let breakdown: Vec<geo_report::report::LandcoverBreakdown> = results
                 .iter()
-                .map(|r| geo_output::report::LandcoverBreakdown {
+                .map(|r| geo_report::report::LandcoverBreakdown {
                     class: r.landcover_class.clone(),
                     area_ha: r.area_ha,
                     factor: r.factor_value,
@@ -140,9 +140,9 @@ pub async fn handle(action: OutputAction) -> Result<(), Box<dyn std::error::Erro
                 })
                 .collect();
 
-            let audit_trails: Vec<geo_output::report::AuditTrailEntry> = results
+            let audit_trails: Vec<geo_report::report::AuditTrailEntry> = results
                 .iter()
-                .map(|r| geo_output::report::AuditTrailEntry {
+                .map(|r| geo_report::report::AuditTrailEntry {
                     class: r.landcover_class.clone(),
                     lc_hash: r.audit.lc_dvc_hash.clone().unwrap_or_default(),
                     factor_id: r.audit.factor_set_id.clone(),
@@ -151,7 +151,7 @@ pub async fn handle(action: OutputAction) -> Result<(), Box<dyn std::error::Erro
                 })
                 .collect();
 
-            let report_data = geo_output::report::CarbonReportData {
+            let report_data = geo_report::report::CarbonReportData {
                 title: format!("Carbon Accounting Report: {name}"),
                 aoi_name: name,
                 year,
@@ -162,7 +162,7 @@ pub async fn handle(action: OutputAction) -> Result<(), Box<dyn std::error::Erro
                 audit_trails,
             };
 
-            let gen = geo_output::ReportGenerator::new()?;
+            let gen = geo_report::ReportGenerator::new()?;
 
             match format.as_str() {
                 "html" => {

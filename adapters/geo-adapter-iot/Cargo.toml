@@ -1,0 +1,19 @@
+[package]
+name = "geo-adapter-iot"
+version.workspace = true
+description = "Data ingestion: CamoFox JSON parser, NMEA 0183 GPS parser, MQTT streaming, and validation gateway"
+edition.workspace = true
+
+[features]
+default = []
+mqtt = ["dep:rumqttc"]
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-adapter-postgis = { path = "../geo-adapter-postgis" }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+csv.workspace = true
+rumqttc = { workspace = true, optional = true }

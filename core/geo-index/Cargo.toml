@@ -1,0 +1,11 @@
+[package]
+name = "geo-index"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "纯 Rust 空间索引基类 — GeoHash 编解码、R-tree 封装"
+
+[dependencies]
+geo-core = { path = "../geo-core" }
+serde.workspace = true
+thiserror.workspace = true

@@ -1,0 +1,16 @@
+[package]
+name = "geo-raster"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "纯 Rust 栅格运算基类 — 波段运算、NDVI 计算、重采样，零外部依赖"
+
+[dependencies]
+geo-core = { path = "../geo-core" }
+geo-io = { path = "../geo-io" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true

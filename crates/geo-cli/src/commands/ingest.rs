@@ -8,7 +8,7 @@ pub async fn handle(action: IngestAction) -> Result<(), Box<dyn std::error::Erro
         IngestAction::Camofox { file } => {
             let content = tokio::fs::read_to_string(&file).await?;
 
-            let (rows, result) = geo_ingest::camofox::parse_camofox_file(&content, &file)?;
+            let (rows, result) = geo_io::camofox::parse_camofox_file(&content, &file)?;
 
             println!("CamoFox ingest: {} accepted, {} rejected",
                 result.accepted, result.rejected);
@@ -22,7 +22,7 @@ pub async fn handle(action: IngestAction) -> Result<(), Box<dyn std::error::Erro
 
             // Write to PostGIS using simple INSERT
             if let Ok(db_url) = std::env::var("DATABASE_URL") {
-                let store = geo_store::PostgisStore::connect(&db_url).await?;
+                let store = geo_adapter_postgis::PostgisStore::connect(&db_url).await?;
                 let mut written = 0u64;
                 for row in &rows {
                     let props: serde_json::Value = serde_json::from_str(&row.properties)?;
@@ -62,10 +62,10 @@ pub async fn handle(action: IngestAction) -> Result<(), Box<dyn std::error::Erro
                 if line.is_empty() {
                     continue;
                 }
-                match geo_ingest::nmea::parse_nmea_line(line) {
+                match geo_io::nmea::parse_nmea_line(line) {
                     Ok(msg) => {
                         match msg {
-                            geo_ingest::nmea::NmeaMessage::Gga(fix) => {
+                            geo_io::nmea::NmeaMessage::Gga(fix) => {
                                 println!(
                                     "GGA  {} | fix={} sat={} hdop={:.1} alt={:.1}m @ ({:.6}, {:.6})",
                                     fix.time, fix.quality, fix.satellites,
@@ -73,7 +73,7 @@ pub async fn handle(action: IngestAction) -> Result<(), Box<dyn std::error::Erro
                                 );
                                 fixes += 1;
                             }
-                            geo_ingest::nmea::NmeaMessage::Rmc(rmc) => {
+                            geo_io::nmea::NmeaMessage::Rmc(rmc) => {
                                 println!(
                                     "RMC  {} | status={} speed={:.1}kt track={:.1}° @ ({:.6}, {:.6})",
                                     rmc.time, rmc.status, rmc.speed_knots,
@@ -107,7 +107,7 @@ pub async fn handle(action: IngestAction) -> Result<(), Box<dyn std::error::Erro
                 .await?;
 
             println!("MQTT ingestor connecting to {broker}:{port}/{topic} ...");
-            let ingestor = geo_ingest::mqtt::MqttIngestor::new(pool);
+            let ingestor = geo_adapter_iot::mqtt::MqttIngestor::new(pool);
             ingestor.start(&broker, port, &topic).await?;
         }
     }

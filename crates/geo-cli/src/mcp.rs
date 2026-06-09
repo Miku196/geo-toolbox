@@ -9,13 +9,14 @@
 
 use serde_json::{json, Value};
 use tokio::io::{stdin, stdout, AsyncBufReadExt, AsyncWriteExt, BufReader};
+use geo_registry::PluginRegistry;
 
 /// Server capabilities declared during initialization.
 const SERVER_INFO: &str = "geo-toolbox";
 const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Run the MCP server loop over stdio.
-pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn serve(registry: PluginRegistry) -> Result<(), Box<dyn std::error::Error>> {
     let reader = BufReader::new(stdin());
     let mut writer = stdout();
     let mut lines = reader.lines();
@@ -72,150 +73,10 @@ pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
 
             // ── Tools ──
             "tools/list" if handshake_done => {
-                json!({
-                    "jsonrpc": "2.0",
-                    "id": id,
-                    "result": {
-                        "tools": [
-                            {
-                                "name": "crs_list",
-                                "description": "List all registered coordinate reference systems",
-                                "inputSchema": {
-                                    "type": "object",
-                                    "properties": {},
-                                    "required": []
-                                }
-                            },
-                            {
-                                "name": "crs_transform",
-                                "description": "Transform coordinates between CRS",
-                                "inputSchema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "from_epsg": {"type": "integer"},
-                                        "to_epsg": {"type": "integer"},
-                                        "x": {"type": "number"},
-                                        "y": {"type": "number"}
-                                    },
-                                    "required": ["from_epsg", "to_epsg", "x", "y"]
-                                }
-                            },
-                            {
-                                "name": "store_migrate",
-                                "description": "Run PostGIS database migrations",
-                                "inputSchema": {
-                                    "type": "object",
-                                    "properties": {},
-                                    "required": []
-                                }
-                            },
-                            {
-                                "name": "store_query",
-                                "description": "Execute a SQL query and return results as JSON",
-                                "inputSchema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "sql": {"type": "string", "description": "SQL query"}
-                                    },
-                                    "required": ["sql"]
-                                }
-                            },
-                            {
-                                "name": "ingest_camofox",
-                                "description": "Parse a CamoFox JSON file and write to PostGIS",
-                                "inputSchema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "file": {"type": "string", "description": "Path to JSON file"}
-                                    },
-                                    "required": ["file"]
-                                }
-                            },
-                            {
-                                "name": "ingest_nmea",
-                                "description": "Parse an NMEA GPS log file and return fixes",
-                                "inputSchema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "file": {"type": "string", "description": "Path to NMEA log file"}
-                                    },
-                                    "required": ["file"]
-                                }
-                            },
-                            {
-                                "name": "dvc_snapshot",
-                                "description": "Run DVC add + push on a file for version tracking",
-                                "inputSchema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "file": {"type": "string"}
-                                    },
-                                    "required": ["file"]
-                                }
-                            },
-                            {
-                                "name": "dvc_hash",
-                                "description": "Get the DVC MD5 hash of a tracked file",
-                                "inputSchema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "file": {"type": "string"}
-                                    },
-                                    "required": ["file"]
-                                }
-                            },
-                            {
-                                "name": "carbon_calculate",
-                                "description": "Calculate carbon emissions using emission factor method",
-                                "inputSchema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "aoi_id": {"type": "string"},
-                                        "year": {"type": "integer"},
-                                        "source": {"type": "string", "default": "IPCC_2019"}
-                                    },
-                                    "required": ["aoi_id", "year"]
-                                }
-                            },
-                            {
-                                "name": "carbon_dry_run",
-                                "description": "Preview carbon calculation without writing to DB",
-                                "inputSchema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "aoi_id": {"type": "string"},
-                                        "year": {"type": "integer"},
-                                        "source": {"type": "string", "default": "IPCC_2019"}
-                                    },
-                                    "required": ["aoi_id", "year"]
-                                }
-                            },
-                            {
-                                "name": "carbon_import_factors",
-                                "description": "Import emission factors from a CSV file into factor_registry",
-                                "inputSchema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "csv_path": {"type": "string"}
-                                    },
-                                    "required": ["csv_path"]
-                                }
-                            },
-                            {
-                                "name": "carbon_query_factors",
-                                "description": "Query emission factors valid for a given year",
-                                "inputSchema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "year": {"type": "integer"},
-                                        "source": {"type": "string"}
-                                    },
-                                    "required": ["year"]
-                                }
-                            }
-                        ]
-                    }
-                })
+                // 动态生成：从 PluginRegistry 获取所有已注册工具
+                let mut tools_json = registry.generate_mcp_tools();
+                tools_json["id"] = id;
+                tools_json
             }
 
             "tools/call" if handshake_done => {
@@ -319,8 +180,8 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
         "store_migrate" => {
             let db_url = std::env::var("DATABASE_URL")
                 .unwrap_or_else(|_| "postgres://geo:geo@localhost/geo_test".into());
-            let store = geo_store::PostgisStore::connect(&db_url).await?;
-            geo_store::run_migrations(store.pool()).await?;
+            let store = geo_adapter_postgis::PostgisStore::connect(&db_url).await?;
+            geo_adapter_postgis::run_migrations(store.pool()).await?;
 
             Ok(json!({
                 "jsonrpc": "2.0",
@@ -334,7 +195,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
             let sql = args["sql"].as_str().unwrap_or("SELECT 1");
             let db_url = std::env::var("DATABASE_URL")
                 .unwrap_or_else(|_| "postgres://geo:geo@localhost/geo_test".into());
-            let store = geo_store::PostgisStore::connect(&db_url).await?;
+            let store = geo_adapter_postgis::PostgisStore::connect(&db_url).await?;
             let rows = store.query_json(sql).await?;
 
             Ok(json!({
@@ -351,7 +212,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
         "ingest_camofox" => {
             let file = args["file"].as_str().unwrap_or("");
             let content = tokio::fs::read_to_string(file).await?;
-            let (_rows, result) = geo_ingest::camofox::parse_camofox_file(&content, file)?;
+            let (_rows, result) = geo_io::camofox::parse_camofox_file(&content, file)?;
 
             Ok(json!({
                 "jsonrpc": "2.0",
@@ -373,9 +234,9 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
             for line in content.lines() {
                 let line = line.trim();
                 if line.is_empty() { continue; }
-                if let Ok(msg) = geo_ingest::nmea::parse_nmea_line(line) {
+                if let Ok(msg) = geo_io::nmea::parse_nmea_line(line) {
                     match msg {
-                        geo_ingest::nmea::NmeaMessage::Gga(fix) => {
+                        geo_io::nmea::NmeaMessage::Gga(fix) => {
                             records.push(json!({
                                 "type": "GGA",
                                 "time": fix.time,
@@ -386,7 +247,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
                             }));
                             fixes += 1;
                         }
-                        geo_ingest::nmea::NmeaMessage::Rmc(rmc) => {
+                        geo_io::nmea::NmeaMessage::Rmc(rmc) => {
                             records.push(json!({
                                 "type": "RMC",
                                 "time": rmc.time,
@@ -417,7 +278,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
 
         "dvc_snapshot" => {
             let file = args["file"].as_str().unwrap_or("");
-            let snap = geo_store::dvc_snapshot(file)?;
+            let snap = geo_adapter_postgis::dvc_snapshot(file)?;
             Ok(json!({
                 "jsonrpc": "2.0",
                 "result": {
@@ -428,7 +289,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
 
         "dvc_hash" => {
             let file = args["file"].as_str().unwrap_or("");
-            let hash = geo_store::dvc_hash(file)?;
+            let hash = geo_adapter_postgis::dvc_hash(file)?;
             Ok(json!({
                 "jsonrpc": "2.0",
                 "result": {
@@ -448,7 +309,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
                 .unwrap_or_else(|_| "postgres://geo:geo@localhost/geo_test".into());
             let pool = sqlx::postgres::PgPoolOptions::new()
                 .max_connections(2).connect(&db_url).await?;
-            let engine = geo_carbon::CarbonEngine::new(pool);
+            let engine = geo_plugin_carbon::CarbonEngine::new(pool);
 
             match engine.calculate_emission_factor(aoi_id, year, source).await {
                 Ok(results) => {
@@ -482,7 +343,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
                 .unwrap_or_else(|_| "postgres://geo:geo@localhost/geo_test".into());
             let pool = sqlx::postgres::PgPoolOptions::new()
                 .max_connections(2).connect(&db_url).await?;
-            let engine = geo_carbon::CarbonEngine::new(pool);
+            let engine = geo_plugin_carbon::CarbonEngine::new(pool);
 
             match engine.calculate_dry_run(aoi_id, year, source).await {
                 Ok(results) => {
@@ -505,7 +366,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
                 .unwrap_or_else(|_| "postgres://geo:geo@localhost/geo_test".into());
             let pool = sqlx::postgres::PgPoolOptions::new()
                 .max_connections(2).connect(&db_url).await?;
-            let engine = geo_carbon::CarbonEngine::new(pool);
+            let engine = geo_plugin_carbon::CarbonEngine::new(pool);
 
             let count = engine.import_factors_csv(csv_path).await?;
             Ok(json!({"jsonrpc": "2.0", "result": {
@@ -520,7 +381,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
                 .unwrap_or_else(|_| "postgres://geo:geo@localhost/geo_test".into());
             let pool = sqlx::postgres::PgPoolOptions::new()
                 .max_connections(2).connect(&db_url).await?;
-            let engine = geo_carbon::CarbonEngine::new(pool);
+            let engine = geo_plugin_carbon::CarbonEngine::new(pool);
 
             let factors = engine.query_factors(year, source).await?;
             Ok(json!({"jsonrpc": "2.0", "result": {

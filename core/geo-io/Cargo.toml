@@ -1,0 +1,14 @@
+[package]
+name = "geo-io"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "纯 Rust 地理数据 IO 基类 — GeoJSON 读写、CSV 解析、流式序列化"
+
+[dependencies]
+geo-core = { path = "../geo-core" }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+thiserror.workspace = true
+csv.workspace = true
+tracing.workspace = true

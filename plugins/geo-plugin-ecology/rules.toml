@@ -1,0 +1,30 @@
+# geo-plugin-ecology 业务规则配置
+# 生态修复评估参数
+
+[plugin]
+name = "ecology"
+version = "0.1.0"
+description = "生态修复评估插件 — NDVI 变化检测、碳汇计算、植被恢复评估"
+
+# ── NDVI 阈值 ──
+[ndvi]
+healthy_min = 0.5              # 健康植被 NDVI 下限
+degraded_max = 0.2             # 退化植被 NDVI 上限
+improvement_threshold = 0.1    # NDVI 差值 > 此值 = 显著改善
+degradation_threshold = -0.1   # NDVI 差值 < 此值 = 显著退化
+
+# ── 碳密度参数（tCO₂e/ha/yr）──
+# 正值 = 排放源，负值 = 碳汇
+[carbon]
+source = "IPCC_2019"
+forest = -5.0                  # 森林年碳汇
+grassland = -1.2               # 草地年碳汇
+wetland = -8.5                 # 湿地年碳汇
+cropland = 0.5                 # 农田排放
+built_up = 2.0                 # 建设用地排放
+bare = 0.0                     # 裸地/矿区（恢复前无碳汇）
+
+# ── 报告配置 ──
+[report]
+template = "restoration-report.md.tera"
+format = "markdown"

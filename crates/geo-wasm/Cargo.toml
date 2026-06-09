@@ -15,8 +15,8 @@ crate-type = ["cdylib", "rlib"]
 default = ["console_error_panic_hook"]
 
 [dependencies]
-geo-core = { path = "../geo-core" }
-geo-carbon-core = { path = "../geo-carbon-core" }
+geo-core = { path = "../../core/geo-core" }
+geo-carbon-math = { path = "../../core/geo-carbon-math" }
 
 wasm-bindgen = "0.2"
 js-sys = "0.3"

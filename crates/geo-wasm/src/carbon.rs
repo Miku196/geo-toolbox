@@ -1,6 +1,6 @@
 //! Pure-Rust carbon emission calculation engine (IPCC Tier 1).
 //!
-//! Thin WASM wrapper around [`geo_carbon_core`], providing
+//! Thin WASM wrapper around [`geo_carbon_math`], providing
 //! browser-friendly JSON-in/JSON-out APIs.
 //!
 //! All computation happens in WASM memory — no data leaves the browser.
@@ -9,10 +9,10 @@ use wasm_bindgen::prelude::*;
 
 /// Carbon emission calculation engine.
 ///
-/// Delegates to [`geo_carbon_core::CarbonEngine`] for all computation.
+/// Delegates to [`geo_carbon_math::CarbonEngine`] for all computation.
 #[wasm_bindgen]
 pub struct CarbonEngine {
-    inner: geo_carbon_core::CarbonEngine,
+    inner: geo_carbon_math::CarbonEngine,
 }
 
 #[wasm_bindgen]
@@ -20,7 +20,7 @@ impl CarbonEngine {
     /// Create a new carbon engine.
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        Self { inner: geo_carbon_core::CarbonEngine::new() }
+        Self { inner: geo_carbon_math::CarbonEngine::new() }
     }
 
     /// Calculate carbon emissions from GeoJSON features and emission factors.
@@ -34,7 +34,7 @@ impl CarbonEngine {
     ///
     /// ## Returns
     ///
-    /// JSON string representing [`geo_carbon_core::CarbonReport`].
+    /// JSON string representing [`geo_carbon_math::CarbonReport`].
     #[wasm_bindgen(js_name = calculate)]
     pub fn calculate(
         &self,
@@ -62,16 +62,16 @@ impl CarbonEngine {
         let fc: serde_json::Value = serde_json::from_str(geojson_str)
             .map_err(|e| JsValue::from_str(&format!("Invalid GeoJSON: {e}")))?;
 
-        let factors: Vec<geo_carbon_core::EmissionFactor> = serde_json::from_str(factors_json)
+        let factors: Vec<geo_carbon_math::EmissionFactor> = serde_json::from_str(factors_json)
             .map_err(|e| JsValue::from_str(&format!("Invalid factors JSON: {e}")))?;
 
         let features_json = fc["features"].as_array()
             .ok_or_else(|| JsValue::from_str("GeoJSON has no 'features' array"))?;
 
-        let features: Vec<geo_carbon_core::GeoFeature> = features_json
+        let features: Vec<geo_carbon_math::GeoFeature> = features_json
             .iter()
             .filter_map(|f| {
-                geo_carbon_core::GeoFeature::from_feature_json(&f.to_string()).ok()
+                geo_carbon_math::GeoFeature::from_feature_json(&f.to_string()).ok()
             })
             .collect();
 

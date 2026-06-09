@@ -8,7 +8,7 @@ pub async fn handle(action: CarbonAction) -> Result<(), Box<dyn std::error::Erro
     match action {
         CarbonAction::EmissionFactor { action } => handle_ef(action).await,
         CarbonAction::Lca { inventory } => {
-            let result = geo_carbon::lca::submit_lca(&inventory)?;
+            let result = geo_plugin_carbon::lca::submit_lca(&inventory)?;
             println!("{result}");
             Ok(())
         }
@@ -26,7 +26,7 @@ async fn handle_ef(action: EfAction) -> Result<(), Box<dyn std::error::Error>> {
                 .connect(&db_url)
                 .await?;
 
-            let engine = geo_carbon::CarbonEngine::new(pool);
+            let engine = geo_plugin_carbon::CarbonEngine::new(pool);
             let count = engine.import_factors_csv(&csv).await?;
             println!("Imported {count} emission factors from {csv}");
         }
@@ -39,7 +39,7 @@ async fn handle_ef(action: EfAction) -> Result<(), Box<dyn std::error::Error>> {
                 .connect(&db_url)
                 .await?;
 
-            let engine = geo_carbon::CarbonEngine::new(pool);
+            let engine = geo_plugin_carbon::CarbonEngine::new(pool);
 
             let results = engine
                 .calculate_emission_factor(aoi_id, year, &source)
@@ -51,7 +51,7 @@ async fn handle_ef(action: EfAction) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn print_results(results: &[geo_carbon::EmissionResult], aoi_id: Uuid, year: u16, source: &str) {
+fn print_results(results: &[geo_plugin_carbon::EmissionResult], aoi_id: Uuid, year: u16, source: &str) {
     let total: f64 = results.iter().map(|r| r.emission_tco2e).sum();
 
     println!("\n═══ Carbon Accounting Results ═══");

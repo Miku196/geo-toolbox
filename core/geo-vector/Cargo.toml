@@ -1,0 +1,17 @@
+[package]
+name = "geo-vector"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "纯 Rust 矢量运算基类 — 缓冲区、相交、合并、裁剪、拓扑验证"
+
+[dependencies]
+geo-core = { path = "../geo-core" }
+geo-io = { path = "../geo-io" }
+geo-types.workspace = true
+geo.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

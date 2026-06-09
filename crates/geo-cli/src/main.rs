@@ -3,6 +3,8 @@
 //! Maps each subcommand to the corresponding handler module under `commands/`.
 
 use clap::{Parser, Subcommand};
+use geo_core::plugin::PluginCategory;
+use geo_registry::PluginRegistry;
 
 mod commands;
 mod mcp;
@@ -58,7 +60,30 @@ enum Commands {
     /// Output: Excel dashboard, DXF, GeoJSON, reports
     #[command(subcommand)]
     Output(OutputAction),
+
+    /// Plugin registry: list plugins, check health
+    Plugins {
+        #[command(subcommand)]
+        action: PluginsAction,
+    },
 }
+
+#[derive(Subcommand)]
+enum PluginsAction {
+    /// List all registered plugins and adapters
+    List {
+        /// Filter by category
+        #[arg(long)]
+        category: Option<String>,
+    },
+    /// Show plugin details
+    Show {
+        /// Plugin name
+        name: String,
+    },
+}
+
+// ... (其余子命令定义保持不变)
 
 #[derive(Subcommand)]
 enum CrsAction {
@@ -448,9 +473,175 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Commands::Process(action) => commands::process::handle(action).await,
         Commands::Carbon(action) => commands::carbon::handle(action).await,
         Commands::Output(action) => commands::output::handle(action).await,
+        Commands::Plugins { action } => handle_plugins(action),
         Commands::McpServe { port: _ } => {
-            mcp::serve().await?;
+            let registry = build_registry();
+            mcp::serve(registry).await?;
             Ok(())
         }
     }
+}
+
+/// 构建插件注册表，注册所有已知工具。
+fn build_registry() -> PluginRegistry {
+    let mut registry = PluginRegistry::new();
+
+    // ── CRS 工具 ──
+    registry.register(geo_core::plugin::PluginMeta {
+        name: "crs".into(), version: env!("CARGO_PKG_VERSION").into(),
+        description: "CRS coordinate reference system registry".into(),
+        category: PluginCategory::Process, healthy: true,
+        extra: serde_json::json!({}),
+    });
+    registry.register_tools("crs", vec![
+        geo_registry::registry::ToolDef {
+            name: "crs_list".into(),
+            description: "List all registered coordinate reference systems".into(),
+            input_schema: serde_json::json!({"type":"object","properties":{},"required":[]}),
+        },
+        geo_registry::registry::ToolDef {
+            name: "crs_transform".into(),
+            description: "Transform coordinates between CRS".into(),
+            input_schema: serde_json::json!({"type":"object","properties":{
+                "from_epsg":{"type":"integer"},"to_epsg":{"type":"integer"},
+                "x":{"type":"number"},"y":{"type":"number"}
+            },"required":["from_epsg","to_epsg","x","y"]}),
+        },
+    ]);
+
+    // ── Carbon 工具 ──
+    registry.register(geo_core::plugin::PluginMeta {
+        name: "carbon".into(), version: "0.1.0".into(),
+        description: "Carbon accounting engine (IPCC Tier 1)".into(),
+        category: PluginCategory::Carbon, healthy: true,
+        extra: serde_json::json!({}),
+    });
+    registry.register_tools("carbon", vec![
+        geo_registry::registry::ToolDef {
+            name: "carbon_calculate".into(),
+            description: "Calculate carbon emissions using emission factor method".into(),
+            input_schema: serde_json::json!({"type":"object","properties":{
+                "aoi_id":{"type":"string"},"year":{"type":"integer"},
+                "source":{"type":"string","default":"IPCC_2019"}
+            },"required":["aoi_id","year"]}),
+        },
+        geo_registry::registry::ToolDef {
+            name: "carbon_import_factors".into(),
+            description: "Import emission factors from a CSV file".into(),
+            input_schema: serde_json::json!({"type":"object","properties":{
+                "csv_path":{"type":"string"}
+            },"required":["csv_path"]}),
+        },
+    ]);
+
+    // ── Store 工具 ──
+    registry.register(geo_core::plugin::PluginMeta {
+        name: "store".into(), version: "0.1.0".into(),
+        description: "PostGIS spatial data storage".into(),
+        category: PluginCategory::Store, healthy: true,
+        extra: serde_json::json!({}),
+    });
+    registry.register_tools("store", vec![
+        geo_registry::registry::ToolDef {
+            name: "store_migrate".into(),
+            description: "Run PostGIS database migrations".into(),
+            input_schema: serde_json::json!({"type":"object","properties":{},"required":[]}),
+        },
+        geo_registry::registry::ToolDef {
+            name: "store_query".into(),
+            description: "Execute a SQL query and return results as JSON".into(),
+            input_schema: serde_json::json!({"type":"object","properties":{
+                "sql":{"type":"string"}
+            },"required":["sql"]}),
+        },
+    ]);
+
+    // ── Ingest 工具 ──
+    registry.register(geo_core::plugin::PluginMeta {
+        name: "ingest".into(), version: "0.1.0".into(),
+        description: "Data ingestion (CamoFox, NMEA, MQTT)".into(),
+        category: PluginCategory::Ingest, healthy: true,
+        extra: serde_json::json!({}),
+    });
+    registry.register_tools("ingest", vec![
+        geo_registry::registry::ToolDef {
+            name: "ingest_camofox".into(),
+            description: "Parse a CamoFox JSON file and write to PostGIS".into(),
+            input_schema: serde_json::json!({"type":"object","properties":{
+                "file":{"type":"string"}
+            },"required":["file"]}),
+        },
+        geo_registry::registry::ToolDef {
+            name: "ingest_nmea".into(),
+            description: "Parse an NMEA GPS log file and return fixes".into(),
+            input_schema: serde_json::json!({"type":"object","properties":{
+                "file":{"type":"string"}
+            },"required":["file"]}),
+        },
+    ]);
+
+    // ── DVC 工具 ──
+    registry.register(geo_core::plugin::PluginMeta {
+        name: "dvc".into(), version: "0.1.0".into(),
+        description: "DVC data version control".into(),
+        category: PluginCategory::Store, healthy: true,
+        extra: serde_json::json!({}),
+    });
+    registry.register_tools("dvc", vec![
+        geo_registry::registry::ToolDef {
+            name: "dvc_snapshot".into(),
+            description: "Run DVC add + push on a file for version tracking".into(),
+            input_schema: serde_json::json!({"type":"object","properties":{
+                "file":{"type":"string"}
+            },"required":["file"]}),
+        },
+        geo_registry::registry::ToolDef {
+            name: "dvc_hash".into(),
+            description: "Get the DVC MD5 hash of a tracked file".into(),
+            input_schema: serde_json::json!({"type":"object","properties":{
+                "file":{"type":"string"}
+            },"required":["file"]}),
+        },
+    ]);
+
+    registry
+}
+
+/// 处理 plugins 子命令。
+fn handle_plugins(action: PluginsAction) -> Result<(), Box<dyn std::error::Error>> {
+    let registry = build_registry();
+    match action {
+        PluginsAction::List { category } => {
+            let plugins = registry.list_plugins();
+            let filtered: Vec<_> = if let Some(cat) = category {
+                let cat = PluginCategory::from_str(&cat)
+                    .ok_or_else(|| format!("Unknown category: {cat}"))?;
+                plugins.iter().filter(|p| p.category == cat).collect()
+            } else {
+                plugins.iter().collect()
+            };
+            println!("{:<15} {:<8} {:<10} {}", "NAME", "VERSION", "CATEGORY", "DESCRIPTION");
+            println!("{}", "-".repeat(80));
+            let total = filtered.len();
+            for p in filtered {
+                println!("{:<15} {:<8} {:<10} {}", p.name, p.version, p.category.as_str(), p.description);
+            }
+            println!("\nTotal: {total} plugins/adapters");
+        }
+        PluginsAction::Show { name } => {
+            let plugins = registry.list_plugins();
+            if let Some(p) = plugins.iter().find(|p| p.name == name) {
+                println!("Name:        {}", p.name);
+                println!("Version:     {}", p.version);
+                println!("Category:    {:?}", p.category);
+                println!("Description: {}", p.description);
+                println!("Healthy:     {}", p.healthy);
+                let tools = registry.list_tools().iter().filter(|t| t.name.starts_with(&name)).count();
+                println!("Tools:       {tools}");
+            } else {
+                println!("Plugin '{name}' not found");
+            }
+        }
+    }
+    Ok(())
 }

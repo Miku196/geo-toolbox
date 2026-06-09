@@ -10,14 +10,17 @@ name = "geo-toolbox"
 path = "src/main.rs"
 
 [dependencies]
-geo-core = { path = "../geo-core" }
-geo-store = { path = "../geo-store" }
-geo-ingest = { path = "../geo-ingest" }
-geo-carbon = { path = "../geo-carbon" }
-geo-output = { path = "../geo-output" }
-geo-gee = { path = "../geo-gee", optional = true }
-geo-gdal = { path = "../geo-gdal", optional = true }
-geo-qgis = { path = "../geo-qgis", optional = true }
+geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
+geo-adapter-postgis = { path = "../../adapters/geo-adapter-postgis" }
+geo-io = { path = "../../core/geo-io" }
+geo-adapter-iot = { path = "../../adapters/geo-adapter-iot" }
+geo-plugin-carbon = { path = "../../plugins/geo-plugin-carbon" }
+geo-adapter-cad = { path = "../../adapters/geo-adapter-cad" }
+geo-report = { path = "../../core/geo-report" }
+geo-adapter-gee = { path = "../../adapters/geo-adapter-gee", optional = true }
+geo-adapter-cli = { path = "../../adapters/geo-adapter-cli", optional = true }
+geo-adapter-qgis = { path = "../../adapters/geo-adapter-qgis", optional = true }
 clap.workspace = true
 sqlx.workspace = true
 uuid.workspace = true
@@ -31,8 +34,8 @@ futures.workspace = true
 
 [features]
 default = ["gee", "qgis", "gdal"]
-gee = ["geo-gee"]
-qgis = ["geo-qgis"]
-gdal = ["geo-gdal"]
-mqtt = ["geo-ingest/mqtt"]
+gee = ["geo-adapter-gee"]
+qgis = ["geo-adapter-qgis"]
+gdal = ["geo-adapter-cli"]
+mqtt = ["geo-adapter-iot/mqtt"]
 minimal = []

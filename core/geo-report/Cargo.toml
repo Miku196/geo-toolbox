@@ -1,0 +1,14 @@
+[package]
+name = "geo-report"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "纯 Rust 报告基类 — Tera 模板引擎封装、Markdown/HTML 渲染、自定义过滤器"
+
+[dependencies]
+geo-core = { path = "../geo-core" }
+serde.workspace = true
+serde_json.workspace = true
+tera.workspace = true
+chrono.workspace = true
+tracing.workspace = true

@@ -8,7 +8,11 @@ use geo_core::crs::{CrsRegistry, builtin};
 use serde::Serialize;
 
 /// Pseudo-EPSG codes for Chinese coordinate systems (not official).
+/// 火星坐标系
+#[allow(dead_code)]
 pub const EPSG_GCJ02: u16 = 9000;
+/// 百度坐标系
+#[allow(dead_code)]
 pub const EPSG_BD09: u16 = 9001;
 
 /// WebAssembly-facing CRS engine.
@@ -142,10 +146,6 @@ impl Default for CrsEngine {
 }
 
 // ── Re-export builtin transforms for external users ───────────
-pub use geo_core::crs::builtin::{
-    wgs84_to_mercator, mercator_to_wgs84, wgs84_to_equal_area,
-    wgs84_to_gcj02, gcj02_to_wgs84, gcj02_to_bd09, bd09_to_gcj02,
-};
 
 // ── JS-friendly types ────────────────────────────────────────────
 

@@ -1,0 +1,13 @@
+[package]
+name = "geo-registry"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "插件注册与调度中心 — 统一管理所有 plugin 和 adapter 的生命周期"
+
+[dependencies]
+geo-core = { path = "../geo-core" }
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
