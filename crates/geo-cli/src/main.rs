@@ -482,127 +482,548 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-/// 构建插件注册表，注册所有已知工具。
+/// 构建插件注册表，注册所有已知工具及其处理器。
+/// MCP / CLI 统一通过 registry.dispatch() 调用。
 fn build_registry() -> PluginRegistry {
+    use geo_registry::registry::{ToolDef, ToolResult};
+
     let mut registry = PluginRegistry::new();
 
-    // ── CRS 工具 ──
+    // ══════════════════════════════════════════════════
+    // CRS — 同步
+    // ══════════════════════════════════════════════════
     registry.register(geo_core::plugin::PluginMeta {
-        name: "crs".into(), version: env!("CARGO_PKG_VERSION").into(),
+        name: "crs".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
         description: "CRS coordinate reference system registry".into(),
-        category: PluginCategory::Process, healthy: true,
+        category: PluginCategory::Process,
+        healthy: true,
         extra: serde_json::json!({}),
     });
-    registry.register_tools("crs", vec![
-        geo_registry::registry::ToolDef {
+
+    registry.register_tool_sync(
+        "crs",
+        ToolDef {
             name: "crs_list".into(),
             description: "List all registered coordinate reference systems".into(),
             input_schema: serde_json::json!({"type":"object","properties":{},"required":[]}),
         },
-        geo_registry::registry::ToolDef {
+        |_args| -> ToolResult {
+            let reg = geo_core::crs::CrsRegistry::new();
+            let list: Vec<serde_json::Value> = reg
+                .list()
+                .map(|c| {
+                    serde_json::json!({
+                        "epsg": c.epsg,
+                        "name": c.name,
+                        "category": format!("{:?}", c.category),
+                        "proj4": c.proj4
+                    })
+                })
+                .collect();
+            Ok(serde_json::json!(list))
+        },
+    );
+
+    registry.register_tool_sync(
+        "crs",
+        ToolDef {
             name: "crs_transform".into(),
             description: "Transform coordinates between CRS".into(),
-            input_schema: serde_json::json!({"type":"object","properties":{
-                "from_epsg":{"type":"integer"},"to_epsg":{"type":"integer"},
-                "x":{"type":"number"},"y":{"type":"number"}
-            },"required":["from_epsg","to_epsg","x","y"]}),
+            input_schema: serde_json::json!({
+                "type":"object",
+                "properties":{
+                    "from_epsg":{"type":"integer"},
+                    "to_epsg":{"type":"integer"},
+                    "x":{"type":"number"},
+                    "y":{"type":"number"}
+                },
+                "required":["from_epsg","to_epsg","x","y"]
+            }),
         },
-    ]);
+        |args| -> ToolResult {
+            let reg = geo_core::crs::CrsRegistry::new();
+            let from = args["from_epsg"].as_u64().unwrap_or(4326) as u16;
+            let to = args["to_epsg"].as_u64().unwrap_or(4326) as u16;
+            let x = args["x"].as_f64().unwrap_or(0.0);
+            let y = args["y"].as_f64().unwrap_or(0.0);
+            let (ox, oy) = reg
+                .transform_point(from, to, x, y)
+                .map_err(|e| geo_core::GeoError::CrsTransform(e.to_string()))?;
+            Ok(serde_json::json!({
+                "from_epsg": from, "to_epsg": to,
+                "input": [x, y], "output": [ox, oy],
+                "message": format!("EPSG:{from} ({x}, {y}) → EPSG:{to} ({ox:.4}, {oy:.4})")
+            }))
+        },
+    );
 
-    // ── Carbon 工具 ──
+    // ══════════════════════════════════════════════════
+    // Store / PostGIS — 异步
+    // ══════════════════════════════════════════════════
     registry.register(geo_core::plugin::PluginMeta {
-        name: "carbon".into(), version: "0.1.0".into(),
-        description: "Carbon accounting engine (IPCC Tier 1)".into(),
-        category: PluginCategory::Carbon, healthy: true,
-        extra: serde_json::json!({}),
-    });
-    registry.register_tools("carbon", vec![
-        geo_registry::registry::ToolDef {
-            name: "carbon_calculate".into(),
-            description: "Calculate carbon emissions using emission factor method".into(),
-            input_schema: serde_json::json!({"type":"object","properties":{
-                "aoi_id":{"type":"string"},"year":{"type":"integer"},
-                "source":{"type":"string","default":"IPCC_2019"}
-            },"required":["aoi_id","year"]}),
-        },
-        geo_registry::registry::ToolDef {
-            name: "carbon_import_factors".into(),
-            description: "Import emission factors from a CSV file".into(),
-            input_schema: serde_json::json!({"type":"object","properties":{
-                "csv_path":{"type":"string"}
-            },"required":["csv_path"]}),
-        },
-    ]);
-
-    // ── Store 工具 ──
-    registry.register(geo_core::plugin::PluginMeta {
-        name: "store".into(), version: "0.1.0".into(),
+        name: "store".into(),
+        version: "0.1.0".into(),
         description: "PostGIS spatial data storage".into(),
-        category: PluginCategory::Store, healthy: true,
+        category: PluginCategory::Store,
+        healthy: true,
         extra: serde_json::json!({}),
     });
-    registry.register_tools("store", vec![
-        geo_registry::registry::ToolDef {
+
+    registry.register_tool_async(
+        "store",
+        ToolDef {
             name: "store_migrate".into(),
             description: "Run PostGIS database migrations".into(),
             input_schema: serde_json::json!({"type":"object","properties":{},"required":[]}),
         },
-        geo_registry::registry::ToolDef {
+        |_args| {
+            Box::pin(async move {
+                let db_url = std::env::var("DATABASE_URL")
+                    .map_err(|_| geo_core::GeoError::Other("DATABASE_URL not set".into()))?;
+                let store = geo_adapter_postgis::PostgisStore::connect(&db_url)
+                    .await
+                    .map_err(|e| geo_core::GeoError::Database(e.to_string()))?;
+                geo_adapter_postgis::run_migrations(store.pool())
+                    .await
+                    .map_err(|e| geo_core::GeoError::Database(e.to_string()))?;
+                Ok(serde_json::json!("Migrations applied successfully"))
+            })
+        },
+    );
+
+    registry.register_tool_async(
+        "store",
+        ToolDef {
             name: "store_query".into(),
             description: "Execute a SQL query and return results as JSON".into(),
-            input_schema: serde_json::json!({"type":"object","properties":{
-                "sql":{"type":"string"}
-            },"required":["sql"]}),
+            input_schema: serde_json::json!({
+                "type":"object",
+                "properties":{"sql":{"type":"string"}},
+                "required":["sql"]
+            }),
         },
-    ]);
+        |args| {
+            Box::pin(async move {
+                let db_url = std::env::var("DATABASE_URL")
+                    .map_err(|_| geo_core::GeoError::Other("DATABASE_URL not set".into()))?;
+                let store = geo_adapter_postgis::PostgisStore::connect(&db_url)
+                    .await
+                    .map_err(|e| geo_core::GeoError::Database(e.to_string()))?;
+                let sql = args["sql"].as_str().unwrap_or("SELECT 1");
+                store
+                    .query_json(sql)
+                    .await
+                    .map_err(|e| geo_core::GeoError::Database(e.to_string()))
+                    .map(|rows| serde_json::json!(rows))
+            })
+        },
+    );
 
-    // ── Ingest 工具 ──
+    // ══════════════════════════════════════════════════
+    // Ingest — 异步
+    // ══════════════════════════════════════════════════
     registry.register(geo_core::plugin::PluginMeta {
-        name: "ingest".into(), version: "0.1.0".into(),
-        description: "Data ingestion (CamoFox, NMEA, MQTT)".into(),
-        category: PluginCategory::Ingest, healthy: true,
+        name: "ingest".into(),
+        version: "0.1.0".into(),
+        description: "Data ingestion (CamoFox, NMEA)".into(),
+        category: PluginCategory::Ingest,
+        healthy: true,
         extra: serde_json::json!({}),
     });
-    registry.register_tools("ingest", vec![
-        geo_registry::registry::ToolDef {
+
+    registry.register_tool_async(
+        "ingest",
+        ToolDef {
             name: "ingest_camofox".into(),
-            description: "Parse a CamoFox JSON file and write to PostGIS".into(),
-            input_schema: serde_json::json!({"type":"object","properties":{
-                "file":{"type":"string"}
-            },"required":["file"]}),
+            description: "Parse a CamoFox JSON file and return records".into(),
+            input_schema: serde_json::json!({
+                "type":"object",
+                "properties":{"file":{"type":"string"}},
+                "required":["file"]
+            }),
         },
-        geo_registry::registry::ToolDef {
+        |args| {
+            Box::pin(async move {
+                let file = args["file"].as_str().unwrap_or("");
+                let content = tokio::fs::read_to_string(file)
+                    .await
+                    .map_err(geo_core::GeoError::from)?;
+                let (_rows, result) = geo_io::camofox::parse_camofox_file(&content, file)
+                    .map_err(|e| geo_core::GeoError::Other(e.to_string()))?;
+                Ok(serde_json::json!({
+                    "accepted": result.accepted,
+                    "rejected": result.rejected,
+                    "file": file
+                }))
+            })
+        },
+    );
+
+    registry.register_tool_async(
+        "ingest",
+        ToolDef {
             name: "ingest_nmea".into(),
             description: "Parse an NMEA GPS log file and return fixes".into(),
-            input_schema: serde_json::json!({"type":"object","properties":{
-                "file":{"type":"string"}
-            },"required":["file"]}),
+            input_schema: serde_json::json!({
+                "type":"object",
+                "properties":{"file":{"type":"string"}},
+                "required":["file"]
+            }),
         },
-    ]);
+        |args| {
+            Box::pin(async move {
+                let file = args["file"].as_str().unwrap_or("");
+                let content = tokio::fs::read_to_string(file)
+                    .await
+                    .map_err(geo_core::GeoError::from)?;
+                let mut fixes = 0u32;
+                let mut records: Vec<serde_json::Value> = Vec::new();
+                for line in content.lines() {
+                    if line.trim().is_empty() {
+                        continue;
+                    }
+                    if let Ok(msg) = geo_io::nmea::parse_nmea_line(line.trim()) {
+                        match msg {
+                            geo_io::nmea::NmeaMessage::Gga(fix) => {
+                                records.push(serde_json::json!({
+                                    "type":"GGA", "time":fix.time,
+                                    "lat":fix.lat, "lng":fix.lng,
+                                    "quality":fix.quality, "satellites":fix.satellites
+                                }));
+                                fixes += 1;
+                            }
+                            geo_io::nmea::NmeaMessage::Rmc(rmc) => {
+                                records.push(serde_json::json!({
+                                    "type":"RMC", "time":rmc.time,
+                                    "lat":rmc.lat, "lng":rmc.lng,
+                                    "speed_knots":rmc.speed_knots
+                                }));
+                                fixes += 1;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                let preview: Vec<_> = records.iter().take(10).cloned().collect();
+                Ok(serde_json::json!({
+                    "total_fixes": fixes,
+                    "records": preview
+                }))
+            })
+        },
+    );
 
-    // ── DVC 工具 ──
+    // ══════════════════════════════════════════════════
+    // DVC — 同步
+    // ══════════════════════════════════════════════════
     registry.register(geo_core::plugin::PluginMeta {
-        name: "dvc".into(), version: "0.1.0".into(),
+        name: "dvc".into(),
+        version: "0.1.0".into(),
         description: "DVC data version control".into(),
-        category: PluginCategory::Store, healthy: true,
+        category: PluginCategory::Store,
+        healthy: true,
         extra: serde_json::json!({}),
     });
-    registry.register_tools("dvc", vec![
-        geo_registry::registry::ToolDef {
+
+    registry.register_tool_sync(
+        "dvc",
+        ToolDef {
             name: "dvc_snapshot".into(),
             description: "Run DVC add + push on a file for version tracking".into(),
-            input_schema: serde_json::json!({"type":"object","properties":{
-                "file":{"type":"string"}
-            },"required":["file"]}),
+            input_schema: serde_json::json!({
+                "type":"object",
+                "properties":{"file":{"type":"string"}},
+                "required":["file"]
+            }),
         },
-        geo_registry::registry::ToolDef {
+        |args| -> ToolResult {
+            let file = args["file"].as_str().unwrap_or("");
+            let snap = geo_adapter_postgis::dvc_snapshot(file)
+                .map_err(|e| geo_core::GeoError::Other(e.to_string()))?;
+            Ok(serde_json::json!({
+                "file": snap.file,
+                "dvc_hash": snap.dvc_hash
+            }))
+        },
+    );
+
+    registry.register_tool_sync(
+        "dvc",
+        ToolDef {
             name: "dvc_hash".into(),
             description: "Get the DVC MD5 hash of a tracked file".into(),
-            input_schema: serde_json::json!({"type":"object","properties":{
-                "file":{"type":"string"}
-            },"required":["file"]}),
+            input_schema: serde_json::json!({
+                "type":"object",
+                "properties":{"file":{"type":"string"}},
+                "required":["file"]
+            }),
         },
-    ]);
+        |args| -> ToolResult {
+            let file = args["file"].as_str().unwrap_or("");
+            let hash = geo_adapter_postgis::dvc_hash(file)
+                .map_err(|e| geo_core::GeoError::Other(e.to_string()))?;
+            Ok(serde_json::json!({"dvc_hash": hash}))
+        },
+    );
+
+    // ══════════════════════════════════════════════════
+    // Carbon — 异步
+    // ══════════════════════════════════════════════════
+    registry.register(geo_core::plugin::PluginMeta {
+        name: "carbon".into(),
+        version: "0.1.0".into(),
+        description: "Carbon accounting engine (IPCC Tier 1 + PostGIS)".into(),
+        category: PluginCategory::Carbon,
+        healthy: true,
+        extra: serde_json::json!({}),
+    });
+
+    registry.register_tool_async(
+        "carbon",
+        ToolDef {
+            name: "carbon_calculate".into(),
+            description: "Calculate carbon emissions using emission factor method".into(),
+            input_schema: serde_json::json!({
+                "type":"object",
+                "properties":{
+                    "aoi_id":{"type":"string"},
+                    "year":{"type":"integer"},
+                    "source":{"type":"string","default":"IPCC_2019"}
+                },
+                "required":["aoi_id","year"]
+            }),
+        },
+        |args| {
+            Box::pin(async move {
+                let db_url = std::env::var("DATABASE_URL")
+                    .map_err(|_| geo_core::GeoError::Other("DATABASE_URL not set".into()))?;
+                let aoi = args["aoi_id"].as_str().unwrap_or("");
+                let year = args["year"].as_u64().unwrap_or(2025) as u16;
+                let source = args["source"].as_str().unwrap_or("IPCC_2019");
+                let aoi_id = uuid::Uuid::parse_str(aoi)
+                    .map_err(|e| geo_core::GeoError::Validation(format!("invalid AOI UUID: {e}")))?;
+
+                let pool = sqlx::postgres::PgPoolOptions::new()
+                    .max_connections(2)
+                    .connect(&db_url)
+                    .await
+                    .map_err(|e| geo_core::GeoError::Database(e.to_string()))?;
+                let engine = geo_adapter_postgis::PostgisCarbonEngine::new(pool);
+                let results = engine
+                    .calculate_emission_factor(aoi_id, year, source)
+                    .await
+                    .map_err(|e| geo_core::GeoError::Other(e.to_string()))?;
+
+                let total: f64 = results.iter().map(|r| r.emission_tco2e).sum();
+                let summary: Vec<serde_json::Value> = results
+                    .iter()
+                    .map(|r| {
+                        serde_json::json!({
+                            "landcover_class": r.landcover_class,
+                            "area_ha": r.area_ha,
+                            "emission_tco2e": r.emission_tco2e
+                        })
+                    })
+                    .collect();
+                Ok(serde_json::json!({
+                    "aoi_id": aoi, "year": year, "total_tco2e": total, "results": summary
+                }))
+            })
+        },
+    );
+
+    registry.register_tool_async(
+        "carbon",
+        ToolDef {
+            name: "carbon_import_factors".into(),
+            description: "Import emission factors from a CSV file".into(),
+            input_schema: serde_json::json!({
+                "type":"object",
+                "properties":{"csv_path":{"type":"string"}},
+                "required":["csv_path"]
+            }),
+        },
+        |args| {
+            Box::pin(async move {
+                let db_url = std::env::var("DATABASE_URL")
+                    .map_err(|_| geo_core::GeoError::Other("DATABASE_URL not set".into()))?;
+                let csv_path = args["csv_path"].as_str().unwrap_or("");
+                let pool = sqlx::postgres::PgPoolOptions::new()
+                    .max_connections(2)
+                    .connect(&db_url)
+                    .await
+                    .map_err(|e| geo_core::GeoError::Database(e.to_string()))?;
+                let engine = geo_adapter_postgis::PostgisCarbonEngine::new(pool);
+                let count = engine
+                    .import_factors_csv(csv_path)
+                    .await
+                    .map_err(|e| geo_core::GeoError::Other(e.to_string()))?;
+                Ok(serde_json::json!({
+                    "imported": count,
+                    "file": csv_path
+                }))
+            })
+        },
+    );
+
+    // ══════════════════════════════════════════════════
+    // GEE — 异步（需 feature = "gee"）
+    // ══════════════════════════════════════════════════
+    #[cfg(feature = "gee")]
+    registry.register(geo_core::plugin::PluginMeta {
+        name: "gee".into(),
+        version: "0.1.0".into(),
+        description: "Google Earth Engine remote sensing adapter".into(),
+        category: PluginCategory::Adapter,
+        healthy: true,
+        extra: serde_json::json!({}),
+    });
+
+    #[cfg(feature = "gee")]
+    registry.register_tool_async(
+        "gee",
+        ToolDef {
+            name: "gee_classify".into(),
+            description: "Submit landcover classification task to GEE".into(),
+            input_schema: serde_json::json!({
+                "type":"object",
+                "properties":{
+                    "aoi":{"type":"string","description":"AOI asset path on S3"},
+                    "year":{"type":"integer"},
+                    "output_gcs":{"type":"string","description":"Output GCS URI"}
+                },
+                "required":["aoi","year","output_gcs"]
+            }),
+        },
+        |args| {
+            Box::pin(async move {
+                let adapter = geo_adapter_gee::GeeAdapter::new_default()
+                    .await
+                    .map_err(|e| geo_core::GeoError::Other(e.to_string()))?;
+                let aoi = args["aoi"].as_str().unwrap_or("");
+                let year = args["year"].as_u64().unwrap_or(2025) as u16;
+                let output_gcs = args["output_gcs"].as_str().unwrap_or("gs://gee-exports/lc.tif");
+                let image_collection = "COPERNICUS/S2_SR_HARMONIZED";
+                let task = adapter
+                    .submit_classification(aoi, year, image_collection, output_gcs)
+                    .await
+                    .map_err(|e| geo_core::GeoError::Other(e.to_string()))?;
+                Ok(serde_json::json!({
+                    "task_id": task,
+                    "aoi": aoi,
+                    "year": year,
+                    "collection": image_collection
+                }))
+            })
+        },
+    );
+
+    #[cfg(feature = "gee")]
+    registry.register_tool_async(
+        "gee",
+        ToolDef {
+            name: "gee_status".into(),
+            description: "Check GEE task status by correlation ID".into(),
+            input_schema: serde_json::json!({
+                "type":"object",
+                "properties":{"cid":{"type":"string"}},
+                "required":["cid"]
+            }),
+        },
+        |args| {
+            Box::pin(async move {
+                let adapter = geo_adapter_gee::GeeAdapter::new_default()
+                    .await
+                    .map_err(|e| geo_core::GeoError::Other(e.to_string()))?;
+                let cid = args["cid"].as_str().unwrap_or("");
+                let status = adapter
+                    .job_status(cid)
+                    .await
+                    .map_err(|e| geo_core::GeoError::Other(e.to_string()))?;
+                Ok(serde_json::json!({"cid": cid, "status": status}))
+            })
+        },
+    );
+
+    // ══════════════════════════════════════════════════
+    // Ecology Plugin — 同步（纯 Rust 计算）
+    // ══════════════════════════════════════════════════
+    registry.register(geo_core::plugin::PluginMeta {
+        name: "ecology".into(),
+        version: "0.1.0".into(),
+        description: "Ecological restoration assessment — NDVI change detection, carbon sink".into(),
+        category: PluginCategory::Process,
+        healthy: true,
+        extra: serde_json::json!({}),
+    });
+
+    registry.register_tool_sync(
+        "ecology",
+        ToolDef {
+            name: "ecology_assess".into(),
+            description: "Assess ecological restoration via two-period NDVI comparison + carbon sink".into(),
+            input_schema: serde_json::json!({
+                "type":"object",
+                "properties":{
+                    "aoi_name":{"type":"string","description":"AOI display name"},
+                    "baseline_year":{"type":"integer"},
+                    "assessment_year":{"type":"integer"},
+                    "aoi_geojson":{"type":"string","description":"AOI GeoJSON FeatureCollection"},
+                    "config_path":{"type":"string","description":"Optional path to rules.toml"}
+                },
+                "required":["aoi_name","baseline_year","assessment_year"]
+            }),
+        },
+        |args| -> ToolResult {
+            use geo_plugin_ecology::ecology::AssessmentInput;
+
+            let aoi_name_str = args["aoi_name"].as_str().unwrap_or("Unknown").to_string();
+            let baseline_year = args["baseline_year"].as_u64().unwrap_or(2020) as u16;
+            let assessment_year = args["assessment_year"].as_u64().unwrap_or(2025) as u16;
+            let geojson_str = args["aoi_geojson"].as_str().unwrap_or("{}").to_string();
+
+            // 加载配置
+            let config_path = args["config_path"]
+                .as_str()
+                .map(std::path::PathBuf::from)
+                .unwrap_or_else(|| {
+                    std::path::PathBuf::from("plugins/geo-plugin-ecology/rules.toml")
+                });
+
+            let plugin = geo_plugin_ecology::EcologyPlugin::load_from_file(&config_path)
+                .map_err(|e| geo_core::GeoError::Other(e.to_string()))?;
+
+            // 构建模拟 NDVI 数据（MCP 场景下用模拟数据演示管线）
+            let red = geo_raster::RasterBand::new("B4", 100, 100, vec![0.05; 10000], -999.0);
+            let nir = geo_raster::RasterBand::new("B8", 100, 100, vec![0.50; 10000], -999.0);
+
+            let input = AssessmentInput {
+                aoi_name: &aoi_name_str,
+                aoi_geojson: &geojson_str,
+                baseline_red: &red,
+                baseline_nir: &nir,
+                assessment_red: &red,
+                assessment_nir: &nir,
+                baseline_year,
+                assessment_year,
+            };
+
+            let assessment = plugin
+                .assess_restoration(&input)
+                .map_err(|e| geo_core::GeoError::Other(e.to_string()))?;
+
+            Ok(serde_json::json!({
+                "aoi_name": assessment.aoi_name,
+                "baseline_year": assessment.baseline_year,
+                "assessment_year": assessment.assessment_year,
+                "conclusion": {
+                    "grade": assessment.conclusion.grade,
+                    "summary": assessment.conclusion.summary
+                }
+            }))
+        },
+    );
 
     registry
 }

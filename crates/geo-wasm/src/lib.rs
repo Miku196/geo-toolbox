@@ -30,5 +30,6 @@ pub use storage::GeoStore;
 /// Sets up panic hook for readable browser console errors.
 #[wasm_bindgen(js_name = initPanicHook)]
 pub fn init_panic_hook() {
+    #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 }

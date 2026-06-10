@@ -1,9 +1,46 @@
 use geo_core::errors::GeoResult;
 use geo_core::plugin::{ExternalAdapter, Plugin, PluginCategory, GeoFeature};
+use crate::dispatcher::GeeDispatcher;
+use crate::mq::FileMq;
+use crate::tracker::GeeTracker;
 
-pub struct GeeAdapter { endpoint: String }
+pub struct GeeAdapter {
+    endpoint: String,
+    dispatcher: GeeDispatcher,
+    tracker: GeeTracker,
+}
+
 impl GeeAdapter {
-    pub fn new(endpoint: &str) -> Self { Self { endpoint: endpoint.to_string() } }
+    pub fn new(endpoint: &str) -> Self {
+        let mq = Box::new(FileMq::new("queue/gee-tasks.jsonl"));
+        Self {
+            endpoint: endpoint.to_string(),
+            dispatcher: GeeDispatcher::new(mq),
+            tracker: GeeTracker::new_file("queue/gee-callbacks.jsonl"),
+        }
+    }
+
+    pub async fn new_default() -> GeoResult<Self> {
+        Ok(Self::new("file://queue"))
+    }
+
+    /// Submit a landcover classification task.
+    pub async fn submit_classification(
+        &self, aoi: &str, year: u16, collection: &str, output_gcs: &str,
+    ) -> GeoResult<String> {
+        self.dispatcher
+            .dispatch_classification(aoi, year, output_gcs, Some(serde_json::json!({
+                "collection": collection
+            })))
+            .await
+    }
+
+    /// Check the status of a submitted task.
+    pub async fn job_status(&self, cid: &str) -> GeoResult<String> {
+        self.tracker.check_task(cid).await.map(|opt| {
+            opt.map(|t| format!("{:?}", t.status)).unwrap_or_else(|| "not_found".into())
+        })
+    }
 }
 impl Plugin for GeeAdapter {
     fn name(&self) -> &str { "gee" }

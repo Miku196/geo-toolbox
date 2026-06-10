@@ -1552,6 +1552,8 @@ dependencies = [
  "geo-core",
  "geo-io",
  "geo-plugin-carbon",
+ "geo-plugin-ecology",
+ "geo-raster",
  "geo-registry",
  "geo-report",
  "serde",
