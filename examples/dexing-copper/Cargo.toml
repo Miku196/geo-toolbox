@@ -1,0 +1,18 @@
+[package]
+name = "dexing-copper-report"
+version = "0.1.0"
+edition = "2021"
+description = "德兴铜矿生态修复评估报告生成示例"
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-raster = { path = "../../core/geo-raster" }
+geo-carbon-math = { path = "../../core/geo-carbon-math" }
+geo-plugin-ecology = { path = "../../plugins/geo-plugin-ecology" }
+geo-report = { path = "../../core/geo-report" }
+serde_json = "1"
+toml = "0.8"
+fastrand = "2"
+tera = "1"
+chrono = "0.4"
+pulldown-cmark = "0.12"

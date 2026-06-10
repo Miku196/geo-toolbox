@@ -37,7 +37,7 @@ fn transform_geojson_coords(
 /// Handle `output excel | geojson | dxf | report`.
 pub async fn handle(action: OutputAction) -> Result<(), Box<dyn std::error::Error>> {
     let db_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://geo:geo@localhost:5432/geo_test".to_string());
+        .map_err(|_| "DATABASE_URL must be set")?;
 
     match action {
         OutputAction::Excel { sql, output, sheet } => {
@@ -46,7 +46,7 @@ pub async fn handle(action: OutputAction) -> Result<(), Box<dyn std::error::Erro
                 .connect(&db_url)
                 .await?;
 
-            let dashboard = geo_plugin_cad::ExcelDashboard::new(pool);
+            let dashboard = geo_adapter_cad::ExcelDashboard::new(pool);
             dashboard.from_sql(&sql, &output, &sheet).await?;
             println!("Excel dashboard: {output}");
         }
@@ -96,7 +96,7 @@ pub async fn handle(action: OutputAction) -> Result<(), Box<dyn std::error::Erro
                 .connect(&db_url)
                 .await?;
 
-            let exporter = geo_plugin_cad::GeoJsonExporter::new(pool);
+            let exporter = geo_adapter_cad::GeoJsonExporter::new(pool);
 
             let count = if aggregate {
                 exporter.from_aggregate_sql(&sql, &output).await?
@@ -112,7 +112,7 @@ pub async fn handle(action: OutputAction) -> Result<(), Box<dyn std::error::Erro
                 .connect(&db_url)
                 .await?;
 
-            let exporter = geo_plugin_cad::DxfExporter::new(pool);
+            let exporter = geo_adapter_cad::DxfExporter::new(pool);
             let count = exporter.from_sql(&sql, &output, from_epsg, to_epsg).await?;
             println!("DXF: {output} ({count} entities)");
         }

@@ -13,6 +13,7 @@ __pycache__/
 
 # Example outputs (large generated files)
 examples/*/output/
+output/
 
 # Example data (download separately)
 examples/china-risk-assessment/data/
@@ -30,4 +31,5 @@ examples/china-risk-assessment/data/
 # OS
 .DS_Store
 Thumbs.db
+nul
 DEVPLAN.md

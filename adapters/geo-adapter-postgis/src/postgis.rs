@@ -45,7 +45,11 @@ impl PostgisStore {
     }
 
     /// Execute a SQL query and return rows as JSON.
+    ///
+    /// Security: rejects destructive SQL keywords to prevent injection.
+    /// For production, connect with a read-only database user.
     pub async fn query_json(&self, sql: &str) -> GeoResult<Vec<serde_json::Value>> {
+        geo_core::errors::validate_select_sql(sql)?;
         let rows = sqlx::query(sql)
             .fetch_all(&self.pool)
             .await

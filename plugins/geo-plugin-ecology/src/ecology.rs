@@ -96,6 +96,11 @@ impl EcologyPlugin {
         Self { config }
     }
 
+    /// 获取配置引用。
+    pub fn config(&self) -> &EcologyConfig {
+        &self.config
+    }
+
     /// 从 rules.toml 文件路径加载。
     pub fn load_from_file(path: &std::path::Path) -> GeoResult<Self> {
         let content = std::fs::read_to_string(path)

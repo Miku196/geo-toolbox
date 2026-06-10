@@ -36,10 +36,13 @@ members = [
     "adapters/geo-adapter-postgis",
     "adapters/geo-adapter-gee",
     "adapters/geo-adapter-qgis",
-    "plugins/geo-plugin-cad",
+    "adapters/geo-adapter-cad",
     "adapters/geo-adapter-cli",
     "adapters/geo-adapter-mcp",
     "adapters/geo-adapter-iot",
+
+    # ── Examples ──
+    "examples/dexing-copper",
 ]
 
 [workspace.dependencies]

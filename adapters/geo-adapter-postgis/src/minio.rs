@@ -133,8 +133,8 @@ impl ObjectStoreClient {
                 .unwrap_or("default");
             Self::s3(
                 s3_endpoint.unwrap_or("http://localhost:9000"),
-                s3_access_key.unwrap_or("minioadmin"),
-                s3_secret_key.unwrap_or("minioadmin"),
+                s3_access_key.unwrap_or(""),
+                s3_secret_key.unwrap_or(""),
                 bucket,
             )
         } else {
@@ -281,8 +281,8 @@ mod tests {
         let client = ObjectStoreClient::from_uri(
             "s3://my-bucket/data/",
             Some("http://localhost:9000"),
-            Some("minioadmin"),
-            Some("minioadmin"),
+            Some("test_key"),
+            Some("test_secret"),
         );
         assert!(client.is_ok());
     }

@@ -69,6 +69,29 @@ pub enum GeoError {
 /// Convenience alias: `Result<T, GeoError>`.
 pub type GeoResult<T> = Result<T, GeoError>;
 
+/// Validate that a SQL string contains only SELECT-like statements.
+/// Returns `Ok(())` if safe, `Err(Validation)` if destructive keywords found.
+pub fn validate_select_sql(sql: &str) -> GeoResult<()> {
+    let upper = sql.to_uppercase();
+    let forbidden = [
+        "DROP", "DELETE", "INSERT", "UPDATE", "ALTER", "CREATE",
+        "TRUNCATE", "GRANT", "REVOKE", "COPY", "EXECUTE", "CALL",
+    ];
+    for kw in &forbidden {
+        if upper.contains(kw) {
+            return Err(GeoError::Validation(format!(
+                "SQL query rejected: contains forbidden keyword '{kw}'. Only SELECT queries are allowed."
+            )));
+        }
+    }
+    if upper.contains('\\') || upper.contains("PROGRAM") {
+        return Err(GeoError::Validation(
+            "SQL query rejected: contains unsafe characters".into()
+        ));
+    }
+    Ok(())
+}
+
 // Higher-level crates (geo-store, geo-ingest, etc.) provide their own
 // From<sqlx::Error>, From<object_store::Error>, etc. conversions via
 // a helper macro or manual impls. This keeps geo-core dependency-free.

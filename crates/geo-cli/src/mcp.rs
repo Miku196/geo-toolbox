@@ -9,11 +9,21 @@
 
 use serde_json::{json, Value};
 use tokio::io::{stdin, stdout, AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::time::{timeout, Duration};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use geo_registry::PluginRegistry;
 
 /// Server capabilities declared during initialization.
 const SERVER_INFO: &str = "geo-toolbox";
 const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Maximum duration for a single tool call before timeout.
+const TOOL_TIMEOUT_SECS: u64 = 30;
+/// Maximum concurrent requests (rejects excess with 503).
+const MAX_CONCURRENT: usize = 8;
+/// Maximum total connection duration.
+const CONNECTION_TIMEOUT_SECS: u64 = 3600;
 
 /// Run the MCP server loop over stdio.
 pub async fn serve(registry: PluginRegistry) -> Result<(), Box<dyn std::error::Error>> {
@@ -21,10 +31,12 @@ pub async fn serve(registry: PluginRegistry) -> Result<(), Box<dyn std::error::E
     let mut writer = stdout();
     let mut lines = reader.lines();
     let mut handshake_done = false;
+    let active_requests = Arc::new(AtomicUsize::new(0));
 
     tracing::info!("geo-toolbox MCP server v{SERVER_VERSION} starting on stdio");
 
-    while let Some(line) = lines.next_line().await? {
+    let serve_future = async {
+        while let Some(line) = lines.next_line().await? {
         if line.trim().is_empty() {
             continue;
         }
@@ -80,17 +92,43 @@ pub async fn serve(registry: PluginRegistry) -> Result<(), Box<dyn std::error::E
             }
 
             "tools/call" if handshake_done => {
-                let tool_name = request["params"]["name"].as_str().unwrap_or("");
-                let args = &request["params"]["arguments"];
-                handle_tool_call(tool_name, args).await
-                    .unwrap_or_else(|e| json!({
+                // Rate limiting: check concurrent request count
+                let current = active_requests.fetch_add(1, Ordering::Relaxed);
+                if current >= MAX_CONCURRENT {
+                    active_requests.fetch_sub(1, Ordering::Relaxed);
+                    json!({
                         "jsonrpc": "2.0",
                         "id": id,
                         "error": {
-                            "code": -32000,
-                            "message": e.to_string()
+                            "code": -32001,
+                            "message": format!("Too many concurrent requests ({current}/{MAX_CONCURRENT}). Try again later.")
                         }
-                    }))
+                    })
+                } else {
+                    let tool_name = request["params"]["name"].as_str().unwrap_or("").to_string();
+                    let args = request["params"]["arguments"].clone();
+                    // Timeout wrapper
+                    let result = timeout(
+                        Duration::from_secs(TOOL_TIMEOUT_SECS),
+                        handle_tool_call(&tool_name, &args),
+                    ).await;
+                    active_requests.fetch_sub(1, Ordering::Relaxed);
+                    match result {
+                        Ok(res) => res.unwrap_or_else(|e| json!({
+                            "jsonrpc": "2.0",
+                            "id": id,
+                            "error": {"code": -32000, "message": e.to_string()}
+                        })),
+                        Err(_) => json!({
+                            "jsonrpc": "2.0",
+                            "id": id,
+                            "error": {
+                                "code": -32000,
+                                "message": format!("Tool call timed out after {TOOL_TIMEOUT_SECS}s")
+                            }
+                        }),
+                    }
+                }
             }
 
             // ── Reject calls before handshake ──
@@ -118,13 +156,36 @@ pub async fn serve(registry: PluginRegistry) -> Result<(), Box<dyn std::error::E
             }
         };
 
+        // Write response
         let mut resp_str = serde_json::to_string(&response)?;
         resp_str.push('\n');
         writer.write_all(resp_str.as_bytes()).await?;
         writer.flush().await?;
-    }
+        }
+        Ok::<_, Box<dyn std::error::Error>>(())
+    };
 
-    Ok(())
+    // Connection-level timeout
+    match timeout(Duration::from_secs(CONNECTION_TIMEOUT_SECS), serve_future).await {
+        Ok(Ok(())) => {
+            tracing::info!("MCP server shutting down normally");
+            Ok(())
+        }
+        Ok(Err(e)) => {
+            tracing::error!("MCP server error: {e}");
+            Err(e)
+        }
+        Err(_) => {
+            tracing::warn!("MCP server connection timeout after {CONNECTION_TIMEOUT_SECS}s");
+            Ok(())
+        }
+    }
+}
+
+/// Helper: get DATABASE_URL from env, return error if not set
+fn get_db_url() -> Result<String, Box<dyn std::error::Error>> {
+    std::env::var("DATABASE_URL")
+        .map_err(|_| "DATABASE_URL environment variable must be set".into())
 }
 
 /// Dispatch tool calls to the appropriate handler.
@@ -178,8 +239,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
         }
 
         "store_migrate" => {
-            let db_url = std::env::var("DATABASE_URL")
-                .unwrap_or_else(|_| "postgres://geo:geo@localhost/geo_test".into());
+            let db_url = get_db_url()?;
             let store = geo_adapter_postgis::PostgisStore::connect(&db_url).await?;
             geo_adapter_postgis::run_migrations(store.pool()).await?;
 
@@ -193,8 +253,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
 
         "store_query" => {
             let sql = args["sql"].as_str().unwrap_or("SELECT 1");
-            let db_url = std::env::var("DATABASE_URL")
-                .unwrap_or_else(|_| "postgres://geo:geo@localhost/geo_test".into());
+            let db_url = get_db_url()?;
             let store = geo_adapter_postgis::PostgisStore::connect(&db_url).await?;
             let rows = store.query_json(sql).await?;
 
@@ -305,8 +364,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
             let aoi_id = uuid::Uuid::parse_str(aoi)
                 .map_err(|e| geo_core::GeoError::Validation(format!("invalid AOI UUID: {e}")))?;
 
-            let db_url = std::env::var("DATABASE_URL")
-                .unwrap_or_else(|_| "postgres://geo:geo@localhost/geo_test".into());
+            let db_url = get_db_url()?;
             let pool = sqlx::postgres::PgPoolOptions::new()
                 .max_connections(2).connect(&db_url).await?;
             let engine = geo_plugin_carbon::CarbonEngine::new(pool);
@@ -339,8 +397,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
             let aoi_id = uuid::Uuid::parse_str(aoi)
                 .map_err(|e| geo_core::GeoError::Validation(format!("invalid AOI UUID: {e}")))?;
 
-            let db_url = std::env::var("DATABASE_URL")
-                .unwrap_or_else(|_| "postgres://geo:geo@localhost/geo_test".into());
+            let db_url = get_db_url()?;
             let pool = sqlx::postgres::PgPoolOptions::new()
                 .max_connections(2).connect(&db_url).await?;
             let engine = geo_plugin_carbon::CarbonEngine::new(pool);
@@ -362,8 +419,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
 
         "carbon_import_factors" => {
             let csv_path = args["csv_path"].as_str().unwrap_or("");
-            let db_url = std::env::var("DATABASE_URL")
-                .unwrap_or_else(|_| "postgres://geo:geo@localhost/geo_test".into());
+            let db_url = get_db_url()?;
             let pool = sqlx::postgres::PgPoolOptions::new()
                 .max_connections(2).connect(&db_url).await?;
             let engine = geo_plugin_carbon::CarbonEngine::new(pool);
@@ -377,8 +433,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
         "carbon_query_factors" => {
             let year = args["year"].as_i64().unwrap_or(2025) as i32;
             let source = args["source"].as_str();
-            let db_url = std::env::var("DATABASE_URL")
-                .unwrap_or_else(|_| "postgres://geo:geo@localhost/geo_test".into());
+            let db_url = get_db_url()?;
             let pool = sqlx::postgres::PgPoolOptions::new()
                 .max_connections(2).connect(&db_url).await?;
             let engine = geo_plugin_carbon::CarbonEngine::new(pool);

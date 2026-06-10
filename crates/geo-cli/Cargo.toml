@@ -16,7 +16,7 @@ geo-adapter-postgis = { path = "../../adapters/geo-adapter-postgis" }
 geo-io = { path = "../../core/geo-io" }
 geo-adapter-iot = { path = "../../adapters/geo-adapter-iot" }
 geo-plugin-carbon = { path = "../../plugins/geo-plugin-carbon" }
-geo-plugin-cad = { path = "../../plugins/geo-plugin-cad" }
+geo-adapter-cad = { path = "../../adapters/geo-adapter-cad" }
 geo-report = { path = "../../core/geo-report" }
 geo-adapter-gee = { path = "../../adapters/geo-adapter-gee", optional = true }
 geo-adapter-cli = { path = "../../adapters/geo-adapter-cli", optional = true }

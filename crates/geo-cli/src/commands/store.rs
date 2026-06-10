@@ -5,7 +5,7 @@ use super::super::StoreAction;
 /// Handle `store migrate | write | read | dvc-*`.
 pub async fn handle(action: StoreAction) -> Result<(), Box<dyn std::error::Error>> {
     let db_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://geo:geo@localhost:5432/geo_test".to_string());
+        .map_err(|_| "DATABASE_URL environment variable must be set")?;
 
     match action {
         StoreAction::Migrate => {

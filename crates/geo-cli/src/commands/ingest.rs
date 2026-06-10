@@ -96,10 +96,7 @@ pub async fn handle(action: IngestAction) -> Result<(), Box<dyn std::error::Erro
         #[cfg(feature = "mqtt")]
         IngestAction::Mqtt { broker, port, topic } => {
             let ts_url = std::env::var("TIMESCALE_URL")
-                .unwrap_or_else(|_| {
-                    std::env::var("DATABASE_URL")
-                        .unwrap_or_else(|_| "postgres://geo:geo@localhost:5432/geo_ts".into())
-                });
+                .unwrap_or_else(|_| std::env::var("DATABASE_URL").unwrap_or_else(|_| String::new()));
 
             let pool = sqlx::postgres::PgPoolOptions::new()
                 .max_connections(5)

@@ -17,7 +17,7 @@ pub async fn handle(action: CarbonAction) -> Result<(), Box<dyn std::error::Erro
 
 async fn handle_ef(action: EfAction) -> Result<(), Box<dyn std::error::Error>> {
     let db_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://geo:geo@localhost:5432/geo_test".to_string());
+        .map_err(|_| "DATABASE_URL must be set")?;
 
     match action {
         EfAction::Register { csv } => {

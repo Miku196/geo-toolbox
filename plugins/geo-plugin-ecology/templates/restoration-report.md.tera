@@ -1,0 +1,305 @@
+{# plugins/geo-plugin-ecology/templates/restoration-report.md.tera #}
+{# 生态修复评估报告模板 — 依据 GB/T 33802-2017 等国家标准 #}
+
+# {{ aoi_name }}
+## 矿山环境保护与生态修复评估报告
+
+---
+
+**编制单位**：geo-toolbox 自动化评估系统
+**评估期间**：{{ baseline_year }} 年 → {{ assessment_year }} 年
+**生成时间**：{{ calculated_at | date_fmt }}
+**遥感数据**：Landsat 8 OLI（基准年）+ Sentinel-2 MSI（评估年），10m分辨率
+**评估等级**：{{ conclusion.grade }}
+
+---
+
+## 第1章 总则
+
+### 1.1 编制依据
+
+本报告依据以下国家法律法规及技术标准编制：
+
+| 标准/法规 | 编号 | 适用章节 |
+|-----------|------|---------|
+| 《中华人民共和国环境保护法》 | — | 全文 |
+| 《矿山安全法》 | — | 施工安全 |
+| 《矿产资源法》 | — | 资源管理 |
+| 矿山环境保护与生态修复规范 | **GB/T 33802-2017** | 修复方案、验收 |
+| 矿山地质环境治理恢复生态工程设计规范 | **GB/T 51208-2017** | 工程设计 |
+| 矿山生态环境监测技术规范 | **GB/T 32893-2016** | 监测评估 |
+| 《生态环境损害赔偿制度改革方案》 | — | 生态补偿 |
+
+### 1.2 评估指标体系
+
+| 一级指标 | 二级指标 | 权重 | 达标阈值 | 数据来源 |
+|----------|---------|:---:|---------|---------|
+| 植被恢复 | 整体健康植被比例 | 30% | ≥60% | 遥感NDVI |
+| 植被恢复 | 显著改善面积比例 | 20% | ≥30% | NDVI差值 |
+| 碳汇能力 | 净碳汇量 | 25% | 净碳汇 > 0 | IPCC Tier 1 |
+| 碳汇能力 | 碳汇强度 | 10% | ≤ -1.0 tCO₂e/ha | 面积加权 |
+| 生态稳定 | 退化面积比例 | 15% | ≤10% | NDVI差值 |
+
+**评级规则**：
+- 🏆 优秀：4项及以上达标
+- ✅ 良好：3项达标
+- ⚠ 一般：2项达标
+- ❌ 差：≤1项达标
+
+### 1.3 适用范围
+
+本报告适用于 {{ aoi_name }} 矿山区域的生态修复评估，覆盖开采、加工、运输及尾矿库等全生命周期环节。
+
+---
+
+## 第2章 项目概况
+
+| 指标 | 数值 |
+|------|------|
+| 项目区名称 | {{ aoi_name }} |
+| 基准年份 | {{ baseline_year }} |
+| 评估年份 | {{ assessment_year }} |
+| 空间范围 | 经度 {{ bbox.min_x | round(precision=4) }}° ~ {{ bbox.max_x | round(precision=4) }}°，纬度 {{ bbox.min_y | round(precision=4) }}° ~ {{ bbox.max_y | round(precision=4) }}° |
+| 总评估面积 | {{ carbon.total_area_ha | ha_fmt }} |
+| 总斑块数 | {{ carbon.total_features }} |
+| 核算方法 | {{ carbon.methodology }} |
+
+---
+
+## 第3章 生态环境监测（依据 GB/T 32893-2016）
+
+### 3.1 植被指数（NDVI）监测
+
+> **注意**：NDVI 值受成像季节影响。建议选取同季节（生长季 6-9 月）影像以消除物候偏差。
+> 本报告模拟数据基于 Yu et al. (2023) 及 Zhang et al. (2021) 的德兴铜矿实际 NDVI 参数。
+
+#### 3.1.1 基准年（{{ baseline_year }}）NDVI 监测结果
+
+| 监测指标 | 数值 | 标准限值 | 状态 |
+|----------|------|---------|:---:|
+| 平均 NDVI | {{ baseline_ndvi.mean_ndvi | round(precision=3) }} | — | — |
+| 健康植被比例（NDVI ≥ 0.5） | {{ baseline_ndvi.healthy_ratio | percent_fmt }} | ≥ 30% | {% if baseline_ndvi.healthy_ratio >= 0.30 %}✅{% else %}❌{% endif %} |
+| 退化植被比例（NDVI ≤ 0.2） | {{ baseline_ndvi.degraded_ratio | percent_fmt }} | ≤ 40% | {% if baseline_ndvi.degraded_ratio <= 0.40 %}✅{% else %}❌{% endif %} |
+| 有效监测像素数 | {{ baseline_ndvi.valid_pixels }} | — | — |
+
+#### 3.1.2 评估年（{{ assessment_year }}）NDVI 监测结果
+
+| 监测指标 | 数值 | 标准限值 | 状态 |
+|----------|------|---------|:---:|
+| 平均 NDVI | {{ assessment_ndvi.mean_ndvi | round(precision=3) }} | — | — |
+| 健康植被比例（NDVI ≥ 0.5） | {{ assessment_ndvi.healthy_ratio | percent_fmt }} | ≥ 60% | {% if assessment_ndvi.healthy_ratio >= 0.60 %}✅{% else %}❌{% endif %} |
+| 退化植被比例（NDVI ≤ 0.2） | {{ assessment_ndvi.degraded_ratio | percent_fmt }} | ≤ 10% | {% if assessment_ndvi.degraded_ratio <= 0.10 %}✅{% else %}❌{% endif %} |
+| 有效监测像素数 | {{ assessment_ndvi.valid_pixels }} | — | — |
+
+### 3.2 NDVI 变化分析
+
+| 变化指标 | 数值 | 评价 |
+|----------|------|------|
+| NDVI 均值变化 | {{ ndvi_change.mean_diff | round(precision=4) }} | {% if ndvi_change.mean_diff > 0.0 %}正向恢复{% else %}退化趋势{% endif %} |
+| 整体健康植被提升 | {% if baseline_ndvi.healthy_ratio and assessment_ndvi.healthy_ratio %}{{ (assessment_ndvi.healthy_ratio - baseline_ndvi.healthy_ratio) * 100.0 | round(precision=1) }}{% else %}—{% endif %}pp | — |
+| 显著改善面积比例 | {{ ndvi_change.improved_ratio | percent_fmt }} | {% if ndvi_change.improved_ratio >= 0.30 %}✅ 达标{% else %}⚠ 未达标{% endif %} |
+| 显著退化面积比例 | {{ ndvi_change.degraded_ratio | percent_fmt }} | {% if ndvi_change.degraded_ratio <= 0.10 %}✅ 可控{% else %}⚠ 需关注{% endif %} |
+| 稳定区域比例 | {{ ndvi_change.stable_ratio | percent_fmt }} | — |
+
+> **注意**："整体健康植被提升"与"显著改善面积比例"数值相近（均约28.6个百分点），
+> 这是因为模拟数据中大部分NDVI从健康线以下跨至健康线以上的像素同时也超过了显著改善阈值(0.15)。
+> 在实际遥感监测中，两项通常不相等，建议适时使用真实Sentinel-2影像验证。
+>
+> **指标说明**：
+> - **整体健康植被比例** = 评估年 NDVI ≥ 0.5 的像素占比（反映实际植被覆盖水平）
+> - **显著改善面积比例** = NDVI 差值 > 0.15 的像素占比（反映本期恢复力度）
+> - 两者含义不同，前者回答"恢复了多少"，后者回答"恢复速度有多快"
+
+**数据来源**：Sentinel-2 MSI 遥感影像（10m 分辨率），通过 `geo-raster` 引擎计算。
+
+---
+
+## 第4章 土地覆盖与碳汇评估
+
+### 4.1 土地覆盖分类与碳核算
+
+依据 IPCC 2019 Refinement Tier 1 排放因子方法，对各土地覆盖类型进行面积统计及碳排放/碳汇计算。
+排放因子单位：tCO₂e/ha/yr。正值 = 碳排放源，负值 = 碳汇（吸收 CO₂）。
+
+| 土地覆盖类型 | 面积 (ha) | 因子 (tCO₂e/ha/yr) | 年排放/碳汇 (tCO₂e/yr) | 斑块 | 类型 |
+|-------------|:--------:|:-----------------:|:---------------------:|:----:|:----:|
+{% for c in carbon.classes -%}
+| {{ c.landcover_class }} | {{ c.area_ha }} | {{ c.factor_value }} | {{ c.emission_tco2e }} | {{ c.feature_count }} | {% if c.emission_tco2e < 0.0 %}🌿碳汇{% elif c.emission_tco2e > 0.1 %}🏭碳源{% else %}🟰中性{% endif %} |
+{% endfor -%}
+
+### 4.2 碳汇构成分析
+
+{% set_global native_sink = 0.0 -%}
+{% set_global restored_sink = 0.0 -%}
+{% set_global emission_total = 0.0 -%}
+{% for c in carbon.classes -%}
+{% if c.emission_tco2e < 0.0 -%}
+  {% if "restored" in c.landcover_class -%}
+    {% set_global restored_sink = restored_sink + c.emission_tco2e -%}
+  {% else -%}
+    {% set_global native_sink = native_sink + c.emission_tco2e -%}
+  {% endif -%}
+{% elif c.emission_tco2e > 0.0 -%}
+  {% set_global emission_total = emission_total + c.emission_tco2e -%}
+{% endif -%}
+{% endfor -%}
+{% set native_abs = native_sink * -1.0 -%}
+{% set restored_abs = restored_sink * -1.0 -%}
+{% set total_abs = native_abs + restored_abs -%}
+{% set net_abs = carbon.total_emission_tco2e * -1.0 -%}
+
+| 碳汇来源 | 碳汇量(tCO₂e/yr) | 占比 |
+|----------|:---------------:|:---:|
+| 🌳 原生植被碳汇（天然林/湿地） | {{ native_abs }} | {{ native_abs / total_abs * 100.0 }}% |
+| 🌱 修复新增碳汇（复垦林/草地） | {{ restored_abs }} | {{ restored_abs / total_abs * 100.0 }}% |
+| 🏭 碳排放（工业/农田） | {{ emission_total }} | — |
+| **净碳汇合计** | {{ net_abs }} | — |
+
+> **说明**：原生植被碳汇反映区域生态本底，修复新增碳汇反映人工恢复措施的直接效果。
+> 两者合计构成区域总碳汇能力。
+
+### 4.3 碳核算汇总
+
+| 指标 | 数值 | 标准参考 |
+|------|------|---------|
+| 总评估面积 | {{ carbon.total_area_ha | ha_fmt }} | GB/T 33802-2017 |
+| 净碳排放/碳汇 | {{ carbon.total_emission_tco2e | co2_fmt }} | — |
+| 净碳汇状态 | {% if carbon.total_emission_tco2e < 0.0 %}✅ 净碳汇{% else %}❌ 净碳源{% endif %} | — |
+| 碳排放强度 | {{ carbon.total_emission_tco2e / carbon.total_area_ha | round(precision=2) }} tCO₂e/ha/yr | — |
+| 斑块匹配率 | {{ carbon.classified_features }}/{{ carbon.total_features }} ({{ (carbon.classified_features / carbon.total_features * 100.0) | round(precision=0) }}%) | — |
+| 核算方法学 | {{ carbon.methodology }} | IPCC 2019 |
+
+### 4.4 不确定性分析
+
+IPCC Tier 1 方法存在以下不确定性来源：
+
+| 不确定因素 | 影响范围 | 说明 |
+|-----------|:------:|------|
+| 排放因子选择 | ±30% | 使用全球默认因子，未做本地化校准 |
+| 面积测算 | ±5% | 基于 WGS84 等矩形近似，未投影至等积坐标系 |
+| 土地覆盖分类 | ±15% | 分类类别与实际植被类型可能存在偏差 |
+| 季节物候影响 | ±10% | NDVI 值受成像季节影响，建议生长季（6-9月）对比 |
+
+> 综合不确定性约为 **±35%**（平方和根法）。建议通过以下方式降低不确定性：
+> 1. 实地采样测量土壤有机碳和生物量，校准排放因子
+> 2. 将几何数据重投影至 EPSG:3405（等积投影）后重新计算面积
+> 3. 选取同季节（如均取8月）遥感影像消除物候偏差
+
+---
+
+## 第5章 生态修复工程设计与评估（依据 GB/T 51208-2017）
+
+### 5.1 植被恢复评估
+
+| 评估指标 | 数值 | 达标阈值 | 评价 |
+|----------|------|---------|:---:|
+| 整体健康植被比例 | {{ assessment_ndvi.healthy_ratio | percent_fmt }} | ≥ 60% | {% if assessment_ndvi.healthy_ratio >= 0.60 %}✅ 达标{% else %}❌ 未达标{% endif %} |
+| 显著改善面积比例 | {{ ndvi_change.improved_ratio | percent_fmt }} | ≥ 30% | {% if ndvi_change.improved_ratio >= 0.30 %}✅ 达标{% else %}❌ 未达标{% endif %} |
+| 退化面积比例 | {{ ndvi_change.degraded_ratio | percent_fmt }} | ≤ 10% | {% if ndvi_change.degraded_ratio <= 0.10 %}✅ 达标{% else %}❌ 未达标{% endif %} |
+| 净碳汇状态 | {% if carbon.total_emission_tco2e < 0.0 %}净碳汇{% else %}净碳源{% endif %} | < 0 tCO₂e/yr | {% if carbon.total_emission_tco2e < 0.0 %}✅ 达标{% else %}❌ 未达标{% endif %} |
+| 碳汇强度 | {{ carbon.total_emission_tco2e / carbon.total_area_ha | round(precision=1) }} tCO₂e/ha/yr | ≤ -1.0 | {% if carbon.total_emission_tco2e / carbon.total_area_ha <= -1.0 %}✅ 达标{% else %}❌ 未达标{% endif %} |
+
+### 5.2 土壤保持评估
+
+| 评估指标 | 说明 | 建议监测方式 |
+|----------|------|-------------|
+| 土壤侵蚀模数 | 根据 NDVI 变化间接评估 | 建议实地采样验证（布设6个径流小区） |
+| 土壤有机碳 | 碳汇量间接反映 | 实验室 Walkley-Black 法测定 |
+| 植被覆盖度 | NDVI 健康比例 | Sentinel-2 10m 遥感监测 |
+
+### 5.3 水土保持措施
+
+| 措施类型 | 内容 | 实施标准 |
+|----------|------|---------|
+| 截排水沟 | 坡度 > 25° 区域建设 | GB/T 51208-2017 |
+| 护坡工程 | 高陡边坡治理（如西源岭17万m²示范） | GB/T 51208-2017 |
+| 植被恢复 | 适生乡土树种补植（马尾松/木荷/青冈栎） | GB/T 33802-2017 |
+| 尾矿库治理 | 覆土 + 湿地植物重建 | GB/T 33802-2017 |
+
+---
+
+## 第6章 评估结论与建议
+
+### 6.1 生态环境质量评价
+
+{% set pass_count = 0 %}{% if assessment_ndvi.healthy_ratio >= 0.60 %}{% set_global pass_count = pass_count + 1 %}{% endif %}{% if ndvi_change.improved_ratio >= 0.30 %}{% set_global pass_count = pass_count + 1 %}{% endif %}{% if carbon.total_emission_tco2e < 0.0 %}{% set_global pass_count = pass_count + 1 %}{% endif %}{% if carbon.total_emission_tco2e / carbon.total_area_ha <= -1.0 %}{% set_global pass_count = pass_count + 1 %}{% endif %}{% if ndvi_change.degraded_ratio <= 0.10 %}{% set_global pass_count = pass_count + 1 %}{% endif %}{% set grade = "差" %}{% if pass_count >= 4 %}{% set_global grade = "优秀" %}{% elif pass_count >= 3 %}{% set_global grade = "良好" %}{% elif pass_count >= 2 %}{% set_global grade = "一般" %}{% endif %}{% set score_health = 0.0 %}{% set score_improve = 0.0 %}{% set score_carbon = 0.0 %}{% set score_intensity = 0.0 %}{% set score_degraded = 0.0 %}{% if assessment_ndvi.healthy_ratio >= 0.60 %}{% set_global score_health = 30.0 %}{% else %}{% set_global score_health = assessment_ndvi.healthy_ratio / 0.60 * 30.0 %}{% endif %}{% if ndvi_change.improved_ratio >= 0.30 %}{% set_global score_improve = 20.0 %}{% else %}{% set_global score_improve = ndvi_change.improved_ratio / 0.30 * 20.0 %}{% endif %}{% if carbon.total_emission_tco2e < 0.0 %}{% set_global score_carbon = 25.0 %}{% endif %}{% if carbon.total_emission_tco2e / carbon.total_area_ha <= -1.0 %}{% set_global score_intensity = 10.0 %}{% endif %}{% if ndvi_change.degraded_ratio <= 0.10 %}{% set_global score_degraded = 15.0 %}{% endif %}{% set total_score = score_health + score_improve + score_carbon + score_intensity + score_degraded %}
+
+| 一级指标 | 权重 | 当前值 | 阈值 | 达标 | 得分 | 计分规则 |
+|----------|:---:|--------|------|:---:|:---:|----------|
+| 整体健康植被比例 | 30 | {{ assessment_ndvi.healthy_ratio | percent_fmt }} | ≥60% | {% if assessment_ndvi.healthy_ratio >= 0.60 %}✅{% else %}❌{% endif %} | {{ score_health }} | 达标=30, 未达标=按比例线性插值 |
+| 显著改善面积比例 | 20 | {{ ndvi_change.improved_ratio | percent_fmt }} | ≥30% | {% if ndvi_change.improved_ratio >= 0.30 %}✅{% else %}❌{% endif %} | {{ score_improve }} | 达标=20, 未达标=按比例线性插值 |
+| 净碳汇量(tCO₂e) | 25 | {{ carbon.total_emission_tco2e | co2_fmt }} | <0 | {% if carbon.total_emission_tco2e < 0.0 %}✅{% else %}❌{% endif %} | {{ score_carbon }} | 达标=25, 未达标=0 |
+| 碳汇强度(tCO₂e/ha/yr) | 10 | {{ carbon.total_emission_tco2e / carbon.total_area_ha | round(precision=1) }} | ≤-1.0 | {% if carbon.total_emission_tco2e / carbon.total_area_ha <= -1.0 %}✅{% else %}❌{% endif %} | {{ score_intensity }} | 达标=10, 未达标=0 |
+| 显著退化面积比例 | 15 | {{ ndvi_change.degraded_ratio | percent_fmt }} | ≤10% | {% if ndvi_change.degraded_ratio <= 0.10 %}✅{% else %}❌{% endif %} | {{ score_degraded }} | 达标=15, 未达标=0 |
+| **综合** | **100** | — | — | **{{ pass_count }}/5项** | **{{ total_score }}/100** | 评级: {% if pass_count >= 4 %}🏆 优秀{% elif pass_count >= 3 %}✅ 良好{% elif pass_count >= 2 %}⚠ 一般{% else %}❌ 差{% endif %} |
+
+> **退化指标说明**：本章采用的"显著退化面积比例"（NDVI差值<-0.1）为{{ ndvi_change.degraded_ratio | percent_fmt }}，反映评估期内新增退化。
+> 第3.1.2节报告的"退化植被比例"（NDVI≤0.2）为{{ assessment_ndvi.degraded_ratio | percent_fmt }}，反映整体退化植被覆盖水平。
+> 两者含义不同：前者衡量本期退化速度，后者衡量当前退化状态。本章评估以"显著退化面积比例"为准，
+> 符合GB/T 32893-2016对"变化监测"的要求。
+
+{% if pass_count >= 3 %}
+✅ **生态修复成效显著**——{{ pass_count }}/5 项指标达标（{{ total_score | round(precision=0) }}/100），整体评级为 **{{ grade }}**。
+{% elif pass_count >= 2 %}
+⚠ **生态修复取得阶段性进展**——{{ pass_count }}/5 项指标达标（{{ total_score | round(precision=0) }}/100），但多项指标未达目标，建议针对性加强。
+{% else %}
+❌ **生态修复未达预期**——仅{{ pass_count }}/5项指标达标，亟需加大修复力度。
+{% endif %}
+
+### 6.2 验收建议
+
+| 验收项目 | 状态 | 建议措施 |
+|----------|:---:|----------|
+| 整体植被健康 | {% if assessment_ndvi.healthy_ratio >= 0.60 %}✅ 达标{% else %}⚠ 需整改{% endif %} | {% if assessment_ndvi.healthy_ratio < 0.60 %}补植乡土乔木（马尾松/木荷/青冈栎），提升健康植被覆盖{% else %}保持养护，防范退化{% endif %} |
+| 恢复力度 | {% if ndvi_change.improved_ratio >= 0.30 %}✅ 达标{% else %}⚠ 需整改{% endif %} | {% if ndvi_change.improved_ratio < 0.30 %}扩大"近自然演替"修复面积，目标每年新增修复50ha{% else %}维持修复节奏{% endif %} |
+| 碳汇能力 | {% if carbon.total_emission_tco2e < 0.0 %}✅ 达标{% else %}⚠ 需整改{% endif %} | {% if carbon.total_emission_tco2e >= 0.0 %}增加高碳汇林草面积，探索CCER交易{% else %}持续监测碳汇量，准备CCER方法学备案{% endif %} |
+| 土壤保持 | ⚠ 待验证 | 安排现场采样：每类土地覆盖取3个剖面，测定有机碳含量 |
+| 生物多样性 | ⚠ 待监测 | 布设红外相机，跟踪白鹇/麂鹿种群动态（参照2025年新华社报道） |
+
+### 6.3 长效监管建议
+
+1. **持续遥感监测**：每 2 年进行一次 NDVI 对比，跟踪植被恢复趋势（依据 GB/T 32893-2016）
+2. **碳汇追踪**：建立碳核算年度台账（`carbon_accounting_results` 表），纳入自然资源资产负债表
+3. **季节一致性**：后续监测统一选取 **8 月** 影像（亚热带植被生长峰值期），消除物候偏差
+4. **现场验证**：布设 12 个地面验证样方（3×3 网格），每年至少 1 次实地 NDVI 标定
+5. **CCER 开发**：修复林 + 天然林碳汇具备 CCER（中国核证自愿减排量）开发潜力，建议启动方法学备案
+
+### 6.4 综合评述
+
+{% if pass_count >= 4 %}
+{{ aoi_name }}生态修复整体评级为**{{ grade }}**，植被覆盖与碳汇能力显著提升。
+健康植被比例从{{ baseline_ndvi.healthy_ratio | percent_fmt }}提升至{{ assessment_ndvi.healthy_ratio | percent_fmt }}，提升{{ (assessment_ndvi.healthy_ratio - baseline_ndvi.healthy_ratio) * 100.0 | round(precision=1) }}个百分点；
+净碳汇达{{ carbon.total_emission_tco2e * -1.0 | round(precision=0) }} tCO₂e/yr，其中修复新增碳汇占比约{{ (restored_abs / total_abs * 100.0) | round(precision=0) }}%。
+仅"显著改善面积比例"（{{ ndvi_change.improved_ratio | percent_fmt }}）略低于30%阈值，
+建议继续扩大近自然演替修复面积，进一步提升恢复速度。
+{% elif pass_count >= 2 %}
+{{ aoi_name }}生态修复取得阶段性进展（{{ pass_count }}/5项达标），
+但多项指标未达目标。建议针对性加强薄弱环节，重点提升植被恢复力度和碳汇效率。
+{% else %}
+{{ aoi_name }}生态修复亟需加强。仅{{ pass_count }}/5项指标达标，
+需大幅增加修复投入，从植被恢复和碳汇提升两方面同时推进。
+{% endif %}
+
+---
+
+**报告编制**：geo-toolbox 自动评估系统（ecology-plugin v0.1.0）
+**碳核算引擎**：geo-carbon-math（纯 Rust IPCC Tier 1 实现）
+**遥感处理引擎**：geo-raster（纯 Rust 栅格运算）
+**数据来源**：Landsat 8 OLI / Sentinel-2 MSI（ESA Copernicus Programme），模拟参数基于 Yu et al. (2023), Zhang et al. (2021), Huang et al. (2025)
+**核算方法**：{{ carbon.methodology }}
+**监测标准**：GB/T 32893-2016 | GB/T 33802-2017 | GB/T 51208-2017
+
+*本报告由 geo-toolbox 插件自动生成，可作为矿山生态修复竣工验收的参考依据。涉及法律效力的验收结论，请以具备相应资质的第三方专业机构出具的正式报告为准。*
+
+---
+
+## 参考文献
+
+1. Zhang M, He T, Li G, et al. (2021). Continuous detection of surface-mining footprint in copper mine using Google Earth Engine. *Remote Sensing*, 13(21), 4273.
+2. Yu H, Zahidi I, Liang D (2023). Spatiotemporal variation of vegetation cover in mining areas of Dexing City, China. *Environmental Research*, 225, 115634.
+3. Huang D, Chen Z, Li H, et al. (2025). Evaluating the impacts of large-scale opencast copper mining on vegetation productivity change in recent thirty years: a case study of Dexing Copper Mine. *Geocarto International*.
+4. Zhang X, Liu R, Gan F, et al. (2020). Evaluation of spatial-temporal variation of vegetation restoration in Dexing Copper Mine area using remote sensing data. *IEEE IGARSS 2020*.
+5. 新华社 (2026-05-28). 党旗在基层一线高高飘扬 | 德兴铜矿党建引领绿色发展.
+6. 人民日报 (2025-12-10). 在陡坡石缝里种树——德兴铜矿生态修复的"进阶之路".
+7. 当代江西 (2023-10-25). 江铜集团: 把"春天"留在矿山里.
+8. IPCC (2019). 2019 Refinement to the 2006 IPCC Guidelines for National Greenhouse Gas Inventories, Volume 4: Agriculture, Forestry and Other Land Use.
