@@ -756,11 +756,15 @@ npm install geo-wasm
 | `exportExcel(data, sheet)` | 导出 Excel | `[string[][]]`, sheet 名 | `Uint8Array` |
 | `exportGeoJson(features)` | 导出 GeoJSON | Feature 数组 | FeatureCollection JSON |
 | `exportCarbonReport(report)` | 碳核算报告 | CarbonReport | Markdown 字符串 |
+| `TileEngine` | 瓦片引擎 | — | — |
+| `.latlonToTile(lon, lat, z)` | 经纬度→瓦片 | 经纬度 + 缩放级 | `{x, y, z}` |
+| `.tileUrl(source, x, y, z)` | 瓦片URL | "osm"/"gaode"/"tianditu" | URL 字符串 |
+| `.encodeMvt(layer, fc, x, y, z, extent)` | GeoJSON→MVT | 图层名 + FC + 瓦片坐标 | `Uint8Array` |
 
 ### 完整示例
 
 ```typescript
-import { CrsEngine, CarbonEngine, GeoStore, parseNmea } from 'geo-wasm';
+import { CrsEngine, CarbonEngine, GeoStore, TileEngine, parseNmea } from 'geo-wasm';
 
 // ── CRS 变换 ──
 const crs = new CrsEngine();
@@ -798,6 +802,12 @@ await store.putFeature('aoi-chengdu', {
 });
 const all = await store.getAllFeatures();
 console.log(`已存储 ${all.length} 个要素`);
+
+// ── 瓦片引擎 ──
+const tile = new TileEngine();
+const {x, y, z} = tile.latlonToTile(104.06, 30.57, 14);
+console.log(`成都 z14: (${x}, ${y})`);
+console.log(tile.tileUrl("gaode", x, y, z));
 ```
 
 ---

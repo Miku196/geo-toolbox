@@ -18,6 +18,7 @@ mod carbon;
 mod output;
 mod spatial;
 mod storage;
+mod tile;
 mod utils;
 
 use wasm_bindgen::prelude::*;
@@ -25,6 +26,7 @@ use wasm_bindgen::prelude::*;
 pub use crs::CrsEngine;
 pub use carbon::CarbonEngine;
 pub use storage::GeoStore;
+pub use tile::TileEngine;
 
 /// Call this once after loading the WASM module.
 /// Sets up panic hook for readable browser console errors.

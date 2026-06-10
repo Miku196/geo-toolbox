@@ -1920,6 +1920,7 @@ dependencies = [
  "geo",
  "geo-carbon-math",
  "geo-core",
+ "geo-tile",
  "geo-types",
  "js-sys",
  "rexie",
