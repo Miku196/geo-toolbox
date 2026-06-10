@@ -1,0 +1,13 @@
+[package]
+name = "geo-adapter-duckdb"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "SQLite 嵌入式适配器 — 零部署本地空间数据引擎（DuckDB 替代方案）"
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+rusqlite = { workspace = true }
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true

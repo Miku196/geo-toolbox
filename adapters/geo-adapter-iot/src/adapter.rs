@@ -18,4 +18,33 @@ impl ExternalAdapter for IotAdapter {
     async fn pull(&self, _q: &str) -> GeoResult<Vec<GeoFeature>> { Ok(vec![]) }
     async fn execute(&self, _c: &str, _p: serde_json::Value) -> GeoResult<serde_json::Value> { Ok(serde_json::json!({"status":"ok"})) }
 }
-#[cfg(test)] #[test] fn test_iot() { let a = IotAdapter::new("mqtt://localhost:1883"); assert_eq!(a.name(), "iot"); }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_plugin_trait() {
+        let a = IotAdapter::new("mqtt://localhost:1883");
+        assert_eq!(a.name(), "iot");
+        assert_eq!(a.version(), env!("CARGO_PKG_VERSION"));
+        assert_eq!(a.description(), "IoT sensor adapter (MQTT/NATS streaming)");
+        assert_eq!(a.category(), PluginCategory::Adapter);
+    }
+
+    #[test]
+    fn test_external_adapter_trait() {
+        let a = IotAdapter::new("mqtt://localhost:1883");
+        assert_eq!(a.external_endpoint(), "mqtt://localhost:1883");
+        assert!(a.requires_network());
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        assert_eq!(rt.block_on(a.external_version()).unwrap(), "MQTT 3.1.1");
+    }
+
+    #[test]
+    fn test_health_check() {
+        let a = IotAdapter::new("mqtt://localhost:1883");
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        assert!(rt.block_on(a.health_check()).unwrap());
+    }
+}

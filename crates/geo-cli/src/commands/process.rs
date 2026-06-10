@@ -13,6 +13,7 @@ pub async fn handle(action: ProcessAction) -> Result<(), Box<dyn std::error::Err
 
 // ── GEE ────────────────────────────────────────────────────
 
+#[allow(unused_variables)]
 async fn handle_gee(action: GeeAction) -> Result<(), Box<dyn std::error::Error>> {
     match action {
         GeeAction::Classify { aoi, year, output_gcs, params } => {
@@ -99,6 +100,7 @@ async fn handle_gee(action: GeeAction) -> Result<(), Box<dyn std::error::Error>>
 
 // ── GDAL ───────────────────────────────────────────────────
 
+#[allow(unused_variables)]
 async fn handle_gdal(action: GdalAction) -> Result<(), Box<dyn std::error::Error>> {
     match action {
         GdalAction::Cog { input, output, compression } => {
@@ -166,6 +168,7 @@ async fn handle_gdal(action: GdalAction) -> Result<(), Box<dyn std::error::Error
 
 // ── QGIS ───────────────────────────────────────────────────
 
+#[allow(unused_variables)]
 async fn handle_qgis(action: QgisAction) -> Result<(), Box<dyn std::error::Error>> {
     match action {
         QgisAction::Submit { algorithm, params, input, output, server } => {

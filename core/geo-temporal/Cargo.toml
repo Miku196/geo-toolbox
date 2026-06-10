@@ -1,0 +1,14 @@
+[package]
+name = "geo-temporal"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "时空序列分析 — NDVI 年际趋势、Mann-Kendall 突变检测、季节分解"
+
+[dependencies]
+geo-core = { path = "../geo-core" }
+geo-raster = { path = "../geo-raster" }
+ndarray.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

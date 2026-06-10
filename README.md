@@ -10,7 +10,7 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-167%20pass-green.svg)]()
+[![Tests](https://img.shields.io/badge/tests-200%20pass-green.svg)]()
 [![NPM](https://img.shields.io/badge/npm-geo--wasm-red)](https://www.npmjs.com/package/geo-wasm)
 
 ---

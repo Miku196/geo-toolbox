@@ -29,8 +29,17 @@ members = [
     "plugins/geo-plugin-hydro",
     "plugins/geo-plugin-geohazard",
     "plugins/geo-plugin-agri",
+    # ── Round 1: Core 层新增 (拓展路线图) ──
+    "core/geo-tile",
+    "core/geo-temporal",
+    "plugins/geo-plugin-energy",
+
     # ── Round 3: Registry ──
     "core/geo-registry",
+
+    # ── Round 1: Adapter 层新增 (拓展路线图) ──
+    "adapters/geo-adapter-duckdb",
+    "adapters/geo-adapter-stac",
 
     # ── Round 3: Adapters ──
     "adapters/geo-adapter-postgis",
@@ -76,6 +85,9 @@ sha2         = "0.10"
 async-nats   = "0.38"
 chrono       = { version = "0.4", features = ["serde"] }
 reqwest      = { version = "0.12", features = ["json"] }
+ndarray      = "0.16"
+duckdb       = "1.1"
+rusqlite     = { version = "0.32", features = ["bundled"] }
 futures      = "0.3"
 
 [workspace.package]

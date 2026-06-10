@@ -1,0 +1,16 @@
+[package]
+name = "geo-plugin-energy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "新能源选址评估插件 — 光伏/风电适宜性分析"
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-raster = { path = "../../core/geo-raster" }
+geo-stats = { path = "../../core/geo-stats" }
+geo-io = { path = "../../core/geo-io" }
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+thiserror.workspace = true
