@@ -59,6 +59,7 @@ th{color:#94a3b8}
   <button class="tab" data-panel="nmea">🛰️ NMEA 解析</button>
   <button class="tab" data-panel="carbon">🌿 碳核算</button>
   <button class="tab" data-panel="spatial">📐 空间运算</button>
+  <button class="tab" data-panel="tile">🗺 瓦片</button>
 </div>
 
 <div class="main">
@@ -121,6 +122,29 @@ IPCC_2019,grassland,shrub_grass,-35.0,tCO2e/ha,2019,2030,CN-51</textarea>
     </div>
   </div>
 
+  <!-- Tile Panel -->
+  <div class="panel" id="panel-tile">
+    <div class="card">
+      <h2>瓦片坐标转换 (OSM / 高德 / 天地图)</h2>
+      <div class="row">
+        <div class="col"><label>经度</label><input id="tileLon" value="104.06" step="any"></div>
+        <div class="col"><label>纬度</label><input id="tileLat" value="30.57" step="any"></div>
+        <div class="col" style="max-width:80px"><label>缩放级</label><input id="tileZoom" value="14" type="number" min="0" max="22"></div>
+        <div class="col" style="display:flex;align-items:flex-end"><button class="btn" id="btnTile" style="width:100%">计算瓦片</button></div>
+      </div>
+      <div class="result" id="tileResult">点击「计算瓦片」查看结果</div>
+    </div>
+    <div class="card">
+      <h2>GeoJSON → MVT 矢量瓦片</h2>
+      <label>GeoJSON FeatureCollection</label>
+      <textarea id="mvtInput" rows="4">{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"成都"},"geometry":{"type":"Point","coordinates":[104.06,30.57]}}]}</textarea>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="btn btn-sm" id="btnMvt">编码 MVT</button>
+      </div>
+      <div class="result" id="mvtResult">点击「编码 MVT」查看结果</div>
+    </div>
+  </div>
+
   <!-- Spatial Panel -->
   <div class="panel" id="panel-spatial">
     <div class="card">
@@ -142,7 +166,7 @@ IPCC_2019,grassland,shrub_grass,-35.0,tCO2e/ha,2019,2030,CN-51</textarea>
 
 <script type="module">
 import init, {
-  initPanicHook, CrsEngine, CarbonEngine,
+  initPanicHook, CrsEngine, CarbonEngine, TileEngine,
   parseNmea, computeArea, computeBbox, computeCentroid,
   simplifyGeometry, convexHull
 } from './pkg/geo_wasm.js';
@@ -275,6 +299,45 @@ async function spatialOp(op) {
 }
 ['btnArea','btnBbox','btnCentroid','btnSimplify','btnConvexHull'].forEach((id, i) => {
   document.getElementById(id).addEventListener('click', () => spatialOp(['area','bbox','centroid','simplify','convexhull'][i]));
+});
+
+// ── Tile ─────────────────────────────────────────────────────────────
+let tileEngine = null;
+document.getElementById('btnTile').addEventListener('click', () => {
+  const lon = +document.getElementById('tileLon').value;
+  const lat = +document.getElementById('tileLat').value;
+  const zoom = +document.getElementById('tileZoom').value;
+  const el = document.getElementById('tileResult');
+  try {
+    if (!tileEngine) tileEngine = new TileEngine();
+    const c = tileEngine.latlonToTile(lon, lat, zoom);
+    const [clon, clat] = tileEngine.tileToLatlon(c.x, c.y, c.z);
+    const [w, s, e, n] = tileEngine.tileBounds(c.x, c.y, c.z);
+    let h = `✅ z${c.z} 瓦片: x=${c.x} y=${c.y}\n`;
+    h += `瓦片中心: (${clon.toFixed(4)}, ${clat.toFixed(4)})\n`;
+    h += `瓦片边界: [${w.toFixed(4)}, ${s.toFixed(4)}] ~ [${e.toFixed(4)}, ${n.toFixed(4)}]\n\n`;
+    h += `🗺 OSM:    ${tileEngine.tileUrl("osm", c.x, c.y, c.z)}\n`;
+    h += `🗺 高德:   ${tileEngine.tileUrl("gaode", c.x, c.y, c.z)}`;
+    el.textContent = h;
+    el.className = 'result ok';
+  } catch(e) {
+    el.textContent = 'Error: ' + e;
+    el.className = 'result err';
+  }
+});
+
+document.getElementById('btnMvt').addEventListener('click', () => {
+  const fc = document.getElementById('mvtInput').value.trim();
+  const el = document.getElementById('mvtResult');
+  try {
+    if (!tileEngine) tileEngine = new TileEngine();
+    const bytes = tileEngine.encodeMvt("demo", fc, 0, 0, 0, 4096);
+    el.innerHTML = `✅ MVT 编码完成<br>📦 ${bytes.length} 字节<br><br>🔍 前 40 字节 (hex):<br>${Array.from(bytes.slice(0,40)).map(b=>b.toString(16).padStart(2,'0')).join(' ')}`;
+    el.className = 'result ok';
+  } catch(e) {
+    el.textContent = 'Error: ' + e;
+    el.className = 'result err';
+  }
 });
 </script>
 </body>
