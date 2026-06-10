@@ -295,11 +295,28 @@ IPCC Tier 1 方法存在以下不确定性来源：
 
 ## 参考文献
 
-1. Zhang M, He T, Li G, et al. (2021). Continuous detection of surface-mining footprint in copper mine using Google Earth Engine. *Remote Sensing*, 13(21), 4273.
-2. Yu H, Zahidi I, Liang D (2023). Spatiotemporal variation of vegetation cover in mining areas of Dexing City, China. *Environmental Research*, 225, 115634.
-3. Huang D, Chen Z, Li H, et al. (2025). Evaluating the impacts of large-scale opencast copper mining on vegetation productivity change in recent thirty years: a case study of Dexing Copper Mine. *Geocarto International*.
-4. Zhang X, Liu R, Gan F, et al. (2020). Evaluation of spatial-temporal variation of vegetation restoration in Dexing Copper Mine area using remote sensing data. *IEEE IGARSS 2020*.
-5. 新华社 (2026-05-28). 党旗在基层一线高高飘扬 | 德兴铜矿党建引领绿色发展.
-6. 人民日报 (2025-12-10). 在陡坡石缝里种树——德兴铜矿生态修复的"进阶之路".
-7. 当代江西 (2023-10-25). 江铜集团: 把"春天"留在矿山里.
-8. IPCC (2019). 2019 Refinement to the 2006 IPCC Guidelines for National Greenhouse Gas Inventories, Volume 4: Agriculture, Forestry and Other Land Use.
+### 国家标准与规范
+
+1. **GB/T 33802-2017**　矿山环境保护与生态修复规范. 中华人民共和国国家质量监督检验检疫总局, 中国国家标准化管理委员会.
+2. **GB/T 51208-2017**　矿山地质环境治理恢复生态工程设计规范. 中华人民共和国住房和城乡建设部.
+3. **GB/T 32893-2016**　矿山生态环境监测技术规范. 中华人民共和国国家质量监督检验检疫总局.
+4. **TD/T 1036-2013**　土地复垦质量控制标准. 中华人民共和国国土资源部.
+5. **HJ 651-2013**　矿山生态环境保护与恢复治理技术规范（试行）. 中华人民共和国环境保护部.
+
+### 国际方法学
+
+6. IPCC (2019). *2019 Refinement to the 2006 IPCC Guidelines for National Greenhouse Gas Inventories*, Volume 4: Agriculture, Forestry and Other Land Use. Intergovernmental Panel on Climate Change.
+7. IPCC (2006). *2006 IPCC Guidelines for National Greenhouse Gas Inventories*, Volume 4: Agriculture, Forestry and Other Land Use. IGES, Japan.
+
+### 遥感与生态评估方法
+
+8. Tucker C J (1979). Red and photographic infrared linear combinations for monitoring vegetation. *Remote Sensing of Environment*, 8(2): 127–150.
+9. Pettorelli N, Vik J O, Mysterud A, et al. (2005). Using the satellite-derived NDVI to assess ecological responses to environmental change. *Trends in Ecology & Evolution*, 20(9): 503–510.
+10. Yang J, Huang X (2021). The 30 m annual land cover dataset and its dynamics in China from 1990 to 2019. *Earth System Science Data*, 13(8): 3907–3925.
+
+### 矿山生态修复案例（供参考）
+
+11. Zhang M, He T, Li G, et al. (2021). Continuous detection of surface-mining footprint in copper mine using Google Earth Engine. *Remote Sensing*, 13(21), 4273.
+12. Yu H, Zahidi I, Liang D (2023). Spatiotemporal variation of vegetation cover in mining areas of Dexing City, China. *Environmental Research*, 225, 115634.
+13. Huang D, Chen Z, Li H, et al. (2025). Evaluating the impacts of large-scale opencast copper mining on vegetation productivity change in recent thirty years. *Geocarto International*.
+14. Zhang X, Liu R, Gan F, et al. (2020). Evaluation of spatial-temporal variation of vegetation restoration in Dexing Copper Mine area using remote sensing data. *IEEE IGARSS 2020*.

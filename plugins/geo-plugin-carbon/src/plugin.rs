@@ -39,7 +39,7 @@ impl CarbonPlugin {
         let mut features = Vec::with_capacity(features_json.len());
         for f in features_json {
             let feat_str = serde_json::to_string(f)
-                .map_err(|e| GeoError::Serde(e))?;
+                .map_err(GeoError::Serde)?;
             match GeoFeature::from_feature_json(&feat_str) {
                 Ok(gf) => features.push(gf),
                 Err(_) => continue, // skip unparseable features
@@ -65,7 +65,7 @@ impl CarbonPlugin {
 
         // 3. 计算
         let mut report = self.engine.calculate(&features, &factors, year)
-            .map_err(|e| GeoError::Validation(e))?;
+            .map_err(GeoError::Validation)?;
 
         report.methodology = Some(format!("IPCC Tier 1 — {}", source));
         Ok(report)

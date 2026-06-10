@@ -1,14 +1,21 @@
-//! Emission factor methodology (IPCC Tier 1).
+//! PostGIS-backed carbon accounting engine (IPCC Tier 1 emission factor method).
 //!
-//! The core carbon accounting engine. One SQL query performs
-//! spatial aggregation + factor lookup + area calculation + emission
-//! computation in a single round-trip to PostGIS.
+//! Full pipeline in one SQL query:
+//! 1. Read landcover polygons from `spatial_assets` for the AOI
+//! 2. Join with `factor_registry` by class + year
+//! 3. Compute area in EPSG:3405 (equal-area projection)
+//! 4. Multiply area × factor → tCO₂e
+//! 5. Write results to `carbon_accounting_results`
+//! 6. Return results with full audit trail
+//!
+//! This is the PostGIS adapter layer engine. For pure-Rust/WASM carbon math,
+//! use `geo_carbon_math::CarbonEngine` instead.
 
 use geo_core::errors::{GeoError, GeoResult};
 use sqlx::postgres::PgPool;
 use uuid::Uuid;
 
-use crate::audit::AuditTrail;
+use super::audit::AuditTrail;
 
 /// Result of one emission calculation for a landcover class.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -71,7 +78,7 @@ pub struct FactorInfo {
     pub unit: String,
     /// Valid from year.
     pub valid_from_year: i32,
-    /// Valid to year (None =至今有效).
+    /// Valid to year (None = still valid).
     pub valid_to_year: Option<i32>,
     /// Geographic region.
     pub region: Option<String>,
@@ -96,12 +103,15 @@ pub struct FactorInput {
     pub region: Option<String>,
 }
 
-/// The carbon accounting engine.
-pub struct CarbonEngine {
+/// PostGIS-backed carbon accounting engine.
+///
+/// Requires a live PostgreSQL+PostGIS connection. Uses spatial SQL
+/// for area computation, factor lookup, and result persistence.
+pub struct PostgisCarbonEngine {
     pool: PgPool,
 }
 
-impl CarbonEngine {
+impl PostgisCarbonEngine {
     /// Create a new engine with a database pool.
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
@@ -111,13 +121,8 @@ impl CarbonEngine {
 
     /// Calculate emissions using the emission factor method.
     ///
-    /// Full pipeline in one SQL query:
-    /// 1. Read landcover polygons from `spatial_assets` for the AOI
-    /// 2. Join with `factor_registry` by class + year
-    /// 3. Compute area in EPSG:3405 (equal-area projection)
-    /// 4. Multiply area × factor → tCO₂e
-    /// 5. Write results to `carbon_accounting_results`
-    /// 6. Return results with full audit trail
+    /// Full pipeline in one SQL query with PostGIS spatial functions.
+    /// Writes results to `carbon_accounting_results` table.
     pub async fn calculate_emission_factor(
         &self,
         aoi_id: Uuid,

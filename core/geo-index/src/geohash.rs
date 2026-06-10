@@ -6,7 +6,7 @@ const BASE32: &[u8; 32] = b"0123456789bcdefghjkmnpqrstuvwxyz";
 
 /// 编码经纬度为 GeoHash 字符串。
 pub fn encode(lon: f64, lat: f64, precision: usize) -> String {
-    let precision = precision.min(12).max(1);
+    let precision = precision.clamp(1, 12);
     let mut min_lon = -180.0;
     let mut max_lon = 180.0;
     let mut min_lat = -90.0;
@@ -88,8 +88,8 @@ pub fn neighbors(hash: &str) -> Vec<String> {
     let precision = hash.len();
     dirs.iter()
         .map(|(dlon, dlat)| {
-            let offset_lon = if hash.len() % 2 == 0 { 0.0001 } else { 0.001 };
-            let offset_lat = if hash.len() % 2 == 0 { 0.001 } else { 0.0001 };
+            let offset_lon = if hash.len().is_multiple_of(2) { 0.0001 } else { 0.001 };
+            let offset_lat = if hash.len().is_multiple_of(2) { 0.001 } else { 0.0001 };
             encode(lon + dlon * offset_lon, lat + dlat * offset_lat, precision)
         })
         .collect()

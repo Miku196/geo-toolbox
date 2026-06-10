@@ -102,7 +102,7 @@ fn extract_all_coords(geom: &serde_json::Value) -> Option<Vec<(f64, f64)>> {
             rings.first()?.as_array()?.iter()
                 .filter_map(|p| {
                     let arr = p.as_array()?;
-                    Some((arr.get(0)?.as_f64()?, arr.get(1)?.as_f64()?))
+                    Some((arr.first()?.as_f64()?, arr.get(1)?.as_f64()?))
                 })
                 .collect::<Vec<_>>()
                 .into()
@@ -115,7 +115,7 @@ fn extract_all_coords(geom: &serde_json::Value) -> Option<Vec<(f64, f64)>> {
                 for ring in rings {
                     for pt in ring.as_array()? {
                         let arr = pt.as_array()?;
-                        all.push((arr.get(0)?.as_f64()?, arr.get(1)?.as_f64()?));
+                        all.push((arr.first()?.as_f64()?, arr.get(1)?.as_f64()?));
                     }
                 }
             }
@@ -123,7 +123,7 @@ fn extract_all_coords(geom: &serde_json::Value) -> Option<Vec<(f64, f64)>> {
         }
         "Point" => {
             let arr = coords.as_array()?;
-            Some(vec![(arr.get(0)?.as_f64()?, arr.get(1)?.as_f64()?)])
+            Some(vec![(arr.first()?.as_f64()?, arr.get(1)?.as_f64()?)])
         }
         _ => None,
     }

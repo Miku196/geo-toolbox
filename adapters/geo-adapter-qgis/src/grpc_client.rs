@@ -295,56 +295,44 @@ impl QgisClient {
     // ─── Internal HTTP helpers ───
 
     async fn http_get(url: &str) -> GeoResult<String> {
-        let output = tokio::process::Command::new("curl")
-            .args([
-                "-s", // silent
-                "-S", // show error
-                "--connect-timeout", "10",
-                "--max-time", "30",
-                url,
-            ])
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .output()
-            .await?;
+        let client = reqwest::Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(10))
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .map_err(|e| GeoError::Other(format!("reqwest: {e}")))?;
 
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(GeoError::ExternalProcess {
-                command: format!("curl GET {url}"),
-                message: stderr.trim().to_string(),
-            });
-        }
+        let resp = client.get(url).send().await
+            .map_err(|e| GeoError::ExternalProcess {
+                command: format!("GET {url}"),
+                message: e.to_string(),
+            })?;
 
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+        let body = resp.text().await
+            .map_err(|e| GeoError::Other(format!("read response: {e}")))?;
+
+        Ok(body)
     }
 
     async fn http_post_json(url: &str, body: &[u8]) -> GeoResult<String> {
-        let output = tokio::process::Command::new("curl")
-            .args([
-                "-s",
-                "-S",
-                "-X", "POST",
-                "-H", "Content-Type: application/json",
-                "--connect-timeout", "10",
-                "--max-time", "300",
-                "-d", &String::from_utf8_lossy(body),
-                url,
-            ])
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .output()
-            .await?;
+        let client = reqwest::Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(10))
+            .timeout(std::time::Duration::from_secs(300))
+            .build()
+            .map_err(|e| GeoError::Other(format!("reqwest: {e}")))?;
 
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(GeoError::ExternalProcess {
-                command: format!("curl POST {url}"),
-                message: stderr.trim().to_string(),
-            });
-        }
+        let resp = client.post(url)
+            .header("Content-Type", "application/json")
+            .body(body.to_vec())
+            .send().await
+            .map_err(|e| GeoError::ExternalProcess {
+                command: format!("POST {url}"),
+                message: e.to_string(),
+            })?;
 
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+        let resp_body = resp.text().await
+            .map_err(|e| GeoError::Other(format!("read response: {e}")))?;
+
+        Ok(resp_body)
     }
 }
 

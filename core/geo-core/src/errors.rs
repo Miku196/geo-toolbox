@@ -92,6 +92,36 @@ pub fn validate_select_sql(sql: &str) -> GeoResult<()> {
     Ok(())
 }
 
+/// Validate that a file path is safe for use in subprocess commands.
+///
+/// Rejects paths containing directory traversal, shell metacharacters,
+/// or absolute system paths that should not be accessible.
+pub fn validate_safe_path(path: &str) -> GeoResult<()> {
+    // 禁止路径遍历
+    if path.contains("..") {
+        return Err(GeoError::Validation(
+            "Path rejected: contains '..' (directory traversal)".into()
+        ));
+    }
+    // 禁止 shell 元字符
+    let forbidden = [';', '|', '&', '$', '`', '(', ')', '<', '>', '\n', '\r'];
+    if path.contains(forbidden.as_slice()) {
+        return Err(GeoError::Validation(
+            "Path rejected: contains shell metacharacters".into()
+        ));
+    }
+    // 禁止绝对系统路径（/etc /proc /sys /dev）
+    let lower = path.to_lowercase();
+    for sensitive in &["/etc/", "/proc/", "/sys/", "/dev/", "c:\\windows", "c:\\windows\\system32"] {
+        if lower.starts_with(sensitive) || lower.contains(sensitive) {
+            return Err(GeoError::Validation(
+                "Path rejected: references sensitive system location".into()
+            ));
+        }
+    }
+    Ok(())
+}
+
 // Higher-level crates (geo-store, geo-ingest, etc.) provide their own
 // From<sqlx::Error>, From<object_store::Error>, etc. conversions via
 // a helper macro or manual impls. This keeps geo-core dependency-free.

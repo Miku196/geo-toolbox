@@ -118,7 +118,7 @@ impl CrsEngine {
         to_epsg: u16,
         coords: &[f64],
     ) -> Result<Box<[f64]>, JsValue> {
-        if coords.len() % 2 != 0 {
+        if !coords.len().is_multiple_of(2) {
             return Err(JsValue::from_str("coords length must be even"));
         }
 

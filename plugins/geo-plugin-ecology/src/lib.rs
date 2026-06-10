@@ -26,4 +26,4 @@ pub mod config;
 pub mod ecology;
 
 pub use config::EcologyConfig;
-pub use ecology::{EcologyPlugin, RestorationAssessment};
+pub use ecology::{EcologyPlugin, RestorationAssessment, AssessmentInput};

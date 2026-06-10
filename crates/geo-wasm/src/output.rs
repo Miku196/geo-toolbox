@@ -6,7 +6,6 @@
 //! All files are returned as Uint8Array for JavaScript Blob/File API download.
 
 use wasm_bindgen::prelude::*;
-use serde_json;
 
 /// Export a data table to Excel (XLSX) format.
 ///
@@ -135,7 +134,7 @@ pub fn export_carbon_report(report_json: &str, aoi_name: &str, auditor: &str) ->
 
     let mut md = String::new();
 
-    md.push_str(&format!("# Carbon Accounting Report\n\n"));
+    md.push_str("# Carbon Accounting Report\n\n");
     md.push_str(&format!("**AOI:** {aoi_name}  \n"));
     md.push_str(&format!("**Year:** {year}  \n"));
     md.push_str(&format!("**Auditor:** {auditor}  \n"));
@@ -143,8 +142,8 @@ pub fn export_carbon_report(report_json: &str, aoi_name: &str, auditor: &str) ->
 
     md.push_str("---\n\n");
     md.push_str("## Summary\n\n");
-    md.push_str(&format!("| Metric | Value |\n"));
-    md.push_str(&format!("|--------|-------|\n"));
+    md.push_str("| Metric | Value |\n");
+    md.push_str("|--------|-------|\n");
     md.push_str(&format!("| Total Area | {:.1} ha |\n", total_area));
     md.push_str(&format!("| Net Emissions | {:.1} tCO₂e |\n", total_emission));
     md.push_str("\n---\n\n");

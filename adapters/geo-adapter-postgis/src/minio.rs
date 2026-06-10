@@ -278,11 +278,13 @@ mod tests {
 
     #[test]
     fn test_from_uri_s3() {
+        let key = std::env::var("MINIO_TEST_KEY").unwrap_or_else(|_| "test_key".into());
+        let secret = std::env::var("MINIO_TEST_SECRET").unwrap_or_else(|_| "test_secret".into());
         let client = ObjectStoreClient::from_uri(
             "s3://my-bucket/data/",
             Some("http://localhost:9000"),
-            Some("test_key"),
-            Some("test_secret"),
+            Some(&key),
+            Some(&secret),
         );
         assert!(client.is_ok());
     }

@@ -6,14 +6,11 @@ edition.workspace = true
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
-geo-adapter-postgis = { path = "../../adapters/geo-adapter-postgis" }
-sqlx = { workspace = true, features = ["postgres", "runtime-tokio", "uuid", "macros"] }
-uuid = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-tokio = { workspace = true }
-tracing = { workspace = true }
-csv = { workspace = true }
+geo-carbon-math = { path = "../../core/geo-carbon-math" }
+toml.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt"] }

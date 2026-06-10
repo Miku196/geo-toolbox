@@ -139,7 +139,7 @@ fn parse_multi_polygon(coords: &serde_json::Value) -> Result<MultiPolygon<f64>, 
         .ok_or("MultiPolygon coords not an array")?;
     let polygons: Vec<Polygon<f64>> = polys
         .iter()
-        .map(|p| parse_polygon(p))
+        .map(parse_polygon)
         .collect::<Result<Vec<_>, _>>()?;
     Ok(MultiPolygon::new(polygons))
 }

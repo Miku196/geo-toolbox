@@ -10,7 +10,7 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-165%20pass-green.svg)]()
+[![Tests](https://img.shields.io/badge/tests-167%20pass-green.svg)]()
 [![NPM](https://img.shields.io/badge/npm-geo--wasm-red)](https://www.npmjs.com/package/geo-wasm)
 
 ---
@@ -74,9 +74,9 @@
 | Rust | 1.80+ | ✅ | [rustup.rs](https://rustup.rs) 安装 |
 | wasm-pack | 0.13+ | ⚠ WASM 需要 | `cargo install wasm-pack` |
 | wasm32 target | — | ⚠ WASM 需要 | `rustup target add wasm32-unknown-unknown` |
-| PostgreSQL | 15+ | ⚠ 数据库需要 | 或用 Docker |
-| GDAL | 3.8+ | ⚠ GDAL 需要 | 或用 Docker |
-| QGIS | 3.34+ | ⚠ QGIS 需要 | 或用 Docker |
+| PostgreSQL | 15+ | ⚠ 数据库需要 | `brew install postgresql@16` / `apt install postgresql-16` |
+| GDAL | 3.8+ | ⚠ GDAL 需要 | `brew install gdal` / `apt install gdal-bin` |
+| QGIS | 3.34+ | ⚠ QGIS 需要 | [qgis.org/download](https://qgis.org/download/) |
 | NATS | 2.10+ | ⚠ GEE 需要 | 或用文件队列回退 |
 
 ### 编译模式
@@ -311,6 +311,382 @@ let plugin = EcologyPlugin::new(config);
 
 {{ conclusion.summary }}
 ```
+
+---
+
+## 🔌 插件开发指南
+
+### 插件最小结构
+
+每个插件是一个 Rust crate，包含三个核心文件：
+
+```
+plugins/geo-plugin-mine/
+├── Cargo.toml          # 依赖声明（只能依赖 Core 层，禁止依赖 Adapter 或其他 Plugin）
+├── rules.toml          # 业务参数（碳密度、阈值、报告模板路径等）
+├── templates/          # 领域专属报告模板（可选）
+│   └── mine-report.md.tera
+└── src/
+    ├── lib.rs          # 入口：pub mod + pub use
+    ├── config.rs       # rules.toml 反序列化结构体
+    └── mine.rs         # 核心编排逻辑（组装 Core 调用）
+```
+
+### 第一步：定义配置 (config.rs)
+
+```rust
+// plugins/geo-plugin-mine/src/config.rs
+use serde::Deserialize;
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MineConfig {
+    pub plugin: PluginMeta,
+    #[serde(default)]
+    pub thresholds: ThresholdConfig,
+    #[serde(default)]
+    pub carbon: CarbonConfig,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PluginMeta {
+    pub name: String,
+    pub version: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ThresholdConfig {
+    /// 坡度阈值（度），超过此值标记为高风险
+    #[serde(default = "default_slope")]
+    pub slope_max_deg: f64,
+    /// 植被覆盖度下限
+    #[serde(default = "default_veg_cover")]
+    pub veg_cover_min: f64,
+}
+
+fn default_slope() -> f64 { 25.0 }
+fn default_veg_cover() -> f64 { 0.3 }
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CarbonConfig {
+    #[serde(default = "default_source")]
+    pub source: String,
+    pub forest: f64,
+    pub grassland: f64,
+    pub bare: f64,
+}
+
+fn default_source() -> String { "IPCC_2019".into() }
+
+impl Default for MineConfig {
+    fn default() -> Self {
+        toml::from_str(include_str!("../rules.toml")).unwrap()
+    }
+}
+```
+
+### 第二步：编写业务逻辑 (mine.rs)
+
+```rust
+// plugins/geo-plugin-mine/src/mine.rs
+// 只能 import Core 层 crate，不能 import 其他 Plugin 或 Adapter
+
+use geo_core::errors::GeoResult;
+use geo_core::types::BBox;
+use geo_raster::ndvi::{compute_ndvi, NdviResult};
+use geo_raster::RasterBand;
+use geo_carbon_math::{CarbonEngine, EmissionFactor, GeoFeature};
+use crate::config::MineConfig;
+
+pub struct MinePlugin {
+    config: MineConfig,
+}
+
+impl MinePlugin {
+    pub fn new(config: MineConfig) -> Self { Self { config } }
+
+    pub fn from_file(path: &std::path::Path) -> GeoResult<Self> {
+        let s = std::fs::read_to_string(path)?;
+        let config: MineConfig = toml::from_str(&s)
+            .map_err(|e| geo_core::GeoError::Validation(e.to_string()))?;
+        Ok(Self { config })
+    }
+
+    /// 矿山风险评估（组装 Core 调用）
+    pub fn assess(
+        &self,
+        aoi: &str,                     // GeoJSON FeatureCollection
+        dem_red: &RasterBand,          // DEM 红波段用于 NDVI
+        dem_nir: &RasterBand,
+        year: u16,
+    ) -> GeoResult<MineAssessment> {
+        // 1. 解析 AOI
+        let bbox = geo_io::extract_bbox(aoi)?;
+
+        // 2. 计算 NDVI（调用 geo-raster）
+        let ndvi = compute_ndvi(dem_red, dem_nir)?;
+
+        // 3. 植被覆盖度评估（按配置阈值判断）
+        let healthy = ndvi.mean_ndvi.unwrap_or(0.0) >= self.config.thresholds.veg_cover_min;
+
+        // 4. 碳核算（调用 geo-carbon-math）
+        let engine = CarbonEngine::new();
+        let factors = vec![
+            EmissionFactor::new("forest", self.config.carbon.forest, &self.config.carbon.source),
+            EmissionFactor::new("grassland", self.config.carbon.grassland, &self.config.carbon.source),
+            EmissionFactor::new("bare", self.config.carbon.bare, &self.config.carbon.source),
+        ];
+        let features = geo_io::geojson::parse_feature_collection(aoi)?.0
+            .into_iter()
+            .filter_map(|f| GeoFeature::from_feature_json(&serde_json::to_string(&f).ok()?).ok())
+            .collect::<Vec<_>>();
+        let carbon = engine.calculate(&features, &factors, year)
+            .map_err(|e| geo_core::GeoError::Validation(e))?;
+
+        Ok(MineAssessment {
+            aoi_name: "矿区".into(),
+            bbox,
+            ndvi_mean: ndvi.mean_ndvi,
+            vegetation_healthy: healthy,
+            carbon_report: carbon,
+            risk_level: if !healthy { "高风险" } else { "低风险" }.into(),
+        })
+    }
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct MineAssessment {
+    pub aoi_name: String,
+    pub bbox: BBox,
+    pub ndvi_mean: Option<f64>,
+    pub vegetation_healthy: bool,
+    pub carbon_report: geo_carbon_math::CarbonReport,
+    pub risk_level: String,
+}
+```
+
+### 第三步：配置文件 (rules.toml)
+
+```toml
+# plugins/geo-plugin-mine/rules.toml
+
+[plugin]
+name = "mine"
+version = "0.1.0"
+description = "矿山生态风险评估插件"
+
+[thresholds]
+slope_max_deg = 25.0
+veg_cover_min = 0.3
+
+[carbon]
+source = "IPCC_2019"
+forest = -5.0
+grassland = -1.2
+bare = 0.0
+```
+
+### 第四步：仓库入口 (lib.rs)
+
+```rust
+// plugins/geo-plugin-mine/src/lib.rs
+pub mod config;
+pub mod mine;
+
+pub use config::MineConfig;
+pub use mine::{MinePlugin, MineAssessment};
+```
+
+### 第五步：注册到 workspace
+
+```toml
+# Cargo.toml (workspace root)
+[workspace]
+members = [
+    # ... 其他成员 ...
+    "plugins/geo-plugin-mine",   # ← 添加新插件
+]
+```
+
+### 第六步：在 CLI/MCP 中使用
+
+```rust
+// crates/geo-cli/src/commands/mine.rs
+use geo_plugin_mine::MinePlugin;
+
+let plugin = MinePlugin::from_file(Path::new("plugins/geo-plugin-mine/rules.toml"))?;
+let assessment = plugin.assess(aoi_geojson, &red, &nir, 2025)?;
+println!("风险等级: {}", assessment.risk_level);
+```
+
+### 插件开发约束速查
+
+| 约束 | 说明 |
+|------|------|
+| ✅ 可依赖 | `geo-core`, `geo-raster`, `geo-stats`, `geo-io`, `geo-carbon-math`, `geo-report`, `geo-vector`, `geo-index` |
+| ❌ 禁止依赖 | 任何 `geo-adapter-*`（Adapter 层）、任何其他 `geo-plugin-*`（插件横向） |
+| ✅ 可包含 | `rules.toml`（业务参数）、`templates/`（报告模板）、单元测试 + 集成测试 |
+| ❌ 不应包含 | 数据库连接池、网络请求、子进程调用、文件系统写操作（这些都是 Adapter 的职责） |
+
+---
+
+## 🔗 外部适配器调用
+
+外部适配器是 geo-toolbox 与 PostGIS、GEE、QGIS、CAD 等外部系统之间的桥梁。
+适配器层可以依赖 Plugin 和 Core，是唯一允许持有数据库连接/网络连接/子进程的层。
+
+### PostGIS 适配器
+
+```rust
+use geo_adapter_postgis::{PostgisStore, PostgisCarbonEngine, run_migrations};
+
+// 连接数据库
+let store = PostgisStore::connect("postgres://geo:geo@localhost/geo_test").await?;
+
+// 运行迁移（建表）
+run_migrations(store.pool()).await?;
+
+// 查询（自动做 SQL 注入防护）
+let rows = store.query_json("SELECT * FROM spatial_assets WHERE aoi_id = '...'").await?;
+
+// 写入几何
+use uuid::Uuid;
+let aoi_id = Uuid::new_v4();
+let wkb_bytes = vec![/* WKB 二进制 */];
+store.insert_geometry(Some(aoi_id), "sentinel-2", &wkb_bytes, &serde_json::json!({"class": "forest"})).await?;
+
+// ── PostGIS 碳核算引擎 ──
+let pool = store.pool().clone(); // 或直接用 sqlx 建池
+let engine = PostgisCarbonEngine::new(pool);
+
+// 排放因子计算（单条 SQL 含空间聚合 + 因子查表 + 面积计算）
+let results = engine.calculate_emission_factor(aoi_id, 2025, "IPCC_2019").await?;
+
+// 注册排放因子
+engine.register_factor(geo_adapter_postgis::FactorInput {
+    source: "IPCC_2019".into(),
+    category: "forest".into(),
+    factor_value: -5.0,
+    unit: "tCO2e/ha/yr".into(),
+    valid_from_year: 2019,
+    valid_to_year: None,
+    region: Some("CN-51".into()),
+}).await?;
+
+// 从 CSV 批量导入
+engine.import_factors_csv("emission-factors.csv").await?;
+```
+
+### QGIS 适配器
+
+```rust
+// 方式 A：qgis_process 子进程（推荐批处理）
+use geo_adapter_qgis::process_runner::{BatchQgisRunner, QgisProcessConfig};
+
+let runner = BatchQgisRunner::new(QgisProcessConfig::default());
+
+// 重投影
+runner.reproject("input.geojson", 3405, "equalarea.gpkg").await?;
+
+// 缓冲区
+runner.buffer("sites.gpkg", 2000.0, "sites_buffer.gpkg").await?;
+
+// 流水线：重投影 → 缓冲区 → 相交
+use geo_adapter_qgis::process_runner::QgisTool;
+runner.run_pipeline(&[
+    QgisTool {
+        algorithm: "native:reprojectlayer".into(),
+        params: vec![
+            ("INPUT".into(), "".into()),
+            ("TARGET_CRS".into(), "EPSG:3405".into()),
+            ("OUTPUT".into(), "step0.gpkg".into()),
+        ],
+    },
+    QgisTool {
+        algorithm: "native:buffer".into(),
+        params: vec![
+            ("INPUT".into(), "".into()),
+            ("DISTANCE".into(), "500".into()),
+            ("OUTPUT".into(), "step1.gpkg".into()),
+        ],
+    },
+], Path::new("input.geojson")).await?;
+
+// 方式 B：PyQGIS REST 服务（推荐交互式）
+use geo_adapter_qgis::grpc_client::{QgisClient, QgisInput};
+
+let client = QgisClient::new("http://localhost:9100");
+if client.health_check().await? {
+    let output = client.buffer("sites.gpkg", 100.0, Some("sites_buffered")).await?;
+    println!("输出: {output}");
+}
+```
+
+### GEE 适配器（Google Earth Engine）
+
+```rust
+use geo_adapter_gee::GeeAdapter;
+
+let adapter = GeeAdapter::new_default().await?;
+
+// 提交土地覆盖分类任务
+adapter.submit_classification(
+    "projects/my-project/aoi/gpkg",
+    2025,
+    "COPERNICUS/S2_SR_HARMONIZED",
+).await?;
+
+// 查询任务状态
+let status = adapter.job_status("task-uuid").await?;
+
+// 导出到 GCS
+adapter.export_to_gcs("task-uuid", "gs://my-bucket/lc_2025.tif").await?;
+```
+
+### CAD 适配器
+
+```rust
+use geo_adapter_cad::{DxfExporter, ExcelDashboard, GeoJsonExporter};
+
+// DXF 导出（需先有数据行）
+let rows: Vec<serde_json::Value> = /* 从 PostGIS 或其他来源读取 */;
+// ... 具体导出见 geo-adapter-cad 文档
+```
+
+### CLI 适配器（GDAL / DVC 子进程）
+
+```rust
+use geo_adapter_cli::{gdal_translate_cog, dvc_snapshot};
+
+// GDAL COG 转换
+geo_adapter_cli::raster::to_cog("input.tif", "output.cog.tif", "DEFLATE")?;
+
+// DVC 版本快照
+let hash = geo_adapter_cli::gcs_bridge::dvc_hash("data/carbon_factors.csv")?;
+```
+
+### IoT 适配器（MQTT 传感器接入）
+
+```rust
+use geo_adapter_iot::MqttAdapter;
+
+let adapter = MqttAdapter::connect("mqtt://localhost:1883", "geo-sensors").await?;
+adapter.subscribe("gps/+/location").await?;
+
+while let Some(msg) = adapter.next_message().await {
+    println!("传感器 {}: {:?}", msg.topic, msg.payload);
+    // 解析 → 验证坐标 → 写入 PostGIS
+}
+```
+
+### 适配器使用约束速查
+
+| 约束 | 说明 |
+|------|------|
+| ✅ 可依赖 | Core 层所有 crate、Plugin 层所有 crate、其他 Adapter |
+| ✅ 可持有 | 数据库连接池 (`PgPool`)、HTTP Client、子进程句柄、MQTT 连接 |
+| ❌ 禁止 | 在 Core/Plugin 中使用 Adapter（依赖方向不可逆） |
+| ✅ 实现 trait | `ExternalAdapter`（提供 `health_check`、`push`/`pull`/`execute`） |
 
 ---
 
@@ -653,12 +1029,35 @@ println!("年碳汇: {:.1} tCO₂", assessment.conclusion.carbon_sink_tco2_per_y
 
 ## 部署
 
-```bash
-# 数据库（需 Docker）
-docker compose -f docker-compose.test.yml up -d
-geo-toolbox store migrate
+### PostgreSQL + PostGIS
 
-# GEE 消息队列（NATS）
+```bash
+# macOS
+brew install postgresql@16 postgis
+brew services start postgresql@16
+
+# Ubuntu/Debian
+sudo apt install postgresql-16 postgis
+sudo systemctl start postgresql
+
+# 创建数据库
+sudo -u postgres createuser geo -P          # 密码: geo
+sudo -u postgres createdb geo_test -O geo
+sudo -u postgres psql geo_test -c "CREATE EXTENSION postgis;"
+```
+
+```bash
+# 设置环境变量
+export DATABASE_URL=postgres://geo:geo@localhost/geo_test
+
+# 运行迁移
+geo-toolbox store migrate
+```
+
+### GEE 消息队列
+
+```bash
+# NATS（可选）
 export GEO_NATS_URL=nats://localhost:4222
 nats-server -js &
 
@@ -702,11 +1101,11 @@ geo-toolbox/
 ### 测试
 
 ```bash
-cargo test --workspace                         # 全部（165 tests）
+cargo test --workspace                         # 全部（167 tests）
 cargo test -p geo-raster                       # 单个 crate
 cargo test -p geo-plugin-ecology               # 插件集成测试
-docker compose -f docker-compose.test.yml up -d # 启动 PostGIS
-cargo test -- --include-ignored                # 含数据库测试
+# 含数据库测试（需设置 DATABASE_URL）
+DATABASE_URL=postgres://geo:geo@localhost/geo_test cargo test --workspace
 ```
 
 ### 代码质量

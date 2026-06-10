@@ -54,7 +54,7 @@ impl EmissionFactor {
     /// Returns true if this factor is valid for the given year.
     pub fn is_valid_for_year(&self, year: i32) -> bool {
         year >= self.valid_from_year
-            && self.valid_to_year.map_or(true, |to| year <= to)
+            && self.valid_to_year.is_none_or(|to| year <= to)
     }
 
     /// Returns true if this is a carbon sink (negative emission factor).

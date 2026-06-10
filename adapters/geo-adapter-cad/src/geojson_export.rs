@@ -110,7 +110,8 @@ impl GeoJsonExporter {
         aoi_id: uuid::Uuid,
         output_path: &str,
     ) -> GeoResult<usize> {
-        let sql = format!(
+        // 安全：使用参数化查询，aoi_id 作为 $1 绑定
+        let geojson_str: Option<String> = sqlx::query_scalar(
             r#"
             SELECT jsonb_build_object(
                 'type', 'FeatureCollection',
@@ -121,13 +122,28 @@ impl GeoJsonExporter {
                         'properties', properties
                     )
                 ), '[]'::jsonb)
-            ) AS geojson
+            )::text AS geojson
             FROM spatial_assets
-            WHERE aoi_id = '{aoi_id}'::uuid
+            WHERE aoi_id = $1
             "#
-        );
+        )
+        .bind(aoi_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| GeoError::Database(e.to_string()))?
+        .flatten();
 
-        self.from_aggregate_sql(&sql, output_path).await
+        let geojson_str = geojson_str.unwrap_or_else(|| {
+            r#"{"type":"FeatureCollection","features":[]}"#.to_string()
+        });
+
+        let parsed: serde_json::Value = serde_json::from_str(&geojson_str)?;
+        let pretty = serde_json::to_string_pretty(&parsed)?;
+        tokio::fs::write(output_path, &pretty).await?;
+
+        let count = parsed["features"].as_array().map(|a| a.len()).unwrap_or(0);
+        tracing::info!("GeoJSON exported: {output_path} ({count} features)");
+        Ok(count)
     }
 }
 

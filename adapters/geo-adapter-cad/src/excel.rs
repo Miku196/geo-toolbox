@@ -61,15 +61,57 @@ impl ExcelDashboard {
     }
 
     pub async fn carbon_report(&self, aoi_id: uuid::Uuid, output_path: &str) -> GeoResult<()> {
-        let sql = format!(
+        // 安全：使用参数化查询，aoi_id 作为 $1 绑定
+        let rows = sqlx::query(
             r#"SELECT landcover_class AS "Landcover Class",
                ROUND(area_ha::numeric,1) AS "Area (ha)",
                ROUND(emission_tco2e::numeric,1) AS "tCO₂e",
                audit_status AS "Audit Status"
-               FROM carbon_accounting_results WHERE aoi_id = '{aoi_id}'
+               FROM carbon_accounting_results WHERE aoi_id = $1
                ORDER BY calculation_at DESC"#
-        );
-        self.from_sql(&sql, output_path, "Carbon Report").await
+        )
+        .bind(aoi_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| GeoError::Database(e.to_string()))?;
+
+        if rows.is_empty() {
+            return Err(GeoError::Validation("Query returned 0 rows".into()));
+        }
+
+        let mut workbook = Workbook::new();
+        let sheet = workbook.add_worksheet();
+        xe!(sheet.set_name("Carbon Report"))?;
+
+        let columns: Vec<String> = rows[0].columns().iter().map(|c| c.name().to_string()).collect();
+        let column_types = self.detect_types(&rows, &columns);
+
+        let header_fmt = Format::new()
+            .set_bold()
+            .set_background_color(Color::RGB(0x4472C4))
+            .set_font_color(Color::White)
+            .clone();
+
+        for (i, name) in columns.iter().enumerate() {
+            xe!(sheet.write_string_with_format(0, i as u16, name, &header_fmt))?;
+        }
+
+        for (row_idx, row) in rows.iter().enumerate() {
+            let r = (row_idx + 1) as u32;
+            for (col_idx, col_name) in columns.iter().enumerate() {
+                let ct = column_types.get(col_name).map(|s| s.as_str()).unwrap_or("text");
+                self.write_cell(sheet, r, col_idx as u16, row, col_name, ct)?;
+            }
+        }
+
+        for (i, name) in columns.iter().enumerate() {
+            let w = (name.len() as u16).max(12);
+            xe!(sheet.set_column_width(i as u16, w + 4))?;
+        }
+        xe!(sheet.set_freeze_panes(1, 0))?;
+        xe!(workbook.save(output_path))?;
+        tracing::info!("Excel: {output_path} ({} rows)", rows.len());
+        Ok(())
     }
 
     fn detect_types(&self, rows: &[sqlx::postgres::PgRow], columns: &[String]) -> HashMap<String, String> {

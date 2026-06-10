@@ -10,27 +10,24 @@ fn transform_geojson_coords(
     from_epsg: u16,
     to_epsg: u16,
 ) {
-    match value {
-        serde_json::Value::Array(arr) => {
-            // Check if this is a coordinate pair [x, y]
-            if arr.len() == 2
-                && arr[0].is_number()
-                && arr[1].is_number()
-                && !arr[0].is_array()
-            {
-                let x = arr[0].as_f64().unwrap_or(0.0);
-                let y = arr[1].as_f64().unwrap_or(0.0);
-                if let Ok((nx, ny)) = reg.transform_point(from_epsg, to_epsg, x, y) {
-                    arr[0] = serde_json::json!(nx);
-                    arr[1] = serde_json::json!(ny);
-                }
-            } else {
-                for item in arr.iter_mut() {
-                    transform_geojson_coords(reg, item, from_epsg, to_epsg);
-                }
+    if let serde_json::Value::Array(arr) = value {
+        // Check if this is a coordinate pair [x, y]
+        if arr.len() == 2
+            && arr[0].is_number()
+            && arr[1].is_number()
+            && !arr[0].is_array()
+        {
+            let x = arr[0].as_f64().unwrap_or(0.0);
+            let y = arr[1].as_f64().unwrap_or(0.0);
+            if let Ok((nx, ny)) = reg.transform_point(from_epsg, to_epsg, x, y) {
+                arr[0] = serde_json::json!(nx);
+                arr[1] = serde_json::json!(ny);
+            }
+        } else {
+            for item in arr.iter_mut() {
+                transform_geojson_coords(reg, item, from_epsg, to_epsg);
             }
         }
-        _ => {}
     }
 }
 
@@ -125,7 +122,7 @@ pub async fn handle(action: OutputAction) -> Result<(), Box<dyn std::error::Erro
 
             // Query carbon results for the AOI
             let aoi_id = Uuid::parse_str(&aoi)?;
-            let engine = geo_plugin_carbon::CarbonEngine::new(pool);
+            let engine = geo_adapter_postgis::PostgisCarbonEngine::new(pool);
             let results = engine.query_by_aoi(aoi_id).await?;
 
             let total: f64 = results.iter().map(|r| r.emission_tco2e).sum();

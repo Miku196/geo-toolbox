@@ -367,7 +367,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
             let db_url = get_db_url()?;
             let pool = sqlx::postgres::PgPoolOptions::new()
                 .max_connections(2).connect(&db_url).await?;
-            let engine = geo_plugin_carbon::CarbonEngine::new(pool);
+            let engine = geo_adapter_postgis::PostgisCarbonEngine::new(pool);
 
             match engine.calculate_emission_factor(aoi_id, year, source).await {
                 Ok(results) => {
@@ -400,7 +400,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
             let db_url = get_db_url()?;
             let pool = sqlx::postgres::PgPoolOptions::new()
                 .max_connections(2).connect(&db_url).await?;
-            let engine = geo_plugin_carbon::CarbonEngine::new(pool);
+            let engine = geo_adapter_postgis::PostgisCarbonEngine::new(pool);
 
             match engine.calculate_dry_run(aoi_id, year, source).await {
                 Ok(results) => {
@@ -422,7 +422,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
             let db_url = get_db_url()?;
             let pool = sqlx::postgres::PgPoolOptions::new()
                 .max_connections(2).connect(&db_url).await?;
-            let engine = geo_plugin_carbon::CarbonEngine::new(pool);
+            let engine = geo_adapter_postgis::PostgisCarbonEngine::new(pool);
 
             let count = engine.import_factors_csv(csv_path).await?;
             Ok(json!({"jsonrpc": "2.0", "result": {
@@ -436,7 +436,7 @@ async fn handle_tool_call(tool: &str, args: &Value) -> Result<Value, Box<dyn std
             let db_url = get_db_url()?;
             let pool = sqlx::postgres::PgPoolOptions::new()
                 .max_connections(2).connect(&db_url).await?;
-            let engine = geo_plugin_carbon::CarbonEngine::new(pool);
+            let engine = geo_adapter_postgis::PostgisCarbonEngine::new(pool);
 
             let factors = engine.query_factors(year, source).await?;
             Ok(json!({"jsonrpc": "2.0", "result": {

@@ -43,6 +43,9 @@ pub fn dvc_available() -> bool {
 /// println!("DVC hash: {}", snapshot.dvc_hash);
 /// ```
 pub fn dvc_snapshot(file_path: &str) -> GeoResult<DvcSnapshot> {
+    // 安全：校验路径不含遍历/注入字符
+    geo_core::errors::validate_safe_path(file_path)?;
+
     let path = Path::new(file_path);
 
     if !path.exists() {

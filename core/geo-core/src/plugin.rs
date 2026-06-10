@@ -76,7 +76,7 @@ pub enum PluginCategory {
 
 impl PluginCategory {
     /// Parse from a string (case-insensitive).
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "store" => Some(Self::Store),
             "ingest" => Some(Self::Ingest),
@@ -328,13 +328,13 @@ mod tests {
             PluginCategory::Adapter,
         ] {
             let s = cat.as_str();
-            let parsed = PluginCategory::from_str(s).unwrap();
+            let parsed = PluginCategory::parse(s).unwrap();
             assert_eq!(parsed, *cat);
         }
     }
 
     #[test]
     fn test_plugin_category_invalid() {
-        assert!(PluginCategory::from_str("unknown").is_none());
+        assert!(PluginCategory::parse("unknown").is_none());
     }
 }

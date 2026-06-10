@@ -7,7 +7,6 @@
 //! 运行:
 //!   cargo run --package dexing-copper-report
 
-use geo_core::types::BBox;
 use geo_plugin_ecology::{EcologyConfig, EcologyPlugin, RestorationAssessment};
 use geo_raster::RasterBand;
 
@@ -31,12 +30,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ── 4. 运行生态修复评估管线 ──
     println!("🔬 运行评估管线...");
-    let raster_bbox = BBox::new(117.48, 28.94, 117.71, 29.14);
-    let assessment = plugin.assess_restoration(
-        aoi_name, aoi_geojson,
-        &red_2015, &nir_2015, &red_2025, &nir_2025,
-        2015, 2025, raster_bbox,
-    )?;
+    let input = geo_plugin_ecology::AssessmentInput {
+        aoi_name,
+        aoi_geojson,
+        baseline_red: &red_2015,
+        baseline_nir: &nir_2015,
+        assessment_red: &red_2025,
+        assessment_nir: &nir_2025,
+        baseline_year: 2015,
+        assessment_year: 2025,
+    };
+    let assessment = plugin.assess_restoration(&input)?;
     println!("   ✅ 评估完成 — 评级: {}", assessment.conclusion.grade);
 
     // ── 5. 用 Tera 模板渲染报告 ──
@@ -250,6 +254,6 @@ fn gen_bands(
             nir.push(noise(nb));
         }
     }
-    (RasterBand::new(&format!("RED_{year}"), rows, cols, red, -999.0),
-     RasterBand::new(&format!("NIR_{year}"), rows, cols, nir, -999.0))
+    (RasterBand::new(format!("RED_{year}"), rows, cols, red, -999.0),
+     RasterBand::new(format!("NIR_{year}"), rows, cols, nir, -999.0))
 }

@@ -85,6 +85,26 @@ pub struct RestorationConclusion {
     pub summary: String,
 }
 
+/// 矿山修复评估的输入参数。
+pub struct AssessmentInput<'a> {
+    /// AOI 名称（如"XX矿山修复区"）。
+    pub aoi_name: &'a str,
+    /// GeoJSON FeatureCollection 字符串。
+    pub aoi_geojson: &'a str,
+    /// 基准年红波段。
+    pub baseline_red: &'a RasterBand,
+    /// 基准年近红外波段。
+    pub baseline_nir: &'a RasterBand,
+    /// 评估年红波段。
+    pub assessment_red: &'a RasterBand,
+    /// 评估年近红外波段。
+    pub assessment_nir: &'a RasterBand,
+    /// 基准年。
+    pub baseline_year: u16,
+    /// 评估年。
+    pub assessment_year: u16,
+}
+
 /// 生态修复插件。
 pub struct EcologyPlugin {
     config: EcologyConfig,
@@ -104,7 +124,7 @@ impl EcologyPlugin {
     /// 从 rules.toml 文件路径加载。
     pub fn load_from_file(path: &std::path::Path) -> GeoResult<Self> {
         let content = std::fs::read_to_string(path)
-            .map_err(|e| GeoError::Io(e))?;
+            .map_err(GeoError::Io)?;
         let config: EcologyConfig = toml::from_str(&content)
             .map_err(|e| GeoError::Validation(format!("Invalid rules.toml: {e}")))?;
         Ok(Self { config })
@@ -127,34 +147,17 @@ impl EcologyPlugin {
 
     // ── 完整矿山修复评估 ──
 
-    /// 运行完整的生态修复评估。
-    ///
-    /// ## 参数
-    /// - `aoi_name`: AOI 名称（如"XX矿山修复区"）
-    /// - `aoi_geojson`: GeoJSON FeatureCollection 字符串
-    /// - `baseline_red/nir`: 基准年遥感波段
-    /// - `assessment_red/nir`: 评估年遥感波段
-    /// - `baseline_year`: 基准年
-    /// - `assessment_year`: 评估年
-    /// - `raster_bbox`: 栅格覆盖的地理范围
+    /// 运行完整的生态修复评估（使用参数结构体）。
     pub fn assess_restoration(
         &self,
-        aoi_name: &str,
-        aoi_geojson: &str,
-        baseline_red: &RasterBand,
-        baseline_nir: &RasterBand,
-        assessment_red: &RasterBand,
-        assessment_nir: &RasterBand,
-        baseline_year: u16,
-        assessment_year: u16,
-        _raster_bbox: BBox,
+        input: &AssessmentInput,
     ) -> GeoResult<RestorationAssessment> {
         // 1. 解析 AOI
-        let aoi_bbox = geo_io::extract_bbox(aoi_geojson)?;
+        let aoi_bbox = geo_io::extract_bbox(input.aoi_geojson)?;
 
         // 2. 计算两期 NDVI
-        let prev_ndvi = compute_ndvi(baseline_red, baseline_nir)?;
-        let curr_ndvi = compute_ndvi(assessment_red, assessment_nir)?;
+        let prev_ndvi = compute_ndvi(input.baseline_red, input.baseline_nir)?;
+        let curr_ndvi = compute_ndvi(input.assessment_red, input.assessment_nir)?;
 
         // 3. NDVI 差值
         let ndvi_diff = ndvi_difference(&prev_ndvi, &curr_ndvi)?;
@@ -180,7 +183,7 @@ impl EcologyPlugin {
         };
 
         // 5. 碳核算：从 GeoJSON 提取 features → 调用 geo-carbon-math
-        let carbon = self.calculate_carbon(aoi_geojson, assessment_year)?;
+        let carbon = self.calculate_carbon(input.aoi_geojson, input.assessment_year)?;
 
         // 6. 评估结论
         let restored_ratio = if total_valid > 0 {
@@ -200,32 +203,32 @@ impl EcologyPlugin {
         let summary = if target_met {
             format!(
                 "{}区域生态修复达标：{:.1}% 像素植被显著改善，年碳汇约 {:.1} tCO₂。",
-                aoi_name,
+                input.aoi_name,
                 restored_ratio.unwrap_or(0.0) * 100.0,
                 carbon_sink
             )
         } else {
             format!(
                 "{}区域生态修复未完全达标：仅 {:.1}% 像素植被显著改善。建议加强植被恢复措施。",
-                aoi_name,
+                input.aoi_name,
                 restored_ratio.unwrap_or(0.0) * 100.0
             )
         };
 
         Ok(RestorationAssessment {
-            aoi_name: aoi_name.to_string(),
-            baseline_year,
-            assessment_year,
+            aoi_name: input.aoi_name.to_string(),
+            baseline_year: input.baseline_year,
+            assessment_year: input.assessment_year,
             bbox: aoi_bbox,
             baseline_ndvi: NdviStats {
-                year: baseline_year,
+                year: input.baseline_year,
                 mean_ndvi: prev_ndvi.mean_ndvi,
                 healthy_ratio: prev_ndvi.healthy_ratio,
                 degraded_ratio: prev_ndvi.degraded_ratio,
                 valid_pixels: prev_ndvi.valid_pixels,
             },
             assessment_ndvi: NdviStats {
-                year: assessment_year,
+                year: input.assessment_year,
                 mean_ndvi: curr_ndvi.mean_ndvi,
                 healthy_ratio: curr_ndvi.healthy_ratio,
                 degraded_ratio: curr_ndvi.degraded_ratio,
@@ -270,7 +273,7 @@ impl EcologyPlugin {
         let mut features = Vec::with_capacity(features_json.len());
         for f in features_json {
             let feat_str = serde_json::to_string(f)
-                .map_err(|e| GeoError::Serde(e))?;
+                .map_err(GeoError::Serde)?;
             match GeoFeature::from_feature_json(&feat_str) {
                 Ok(gf) => features.push(gf),
                 Err(_) => continue,
@@ -289,7 +292,7 @@ impl EcologyPlugin {
 
         let engine = CarbonEngine::new();
         let mut report = engine.calculate(&features, &factors, year)
-            .map_err(|e| GeoError::Validation(e))?;
+            .map_err(GeoError::Validation)?;
         report.methodology = Some(format!("IPCC Tier 1 — {}", cp.source));
         Ok(report)
     }
@@ -346,16 +349,17 @@ mod tests {
             ]
         }"#;
 
-        let raster_bbox = BBox::new(104.0, 30.5, 104.1, 30.6);
-
-        let assessment = plugin.assess_restoration(
-            "XX矿山修复区",
-            aoi,
-            &red_2020, &nir_2020,
-            &red_2025, &nir_2025,
-            2020, 2025,
-            raster_bbox,
-        ).unwrap();
+        let input = AssessmentInput {
+            aoi_name: "XX矿山修复区",
+            aoi_geojson: aoi,
+            baseline_red: &red_2020,
+            baseline_nir: &nir_2020,
+            assessment_red: &red_2025,
+            assessment_nir: &nir_2025,
+            baseline_year: 2020,
+            assessment_year: 2025,
+        };
+        let assessment = plugin.assess_restoration(&input).unwrap();
 
         // 验证结构
         assert_eq!(assessment.aoi_name, "XX矿山修复区");

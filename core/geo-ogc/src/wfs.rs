@@ -237,16 +237,14 @@ impl WfsService {
 
     fn build_describe_feature_type_xml(&self, _type_names: &[String]) -> String {
         // Simplified GML Application Schema
-        format!(
-            r#"<?xml version="1.0" encoding="UTF-8"?>
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <schema xmlns="http://www.w3.org/2001/XMLSchema"
         xmlns:geo="http://geo-toolbox.dev/geo"
         targetNamespace="http://geo-toolbox.dev/geo"
         elementFormDefault="qualified">
   <import namespace="http://www.opengis.net/gml/3.2"
           schemaLocation="http://schemas.opengis.net/gml/3.2.1/gml.xsd"/>
-</schema>"#,
-        )
+</schema>"#.to_string()
     }
 
     fn empty_stored_queries_xml(&self) -> String {

@@ -614,13 +614,13 @@ fn handle_plugins(action: PluginsAction) -> Result<(), Box<dyn std::error::Error
         PluginsAction::List { category } => {
             let plugins = registry.list_plugins();
             let filtered: Vec<_> = if let Some(cat) = category {
-                let cat = PluginCategory::from_str(&cat)
+                let cat = PluginCategory::parse(&cat)
                     .ok_or_else(|| format!("Unknown category: {cat}"))?;
                 plugins.iter().filter(|p| p.category == cat).collect()
             } else {
                 plugins.iter().collect()
             };
-            println!("{:<15} {:<8} {:<10} {}", "NAME", "VERSION", "CATEGORY", "DESCRIPTION");
+            println!("{:<15} {:<8} {:<10} DESCRIPTION", "NAME", "VERSION", "CATEGORY");
             println!("{}", "-".repeat(80));
             let total = filtered.len();
             for p in filtered {

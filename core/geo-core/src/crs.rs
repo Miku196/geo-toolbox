@@ -265,7 +265,7 @@ pub mod builtin {
     // ── Chinese coordinate systems (GCJ-02 / BD-09) ───────────
     const X_PI: f64 = PI * 3000.0 / 180.0;
     const A: f64 = 6378245.0;
-    const EE: f64 = 0.00669342162296594323;
+    const EE: f64 = 0.006_693_421_622_965_943;
 
     /// WGS84 → GCJ-02（火星坐标系）。
     pub fn wgs84_to_gcj02(lon: f64, lat: f64) -> (f64, f64) {
@@ -303,7 +303,7 @@ pub mod builtin {
     }
 
     fn out_of_china(lon: f64, lat: f64) -> bool {
-        lon < 72.004 || lon > 137.8347 || lat < 0.8293 || lat > 55.8271
+        !(72.004..=137.8347).contains(&lon) || !(0.8293..=55.8271).contains(&lat)
     }
 
     fn delta(lon: f64, lat: f64) -> (f64, f64) {
