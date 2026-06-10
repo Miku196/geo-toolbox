@@ -1,0 +1,19 @@
+[package]
+name = "geo-plugin-forestry"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "林业碳汇计量 — 蓄积量估算、碳汇计量、CCER 方法学"
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-carbon-math = { path = "../../core/geo-carbon-math" }
+geo-raster = { path = "../../core/geo-raster" }
+geo-stats = { path = "../../core/geo-stats" }
+geo-io = { path = "../../core/geo-io" }
+geo-temporal = { path = "../../core/geo-temporal" }
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+thiserror.workspace = true
+chrono.workspace = true

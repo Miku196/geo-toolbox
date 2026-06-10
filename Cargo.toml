@@ -33,6 +33,8 @@ members = [
     "core/geo-tile",
     "core/geo-temporal",
     "plugins/geo-plugin-energy",
+    "plugins/geo-plugin-forestry",
+    "plugins/geo-plugin-coastal",
 
     # ── Round 3: Registry ──
     "core/geo-registry",
@@ -40,6 +42,7 @@ members = [
     # ── Round 1: Adapter 层新增 (拓展路线图) ──
     "adapters/geo-adapter-duckdb",
     "adapters/geo-adapter-stac",
+    "adapters/geo-adapter-osm",
 
     # ── Round 3: Adapters ──
     "adapters/geo-adapter-postgis",

@@ -29,4 +29,4 @@ mod tile_index;
 
 pub use mvt::{MvtEncoder, MvtLayer, MvtFeature, GeomType};
 pub use pmtiles::{PmtilesReader, PmtilesWriter, TileType};
-pub use tile_index::{latlon_to_tile, tile_to_latlon, tile_bounds};
+pub use tile_index::{latlon_to_tile, tile_to_latlon, tile_bounds, TileSource, tile_url};

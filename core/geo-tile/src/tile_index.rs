@@ -38,6 +38,36 @@ pub fn tile_to_latlon(x: u32, y: u32, zoom: u8) -> (f64, f64) {
     (lon, lat_rad.to_degrees())
 }
 
+/// 瓦片数据源。
+#[derive(Debug, Clone, Copy)]
+pub enum TileSource {
+    /// OpenStreetMap 标准瓦片。
+    OpenStreetMap,
+    /// 高德地图 (GCJ-02 坐标系)。
+    Gaode,
+    /// 天地图 (需 key，GCJ-02)。
+    TianDiTu,
+}
+
+/// 根据数据源生成瓦片 URL。
+///
+/// 高德和天地图使用 GCJ-02 坐标系，URL 中的 x/y/z 需用 GCJ-02 坐标计算。
+pub fn tile_url(source: TileSource, x: u32, y: u32, z: u8) -> String {
+    match source {
+        TileSource::OpenStreetMap => {
+            format!("https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+        }
+        TileSource::Gaode => {
+            let subdomain = (x + y) as u8 % 4 + 1;
+            format!("https://webrd0{subdomain}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}")
+        }
+        TileSource::TianDiTu => {
+            // 需要替换为实际的天地图 key
+            format!("https://t{s}.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=YOUR_KEY", s = (x + y) % 8)
+        }
+    }
+}
+
 /// 返回瓦片四条边界的经纬度 (min_lon, min_lat, max_lon, max_lat)。
 pub fn tile_bounds(x: u32, y: u32, zoom: u8) -> (f64, f64, f64, f64) {
     let (nw_lon, nw_lat) = tile_to_latlon(x, y, zoom);

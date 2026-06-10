@@ -1518,6 +1518,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "geo-adapter-osm"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "geo-adapter-postgis"
 version = "0.1.0"
 dependencies = [
@@ -1694,6 +1706,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "geo-plugin-coastal"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "geo-io",
+ "geo-raster",
+ "geo-stats",
+ "geo-temporal",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "toml",
+]
+
+[[package]]
 name = "geo-plugin-ecology"
 version = "0.1.0"
 dependencies = [
@@ -1717,6 +1744,23 @@ dependencies = [
  "geo-io",
  "geo-raster",
  "geo-stats",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "toml",
+]
+
+[[package]]
+name = "geo-plugin-forestry"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "geo-carbon-math",
+ "geo-core",
+ "geo-io",
+ "geo-raster",
+ "geo-stats",
+ "geo-temporal",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
