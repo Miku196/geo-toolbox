@@ -220,6 +220,8 @@ geo-toolbox/
 │   ├── geo-carbon-math/           # IPCC Tier 1 碳核算公式
 │   ├── geo-raster/                # 栅格运算 + NDVI/NDWI
 │   ├── geo-vector/                # 矢量空间运算
+│   ├── geo-tile/                  # MVT/PMTiles 瓦片
+│   ├── geo-temporal/              # 时空序列分析
 │   ├── geo-stats/                 # 空间统计
 │   ├── geo-io/                    # GeoJSON/CSV/NMEA/GPS 解析
 │   ├── geo-report/                # Tera 报告模板引擎
@@ -228,7 +230,7 @@ geo-toolbox/
 │   ├── geo-ogc/                   # WMS/WFS/WPS 标准
 │   └── geo-registry/              # 插件注册调度中心
 │
-├── plugins/                       # 专业领域插件（7 crates）
+├── plugins/                       # 专业领域插件（8 crates）
 │   ├── geo-plugin-carbon/         # 碳核算插件
 │   ├── geo-plugin-ecology/        # 生态修复评估（NDVI + 碳汇 + 报告）
 │   ├── geo-plugin-survey/         # 测绘
@@ -236,8 +238,11 @@ geo-toolbox/
 │   ├── geo-plugin-hydro/          # 水文分析
 │   ├── geo-plugin-geohazard/      # 地质灾害
 │   └── geo-plugin-agri/           # 农业
+│   ├── geo-plugin-energy/         # 新能源选址
 │
-├── adapters/                      # 外部适配器（7 crates）
+├── adapters/                      # 外部适配器（9 crates）
+│   ├── geo-adapter-duckdb/        # SQLite 嵌入式
+│   ├── geo-adapter-stac/          # STAC 数据发现
 │   ├── geo-adapter-postgis/       # PostgreSQL + PostGIS
 │   ├── geo-adapter-gee/           # Google Earth Engine
 │   ├── geo-adapter-qgis/          # QGIS 桥接
@@ -378,6 +383,104 @@ fn main() {
     let (features, bbox) = parse_feature_collection(geojson).unwrap();
     println!("要素数: {}", features.len());
     println!("范围:   ({}, {}) ~ ({}, {})", bbox.min_x, bbox.min_y, bbox.max_x, bbox.max_y);
+}
+```
+
+### 4.5 瓦片索引 (MVT/PMTiles)
+
+```rust
+use geo_tile::{latlon_to_tile, tile_to_latlon, tile_bounds, MvtEncoder};
+
+// 经纬度 → 瓦片坐标
+let (x, y, z) = latlon_to_tile(104.06, 30.57, 14);
+println!("成都 z14: ({x}, {y})");
+
+// 瓦片边界
+let (w, s, e, n) = tile_bounds(x, y, z);
+println!("范围: ({w}, {s}) ~ ({e}, {n})");
+
+// GeoJSON → MVT 矢量瓦片（可直接喂给 MapLibre）
+let encoder = MvtEncoder::new(4096);
+let features = vec![serde_json::json!({
+    "type": "Feature",
+    "properties": {"name": "Chengdu"},
+    "geometry": {"type": "Point", "coordinates": [104.06, 30.57]}
+})];
+let mvt_bytes = encoder.encode_tile("cities", &features, x, y, z)?;
+// mvt_bytes 可直接 HTTP 返回给 MapLibre GL JS
+```
+
+### 4.6 时空趋势分析
+
+```rust
+use geo_temporal::trend::{linear_trend, mann_kendall};
+use geo_temporal::raster_ts::RasterTimeSeries;
+
+// 单像素趋势
+let ndvi_series = vec![0.32, 0.35, 0.38, 0.41, 0.45];
+let result = linear_trend(&ndvi_series);
+println!("斜率: {:.4}/yr, 显著: {}", result.sen_slope, result.significant);
+
+// 多期栅格逐像素 MK 趋势
+let mut ts = RasterTimeSeries::new();
+ts.add(2020, ndvi_2020)?;
+ts.add(2021, ndvi_2021)?;
+ts.add(2023, ndvi_2023)?;
+let tau_map = ts.pixelwise_trend()?;   // 每个像素的 τ
+let change = ts.change_detection(2020, 2023, 0.1)?;  // 改善/退化图
+```
+
+### 4.7 新能源选址
+
+```rust
+use geo_plugin_energy::{EnergyPlugin, EnergyConfig};
+
+let plugin = EnergyPlugin::new(EnergyConfig::default());
+
+// 光伏选址：坡度 < 25° + 年辐射 > 1500 kWh/m²
+let solar = plugin.assess_solar("场址A", aoi_geojson, &dem, &radiation)?;
+println!("适宜比例: {:.0}%, 评级: {}", solar.suitable_ratio * 100.0, solar.grade);
+
+// 风电选址：风速 > 5.5 m/s + 坡度 < 15°
+let wind = plugin.assess_wind("风场B", aoi_geojson, &dem, &wind_speed)?;
+println!("均风速: {:.1} m/s, 评级: {}", wind.mean_windspeed, wind.grade);
+```
+
+### 4.8 DuckDB 嵌入式数据库
+
+```rust
+use geo_adapter_duckdb::DuckDbStore;
+
+// 内存模式（零部署）
+let store = DuckDbStore::in_memory()?;
+
+// GeoJSON 直接导入
+let count = store.ingest_geojson_raw("sites", geojson_fc_str)?;
+
+// SQL 查询（自动 SQL 注入拦截）
+let rows = store.query_json("SELECT name, lon, lat FROM sites WHERE lon > 104")?;
+
+// 空间范围查询
+let in_bbox = store.query_bbox("sites", 104.0, 30.0, 105.0, 31.0)?;
+```
+
+### 4.9 STAC 影像搜索
+
+```rust
+use geo_adapter_stac::StacClient;
+
+let client = StacClient::new("https://planetarycomputer.microsoft.com/api/stac/v1");
+
+// 按 AOI + 时间 + 云量搜索 Sentinel-2
+let items = client.search(
+    "sentinel-2-l2a",
+    104.0, 30.0, 105.0, 31.0,  // 成都 AOI
+    "2025-06-01", "2025-06-30",
+    10,
+).await?;
+
+for item in &items {
+    println!("{} - 云量: {:.0}%", item.id, item.cloud_cover.unwrap_or(0.0));
 }
 ```
 

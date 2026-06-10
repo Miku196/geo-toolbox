@@ -151,6 +151,8 @@ cargo test --workspace
 | `geo-core` | 几何基类、CRS、错误 | `BBox`, `CrsRegistry`, `GeoError`, `SpatialRow`, `builtin::wgs84_to_gcj02()` |
 | `geo-raster` | 栅格运算、NDVI | `RasterBand`, `compute_ndvi()`, `band_add/sub/div` |
 | `geo-vector` | 矢量运算 | `buffer()`, `intersect()`, `union_all()`, `centroid()` |
+| `geo-tile` | 矢量/栅格瓦片 | `latlon_to_tile()`, `MvtEncoder`, `PmtilesReader/Writer` |
+| `geo-temporal` | 时空序列分析 | `mann_kendall()`, `linear_trend()`, `RasterTimeSeries` |
 | `geo-index` | 空间索引 | `encode()`, `decode()`, `neighbors()`, `bbox_to_geohashes()` |
 | `geo-stats` | 空间统计 | `zonal_stats()`, `ZonalResult` |
 | `geo-io` | 数据 IO | `parse_feature_collection()`, `extract_bbox()`, NMEA/CamoFox 解析 |
@@ -174,8 +176,9 @@ cargo test --workspace
 | `geo-plugin-hydro` | 流域提取、汇流、淹没 | DEM + 降雨 | 水文报告 |
 | `geo-plugin-geohazard` | 滑坡敏感性 | 地质图 + DEM | 风险等级图 |
 | `geo-plugin-agri` | 作物估产、土壤评级 | 农田 + 遥感 | 产量报告 |
+| `geo-plugin-energy` | 光伏/风电选址 | DEM + 辐射/风速 | 适宜性等级 |
 
-### Layer 3: Adapters — 外部适配器（7 crates）
+### Layer 3: Adapters — 外部适配器（9 crates）
 
 | 适配器 | 外部系统 | 通信方式 |
 |--------|---------|---------|
@@ -186,6 +189,8 @@ cargo test --workspace
 | `geo-adapter-cli` | GDAL/DVC/shell | 子进程 |
 | `geo-adapter-mcp` | AI Agent | JSON-RPC stdio |
 | `geo-adapter-iot` | 传感器 | MQTT/NATS |
+| `geo-adapter-duckdb` | SQLite 嵌入式 | rusqlite 内存/文件 |
+| `geo-adapter-stac` | STAC API | HTTP (reqwest) |
 
 ---
 
@@ -1078,6 +1083,8 @@ geo-toolbox/
 │   ├── geo-carbon-math/     # IPCC 碳核算公式
 │   ├── geo-raster/          # 栅格运算 + NDVI
 │   ├── geo-vector/          # 矢量运算
+│   ├── geo-tile/            # MVT/PMTiles 瓦片
+│   ├── geo-temporal/        # 时空序列分析
 │   ├── geo-index/           # GeoHash 空间索引
 │   ├── geo-stats/           # 分区统计
 │   ├── geo-io/              # GeoJSON/CSV/NMEA 解析
@@ -1086,8 +1093,11 @@ geo-toolbox/
 │   ├── geo-ogc/             # WMS/WFS/WPS
 │   └── geo-registry/        # 插件注册中心
 ├── plugins/                 # Layer 2: 专业插件（7 crates）
+│   ├── geo-plugin-energy/   # 新能源选址
 │   └── geo-plugin-{carbon,ecology,survey,urban,hydro,geohazard,agri}/
-├── adapters/                # Layer 3: 外部适配器（7 crates）
+├── adapters/                # Layer 3: 外部适配器（9 crates）
+│   ├── geo-adapter-duckdb/  # SQLite 嵌入式
+│   ├── geo-adapter-stac/    # STAC 数据发现
 │   └── geo-adapter-{postgis,gee,qgis,cad,cli,mcp,iot}/
 ├── crates/                  # 入口（2 crates）
 │   ├── geo-cli/             # CLI + MCP
@@ -1101,7 +1111,7 @@ geo-toolbox/
 ### 测试
 
 ```bash
-cargo test --workspace                         # 全部（167 tests）
+cargo test --workspace                         # 全部（198 tests）
 cargo test -p geo-raster                       # 单个 crate
 cargo test -p geo-plugin-ecology               # 插件集成测试
 # 含数据库测试（需设置 DATABASE_URL）
