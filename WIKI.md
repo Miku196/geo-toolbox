@@ -215,7 +215,7 @@ cargo test --workspace
 
 ```
 geo-toolbox/
-├── core/                          # 纯 Rust 核心引擎（11 crates）
+├── core/                          # 纯 Rust 核心引擎（13 crates）
 │   ├── geo-core/                  # 几何基类、CRS 注册、错误类型、插件 trait
 │   ├── geo-carbon-math/           # IPCC Tier 1 碳核算公式
 │   ├── geo-raster/                # 栅格运算 + NDVI/NDWI
@@ -230,7 +230,7 @@ geo-toolbox/
 │   ├── geo-ogc/                   # WMS/WFS/WPS 标准
 │   └── geo-registry/              # 插件注册调度中心
 │
-├── plugins/                       # 专业领域插件（8 crates）
+├── plugins/                       # 专业领域插件（10 crates）
 │   ├── geo-plugin-carbon/         # 碳核算插件
 │   ├── geo-plugin-ecology/        # 生态修复评估（NDVI + 碳汇 + 报告）
 │   ├── geo-plugin-survey/         # 测绘
