@@ -239,10 +239,13 @@ geo-toolbox/
 │   ├── geo-plugin-geohazard/      # 地质灾害
 │   └── geo-plugin-agri/           # 农业
 │   ├── geo-plugin-energy/         # 新能源选址
+│   ├── geo-plugin-forestry/       # 林业碳汇
+│   ├── geo-plugin-coastal/        # 海岸带
 │
-├── adapters/                      # 外部适配器（9 crates）
+├── adapters/                      # 外部适配器（10 crates）
 │   ├── geo-adapter-duckdb/        # SQLite 嵌入式
 │   ├── geo-adapter-stac/          # STAC 数据发现
+│   ├── geo-adapter-osm/           # OpenStreetMap
 │   ├── geo-adapter-postgis/       # PostgreSQL + PostGIS
 │   ├── geo-adapter-gee/           # Google Earth Engine
 │   ├── geo-adapter-qgis/          # QGIS 桥接
@@ -471,17 +474,45 @@ use geo_adapter_stac::StacClient;
 
 let client = StacClient::new("https://planetarycomputer.microsoft.com/api/stac/v1");
 
-// 按 AOI + 时间 + 云量搜索 Sentinel-2
 let items = client.search(
     "sentinel-2-l2a",
-    104.0, 30.0, 105.0, 31.0,  // 成都 AOI
-    "2025-06-01", "2025-06-30",
-    10,
+    104.0, 30.0, 105.0, 31.0,
+    "2025-06-01", "2025-06-30", 10,
 ).await?;
+```
 
-for item in &items {
-    println!("{} - 云量: {:.0}%", item.id, item.cloud_cover.unwrap_or(0.0));
-}
+### 4.10 林业碳汇
+
+```rust
+use geo_plugin_forestry::{ForestryPlugin, ForestryConfig};
+
+let plugin = ForestryPlugin::new(ForestryConfig::default());
+let result = plugin.assess_carbon_stock(
+    "林场A", aoi, &red_old, &nir_old, &red_new, &nir_new,
+    2020, 2025, 200.0, 500.0,
+)?;
+println!("年碳汇: {:.0} tCO₂/yr, CCER: {}", -result.annual_sink_tco2_per_yr, result.ccer_applicable);
+```
+
+### 4.11 海岸带监测
+
+```rust
+use geo_plugin_coastal::CoastalPlugin;
+
+let report = CoastalPlugin::new().assess_shoreline(
+    "上海", aoi, &dem, &ndvi_2015, &ndvi_2025, 2015, 2025, 1.0,
+)?;
+println!("侵蚀: {:.0}%, 淹没: {:.0} ha", report.erosion_ratio*100.0, report.inundated_area_ha);
+```
+
+### 4.12 OSM 数据拉取
+
+```rust
+use geo_adapter_osm::OsmClient;
+
+let client = OsmClient::new();
+let elements = client.query_bbox(104.0,30.0,105.0,31.0, OsmFeature::Highway).await?;
+let fc = OsmClient::to_geojson(&elements);
 ```
 
 ---

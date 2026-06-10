@@ -181,8 +181,10 @@ cargo test --workspace
 | `geo-plugin-geohazard` | 滑坡敏感性 | 地质图 + DEM | 风险等级图 |
 | `geo-plugin-agri` | 作物估产、土壤评级 | 农田 + 遥感 | 产量报告 |
 | `geo-plugin-energy` | 光伏/风电选址 | DEM + 辐射/风速 | 适宜性等级 |
+| `geo-plugin-forestry` | 林业碳汇计量 | 多期NDVI + 样地 | 碳储量 + CCER报告 |
+| `geo-plugin-coastal` | 海岸带变化 | 多期NDVI + DEM | 侵蚀速率 + 淹没 |
 
-### Layer 3: Adapters — 外部适配器（9 crates）
+### Layer 3: Adapters — 外部适配器（10 crates）
 
 | 适配器 | 外部系统 | 通信方式 |
 |--------|---------|---------|
@@ -195,6 +197,7 @@ cargo test --workspace
 | `geo-adapter-iot` | 传感器 | MQTT/NATS |
 | `geo-adapter-duckdb` | SQLite 嵌入式 | rusqlite 内存/文件 |
 | `geo-adapter-stac` | STAC API | HTTP (reqwest) |
+| `geo-adapter-osm` | OpenStreetMap | Overpass API |
 
 ---
 
@@ -1098,10 +1101,13 @@ geo-toolbox/
 │   └── geo-registry/        # 插件注册中心
 ├── plugins/                 # Layer 2: 专业插件（7 crates）
 │   ├── geo-plugin-energy/   # 新能源选址
+│   ├── geo-plugin-forestry/ # 林业碳汇
+│   ├── geo-plugin-coastal/  # 海岸带
 │   └── geo-plugin-{carbon,ecology,survey,urban,hydro,geohazard,agri}/
-├── adapters/                # Layer 3: 外部适配器（9 crates）
+├── adapters/                # Layer 3: 外部适配器（10 crates）
 │   ├── geo-adapter-duckdb/  # SQLite 嵌入式
 │   ├── geo-adapter-stac/    # STAC 数据发现
+│   ├── geo-adapter-osm/     # OpenStreetMap
 │   └── geo-adapter-{postgis,gee,qgis,cad,cli,mcp,iot}/
 ├── crates/                  # 入口（2 crates）
 │   ├── geo-cli/             # CLI + MCP
