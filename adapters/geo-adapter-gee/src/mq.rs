@@ -13,7 +13,7 @@
 //! geo-toolbox ← GeeMq::subscribe() ← gee.callbacks topic
 //! ```
 
-use geo_core::errors::{GeoError, GeoResult};
+use geo_core::errors::GeoResult;
 
 use crate::dispatcher::{GeeCallback, GeeTask};
 

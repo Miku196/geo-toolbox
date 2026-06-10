@@ -15,7 +15,6 @@ use geo_core::errors::GeoResult;
 use geo_core::types::BBox;
 use geo_raster::RasterBand;
 use geo_raster::ndvi::compute_ndvi;
-use geo_temporal::trend::linear_trend;
 use serde::Serialize;
 
 use crate::config::ForestryConfig;
@@ -143,7 +142,7 @@ impl ForestryPlugin {
         ndvi_series: &[RasterBand],
         years: &[u16],
     ) -> GeoResult<String> {
-        let bbox = geo_io::extract_bbox(aoi_geojson)?;
+        let _bbox = geo_io::extract_bbox(aoi_geojson)?;
 
         if ndvi_series.len() < 4 || ndvi_series.len() != years.len() {
             return Err(geo_core::GeoError::Validation("need at least 4 time steps".into()));
