@@ -299,14 +299,14 @@ document.getElementById('btnTile').addEventListener('click', () => {
   const el = document.getElementById('tileResult');
   try {
     if (!tileEngine) tileEngine = new TileEngine();
-    const c = tileEngine.latlonToTile(lon, lat, zoom);
-    const [clon, clat] = tileEngine.tileToLatlon(c.x, c.y, c.z);
-    const [w, s, e, n] = tileEngine.tileBounds(c.x, c.y, c.z);
+    const c = tileEngine.latlon_to_tile(lon, lat, zoom);
+    const [clon, clat] = tileEngine.tile_to_latlon(c.x, c.y, c.z);
+    const [w, s, e, n] = tileEngine.tile_bounds(c.x, c.y, c.z);
     let h = `✅ z${c.z} 瓦片: x=${c.x} y=${c.y}\n`;
     h += `瓦片中心: (${clon.toFixed(4)}, ${clat.toFixed(4)})\n`;
     h += `瓦片边界: [${w.toFixed(4)}, ${s.toFixed(4)}] ~ [${e.toFixed(4)}, ${n.toFixed(4)}]\n\n`;
-    h += `🗺 OSM:    ${tileEngine.tileUrl("osm", c.x, c.y, c.z)}\n`;
-    h += `🗺 高德:   ${tileEngine.tileUrl("gaode", c.x, c.y, c.z)}`;
+    h += `🗺 OSM:    ${tileEngine.tile_url("osm", c.x, c.y, c.z)}\n`;
+    h += `🗺 高德:   ${tileEngine.tile_url("gaode", c.x, c.y, c.z)}`;
     el.textContent = h;
     el.className = 'result ok';
   } catch(e) {
@@ -320,7 +320,7 @@ document.getElementById('btnMvt').addEventListener('click', () => {
   const el = document.getElementById('mvtResult');
   try {
     if (!tileEngine) tileEngine = new TileEngine();
-    const bytes = tileEngine.encodeMvt("demo", fc, 0, 0, 0, 4096);
+    const bytes = tileEngine.encode_mvt("demo", fc, 0, 0, 0, 4096);
     el.innerHTML = `✅ MVT 编码完成<br>📦 ${bytes.length} 字节<br><br>🔍 前 40 字节 (hex):<br>${Array.from(bytes.slice(0,40)).map(b=>b.toString(16).padStart(2,'0')).join(' ')}`;
     el.className = 'result ok';
   } catch(e) {

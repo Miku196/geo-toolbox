@@ -805,9 +805,9 @@ console.log(`已存储 ${all.length} 个要素`);
 
 // ── 瓦片引擎 ──
 const tile = new TileEngine();
-const {x, y, z} = tile.latlonToTile(104.06, 30.57, 14);
+const {x, y, z} = tile.latlon_to_tile(104.06, 30.57, 14);
 console.log(`成都 z14: (${x}, ${y})`);
-console.log(tile.tileUrl("gaode", x, y, z));
+console.log(tile.tile_url("gaode", x, y, z));
 ```
 
 ---
