@@ -127,6 +127,7 @@ impl BatchQgisRunner {
         tools: &[QgisTool],
         initial_input: &Path,
     ) -> GeoResult<PathBuf> {
+        geo_core::errors::validate_safe_path(&initial_input.to_string_lossy())?;
         if tools.is_empty() {
             return Err(GeoError::Validation("Pipeline requires at least one tool".into()));
         }
@@ -179,6 +180,7 @@ impl BatchQgisRunner {
         distance: f64,
         output: impl AsRef<Path>,
     ) -> GeoResult<PathBuf> {
+        geo_core::errors::validate_safe_path(&input.as_ref().to_string_lossy())?;
         self.run_tool(&QgisTool {
             algorithm: "native:buffer".into(),
             params: vec![
@@ -197,6 +199,7 @@ impl BatchQgisRunner {
         target_epsg: u16,
         output: impl AsRef<Path>,
     ) -> GeoResult<PathBuf> {
+        geo_core::errors::validate_safe_path(&input.as_ref().to_string_lossy())?;
         self.run_tool(&QgisTool {
             algorithm: "native:reprojectlayer".into(),
             params: vec![
@@ -215,6 +218,8 @@ impl BatchQgisRunner {
         overlay: impl AsRef<Path>,
         output: impl AsRef<Path>,
     ) -> GeoResult<PathBuf> {
+        geo_core::errors::validate_safe_path(&input.as_ref().to_string_lossy())?;
+        geo_core::errors::validate_safe_path(&overlay.as_ref().to_string_lossy())?;
         self.run_tool(&QgisTool {
             algorithm: "native:clip".into(),
             params: vec![
@@ -233,6 +238,8 @@ impl BatchQgisRunner {
         overlay: impl AsRef<Path>,
         output: impl AsRef<Path>,
     ) -> GeoResult<PathBuf> {
+        geo_core::errors::validate_safe_path(&input.as_ref().to_string_lossy())?;
+        geo_core::errors::validate_safe_path(&overlay.as_ref().to_string_lossy())?;
         self.run_tool(&QgisTool {
             algorithm: "native:intersection".into(),
             params: vec![
@@ -251,6 +258,8 @@ impl BatchQgisRunner {
         overlay: impl AsRef<Path>,
         output: impl AsRef<Path>,
     ) -> GeoResult<PathBuf> {
+        geo_core::errors::validate_safe_path(&input.as_ref().to_string_lossy())?;
+        geo_core::errors::validate_safe_path(&overlay.as_ref().to_string_lossy())?;
         self.run_tool(&QgisTool {
             algorithm: "native:union".into(),
             params: vec![
@@ -270,6 +279,8 @@ impl BatchQgisRunner {
         output: impl AsRef<Path>,
         stats: &[&str], // e.g., ["mean", "sum", "count"]
     ) -> GeoResult<PathBuf> {
+        geo_core::errors::validate_safe_path(&polygons.as_ref().to_string_lossy())?;
+        geo_core::errors::validate_safe_path(&raster.as_ref().to_string_lossy())?;
         let stats_str = stats.join(",");
         self.run_tool(&QgisTool {
             algorithm: "native:zonalstatisticsfb".into(),
