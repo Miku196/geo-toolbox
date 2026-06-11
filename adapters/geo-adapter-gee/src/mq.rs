@@ -13,7 +13,9 @@
 //! geo-toolbox ← GeeMq::subscribe() ← gee.callbacks topic
 //! ```
 
-use geo_core::errors::GeoResult;
+// GeoError 仅在 gee feature 开启时使用，关闭时有 unused 警告
+#[allow(unused_imports)]
+use geo_core::errors::{GeoError, GeoResult};
 
 use crate::dispatcher::{GeeCallback, GeeTask};
 
