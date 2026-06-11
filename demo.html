@@ -171,18 +171,7 @@ import init, {
   simplifyGeometry, convexHull
 } from './pkg/geo_wasm.js';
 
-// ── Init ─────────────────────────────────────────────────────────
-const st = document.getElementById('initStatus');
-try {
-  await init();
-  initPanicHook();
-  st.innerHTML = '<span class="dot ok"></span> WASM 就绪';
-} catch(e) {
-  st.innerHTML = '<span class="dot err"></span> ' + e;
-  console.error('WASM init:', e);
-}
-
-// ── Tabs ─────────────────────────────────────────────────────────
+// ── Tabs (必须在 init 前注册，否则 WASM 加载失败会导致整页不可用) ──
 document.getElementById('tabs').addEventListener('click', e => {
   if (!e.target.classList.contains('tab')) return;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -339,6 +328,19 @@ document.getElementById('btnMvt').addEventListener('click', () => {
     el.className = 'result err';
   }
 });
+
+// ── Init (放最后，不影响页面交互) ──
+const st = document.getElementById('initStatus');
+(async () => {
+  try {
+    await init();
+    initPanicHook();
+    st.innerHTML = '<span class="dot ok"></span> WASM 就绪';
+  } catch(e) {
+    st.innerHTML = '<span class="dot err"></span> ' + e;
+    console.error('WASM init:', e);
+  }
+})();
 </script>
 </body>
 </html>
