@@ -26,6 +26,7 @@
 mod mvt;
 mod pmtiles;
 mod tile_index;
+pub mod tools;
 
 pub use mvt::{MvtEncoder, MvtLayer, MvtFeature, GeomType};
 pub use pmtiles::{PmtilesReader, PmtilesWriter, TileType};

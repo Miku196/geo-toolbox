@@ -7,5 +7,7 @@ description = "农业插件 — 作物估产、土壤肥力评级、灌溉分区
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
 serde.workspace = true
+serde_json.workspace = true
 toml.workspace = true

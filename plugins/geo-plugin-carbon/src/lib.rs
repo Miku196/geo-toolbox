@@ -8,5 +8,6 @@ pub mod carbon_sink;
 pub mod config;
 pub mod lca;
 pub mod plugin;
+pub mod tools;
 pub use config::CarbonConfig;
 pub use plugin::CarbonPlugin;

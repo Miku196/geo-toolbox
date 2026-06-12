@@ -7,6 +7,7 @@ description = "纯 Rust 报告基类 — Tera 模板引擎封装、Markdown/HTML
 
 [dependencies]
 geo-core = { path = "../geo-core" }
+geo-registry = { path = "../geo-registry" }
 serde.workspace = true
 serde_json.workspace = true
 tera.workspace = true

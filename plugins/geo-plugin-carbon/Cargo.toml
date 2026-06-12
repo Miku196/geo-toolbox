@@ -6,6 +6,7 @@ edition.workspace = true
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
 geo-carbon-math = { path = "../../core/geo-carbon-math" }
 toml.workspace = true
 serde.workspace = true

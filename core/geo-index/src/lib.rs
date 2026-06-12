@@ -8,5 +8,6 @@
 #![allow(missing_docs)]
 
 pub mod geohash;
+pub mod tools;
 
 pub use geohash::{encode, decode, neighbors, bbox_to_geohashes, GeohashBounds};

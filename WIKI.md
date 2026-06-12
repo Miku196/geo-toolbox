@@ -1,7 +1,7 @@
 # geo-toolbox Wiki
 
 > 从零到一：安装、开发、部署全流程指南。
-> 最后更新：2026-06-11
+> 最后更新：2026-06-13
 
 ---
 
@@ -39,6 +39,10 @@
   - [7.5 在 CLI 中注册适配器](#75-在-cli-中注册适配器)
 - [8. 测试](#8-测试)
 - [9. 常见问题](#9-常见问题)
+- [10. MCP 集成（AI Agent 调用）](#10-mcp-集成ai-agent-调用)
+  - [10.1 启动 MCP Server](#101-启动-mcp-server)
+  - [10.2 完整工具列表](#102-完整工具列表)
+  - [10.3 安全审计](#103-安全审计)
 
 ---
 
@@ -1943,3 +1947,92 @@ cargo build --release --no-default-features --features minimal
 ```
 
 如果多个插件需要同一功能，应将其下沉到 Core 层。
+
+---
+
+## 10. MCP 集成（AI Agent 调用）
+
+geo-toolbox 内置 MCP (Model Context Protocol) Server，支持 AI Agent（Claude、Pi Agent 等）通过 JSON-RPC stdio 直接调用全部 44 个空间分析工具。
+
+### 10.1 启动 MCP Server
+
+```bash
+# 编译（全功能）
+cargo build --release
+
+# 启动 MCP Server（stdio 模式）
+./target/release/geo-toolbox mcp-serve
+
+# 轻量模式（仅 Core 功能，零外部依赖）
+cargo build --release --no-default-features --features minimal
+```
+
+### 10.2 完整工具列表
+
+| 分类 | 工具名称 | 功能 | 来源 crate |
+|------|---------|------|-----------|
+| **CRS** | `crs_list` | 列出所有坐标系 | geo-io |
+| | `crs_transform` | 坐标变换（含GCJ-02/BD-09） | geo-io |
+| **瓦片** | `tile_latlon_to_tile` | 经纬度→瓦片坐标 | geo-tile |
+| | `tile_bounds` | 瓦片边界 | geo-tile |
+| | `tile_url` | OSM/高德/天地图URL | geo-tile |
+| **索引** | `geohash_encode` | 经纬度→GeoHash | geo-index |
+| | `geohash_decode` | GeoHash→边界框 | geo-index |
+| | `geohash_neighbors` | 8邻域GeoHash | geo-index |
+| **矢量** | `vector_buffer` | 多边形缓冲区 | geo-vector |
+| | `vector_intersect` | 多边形相交 | geo-vector |
+| | `vector_area` | 多边形面积 | geo-vector |
+| | `vector_centroid` | 多边形质心 | geo-vector |
+| **时序** | `temporal_trend` | Mann-Kendall趋势+Sen斜率 | geo-temporal |
+| **统计** | `zonal_stats` | 栅格分区统计 | geo-stats |
+| **碳核算** | `carbon_calculate_raw` | GeoJSON+CSV→碳排放 | geo-carbon-math |
+| | `carbon_calculate_geojson` | 插件配置+GeoJSON→碳报告 | geo-plugin-carbon |
+| **报告** | `report_carbon` | 碳核算Markdown报告 | geo-report |
+| | `report_render` | 通用Tera模板渲染 | geo-report |
+| **生态** | `ecology_assess` | 生态修复评估（NDVI+碳汇） | geo-plugin-ecology |
+| **能源** | `energy_solar_suitability` | 光伏选址适宜性 | geo-plugin-energy |
+| **林业** | `forestry_carbon_stock` | 林业碳储量变化 | geo-plugin-forestry |
+| **海岸** | `coastal_shoreline` | 海岸带侵蚀+淹没 | geo-plugin-coastal |
+| **测绘** | `survey_earthwork` | 土方量计算 | geo-plugin-survey |
+| **水文** | `hydro_inundation` | 洪水淹没面积 | geo-plugin-hydro |
+| | `hydro_runoff` | 径流系数 | geo-plugin-hydro |
+| **地灾** | `geohazard_landslide` | 滑坡敏感性指数 | geo-plugin-geohazard |
+| **农业** | `agri_yield` | 作物估产 | geo-plugin-agri |
+| | `agri_soil` | 土壤评级 | geo-plugin-agri |
+| **规划** | `urban_far` | 容积率+合规检查 | geo-plugin-urban |
+| **数据** | `ingest_camofox` | CamoFox JSON解析 | geo-io |
+| | `ingest_nmea` | NMEA GPS日志解析 | geo-io |
+| | `duckdb_query` | DuckDB SQL查询 | geo-adapter-duckdb |
+| | `duckdb_ingest_geojson` | GeoJSON→DuckDB | geo-adapter-duckdb |
+| | `stac_search` | STAC影像目录搜索 ⚠网络 | geo-adapter-stac |
+| | `osm_query_bbox` | OSM要素查询 ⚠网络 | geo-adapter-osm |
+| | `store_query` | PostGIS SQL查询 ⚠DB | geo-adapter-postgis |
+| | `store_migrate` | PostGIS迁移 ⚠DB | geo-adapter-postgis |
+| **外部** | `qgis_buffer` | QGIS缓冲区 ⚠QGIS | geo-adapter-qgis |
+| | `qgis_reproject` | QGIS重投影 ⚠QGIS | geo-adapter-qgis |
+| | `cli_cog_convert` | GDAL COG转换 ⚠GDAL | geo-adapter-cli |
+| | `cli_ogr2ogr` | 矢量格式转换 ⚠GDAL | geo-adapter-cli |
+| | `gee_classify` | GEE土地覆盖分类 ⚠GEE | geo-adapter-gee |
+| | `gee_status` | GEE任务状态查询 ⚠GEE | geo-adapter-gee |
+| | `cad_export_geojson` | PostGIS→GeoJSON ⚠DB | geo-adapter-cad |
+| | `dvc_snapshot` | DVC数据版本快照 ⚠DVC | geo-adapter-postgis |
+| | `dvc_hash` | DVC文件哈希 ⚠DVC | geo-adapter-postgis |
+
+> ⚠ 标记表示需要特定的外部依赖或环境变量。
+
+### 10.3 安全审计
+
+geo-toolbox 实施了以下安全措施：
+
+| 防护 | 机制 | 范围 |
+|------|------|------|
+| SQL 注入防护 | `validate_select_sql()` 拦截 DROP/DELETE/INSERT/UPDATE/CREATE 等危险关键词，仅允许 SELECT | PostGIS 查询 |
+| 路径遍历防护 | `validate_safe_path()` 拦截 `..`、shell 元字符(`;\|&$`()<>`)、敏感系统路径(/etc、/proc、C:\Windows) | QGIS、CLI adapter |
+| 参数化查询 | 所有 INSERT 使用 `$1`、`$2` 绑定参数，不拼接 SQL | PostGIS 写入 |
+| 子进程参数隔离 | `Command::new().args()` 逐参数传递，不拼接 shell 命令 | QGIS、GDAL 子进程 |
+| 凭证管理 | 数据库密码通过 `DATABASE_URL` 环境变量注入，不硬编码 | 全局 |
+| Rust 内存安全 | 无 unsafe 代码块，编译器保证内存安全 | 全局 |
+
+**已知风险**（低优先级）：
+- CLI `store write` 命令不校验文件路径，可能读取任意文件（但仅读取，不写入）
+- `format!("COMPRESS={}", user_input)` 在 GDAL CLI 中可能被空格拆分参数

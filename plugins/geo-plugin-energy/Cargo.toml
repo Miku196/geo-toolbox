@@ -7,6 +7,7 @@ description = "新能源选址评估插件 — 光伏/风电适宜性分析"
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
 geo-raster = { path = "../../core/geo-raster" }
 geo-stats = { path = "../../core/geo-stats" }
 geo-io = { path = "../../core/geo-io" }

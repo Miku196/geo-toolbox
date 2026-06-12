@@ -7,5 +7,7 @@ description = "纯 Rust 空间索引基类 — GeoHash 编解码、R-tree 封装
 
 [dependencies]
 geo-core = { path = "../geo-core" }
+geo-registry = { path = "../geo-registry" }
 serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true

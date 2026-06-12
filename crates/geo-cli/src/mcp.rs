@@ -21,7 +21,7 @@ const SERVER_INFO: &str = "geo-toolbox";
 const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Maximum duration for a single tool call before timeout.
-const TOOL_TIMEOUT_SECS: u64 = 30;
+const TOOL_TIMEOUT_SECS: u64 = 300;
 /// Maximum concurrent requests (rejects excess).
 const MAX_CONCURRENT: usize = 8;
 /// Maximum total connection duration.

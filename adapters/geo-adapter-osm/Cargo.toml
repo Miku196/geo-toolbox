@@ -7,6 +7,7 @@ description = "OpenStreetMap 适配器 — 按 AOI 拉取 OSM 路网/建筑/POI"
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
 reqwest = { workspace = true }
 serde.workspace = true
 serde_json.workspace = true

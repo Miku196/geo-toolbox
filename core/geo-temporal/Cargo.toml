@@ -7,6 +7,7 @@ description = "时空序列分析 — NDVI 年际趋势、Mann-Kendall 突变检
 
 [dependencies]
 geo-core = { path = "../geo-core" }
+geo-registry = { path = "../geo-registry" }
 geo-raster = { path = "../geo-raster" }
 ndarray.workspace = true
 serde.workspace = true

@@ -9,6 +9,7 @@
 
 mod adapter;
 mod store;
+pub mod tools;
 
 pub use adapter::DuckDbAdapter;
 pub use store::DuckDbStore;

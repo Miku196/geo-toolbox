@@ -6,6 +6,8 @@ license.workspace = true
 description = "纯 Rust 碳核算公式引擎 — IPCC Tier 1 方程、排放因子插值、面积加权，零外部系统依赖"
 
 [dependencies]
+geo-core = { path = "../geo-core" }
+geo-registry = { path = "../geo-registry" }
 geo.workspace = true
 geo-types.workspace = true
 serde = { workspace = true }

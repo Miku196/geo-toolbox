@@ -19,6 +19,7 @@
 
 mod adapter;
 mod client;
+pub mod tools;
 
 pub use adapter::StacAdapter;
 pub use client::{StacClient, StacItem, StacCollection};

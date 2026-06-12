@@ -10,6 +10,7 @@ gdal-bindings = ["gdal"]
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
 geo-adapter-postgis = { path = "../geo-adapter-postgis", optional = true }
 serde.workspace = true
 serde_json.workspace = true

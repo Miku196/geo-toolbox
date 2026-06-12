@@ -14,6 +14,7 @@
 
 pub mod ops;
 pub mod stats;
+pub mod tools;
 
 pub use ops::{buffer, intersect, union_all};
 pub use stats::{centroid, feature_area};

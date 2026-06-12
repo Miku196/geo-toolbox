@@ -6,6 +6,7 @@
 
 pub mod config;
 pub mod survey;
+pub mod tools;
 
 pub use config::SurveyConfig;
 pub use survey::SurveyPlugin;

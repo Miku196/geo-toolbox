@@ -33,6 +33,7 @@ mod engine;
 mod factor;
 mod feature;
 mod report;
+pub mod tools;
 
 pub use config::CarbonParams;
 pub use engine::CarbonEngine;

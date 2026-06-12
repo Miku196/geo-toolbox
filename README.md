@@ -11,6 +11,7 @@
 [![Rust](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-164%20pass-green.svg)]()
+[![MCP Tools](https://img.shields.io/badge/mcp-44%20tools-blue.svg)]()
 [![NPM](https://img.shields.io/badge/npm-geo--wasm-red)](https://www.npmjs.com/package/geo-wasm)
 
 ---
@@ -67,6 +68,93 @@
 ```
 
 核心设计原则：依赖方向严格单向、WASM 数据不出网、Rust 做胶水 Python 做重活、每 crate 独立可测、Feature flags 控制依赖。
+
+---
+
+## 🤖 MCP 工具一览（44 tools）
+
+geo-toolbox 内置 MCP Server，所有工具可直接被 AI Agent 调用。全功能编译（`cargo build --release`）后可用以下全部工具：
+
+### 空间计算（Core）
+| 工具 | 说明 | 来源 |
+|------|------|------|
+| `crs_list` | 列出所有坐标系 | geo-io |
+| `crs_transform` | 坐标变换（WGS84↔GCJ-02↔BD-09 等） | geo-io |
+| `tile_latlon_to_tile` | 经纬度→瓦片坐标 | geo-tile |
+| `tile_bounds` | 瓦片边界查询 | geo-tile |
+| `tile_url` | OSM/高德/天地图 瓦片 URL | geo-tile |
+| `geohash_encode` | 经纬度→GeoHash | geo-index |
+| `geohash_decode` | GeoHash→边界框 | geo-index |
+| `geohash_neighbors` | 8邻域GeoHash | geo-index |
+| `vector_buffer` | 多边形缓冲区 | geo-vector |
+| `vector_intersect` | 多边形相交 | geo-vector |
+| `vector_area` | 多边形面积 | geo-vector |
+| `vector_centroid` | 多边形质心 | geo-vector |
+| `temporal_trend` | Mann-Kendall趋势+Sen斜率 | geo-temporal |
+| `zonal_stats` | 栅格分区统计 | geo-stats |
+
+### 碳核算
+| 工具 | 说明 | 来源 |
+|------|------|------|
+| `carbon_calculate_raw` | GeoJSON+CSV→碳核算报告 | geo-carbon-math |
+| `carbon_calculate_geojson` | GeoJSON+插件配置→碳报告 | geo-plugin-carbon |
+| `report_carbon` | 生成碳核算Markdown报告 | geo-report |
+| `report_render` | 渲染插件Tera模板（通用） | geo-report |
+
+### 专业领域插件
+| 工具 | 说明 |
+|------|------|
+| `ecology_assess` | 生态修复评估（NDVI+碳汇） |
+| `energy_solar_suitability` | 光伏选址适宜性 |
+| `forestry_carbon_stock` | 林业碳储量变化 |
+| `coastal_shoreline` | 海岸带侵蚀+淹没 |
+| `survey_earthwork` | 土方量计算 |
+| `hydro_inundation` | 洪水淹没面积 |
+| `hydro_runoff` | 径流系数 |
+| `geohazard_landslide` | 滑坡敏感性指数 |
+| `agri_yield` | 作物估产 |
+| `agri_soil` | 土壤评级 |
+| `urban_far` | 容积率计算 |
+
+### 数据接入
+| 工具 | 说明 | 需要 |
+|------|------|------|
+| `ingest_camofox` | CamoFox JSON解析 | — |
+| `ingest_nmea` | NMEA GPS日志解析 | — |
+| `duckdb_query` | DuckDB SQL查询 | — |
+| `duckdb_ingest_geojson` | GeoJSON→DuckDB | — |
+| `stac_search` | STAC影像目录搜索 | 网络 |
+| `osm_query_bbox` | OSM要素查询 | 网络 |
+| `store_query` | PostGIS SQL查询 | DATABASE_URL |
+| `store_migrate` | PostGIS迁移 | DATABASE_URL |
+
+### 外部系统桥接
+| 工具 | 说明 | 需要 |
+|------|------|------|
+| `qgis_buffer` | QGIS缓冲区 | QGIS安装+`QGIS_PROCESS_PATH` |
+| `qgis_reproject` | QGIS重投影 | QGIS安装+`QGIS_PROCESS_PATH` |
+| `cli_cog_convert` | GDAL COG转换 | GDAL安装 |
+| `cli_ogr2ogr` | 矢量格式转换 | GDAL安装 |
+| `gee_classify` | GEE土地覆盖分类 | GEE认证 |
+| `gee_status` | GEE任务状态查询 | GEE认证 |
+| `cad_export_geojson` | PostGIS→GeoJSON导出 | DATABASE_URL |
+| `dvc_snapshot` | DVC数据版本快照 | DVC CLI |
+| `dvc_hash` | DVC文件哈希 | DVC CLI |
+
+### 启动 MCP Server
+```bash
+geo-toolbox mcp-serve                  # stdio模式（AI Agent直连）
+```
+
+在 OpenCode 中配置：
+```json
+"geo-toolbox": {
+  "type": "local",
+  "command": ["path/to/geo-toolbox.exe", "mcp-serve"],
+  "env": { "QGIS_PROCESS_PATH": "E:/QGIS/bin/qgis_process.bat" },
+  "enabled": true
+}
+```
 
 ---
 

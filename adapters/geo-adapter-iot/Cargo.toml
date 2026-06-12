@@ -10,6 +10,7 @@ mqtt = ["dep:rumqttc"]
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
 geo-adapter-postgis = { path = "../geo-adapter-postgis" }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true

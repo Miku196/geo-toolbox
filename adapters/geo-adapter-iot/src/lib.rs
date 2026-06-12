@@ -3,3 +3,4 @@
 pub mod adapter;
 #[cfg(feature = "mqtt")]
 pub mod mqtt;
+pub mod tools;

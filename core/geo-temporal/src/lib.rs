@@ -20,6 +20,7 @@
 pub mod trend;
 pub mod decompose;
 pub mod raster_ts;
+pub mod tools;
 
 pub use trend::{linear_trend, mann_kendall, TrendResult};
 pub use decompose::{seasonal_decompose, DecomposeResult};
