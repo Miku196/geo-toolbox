@@ -257,7 +257,7 @@ mod tests {
         let mq = FileMq::new(&dir);
         let dispatcher = GeeDispatcher::new(Box::new(mq));
 
-        let cid = dispatcher
+        let _cid = dispatcher
             .dispatch_change_detection(
                 "s3://geo-data/vector/aoi.gpkg",
                 2020,

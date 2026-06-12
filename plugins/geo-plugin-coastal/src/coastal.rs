@@ -23,10 +23,15 @@ pub struct ShorelineReport {
     pub summary: String,
 }
 
+impl Default for CoastalPlugin {
+    fn default() -> Self { Self }
+}
+
 impl CoastalPlugin {
     pub fn new() -> Self { Self }
 
     /// 岸线变化评估（基于两期 NDVI 差值判断陆地→水体转换）。
+    #[allow(clippy::too_many_arguments)]
     pub fn assess_shoreline(
         &self,
         aoi_name: &str,

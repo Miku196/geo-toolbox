@@ -12,19 +12,22 @@ path = "src/main.rs"
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
 geo-registry = { path = "../../core/geo-registry" }
-geo-adapter-postgis = { path = "../../adapters/geo-adapter-postgis" }
 geo-io = { path = "../../core/geo-io" }
-geo-adapter-iot = { path = "../../adapters/geo-adapter-iot" }
+geo-raster = { path = "../../core/geo-raster" }
+geo-report = { path = "../../core/geo-report" }
 geo-plugin-carbon = { path = "../../plugins/geo-plugin-carbon" }
 geo-plugin-ecology = { path = "../../plugins/geo-plugin-ecology" }
-geo-raster = { path = "../../core/geo-raster" }
-geo-adapter-cad = { path = "../../adapters/geo-adapter-cad" }
-geo-report = { path = "../../core/geo-report" }
+
+# Adapters — all optional, enable via feature flags
+geo-adapter-postgis = { path = "../../adapters/geo-adapter-postgis", optional = true }
+geo-adapter-cad = { path = "../../adapters/geo-adapter-cad", optional = true }
+geo-adapter-iot = { path = "../../adapters/geo-adapter-iot", optional = true }
 geo-adapter-gee = { path = "../../adapters/geo-adapter-gee", optional = true }
 geo-adapter-cli = { path = "../../adapters/geo-adapter-cli", optional = true }
 geo-adapter-qgis = { path = "../../adapters/geo-adapter-qgis", optional = true }
+
 clap.workspace = true
-sqlx.workspace = true
+sqlx = { workspace = true, optional = true }
 uuid.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -35,9 +38,12 @@ chrono = { version = "0.4", features = ["serde"] }
 futures.workspace = true
 
 [features]
-default = ["gee", "qgis", "gdal"]
+default = ["postgis", "cad", "gee", "qgis", "gdal"]
+postgis = ["geo-adapter-postgis", "sqlx"]
+cad = ["geo-adapter-cad"]
+iot = ["geo-adapter-iot", "geo-adapter-iot/mqtt"]
 gee = ["geo-adapter-gee"]
 qgis = ["geo-adapter-qgis"]
 gdal = ["geo-adapter-cli"]
-mqtt = ["geo-adapter-iot/mqtt"]
+mqtt = ["iot"]
 minimal = []

@@ -86,6 +86,7 @@ pub fn seasonal_decompose(values: &[f64], period: usize, mode: DecomposeMode) ->
     DecomposeResult { trend, seasonal, residual, original: values.to_vec() }
 }
 
+#[allow(clippy::needless_range_loop)]
 /// 中心移动平均（消除季节波动）。
 fn centered_moving_average(values: &[f64], period: usize) -> Vec<f64> {
     let n = values.len();

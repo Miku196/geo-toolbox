@@ -1,6 +1,7 @@
 //! geo-io: Data ingestion parsers.
 #![allow(missing_docs)]
 pub mod camofox;
+pub mod tools;
 pub mod geojson;
 pub mod nmea;
 pub mod validator;

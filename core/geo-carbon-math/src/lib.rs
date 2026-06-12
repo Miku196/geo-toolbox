@@ -28,11 +28,13 @@
 
 #![warn(missing_docs)]
 
+mod config;
 mod engine;
 mod factor;
 mod feature;
 mod report;
 
+pub use config::CarbonParams;
 pub use engine::CarbonEngine;
 pub use factor::{EmissionFactor, load_factors_from_csv};
 pub use feature::{GeoFeature, compute_area_ha};

@@ -28,6 +28,10 @@ pub struct OsmClient {
     client: reqwest::Client,
 }
 
+impl Default for OsmClient {
+    fn default() -> Self { Self::new() }
+}
+
 impl OsmClient {
     pub fn new() -> Self {
         Self {

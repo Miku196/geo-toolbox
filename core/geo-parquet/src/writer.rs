@@ -217,7 +217,7 @@ fn parse_wkb_bbox(wkb: &[u8]) -> Option<Geometry<f64>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use geo_types::{Point, Polygon, LineString};
+    use geo_types::Point;
 
     #[test]
     fn test_writer_add_geometry() {

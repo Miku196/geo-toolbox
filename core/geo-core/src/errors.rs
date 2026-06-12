@@ -16,6 +16,33 @@ pub enum GeoError {
     #[error("CRS transform failed: {0}")]
     CrsTransform(String),
 
+    /// Entity not found (AOI, task, feature).
+    #[error("{entity} not found: {id}")]
+    NotFound {
+        /// Type of entity (AOI, task, tile, year, etc.).
+        entity: String,
+        /// Entity identifier.
+        id: String,
+    },
+
+    /// Input parameter validation failed.
+    #[error("Invalid {field}: {reason}")]
+    InvalidInput {
+        /// Name of the invalid field.
+        field: String,
+        /// Why the value is invalid.
+        reason: String,
+    },
+
+    /// Configuration file error.
+    #[error("Config error in {path}: {detail}")]
+    ConfigError {
+        /// Path to the config file.
+        path: String,
+        /// What went wrong.
+        detail: String,
+    },
+
     /// Geometry failed validation (e.g. out-of-range coordinates).
     #[error("Geometry validation: {0}")]
     Validation(String),
@@ -68,6 +95,23 @@ pub enum GeoError {
 
 /// Convenience alias: `Result<T, GeoError>`.
 pub type GeoResult<T> = Result<T, GeoError>;
+
+// ── Convenience constructors ──
+
+impl GeoError {
+    /// Entity not found (AOI, task, feature, etc.).
+    pub fn not_found(entity: impl Into<String>, id: impl Into<String>) -> Self {
+        Self::NotFound { entity: entity.into(), id: id.into() }
+    }
+    /// Invalid input parameter.
+    pub fn invalid_input(field: impl Into<String>, reason: impl Into<String>) -> Self {
+        Self::InvalidInput { field: field.into(), reason: reason.into() }
+    }
+    /// Configuration file error.
+    pub fn config_error(path: impl Into<String>, detail: impl Into<String>) -> Self {
+        Self::ConfigError { path: path.into(), detail: detail.into() }
+    }
+}
 
 /// Validate that a SQL string contains only SELECT-like statements.
 /// Returns `Ok(())` if safe, `Err(Validation)` if destructive keywords found.

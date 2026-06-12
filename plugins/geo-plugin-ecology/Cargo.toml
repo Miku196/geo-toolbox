@@ -11,6 +11,8 @@ geo-carbon-math = { path = "../../core/geo-carbon-math" }
 geo-raster = { path = "../../core/geo-raster" }
 geo-stats = { path = "../../core/geo-stats" }
 geo-io = { path = "../../core/geo-io" }
+geo-report = { path = "../../core/geo-report" }
+geo-registry = { path = "../../core/geo-registry" }
 serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true
@@ -19,3 +21,6 @@ chrono.workspace = true
 
 # ⚠ 注意：不依赖 geo-plugin-carbon（保持 Plugin 零横向依赖）
 # ⚠ 注意：不依赖任何 geo-adapter-*
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt"] }

@@ -53,6 +53,8 @@ impl StacClient {
     }
 
     /// 按 AOI + 时间 + 云量搜索影像。
+    /// STAC 空间-时间搜索。参数对应 OGC STAC API 规范。
+    #[allow(clippy::too_many_arguments)]
     pub async fn search(
         &self,
         collection: &str,

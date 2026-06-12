@@ -34,13 +34,19 @@ impl ReportEngine {
     }
 
     /// 注册额外模板目录（插件调用）。
+    ///
+    /// 追加到已有模板，不覆盖已注册的公共模板和过滤器。
     pub fn register_templates(&mut self, _plugin_name: &str, dir: &Path) -> GeoResult<()> {
-        if dir.exists() {
-            let pattern = dir.join("**/*.tera");
-            let pattern_str = pattern.to_string_lossy();
-            self.tera = Tera::new(&pattern_str)
-                .map_err(|e| GeoError::Validation(format!("Plugin template load error: {e}")))?;
+        if !dir.exists() {
+            return Ok(());
         }
+        collect_tera_files(dir, dir, &mut self.tera)
+            .map_err(|e| GeoError::Validation(format!("Plugin template load error: {e}")))?;
+        // 重新注册过滤器（add_raw_templates 不覆盖过滤器，但安全起见）
+        self.tera.register_filter("ha_fmt", ha_fmt_filter);
+        self.tera.register_filter("co2_fmt", co2_fmt_filter);
+        self.tera.register_filter("percent_fmt", percent_fmt_filter);
+        self.tera.register_filter("date_fmt", date_fmt_filter);
         Ok(())
     }
 
@@ -62,6 +68,29 @@ impl ReportEngine {
         let md = self.render(template_name, context)?;
         Ok(format!("<div class=\"geo-report\">\n{md}\n</div>"))
     }
+}
+
+/// 递归收集 .tera 模板文件并注册到 Tera。
+///
+/// 模板名 = 相对于 base 目录的文件路径（不含 .tera 后缀）。
+fn collect_tera_files(base: &Path, current: &Path, tera: &mut Tera) -> Result<(), GeoError> {
+    for entry in std::fs::read_dir(current).map_err(|e| GeoError::Io(std::io::Error::other(e)))? {
+        let entry = entry.map_err(|e| {
+            GeoError::Io(std::io::Error::other(e))
+        })?;
+        let path = entry.path();
+        if path.is_dir() {
+            collect_tera_files(base, &path, tera)?;
+        } else if path.extension().is_some_and(|ext| ext == "tera") {
+            let rel = path.strip_prefix(base).unwrap_or(&path);
+            let name = rel.with_extension("");
+            let name_str = name.to_string_lossy().replace('\\', "/");
+            let content = std::fs::read_to_string(&path).map_err(GeoError::Io)?;
+            tera.add_raw_template(&name_str, &content)
+                .map_err(|e| GeoError::Validation(format!("Template '{}': {}", name_str, e)))?;
+        }
+    }
+    Ok(())
 }
 
 // ── 自定义 Tera 过滤器 ──

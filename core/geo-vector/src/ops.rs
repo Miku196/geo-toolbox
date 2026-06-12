@@ -1,11 +1,14 @@
 //! 矢量运算：缓冲区、相交、合并、裁剪。
 //!
-//! 基于 geo crate 基础算法（Area, BoundingRect, Centroid）。
+//! 基于 geo crate 的 BooleanOps（相交/合并）和 BoundingRect（bbox 缓冲）。
 
-use geo::algorithm::{Area, BoundingRect};
+use geo::algorithm::{Area, BoundingRect, BooleanOps};
 use geo_types::{Coord, LineString, MultiPolygon, Polygon};
 
-/// 对多边形做缓冲区（正数 = 外扩 bbox，负数 = 返回原多边形）。
+/// 对多边形做 bbox 缓冲（axis-aligned bounding box expansion）。
+///
+/// 不是真实地理缓冲区，而是按 distance 外扩 bbox 的矩形。
+/// 适用于快速 AOI 扩展、粗筛等场景。
 pub fn buffer(poly: &Polygon<f64>, distance: f64) -> Polygon<f64> {
     if distance <= 0.0 {
         return poly.clone();
@@ -28,21 +31,29 @@ pub fn buffer(poly: &Polygon<f64>, distance: f64) -> Polygon<f64> {
     )
 }
 
-/// 多边形相交（bbox 预检）。
+/// 多边形相交（使用 BooleanOps 真实几何相交）。
 pub fn intersect(a: &Polygon<f64>, b: &Polygon<f64>) -> Option<MultiPolygon<f64>> {
     if !bbox_intersect(a, b) {
         return None;
     }
-    let area_a = a.unsigned_area();
-    let area_b = b.unsigned_area();
-    let result = if area_a <= area_b { a.clone() } else { b.clone() };
-    Some(MultiPolygon::new(vec![result]))
+    let result = a.intersection(b);
+    if result.0.is_empty() {
+        None
+    } else {
+        Some(result)
+    }
 }
 
-/// 合并多个多边形。
+/// 合并多个多边形（使用 BooleanOps 逐个合并）。
 pub fn union_all(polys: &[Polygon<f64>]) -> Option<MultiPolygon<f64>> {
-    if polys.is_empty() { return None; }
-    Some(MultiPolygon::new(polys.to_vec()))
+    if polys.is_empty() {
+        return None;
+    }
+    let mut result = MultiPolygon::new(polys[0..1].to_vec());
+    for poly in &polys[1..] {
+        result = result.union(&MultiPolygon::new(vec![poly.clone()]));
+    }
+    Some(result)
 }
 
 /// 计算多边形面积（unsigned, sq degrees）。

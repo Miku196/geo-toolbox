@@ -47,7 +47,7 @@ impl DuckDbStore {
     pub fn ingest_geojson_raw(&self, table: &str, fc_json: &str) -> GeoResult<usize> {
         validate_table_name(table)?;
         let fc: serde_json::Value = serde_json::from_str(fc_json)
-            .map_err(|e| GeoError::Serde(e))?;
+            .map_err(GeoError::Serde)?;
         let features = fc["features"].as_array()
             .ok_or_else(|| GeoError::Validation("no features array".into()))?;
 
@@ -144,7 +144,7 @@ impl DuckDbStore {
     /// 列出所有表。
     pub fn list_tables(&self) -> GeoResult<Vec<String>> {
         let rows = self.query_json("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")?;
-        Ok(rows.iter().filter_map(|r| r["name"].as_str().map(|s| s.to_string())).collect())
+        Ok(rows.iter().filter_map(|r| r["name"].as_str().map(str::to_string)).collect())
     }
 
     /// 暴露底层连接。

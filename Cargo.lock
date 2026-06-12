@@ -1484,6 +1484,7 @@ dependencies = [
  "chrono",
  "futures",
  "geo-core",
+ "geo-registry",
  "rdkafka",
  "serde",
  "serde_json",
@@ -1535,6 +1536,7 @@ version = "0.1.0"
 dependencies = [
  "csv",
  "geo-core",
+ "geo-registry",
  "object_store",
  "serde",
  "serde_json",
@@ -1642,9 +1644,11 @@ version = "0.1.0"
 dependencies = [
  "csv",
  "geo-core",
+ "geo-registry",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
+ "tokio",
  "tracing",
 ]
 
@@ -1729,10 +1733,13 @@ dependencies = [
  "geo-core",
  "geo-io",
  "geo-raster",
+ "geo-registry",
+ "geo-report",
  "geo-stats",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
+ "tokio",
  "toml",
 ]
 

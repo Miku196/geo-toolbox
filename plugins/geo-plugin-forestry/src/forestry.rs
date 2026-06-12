@@ -62,6 +62,7 @@ impl ForestryPlugin {
     /// - `red/nir`: 基准年和评估年的红/近红外波段
     /// - `sample_volume_m3_ha`: 样地平均蓄积量 (m³/ha)，从野外调查获取
     /// - `forest_area_ha`: 林地面积 (ha)
+    #[allow(clippy::too_many_arguments)]
     pub fn assess_carbon_stock(
         &self,
         aoi_name: &str,
@@ -145,7 +146,7 @@ impl ForestryPlugin {
         let _bbox = geo_io::extract_bbox(aoi_geojson)?;
 
         if ndvi_series.len() < 4 || ndvi_series.len() != years.len() {
-            return Err(geo_core::GeoError::Validation("need at least 4 time steps".into()));
+            return Err(geo_core::GeoError::invalid_input("time_steps", "need at least 4"));
         }
 
         // 逐像素 MK 趋势

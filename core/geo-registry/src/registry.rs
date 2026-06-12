@@ -104,6 +104,20 @@ impl PluginRegistry {
         }
     }
 
+    /// 同步分发——仅匹配同步 handler，异步 handler 返回错误。
+    /// 用于 CLI 同步命令（CRS 等）。
+    pub fn dispatch_sync(&self, tool_name: &str, args: serde_json::Value) -> ToolResult {
+        if let Some(handler) = self.sync_handlers.get(tool_name) {
+            return handler(args);
+        }
+        if self.async_handlers.contains_key(tool_name) {
+            return Err(GeoError::Other(format!(
+                "Tool '{tool_name}' is async; use dispatch()"
+            )));
+        }
+        Err(GeoError::Other(format!("Unknown tool: {tool_name}")))
+    }
+
     /// 分发执行一个工具调用。
     ///
     /// 优先匹配异步 handler，其次同步 handler，都没有则返回错误。

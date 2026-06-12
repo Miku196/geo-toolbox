@@ -12,6 +12,7 @@ file-queue = []
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true

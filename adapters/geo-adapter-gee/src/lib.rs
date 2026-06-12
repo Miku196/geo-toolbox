@@ -1,6 +1,7 @@
 //! geo-adapter-gee: GEE task dispatcher.
 #![allow(missing_docs)]
 pub mod adapter;
+pub mod tools;
 pub mod dispatcher;
 pub mod mq;
 pub mod tracker;

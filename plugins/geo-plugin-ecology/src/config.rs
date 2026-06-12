@@ -2,6 +2,7 @@
 
 use serde::Deserialize;
 
+/// 生态修复插件的顶级配置。
 #[derive(Debug, Clone, Deserialize)]
 pub struct EcologyConfig {
     pub plugin: PluginMeta,
@@ -10,9 +11,9 @@ pub struct EcologyConfig {
     #[serde(default)]
     pub ndvi: NdviThresholds,
 
-    /// 碳密度参数（与 geo-plugin-carbon 的 rules.toml 结构相同，但独立维护）。
+    /// 碳密度参数（共享 `geo_carbon_math::CarbonParams`）。
     #[serde(default)]
-    pub carbon: CarbonParams,
+    pub carbon: geo_carbon_math::CarbonParams,
 
     /// 报告模板路径。
     #[serde(default)]
@@ -46,37 +47,6 @@ pub struct NdviThresholds {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct CarbonParams {
-    /// 方法学来源。
-    #[serde(default = "default_source")]
-    pub source: String,
-
-    /// 森林碳汇 tCO₂e/ha/yr。
-    #[serde(default = "default_forest")]
-    pub forest: f64,
-
-    /// 草地碳汇。
-    #[serde(default = "default_grassland")]
-    pub grassland: f64,
-
-    /// 湿地。
-    #[serde(default = "default_wetland")]
-    pub wetland: f64,
-
-    /// 农田。
-    #[serde(default = "default_cropland")]
-    pub cropland: f64,
-
-    /// 建设用地排放。
-    #[serde(default = "default_built_up")]
-    pub built_up: f64,
-
-    /// 裸地/矿区（恢复前）。
-    #[serde(default)]
-    pub bare: f64,
-}
-
-#[derive(Debug, Clone, Deserialize)]
 pub struct ReportConfig {
     /// 报告模板文件名（相对于 templates/ 目录）。
     #[serde(default = "default_template")]
@@ -94,13 +64,6 @@ fn default_degraded_max() -> f64 { 0.2 }
 fn default_improvement_threshold() -> f64 { 0.1 }
 fn default_degradation_threshold() -> f64 { -0.1 }
 
-fn default_source() -> String { "IPCC_2019".into() }
-fn default_forest() -> f64 { -5.0 }
-fn default_grassland() -> f64 { -1.2 }
-fn default_wetland() -> f64 { -8.5 }
-fn default_cropland() -> f64 { 0.5 }
-fn default_built_up() -> f64 { 2.0 }
-
 fn default_template() -> String { "restoration-report.md.tera".into() }
 fn default_format() -> String { "markdown".into() }
 
@@ -111,22 +74,6 @@ impl Default for EcologyConfig {
     }
 }
 
-impl CarbonParams {
-    /// 根据土地覆盖类型获取碳密度。
-    pub fn get_factor(&self, class: &str) -> Option<f64> {
-        match class.to_lowercase().as_str() {
-            "forest" => Some(self.forest),
-            "grassland" => Some(self.grassland),
-            "wetland" => Some(self.wetland),
-            "cropland" | "crop" | "farmland" => Some(self.cropland),
-            "built_up" | "builtup" | "urban" | "construction" => Some(self.built_up),
-            "water" => Some(0.0),
-            "bare" | "bareland" | "mining" => Some(self.bare),
-            _ => None,
-        }
-    }
-}
-
 impl Default for NdviThresholds {
     fn default() -> Self {
         Self {
@@ -134,20 +81,6 @@ impl Default for NdviThresholds {
             degraded_max: default_degraded_max(),
             improvement_threshold: default_improvement_threshold(),
             degradation_threshold: default_degradation_threshold(),
-        }
-    }
-}
-
-impl Default for CarbonParams {
-    fn default() -> Self {
-        Self {
-            source: default_source(),
-            forest: default_forest(),
-            grassland: default_grassland(),
-            wetland: default_wetland(),
-            cropland: default_cropland(),
-            built_up: default_built_up(),
-            bare: 0.0,
         }
     }
 }

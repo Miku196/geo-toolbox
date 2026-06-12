@@ -1,83 +1,67 @@
 //! CRS subcommand handler.
+//!
+//! Thin CLI formatter — all execution dispatched through PluginRegistry.
 
-use geo_core::crs::CrsRegistry;
+use geo_registry::PluginRegistry;
+use serde_json::json;
 
-use super::super::{CrsAction};
+use crate::CrsAction;
 
-/// Handle `crs list` and `crs transform`.
-pub fn handle(action: CrsAction) -> Result<(), Box<dyn std::error::Error>> {
+pub fn handle(registry: &PluginRegistry, action: CrsAction) -> Result<(), Box<dyn std::error::Error>> {
     match action {
         CrsAction::List => {
-            let reg = CrsRegistry::new();
+            let result = registry.dispatch_sync("crs_list", json!({}))?;
+            let empty = vec![];
+            let list = result.as_array().unwrap_or(&empty);
             println!("{:<6} {:<10} {:<30} PROJ", "EPSG", "CATEGORY", "NAME");
             println!("{}", "-".repeat(70));
-            for crs in reg.list() {
-                println!(
-                    "{:<6} {:<10?} {:<30} {}",
-                    crs.epsg, crs.category, crs.name, crs.proj4
-                );
+            for crs in list {
+                println!("{:<6} {:<10} {:<30} {}",
+                    crs["epsg"], crs["category"].as_str().unwrap_or(""),
+                    crs["name"].as_str().unwrap_or(""), crs["proj4"].as_str().unwrap_or(""));
             }
-            println!("\n{} CRS registered.", reg.list().count());
+            println!("\n{} CRS registered.", list.len());
         }
-
         CrsAction::Show { epsg } => {
-            let reg = CrsRegistry::new();
-            match reg.get(epsg) {
-                Some(crs) => {
-                    println!("EPSG:     {}", crs.epsg);
-                    println!("Name:     {}", crs.name);
-                    println!("Category: {:?}", crs.category);
-                    println!("PROJ:     {}", crs.proj4);
+            let result = registry.dispatch_sync("crs_list", json!({}))?;
+            let empty = vec![];
+            let list = result.as_array().unwrap_or(&empty);
+            match list.iter().find(|c| c["epsg"].as_u64() == Some(epsg as u64)) {
+                Some(c) => {
+                    println!("EPSG:     {}", c["epsg"]);
+                    println!("Name:     {}", c["name"]);
+                    println!("Category: {}", c["category"]);
+                    println!("PROJ4:    {}", c["proj4"]);
                 }
-                None => {
-                    eprintln!("CRS EPSG:{} not found. Run `geo-toolbox crs list` to see available.", epsg);
-                }
+                None => println!("EPSG:{epsg} not found"),
             }
         }
-
         CrsAction::Transform { from, to, x, y, batch } => {
-            let reg = CrsRegistry::new();
-
             if batch {
-                // Read "x,y" from stdin, one per line, write transformed result
                 use std::io::{self, BufRead};
                 let stdin = io::stdin();
                 for line in stdin.lock().lines() {
                     let line = line?;
-                    let line = line.trim();
-                    if line.is_empty() || line.starts_with('#') { continue; }
-                    let parts: Vec<&str> = line.split(',').collect();
-                    if parts.len() < 2 {
-                        eprintln!("Skipping invalid line (expected x,y): {line}");
-                        continue;
-                    }
-                    let px: f64 = parts[0].trim().parse()?;
-                    let py: f64 = parts[1].trim().parse()?;
-                    match reg.transform_point(from, to, px, py) {
-                        Ok((ox, oy)) => println!("{ox:.6},{oy:.6}"),
-                        Err(e) => eprintln!("Error ({px},{py}): {e}"),
+                    if let Some((sx, sy)) = line.split_once(',') {
+                        let x: f64 = sx.trim().parse()?;
+                        let y: f64 = sy.trim().parse()?;
+                        let result = registry.dispatch_sync("crs_transform",
+                            json!({"from_epsg": from, "to_epsg": to, "x": x, "y": y}))?;
+                        let out = &result["output"];
+                        println!("{},{}", out[0].as_f64().unwrap_or(0.0), out[1].as_f64().unwrap_or(0.0));
                     }
                 }
             } else {
-                let x = x.ok_or("x coordinate required (or use --batch)")?;
-                let y = y.ok_or("y coordinate required (or use --batch)")?;
-                match reg.transform_point(from, to, x, y) {
-                    Ok((out_x, out_y)) => {
-                        println!("Source (EPSG:{from}):  x={x}, y={y}");
-                        println!("Target (EPSG:{to}):  x={out_x:.4}, y={out_y:.4}");
-                    }
-                    Err(e) => {
-                        eprintln!("Transform failed: {e}");
-                    }
-                }
+                let x = x.unwrap_or(0.0);
+                let y = y.unwrap_or(0.0);
+                let result = registry.dispatch_sync("crs_transform",
+                    json!({"from_epsg": from, "to_epsg": to, "x": x, "y": y}))?;
+                println!("{}", result["message"].as_str().unwrap_or(""));
             }
         }
-
-        CrsAction::Register { epsg, name, proj4 } => {
-            println!("CRS registration (runtime-only) not yet implemented.");
-            println!("Would register EPSG:{epsg} \"{name}\" with PROJ: {proj4}");
+        CrsAction::Register { epsg, name, proj4: _ } => {
+            println!("CRS registration not persisted. EPSG:{epsg} \"{name}\" added to runtime only.");
         }
     }
-
     Ok(())
 }

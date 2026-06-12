@@ -133,7 +133,7 @@ impl<R: Read + Seek> PmtilesReader<R> {
     /// 读取指定瓦片的数据。
     pub fn get_tile(&mut self, z: u8, x: u32, y: u32) -> GeoResult<Vec<u8>> {
         let &(offset, length) = self.tile_index.get(&(z, x, y))
-            .ok_or_else(|| GeoError::Validation(format!("tile {z}/{x}/{y} not found")))?;
+            .ok_or_else(|| GeoError::not_found("tile", format!("{z}/{x}/{y}")))?;
 
         self.reader.seek(SeekFrom::Start(offset))?;
         let mut buf = vec![0u8; length as usize];

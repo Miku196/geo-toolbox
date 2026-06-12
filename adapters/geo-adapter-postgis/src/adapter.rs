@@ -47,7 +47,26 @@ impl ExternalAdapter for PostgisAdapter {
     fn external_endpoint(&self) -> &str { &self.url }
 
     async fn health_check(&self) -> GeoResult<bool> {
-        Ok(self.connected)
+        // Try a real PostGIS connection check
+        match sqlx::PgPool::connect(&self.url).await {
+            Ok(pool) => {
+                let result = sqlx::query_scalar::<_, i32>("SELECT 1")
+                    .fetch_one(&pool)
+                    .await;
+                pool.close().await;
+                match result {
+                    Ok(v) => Ok(v == 1),
+                    Err(e) => {
+                        tracing::warn!("PostGIS health check query failed: {e}");
+                        Ok(false)
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::warn!("PostGIS health check connection failed: {e}");
+                Ok(false)
+            }
+        }
     }
 
     async fn external_version(&self) -> GeoResult<String> {

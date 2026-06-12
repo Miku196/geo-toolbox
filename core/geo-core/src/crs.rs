@@ -420,14 +420,14 @@ mod tests {
     #[test]
     fn test_cli_transform_4326_to_9000() {
         let reg = CrsRegistry::new();
-        let (gx, gy) = reg.transform_point(4326, 9000, 104.06, 30.57).unwrap();
+        let (gx, _gy) = reg.transform_point(4326, 9000, 104.06, 30.57).unwrap();
         assert!((gx - 104.06).abs() > 0.001, "GCJ-02 should differ from WGS84");
     }
 
     #[test]
     fn test_cli_transform_4326_to_9001() {
         let reg = CrsRegistry::new();
-        let (bx, by) = reg.transform_point(4326, 9001, 104.06, 30.57).unwrap();
+        let (bx, _by) = reg.transform_point(4326, 9001, 104.06, 30.57).unwrap();
         assert!((bx - 104.06).abs() > 0.001, "BD-09 should differ from WGS84");
     }
 

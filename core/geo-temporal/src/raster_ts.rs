@@ -29,16 +29,18 @@ pub struct TimeStep {
 }
 
 /// 栅格时间序列 — 多期 RasterBand 的逐像素分析。
+#[derive(Default)]
 pub struct RasterTimeSeries {
     steps: BTreeMap<u16, RasterBand>,
     rows: usize,
     cols: usize,
 }
 
+
 impl RasterTimeSeries {
     /// 创建空序列。
     pub fn new() -> Self {
-        Self { steps: BTreeMap::new(), rows: 0, cols: 0 }
+        Self::default()
     }
 
     /// 添加一期栅格。
@@ -73,7 +75,7 @@ impl RasterTimeSeries {
     /// 返回一个 RasterBand，每个像素值是 τ ∈ [-1, 1]。
     pub fn pixelwise_trend(&self) -> GeoResult<RasterBand> {
         if self.steps.len() < 4 {
-            return Err(GeoError::Validation("need at least 4 time steps".into()));
+            return Err(GeoError::invalid_input("time_steps", "need at least 4"));
         }
 
         let years: Vec<u16> = self.steps.keys().copied().collect();
@@ -81,19 +83,19 @@ impl RasterTimeSeries {
         let mut tau_values = vec![0.0f64; n_pixels];
         let nodata = f64::NAN;
 
-        for px in 0..n_pixels {
+        for (px, tau_out) in tau_values.iter_mut().enumerate() {
             let values: Vec<f64> = years.iter()
                 .map(|y| self.steps[y].data[px])
                 .collect();
 
             // 跳过含 nodata 的像素
             if values.iter().any(|v| v.is_nan() || *v == self.steps[&years[0]].nodata) {
-                tau_values[px] = nodata;
+                *tau_out = nodata;
                 continue;
             }
 
             let (tau, _p) = mann_kendall(&values);
-            tau_values[px] = tau;
+            *tau_out = tau;
         }
 
         Ok(RasterBand::new("mk_tau", self.rows, self.cols, tau_values, nodata))
@@ -112,7 +114,7 @@ impl RasterTimeSeries {
         threshold: f64,
     ) -> GeoResult<RasterBand> {
         let baseline = self.steps.get(&year_baseline)
-            .ok_or_else(|| GeoError::Validation(format!("year {year_baseline} not found")))?;
+            .ok_or_else(|| GeoError::not_found("year", year_baseline.to_string()))?;
         let target = self.steps.get(&year_target)
             .ok_or_else(|| GeoError::Validation(format!("year {year_target} not found")))?;
 
@@ -120,17 +122,17 @@ impl RasterTimeSeries {
         let mut classes = vec![0.0f64; n];
         let nodata = f64::NAN;
 
-        for px in 0..n {
+        for (px, cls) in classes.iter_mut().enumerate() {
             let a = baseline.data[px];
             let b = target.data[px];
             if a.is_nan() || b.is_nan() || a == baseline.nodata || b == target.nodata {
-                classes[px] = nodata;
+                *cls = nodata;
                 continue;
             }
             let diff = b - a;
-            if diff > threshold { classes[px] = 1.0; }
-            else if diff < -threshold { classes[px] = -1.0; }
-            else { classes[px] = 0.0; }
+            if diff > threshold { *cls = 1.0; }
+            else if diff < -threshold { *cls = -1.0; }
+            else { *cls = 0.0; }
         }
 
         Ok(RasterBand::new("change", self.rows, self.cols, classes, nodata))
@@ -160,15 +162,15 @@ impl RasterTimeSeries {
         let x_mean = years.iter().sum::<f64>() / years.len() as f64;
         let xx_var: f64 = years.iter().map(|&x| (x - x_mean).powi(2)).sum();
 
-        for px in 0..n {
+        for (px, slope) in slopes.iter_mut().enumerate() {
             let values: Vec<f64> = self.steps.values().map(|b| b.data[px]).collect();
             if values.iter().any(|v| v.is_nan()) {
-                slopes[px] = nodata;
+                *slope = nodata;
                 continue;
             }
             let y_mean = values.iter().sum::<f64>() / values.len() as f64;
             let xy_cov: f64 = years.iter().zip(&values).map(|(&x, &y)| (x - x_mean) * (y - y_mean)).sum();
-            slopes[px] = xy_cov / xx_var.max(1e-10);
+            *slope = xy_cov / xx_var.max(1e-10);
         }
 
         Ok(RasterBand::new("slope", self.rows, self.cols, slopes, nodata))

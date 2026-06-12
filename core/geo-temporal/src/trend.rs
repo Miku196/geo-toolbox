@@ -179,7 +179,7 @@ mod tests {
     fn test_no_trend() {
         // 随机波动，无趋势
         let values = vec![0.5, 0.48, 0.52, 0.49, 0.51];
-        let (tau, p) = mann_kendall(&values);
+        let (_tau, p) = mann_kendall(&values);
         assert!(p > 0.1, "p={p} should be > 0.1 for no-trend data");
     }
 

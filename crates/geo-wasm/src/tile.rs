@@ -14,6 +14,8 @@ pub struct TileCoord {
 
 /// 瓦片引擎 — 经纬度与瓦片坐标互转 + MVT 编码。
 #[wasm_bindgen]
+#[wasm_bindgen]
+#[derive(Default)]
 pub struct TileEngine;
 
 #[wasm_bindgen]

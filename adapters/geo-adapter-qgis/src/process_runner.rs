@@ -346,6 +346,7 @@ mod tests {
     use super::*;
 
     /// Helper: skip if qgis_process is not installed.
+    #[allow(dead_code)]
     fn has_qgis_process() -> bool {
         std::process::Command::new("qgis_process")
             .arg("--version")

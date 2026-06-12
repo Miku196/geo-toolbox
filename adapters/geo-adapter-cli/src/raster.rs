@@ -368,6 +368,7 @@ mod tests {
     use super::*;
 
     /// Helper: skip test if gdal_translate is not installed.
+    #[allow(dead_code)]
     fn has_gdal_translate() -> bool {
         std::process::Command::new("gdal_translate")
             .arg("--version")

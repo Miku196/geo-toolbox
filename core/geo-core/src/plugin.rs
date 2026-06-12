@@ -193,6 +193,9 @@ pub struct ClassBreakdown {
 /// Plugins that provide spatial data storage.
 ///
 /// Implemented by: PostGIS store, GeoParquet store, MinIO/S3 store.
+///
+/// **Forward-looking**: PostgisAdapter is the first implementor (see
+/// `geo-adapter-postgis`). Other store backends (DuckDB, TiDB) planned.
 pub trait StorePlugin: Plugin {
     /// Execute database migrations.
     async fn migrate(&self) -> GeoResult<()>;

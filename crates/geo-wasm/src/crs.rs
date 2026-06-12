@@ -188,13 +188,13 @@ mod tests {
     fn test_bd09_gcj02_roundtrip() {
         let (gx, gy) = builtin::wgs84_to_gcj02(104.06, 30.57);
         let (bx, by) = builtin::gcj02_to_bd09(gx, gy);
-        let (gx2, gy2) = builtin::bd09_to_gcj02(bx, by);
+        let (gx2, _gy2) = builtin::bd09_to_gcj02(bx, by);
         assert!((gx2 - gx).abs() < 0.000001);
     }
 
     #[test]
     fn test_out_of_china() {
-        let (gx, gy) = builtin::wgs84_to_gcj02(139.76, 35.68);
+        let (gx, _gy) = builtin::wgs84_to_gcj02(139.76, 35.68);
         assert!((gx - 139.76).abs() < 0.000001);
     }
 

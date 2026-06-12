@@ -1,12 +1,14 @@
 //! Carbon accounting subcommand handler.
+//! All execution dispatched through PluginRegistry.
 
+use geo_registry::PluginRegistry;
+use serde_json::json;
 use super::super::{CarbonAction, EfAction};
-use uuid::Uuid;
 
 /// Handle `carbon emission-factor | lca`.
-pub async fn handle(action: CarbonAction) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn handle(registry: &PluginRegistry, action: CarbonAction) -> Result<(), Box<dyn std::error::Error>> {
     match action {
-        CarbonAction::EmissionFactor { action } => handle_ef(action).await,
+        CarbonAction::EmissionFactor { action } => handle_ef(registry, action).await,
         CarbonAction::Lca { inventory } => {
             let result = geo_plugin_carbon::lca::submit_lca(&inventory)?;
             println!("{result}");
@@ -15,70 +17,37 @@ pub async fn handle(action: CarbonAction) -> Result<(), Box<dyn std::error::Erro
     }
 }
 
-async fn handle_ef(action: EfAction) -> Result<(), Box<dyn std::error::Error>> {
-    let db_url = std::env::var("DATABASE_URL")
-        .map_err(|_| "DATABASE_URL must be set")?;
-
+#[cfg(feature = "postgis")]
+async fn handle_ef(registry: &PluginRegistry, action: EfAction) -> Result<(), Box<dyn std::error::Error>> {
     match action {
         EfAction::Register { csv } => {
-            let pool = sqlx::postgres::PgPoolOptions::new()
-                .max_connections(2)
-                .connect(&db_url)
-                .await?;
-
-            let engine = geo_adapter_postgis::PostgisCarbonEngine::new(pool);
-            let count = engine.import_factors_csv(&csv).await?;
-            println!("Imported {count} emission factors from {csv}");
+            let result = registry.dispatch("carbon_import_factors", json!({"csv_path": csv})).await?;
+            println!("Imported {} emission factors", result["imported"]);
         }
-
         EfAction::Calculate { aoi, year, source } => {
-            let aoi_id = Uuid::parse_str(&aoi)?;
-
-            let pool = sqlx::postgres::PgPoolOptions::new()
-                .max_connections(2)
-                .connect(&db_url)
-                .await?;
-
-            let engine = geo_adapter_postgis::PostgisCarbonEngine::new(pool);
-
-            let results = engine
-                .calculate_emission_factor(aoi_id, year, &source)
-                .await?;
-
-            print_results(&results, aoi_id, year, &source);
+            let result = registry.dispatch("carbon_calculate",
+                json!({"aoi_id": aoi, "year": year, "source": source})).await?;
+            let total = result["total_tco2e"].as_f64().unwrap_or(0.0);
+            println!("\n═══ Carbon Accounting Results ═══");
+            println!("AOI:              {}", result["aoi_id"]);
+            println!("Year:             {}", result["year"]);
+            println!("Total tCO₂e:      {:.1}", total);
+            if let Some(results) = result["results"].as_array() {
+                println!("\n{:<22} {:>10} {:>14}", "Landcover Class", "Area(ha)", "tCO₂e");
+                for r in results {
+                    println!("{:<22} {:>10.1} {:>14.1}",
+                        r["landcover_class"].as_str().unwrap_or(""),
+                        r["area_ha"].as_f64().unwrap_or(0.0),
+                        r["emission_tco2e"].as_f64().unwrap_or(0.0));
+                }
+            }
+            println!();
         }
     }
     Ok(())
 }
 
-fn print_results(results: &[geo_adapter_postgis::EmissionResult], aoi_id: Uuid, year: u16, source: &str) {
-    let total: f64 = results.iter().map(|r| r.emission_tco2e).sum();
-
-    println!("\n═══ Carbon Accounting Results ═══");
-    println!("AOI:              {aoi_id}");
-    println!("Year:             {year}");
-    println!("Factor source:    {source}\n");
-
-    println!(
-        "{:<22} {:>10} {:>12} {:>14}  Audit",
-        "Landcover Class", "Area(ha)", "Factor", "tCO₂e"
-    );
-    println!("{}", "─".repeat(75));
-
-    for r in results {
-        let audit = if r.audit.is_complete() { "✓" } else { "?" };
-        println!(
-            "{:<22} {:>10.1} {:>12.2} {:>14.1}  {audit:>5}",
-            r.landcover_class, r.area_ha, r.factor_value, r.emission_tco2e,
-        );
-    }
-
-    println!("{}", "─".repeat(75));
-    println!("{:<22} {:>10} {:>12} {:>14.1}", "TOTAL", "", "", total);
-
-    println!("\nAudit Trail:");
-    for r in results {
-        println!("  {}: {}", r.landcover_class, r.audit.summary());
-    }
-    println!();
+#[cfg(not(feature = "postgis"))]
+async fn handle_ef(_registry: &PluginRegistry, _action: EfAction) -> Result<(), Box<dyn std::error::Error>> {
+    Err("Carbon emission factor requires --features postgis".into())
 }

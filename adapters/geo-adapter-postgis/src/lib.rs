@@ -1,5 +1,7 @@
 //! geo-adapter-postgis: PostGIS / TimescaleDB / MinIO data backbone.
 #![allow(missing_docs)]
+pub mod adapter;
+pub mod tools;
 pub mod audit;
 pub mod batch_writer;
 pub mod carbon_engine;

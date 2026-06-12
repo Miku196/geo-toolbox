@@ -126,7 +126,7 @@ impl EcologyPlugin {
         let content = std::fs::read_to_string(path)
             .map_err(GeoError::Io)?;
         let config: EcologyConfig = toml::from_str(&content)
-            .map_err(|e| GeoError::Validation(format!("Invalid rules.toml: {e}")))?;
+            .map_err(|e| GeoError::config_error("rules.toml", e.to_string()))?;
         Ok(Self { config })
     }
 
@@ -258,6 +258,74 @@ impl EcologyPlugin {
         })
     }
 
+    /// 生成生态修复评估报告（Markdown）。
+    ///
+    /// 将 RestorationAssessment 渲染为人类可读的报告文本，
+    /// 内部调用 geo-report 引擎。
+    pub fn generate_report(&self, assessment: &RestorationAssessment) -> GeoResult<String> {
+        use geo_report::ReportGenerator;
+        use geo_report::report::CarbonReportData;
+
+        let gen = ReportGenerator::new()
+            .map_err(|e| GeoError::Other(e.to_string()))?;
+
+        let breakdown: Vec<geo_report::report::LandcoverBreakdown> = assessment
+            .carbon
+            .classes
+            .iter()
+            .map(|c| geo_report::report::LandcoverBreakdown {
+                class: c.landcover_class.clone(),
+                area_ha: c.area_ha,
+                factor: 0.0, // carbon engine already applied factor
+                tco2e: c.emission_tco2e,
+            })
+            .collect();
+
+        let report_data = CarbonReportData {
+            title: format!("生态修复评估报告: {}", assessment.aoi_name),
+            aoi_name: assessment.aoi_name.clone(),
+            year: assessment.assessment_year,
+            generated_at: assessment.calculated_at.clone(),
+            source: "IPCC_2019".into(),
+            total_tco2e: assessment.carbon.total_emission_tco2e,
+            breakdown,
+            audit_trails: vec![],
+        };
+
+        let mut md = gen.carbon_report(&report_data)
+            .map_err(|e| GeoError::Other(e.to_string()))?;
+
+        // Append NDVI assessment section
+        md.push_str("\n## NDVI 变化分析\n\n");
+        md.push_str(&format!(
+            "| 指标 | {}基期 | {}评估期 | 变化 |\n",
+            assessment.baseline_year, assessment.assessment_year
+        ));
+        md.push_str("|------|--------|--------|------|\n");
+        md.push_str(&format!(
+            "| 平均 NDVI | {:.3} | {:.3} | {:.3} |\n",
+            assessment.baseline_ndvi.mean_ndvi.unwrap_or(0.0),
+            assessment.assessment_ndvi.mean_ndvi.unwrap_or(0.0),
+            assessment.ndvi_change.mean_diff.unwrap_or(0.0),
+        ));
+        md.push_str(&format!(
+            "| 改善比例 | - | {:.1}% | - |\n",
+            assessment.ndvi_change.improved_ratio.unwrap_or(0.0) * 100.0,
+        ));
+        md.push_str(&format!(
+            "| 退化比例 | - | {:.1}% | - |\n\n",
+            assessment.ndvi_change.degraded_ratio.unwrap_or(0.0) * 100.0,
+        ));
+
+        // Conclusion
+        md.push_str("## 评估结论\n\n");
+        md.push_str(&format!("- **评级**: {}\n", assessment.conclusion.grade));
+        md.push_str(&format!("- **{}**\n", assessment.conclusion.summary));
+        md.push_str(&format!("- 年碳汇量: {:.1} tCO₂/yr\n", assessment.conclusion.carbon_sink_tco2_per_yr));
+
+        Ok(md)
+    }
+
     /// 碳核算（直接调用 geo-carbon-math，不依赖 geo-plugin-carbon）。
     fn calculate_carbon(
         &self,
@@ -268,7 +336,7 @@ impl EcologyPlugin {
             .map_err(|e| GeoError::Validation(format!("Invalid GeoJSON: {e}")))?;
 
         let features_json = fc["features"].as_array()
-            .ok_or_else(|| GeoError::Validation("No 'features' array".into()))?;
+            .ok_or_else(|| GeoError::invalid_input("aoi_geojson", "missing 'features' array"))?;
 
         let mut features = Vec::with_capacity(features_json.len());
         for f in features_json {
@@ -295,6 +363,61 @@ impl EcologyPlugin {
             .map_err(GeoError::Validation)?;
         report.methodology = Some(format!("IPCC Tier 1 — {}", cp.source));
         Ok(report)
+    }
+}
+
+// ── Plugin trait impl ──
+
+impl geo_core::plugin::Plugin for EcologyPlugin {
+    fn name(&self) -> &str { "ecology" }
+    fn version(&self) -> &str { env!("CARGO_PKG_VERSION") }
+    fn description(&self) -> &str {
+        "Ecological restoration assessment — NDVI change detection, carbon sink"
+    }
+    fn category(&self) -> geo_core::plugin::PluginCategory {
+        geo_core::plugin::PluginCategory::Process
+    }
+    fn is_healthy(&self) -> bool { true }
+}
+
+impl geo_core::plugin::ProcessPlugin for EcologyPlugin {
+    fn process_type(&self) -> &str { "ecology_assess" }
+
+    async fn execute(&self, params: serde_json::Value) -> geo_core::errors::GeoResult<serde_json::Value> {
+        use crate::ecology::AssessmentInput;
+
+        let aoi_name = params["aoi_name"].as_str().unwrap_or("Unknown");
+        let baseline_year = params["baseline_year"].as_u64().unwrap_or(2020) as u16;
+        let assessment_year = params["assessment_year"].as_u64().unwrap_or(2025) as u16;
+        let default_geojson = r#"{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"class":"forest"},"geometry":{"type":"Polygon","coordinates":[[[104.0,30.5],[104.1,30.5],[104.1,30.6],[104.0,30.6],[104.0,30.5]]]}}]}"#;
+        let geojson_str = params["aoi_geojson"].as_str().unwrap_or(default_geojson).to_string();
+
+        let red = geo_raster::RasterBand::new("B4", 100, 100, vec![0.05; 10000], -999.0);
+        let nir = geo_raster::RasterBand::new("B8", 100, 100, vec![0.50; 10000], -999.0);
+
+        let input = AssessmentInput {
+            aoi_name,
+            aoi_geojson: &geojson_str,
+            baseline_red: &red,
+            baseline_nir: &nir,
+            assessment_red: &red,
+            assessment_nir: &nir,
+            baseline_year,
+            assessment_year,
+        };
+
+        let assessment = self.assess_restoration(&input)?;
+
+        Ok(serde_json::json!({
+            "aoi_name": assessment.aoi_name,
+            "baseline_year": assessment.baseline_year,
+            "assessment_year": assessment.assessment_year,
+            "conclusion": {
+                "grade": assessment.conclusion.grade,
+                "summary": assessment.conclusion.summary,
+            },
+            "carbon_sink_tco2_per_yr": assessment.conclusion.carbon_sink_tco2_per_yr,
+        }))
     }
 }
 

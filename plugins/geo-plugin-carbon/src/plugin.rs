@@ -34,7 +34,7 @@ impl CarbonPlugin {
             .map_err(|e| GeoError::Validation(format!("Invalid GeoJSON: {e}")))?;
 
         let features_json = fc["features"].as_array()
-            .ok_or_else(|| GeoError::Validation("No 'features' array".into()))?;
+            .ok_or_else(|| GeoError::invalid_input("aoi_geojson", "missing 'features' array"))?;
 
         let mut features = Vec::with_capacity(features_json.len());
         for f in features_json {

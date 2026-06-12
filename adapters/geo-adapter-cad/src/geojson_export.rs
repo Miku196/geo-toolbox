@@ -149,8 +149,6 @@ impl GeoJsonExporter {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_empty_fc() {
         let fc = serde_json::json!({
