@@ -1,0 +1,12 @@
+# geo-plugin-geohazard 业务规则配置
+# 地质灾害评估参数
+
+[plugin]
+name = "geohazard"
+version = "0.1.0"
+description = "地质灾害插件 — 滑坡敏感性、地震烈度衰减、泥石流风险评估"
+
+[landslide]
+slope_weight = 0.4             # 坡度权重
+lithology_weight = 0.35        # 岩性权重
+rainfall_weight = 0.25         # 降雨权重

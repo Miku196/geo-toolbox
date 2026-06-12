@@ -7,8 +7,5 @@ description = "地质灾害插件 — 滑坡敏感性、地震烈度衰减、泥
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
-geo-raster = { path = "../../core/geo-raster" }
-geo-stats = { path = "../../core/geo-stats" }
 serde.workspace = true
-serde_json.workspace = true
 toml.workspace = true

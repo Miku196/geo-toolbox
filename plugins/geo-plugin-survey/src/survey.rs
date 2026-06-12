@@ -3,12 +3,13 @@
 use crate::config::SurveyConfig;
 
 pub struct SurveyPlugin {
-    #[allow(dead_code)]
     config: SurveyConfig,
 }
 
 impl SurveyPlugin {
     pub fn new(config: SurveyConfig) -> Self { Self { config } }
+
+    pub fn config(&self) -> &SurveyConfig { &self.config }
 
     /// 土方量计算（简化为多边形面积 × 平均高程差）。
     pub fn calculate_earthwork(

@@ -1,0 +1,23 @@
+# geo-plugin-forestry 业务规则配置
+# 林业碳汇计量参数
+
+[plugin]
+name = "forestry"
+version = "0.1.0"
+description = "林业碳汇插件 — IPCC 蓄积量法、CCER 碳汇计量"
+
+[bef]
+conifer = 1.3                  # 针叶林生物量扩展因子
+broadleaf = 1.7                # 阔叶林生物量扩展因子
+mixed = 1.5                    # 混交林生物量扩展因子
+
+[wood_density]
+conifer = 0.45                 # 针叶林木材密度（t d.m./m³）
+broadleaf = 0.55               # 阔叶林木材密度
+
+[root_shoot]
+conifer = 0.25                 # 针叶林根冠比
+broadleaf = 0.30               # 阔叶林根冠比
+
+[carbon_fraction]
+default = 0.47                 # 含碳率

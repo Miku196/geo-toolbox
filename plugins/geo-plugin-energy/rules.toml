@@ -1,0 +1,15 @@
+# geo-plugin-energy 业务规则配置
+# 新能源选址评估参数
+
+[plugin]
+name = "energy"
+version = "0.1.0"
+description = "新能源选址插件 — 光伏/风电适宜性评估"
+
+[solar]
+slope_max_deg = 25.0           # 光伏坡度上限（度）
+radiation_min_kwh = 1500.0     # 年辐射量下限（kWh/m²）
+
+[wind]
+slope_max_deg = 15.0           # 风电坡度上限（度）
+wind_speed_min_ms = 5.5        # 最低风速（m/s）

@@ -1,0 +1,11 @@
+# geo-plugin-agri 业务规则配置
+# 农业估产与土壤评级参数
+
+[plugin]
+name = "agri"
+version = "0.1.0"
+description = "农业插件 — 作物估产、土壤肥力评级、灌溉分区"
+
+[yield_params]
+crop_coefficient = 0.8         # 作物系数
+ndvi_weight = 1.2              # NDVI 权重系数

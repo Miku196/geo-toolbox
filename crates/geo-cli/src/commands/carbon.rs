@@ -2,6 +2,7 @@
 //! All execution dispatched through PluginRegistry.
 
 use geo_registry::PluginRegistry;
+#[cfg(feature = "postgis")]
 use serde_json::json;
 use super::super::{CarbonAction, EfAction};
 

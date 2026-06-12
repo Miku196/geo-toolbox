@@ -7,9 +7,5 @@ description = "水文插件 — 流域提取、汇流量计算、洪水淹没范
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
-geo-raster = { path = "../../core/geo-raster" }
-geo-vector = { path = "../../core/geo-vector" }
-geo-stats = { path = "../../core/geo-stats" }
 serde.workspace = true
-serde_json.workspace = true
 toml.workspace = true

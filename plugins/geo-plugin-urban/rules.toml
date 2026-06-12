@@ -1,0 +1,12 @@
+# geo-plugin-urban 业务规则配置
+# 城乡规划指标参数
+
+[plugin]
+name = "urban"
+version = "0.1.0"
+description = "城乡规划插件 — 用地分类统计、容积率、建筑密度"
+
+[density]
+far_max = 3.5                  # 容积率上限
+building_density_max = 0.4     # 建筑密度上限
+green_ratio_min = 0.3          # 绿地率下限

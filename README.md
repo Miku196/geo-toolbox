@@ -10,7 +10,7 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-200%20pass-green.svg)]()
+[![Tests](https://img.shields.io/badge/tests-164%20pass-green.svg)]()
 [![NPM](https://img.shields.io/badge/npm-geo--wasm-red)](https://www.npmjs.com/package/geo-wasm)
 
 ---
@@ -55,12 +55,12 @@
 │  │ 农业   │ 能源   │ 林业   │ 海岸带 │        │        │  │
 │  └────────┴────────┴────────┴────────┴────────┴────────┘  │
 ├─────────────────────────────────────────────────────────────┤
-│  Layer 3: Adapters（10 crates）— 外部生态系统桥接            │
-│  ┌──────┬──────┬──────┬──────┬──────┬──────┬────────────┐ │
-│  │PostGIS│ GEE │ QGIS │ CAD  │ CLI  │ MCP  │ IoT        │ │
-│  ├──────┼──────┼──────┤      │      │      │            │ │
-│  │DuckDB│ STAC │ OSM  │      │      │      │            │ │
-│  └──────┴──────┴──────┴──────┴──────┴──────┴────────────┘ │
+│  Layer 3: Adapters（9 crates）— 外部生态系统桥接            │
+│  ┌──────┬──────┬──────┬──────┬──────┬────────────┐       │
+│  │PostGIS│ GEE │ QGIS │ CAD  │ CLI  │ IoT        │       │
+│  ├──────┼──────┼──────┤      │      │            │       │
+│  │DuckDB│ STAC │ OSM  │      │      │            │       │
+│  └──────┴──────┴──────┴──────┴──────┴────────────┘       │
 └─────────────────────────────────────────────────────────────┘
 
 依赖方向（严格单向）：Adapter → Plugin → Core
@@ -185,7 +185,7 @@ cargo test --workspace
 | `geo-plugin-forestry` | 林业碳汇计量 | 多期NDVI + 样地 | 碳储量 + CCER报告 |
 | `geo-plugin-coastal` | 海岸带变化 | 多期NDVI + DEM | 侵蚀速率 + 淹没 |
 
-### Layer 3: Adapters — 外部适配器（10 crates）
+### Layer 3: Adapters — 外部适配器（9 crates）
 
 | 适配器 | 外部系统 | 通信方式 |
 |--------|---------|---------|
@@ -194,11 +194,12 @@ cargo test --workspace
 | `geo-adapter-qgis` | QGIS | REST / qgis_process |
 | `geo-adapter-cad` | CAD 格式 | DXF/DWG 读写 |
 | `geo-adapter-cli` | GDAL/DVC/shell | 子进程 |
-| `geo-adapter-mcp` | AI Agent | JSON-RPC stdio |
 | `geo-adapter-iot` | 传感器 | MQTT/NATS |
 | `geo-adapter-duckdb` | SQLite 嵌入式 | rusqlite 内存/文件 |
 | `geo-adapter-stac` | STAC API | HTTP (reqwest) |
 | `geo-adapter-osm` | OpenStreetMap | Overpass API |
+
+> MCP 协议支持内置于 [geo-cli](file:///E:/geo/geo-toolbox/crates/geo-cli/src/mcp.rs)，无需独立 adapter crate。
 
 ---
 
@@ -1115,11 +1116,11 @@ geo-toolbox/
 │   ├── geo-plugin-forestry/ # 林业碳汇
 │   ├── geo-plugin-coastal/  # 海岸带
 │   └── geo-plugin-{carbon,ecology,survey,urban,hydro,geohazard,agri}/
-├── adapters/                # Layer 3: 外部适配器（10 crates）
+├── adapters/                # Layer 3: 外部适配器（9 crates）
 │   ├── geo-adapter-duckdb/  # SQLite 嵌入式
 │   ├── geo-adapter-stac/    # STAC 数据发现
 │   ├── geo-adapter-osm/     # OpenStreetMap
-│   └── geo-adapter-{postgis,gee,qgis,cad,cli,mcp,iot}/
+│   └── geo-adapter-{postgis,gee,qgis,cad,cli,iot}/
 ├── crates/                  # 入口（2 crates）
 │   ├── geo-cli/             # CLI + MCP
 │   └── geo-wasm/            # WASM + NPM

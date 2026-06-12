@@ -1,0 +1,11 @@
+# geo-plugin-hydro 业务规则配置
+# 水文分析参数
+
+[plugin]
+name = "hydro"
+version = "0.1.0"
+description = "水文分析插件 — 流域提取、汇流量计算、洪水淹没范围"
+
+[flood]
+return_period_years = 100      # 洪水重现期（年）
+safety_factor = 1.2            # 安全系数

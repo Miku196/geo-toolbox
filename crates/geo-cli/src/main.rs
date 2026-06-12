@@ -232,7 +232,6 @@ fn build_registry() -> PluginRegistry {
 
     // ── GEE ──
     #[cfg(feature = "gee")]
-    #[cfg(feature = "gee")]
     {
         geo_adapter_gee::tools::register_tools(&mut reg);
     }

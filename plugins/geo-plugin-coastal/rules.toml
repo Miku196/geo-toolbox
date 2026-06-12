@@ -1,0 +1,15 @@
+# geo-plugin-coastal 业务规则配置
+# 海岸带变化监测参数
+
+[plugin]
+name = "coastal"
+version = "0.1.0"
+description = "海岸带监测插件 — 侵蚀速率、海平面上升淹没评估"
+
+[erosion]
+threshold_m_per_yr = 0.5       # 显著侵蚀阈值（米/年）
+shoreline_buffer_m = 100.0     # 岸线缓冲区宽度（米）
+
+[sea_level]
+rise_rate_mm_per_yr = 3.6      # 海平面上升速率（毫米/年）
+storm_surge_m = 2.0            # 风暴潮高度（米）

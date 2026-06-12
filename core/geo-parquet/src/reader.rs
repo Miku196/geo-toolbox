@@ -9,7 +9,6 @@ use crate::schema::GeoSchema;
 
 /// Reads GeoParquet files with spatial predicate pushdown.
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct GeoParquetReader {
     /// File path or object store URL.
     path: String,
@@ -76,6 +75,12 @@ impl GeoParquetReader {
     pub fn metadata(&self) -> Option<&GeoParquetMetadata> {
         self.metadata.as_ref()
     }
+
+    /// Get the file path.
+    pub fn path(&self) -> &str { &self.path }
+
+    /// Get the schema definition.
+    pub fn schema(&self) -> &GeoSchema { &self.schema }
 
     // Internal: parse the "geo" key-value metadata from a Parquet file.
     fn parse_file_metadata(&self) -> Result<GeoParquetMetadata, String> {

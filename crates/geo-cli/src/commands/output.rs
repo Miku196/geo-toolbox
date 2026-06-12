@@ -101,6 +101,7 @@ pub async fn handle(_registry: &PluginRegistry, action: OutputAction) -> Result<
         }
 
         OutputAction::Report { aoi, year, name, source, format, output } => {
+            let _ = (&aoi, &year, &name, &source, &format, &output);
             #[cfg(feature = "postgis")]
             {
                 let db_url = std::env::var("DATABASE_URL")

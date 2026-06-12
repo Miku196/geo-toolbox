@@ -74,10 +74,8 @@ impl ReportEngine {
 ///
 /// 模板名 = 相对于 base 目录的文件路径（不含 .tera 后缀）。
 fn collect_tera_files(base: &Path, current: &Path, tera: &mut Tera) -> Result<(), GeoError> {
-    for entry in std::fs::read_dir(current).map_err(|e| GeoError::Io(std::io::Error::other(e)))? {
-        let entry = entry.map_err(|e| {
-            GeoError::Io(std::io::Error::other(e))
-        })?;
+    for entry in std::fs::read_dir(current).map_err(GeoError::Io)? {
+        let entry = entry.map_err(GeoError::Io)?;
         let path = entry.path();
         if path.is_dir() {
             collect_tera_files(base, &path, tera)?;

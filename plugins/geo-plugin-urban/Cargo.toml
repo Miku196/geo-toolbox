@@ -7,9 +7,5 @@ description = "城乡规划插件 — 用地分类统计、容积率、建筑密
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
-geo-vector = { path = "../../core/geo-vector" }
-geo-stats = { path = "../../core/geo-stats" }
-geo-io = { path = "../../core/geo-io" }
 serde.workspace = true
-serde_json.workspace = true
 toml.workspace = true

@@ -1,0 +1,14 @@
+# geo-plugin-survey 业务规则配置
+# 测绘参数
+
+[plugin]
+name = "survey"
+version = "0.1.0"
+description = "测绘插件 — 控制网平差、土方量计算、等值线生成、断面图"
+
+[adjustment]
+max_iterations = 50            # 平差最大迭代次数
+convergence_threshold = 0.001  # 收敛阈值
+
+[earthwork]
+grid_size_m = 10.0             # 土方量计算网格大小（米）

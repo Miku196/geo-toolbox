@@ -1508,17 +1508,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "geo-adapter-mcp"
-version = "0.1.0"
-dependencies = [
- "geo-core",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "geo-adapter-osm"
 version = "0.1.0"
 dependencies = [
@@ -1688,11 +1677,7 @@ name = "geo-plugin-agri"
 version = "0.1.0"
 dependencies = [
  "geo-core",
- "geo-io",
- "geo-raster",
- "geo-stats",
  "serde",
- "serde_json",
  "toml",
 ]
 
@@ -1779,10 +1764,7 @@ name = "geo-plugin-geohazard"
 version = "0.1.0"
 dependencies = [
  "geo-core",
- "geo-raster",
- "geo-stats",
  "serde",
- "serde_json",
  "toml",
 ]
 
@@ -1791,11 +1773,7 @@ name = "geo-plugin-hydro"
 version = "0.1.0"
 dependencies = [
  "geo-core",
- "geo-raster",
- "geo-stats",
- "geo-vector",
  "serde",
- "serde_json",
  "toml",
 ]
 
@@ -1804,11 +1782,7 @@ name = "geo-plugin-survey"
 version = "0.1.0"
 dependencies = [
  "geo-core",
- "geo-io",
- "geo-stats",
- "geo-vector",
  "serde",
- "serde_json",
  "toml",
 ]
 
@@ -1817,11 +1791,7 @@ name = "geo-plugin-urban"
 version = "0.1.0"
 dependencies = [
  "geo-core",
- "geo-io",
- "geo-stats",
- "geo-vector",
  "serde",
- "serde_json",
  "toml",
 ]
 

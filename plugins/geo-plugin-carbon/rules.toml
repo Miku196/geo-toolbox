@@ -1,0 +1,19 @@
+# geo-plugin-carbon 业务规则配置
+# IPCC Tier 1 碳核算参数
+
+[plugin]
+name = "carbon"
+version = "0.1.0"
+description = "碳核算插件 — IPCC 排放因子方法、碳汇计算"
+
+# ── 碳密度参数（tCO₂e/ha/yr）──
+# 正值 = 排放源，负值 = 碳汇
+[carbon]
+source = "IPCC_2019"
+forest = -5.0
+grassland = -1.2
+wetland = -8.5
+cropland = 0.5
+built_up = 2.0
+water = 0.0
+bare = 0.0
