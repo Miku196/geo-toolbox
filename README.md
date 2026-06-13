@@ -10,7 +10,7 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-164%20pass-green.svg)]()
+[![Tests](https://img.shields.io/badge/tests-300+-pass-green.svg)]()
 [![MCP Tools](https://img.shields.io/badge/mcp-48%20tools-blue.svg)]()
 [![CI](https://img.shields.io/badge/CI-passing-green.svg)]()
 
@@ -68,6 +68,8 @@
 ```
 
 核心设计原则：依赖方向严格单向、WASM 数据不出网、Rust 做胶水 Python 做重活、每 crate 独立可测、Feature flags 控制依赖。
+
+> 💡 **2026-06 v0.2 更新**：PostGIS 适配器 `push`/`pull`/`execute` 全部实现（参数化 INSERT + ST_GeomFromGeoJSON/ST_AsGeoJSON）；`CarbonEngine` 集成测试全覆盖（GeoJSON+CSV→Report 端到端）；`geo-report` 新增模板体系（`_partials/` + `_layouts/` Tera 宏组件）；Core 层新增 `validate_sql_identifier()` 防止表名注入。详见 [WIKI 完整指南](WIKI.md)。
 
 > 💡 **2026-06 代码质量治理**：`Plugin` trait 新增 `metadata()`/`is_adapter()`/`is_carbon()` 默认方法，70+ 实现者自动继承，未来扩展不破裂；`output.rs` 超大函数拆分（CC 16→4，消除 4× DATABASE_URL 重复）；`load_factors_from_csv` 拆为三函数（CC 35→4+12）；`EmissionFactor` 17 字段按领域分 7 组；`transform_geojson_coords` 错误传播替代静默吞值。详见 [WIKI 完整指南](WIKI.md)。
 

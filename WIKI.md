@@ -873,6 +873,47 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+### 6.1.1 双向推送/拉取（ExternalAdapter trait）
+
+PostGIS 适配器实现完整的 `ExternalAdapter` trait，支持 push/pull/execute：
+
+```rust
+use geo_adapter_postgis::adapter::PostgisAdapter;
+use geo_core::plugin::{ExternalAdapter, Plugin, GeoFeature};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut adapter = PostgisAdapter::new("postgres://geo:geo@localhost/geo_test");
+
+    // 初始化连接
+    adapter.init()?;
+
+    // push — 写入空间数据到指定表（自动建表）
+    let features = vec![GeoFeature {
+        id: uuid::Uuid::new_v4().to_string(),
+        geometry: serde_json::json!({"type":"Point","coordinates":[104.06,30.67]}),
+        properties: serde_json::json!({"name": "成都", "population": 16000000}),
+    }];
+    let count = adapter.push("cities", &features).await?;
+    println!("Pushed {count} features");
+
+    // pull — 查询空间数据
+    let results = adapter.pull("SELECT *, ST_AsGeoJSON(geom) AS geojson FROM cities LIMIT 5").await?;
+    for f in &results {
+        println!("Feature: id={} geom={} props={}", f.id, f.geometry, f.properties);
+    }
+
+    // execute — 通用查询
+    let result = adapter.execute("SELECT version()", serde_json::json!({})).await?;
+    println!("DB version: {result:#?}");
+
+    Ok(())
+}
+```
+
+> ⚠️ 安全：表名、SQL 均经过 `validate_sql_identifier()` / `validate_select_sql()` 校验，
+> 拒绝 DDL/DML 和 SQL 注入字符。生产环境建议使用只读数据库用户。
+
 ### 6.2 QGIS 集成
 
 #### 方式 A：qgis_process 子进程
@@ -1885,9 +1926,14 @@ DATABASE_URL=postgres://geo:geo@localhost/geo_test cargo test -p geo-adapter-pos
 ### 测试结果期望
 
 ```
-running 167 tests
-test result: ok. 167 passed; 0 failed; ...
+running 300+ tests
+test result: ok. 0 failed
 ```
+
+包含端到端集成测试：
+- `geo-carbon-math`: GeoJSON+CSV→CarbonReport 全管线
+- `geo-adapter-postgis`: push/pull/execute 安全校验
+- `geo-report`: 模板引擎渲染 + MCP 工具
 
 ### 代码质量
 

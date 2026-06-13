@@ -1,0 +1,19 @@
+{# ── 通用表格渲染宏 ── #}
+{% macro table(headers, rows) %}
+| {% for h in headers %}{{ h }} | {% endfor %}
+|{% for h in headers %}------|{% endfor %}
+{% for row in rows %}
+| {% for cell in row %}{{ cell }} | {% endfor %}
+{% endfor %}
+
+{% endmacro table %}
+
+{# ── 碳核算分类表 ── #}
+{% macro carbon_class_table(classes, total_tco2e) %}
+| 土地覆盖类型 | 面积 (ha) | 排放因子 | 排放量 (tCO₂e) | 占比 |
+|-------------|----------|---------|---------------|-----|
+{% for class in classes %}
+| {{ class.class }} | {{ class.area_ha | ha_fmt }} | {{ class.factor }} | {{ class.emission_tco2e | co2_fmt }} | {{ (class.emission_tco2e / total_tco2e * 100) | round }}% |
+{% endfor %}
+| **合计** | **{{ total_area_ha | ha_fmt }}** | | **{{ total_tco2e | co2_fmt }}** | **100%** |
+{% endmacro carbon_class_table %}

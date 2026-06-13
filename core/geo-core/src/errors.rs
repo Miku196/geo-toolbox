@@ -166,6 +166,45 @@ pub fn validate_safe_path(path: &str) -> GeoResult<()> {
     Ok(())
 }
 
+/// Validate a SQL identifier (table name, column name) to prevent SQL injection.
+///
+/// Only allows `[a-zA-Z_][a-zA-Z0-9_]*` optionally qualified with `.` or `::`.
+/// Rejects spaces, semicolons, quotes, and other SQL metacharacters.
+pub fn validate_sql_identifier(name: &str) -> GeoResult<()> {
+    if name.is_empty() {
+        return Err(GeoError::Validation("SQL identifier is empty".into()));
+    }
+
+    // Reject any metacharacters that could break out of an identifier context
+    let forbidden = [';', '\'', '"', ' ', '\t', '\n', '\r', '-', '/', '(', ')', ',', '='];
+    for ch in name.chars() {
+        if forbidden.contains(&ch) {
+            return Err(GeoError::Validation(format!(
+                "SQL identifier '{name}' rejected: contains forbidden character '{ch}'"
+            )));
+        }
+    }
+
+    // Allow: alphanumeric, underscore, dot (schema.table), colon (for schema::table)
+    for ch in name.chars() {
+        if !ch.is_alphanumeric() && ch != '_' && ch != '.' && ch != ':' {
+            return Err(GeoError::Validation(format!(
+                "SQL identifier '{name}' rejected: contains illegal character '{ch}'"
+            )));
+        }
+    }
+
+    // Must start with alpha or underscore
+    let first = name.chars().next().unwrap();
+    if !first.is_alphabetic() && first != '_' {
+        return Err(GeoError::Validation(format!(
+            "SQL identifier '{name}' rejected: must start with letter or underscore"
+        )));
+    }
+
+    Ok(())
+}
+
 // Higher-level crates (geo-store, geo-ingest, etc.) provide their own
 // From<sqlx::Error>, From<object_store::Error>, etc. conversions via
 // a helper macro or manual impls. This keeps geo-core dependency-free.

@@ -1,0 +1,22 @@
+{# ── 统计摘要组件 ── #}
+{% macro stats_summary(metrics) %}
+## 统计摘要
+
+| 指标 | 值 |
+|------|-----|
+{% for m in metrics %}
+| {{ m.label }} | {{ m.value }} |
+{% endfor %}
+
+{% endmacro stats_summary %}
+
+{# ── 审计轨迹表 ── #}
+{% macro audit_trail_table(trails) %}
+## 审计轨迹
+
+| 地类 | 土地覆盖哈希 | 排放因子ID | 因子哈希 | 完整 |
+|------|------------|-----------|---------|------|
+{% for t in trails %}
+| {{ t.class }} | `{{ t.lc_hash | truncate(length=8) }}` | `{{ t.factor_id | truncate(length=8) }}` | `{{ t.factor_hash | truncate(length=8) }}` | {% if t.complete %}✅{% else %}❌{% endif %} |
+{% endfor %}
+{% endmacro audit_trail_table %}

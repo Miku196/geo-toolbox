@@ -538,4 +538,138 @@ mod tests {
         let factors = load_factors_from_csv(csv).unwrap();
         assert_eq!(factors.len(), 1);
     }
+
+    // ── Integration tests ──
+
+    /// Full end-to-end: GeoJSON + CSV → CarbonReport
+    #[test]
+    fn test_integration_geojson_to_report() {
+        let geojson = r#"{"type":"FeatureCollection","features":[
+            {"type":"Feature","properties":{"class":"forest","area_ha":100.0},"geometry":{"type":"Polygon","coordinates":[[[104.0,30.5],[104.1,30.5],[104.1,30.6],[104.0,30.6],[104.0,30.5]]]}},
+            {"type":"Feature","properties":{"class":"grassland","area_ha":50.0},"geometry":{"type":"Polygon","coordinates":[[[104.2,30.5],[104.3,30.5],[104.3,30.6],[104.2,30.6],[104.2,30.5]]]}},
+            {"type":"Feature","properties":{"class":"wetland","area_ha":20.0},"geometry":{"type":"Polygon","coordinates":[[[104.4,30.5],[104.5,30.5],[104.5,30.6],[104.4,30.6],[104.4,30.5]]]}}
+        ]}"#;
+
+        let csv = "source,category,factor_value,unit,valid_from_year,valid_to_year\nIPCC_2019,forest,5.0,tCO2e/ha/yr,2019,2030\nIPCC_2019,grassland,1.2,tCO2e/ha/yr,2019,2030\nIPCC_2019,wetland,8.5,tCO2e/ha/yr,2019,2030";
+
+        let engine = CarbonEngine::new();
+        let report = engine.calculate_from_geojson(geojson, csv, 2025).unwrap();
+
+        // Structural assertions
+        assert_eq!(report.classes.len(), 3, "should have 3 landcover classes");
+        assert!(report.total_area_ha > 0.0);
+        assert!(report.total_emission_tco2e > 0.0);
+        assert!(!report.gas_summary.is_empty());
+        assert!(!report.audit_trail.is_empty());
+
+        // Per-class checks
+        let forest = report.classes.iter().find(|c| c.landcover_class == "forest").unwrap();
+        assert!(forest.area_ha > 0.0);
+        assert!((forest.emission_tco2e - forest.area_ha * 5.0).abs() < 1.0,
+            "forest emission should be area × 5.0");
+
+        let wetland = report.classes.iter().find(|c| c.landcover_class == "wetland").unwrap();
+        assert!(wetland.emission_tco2e > 0.0);
+
+        // Audit trail: all features should have audit entries
+        assert_eq!(report.audit_trail.len(), 3);
+        for entry in &report.audit_trail {
+            assert!(entry.complete, "all audit entries should be complete");
+        }
+    }
+
+    /// Invalid GeoJSON should return an error, not panic.
+    #[test]
+    fn test_integration_invalid_geojson() {
+        let engine = CarbonEngine::new();
+        let csv = "source,category,factor_value,unit,valid_from_year,valid_to_year\nIPCC_2019,forest,5.0,tCO2e/ha/yr,2019,2030";
+
+        let result = engine.calculate_from_geojson("not valid json", csv, 2025);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid GeoJSON"));
+    }
+
+    /// Empty GeoJSON features array returns an error (no features).
+    #[test]
+    fn test_integration_empty_features() {
+        let engine = CarbonEngine::new();
+        let geojson = r#"{"type":"FeatureCollection","features":[]}"#;
+        let csv = "source,category,factor_value,unit,valid_from_year,valid_to_year\nIPCC_2019,forest,5.0,tCO2e/ha/yr,2019,2030";
+
+        let result = engine.calculate_from_geojson(geojson, csv, 2025);
+        assert!(result.is_err(), "empty features should be an error");
+    }
+
+    /// GeoJSON without a "features" array.
+    #[test]
+    fn test_integration_no_features_array() {
+        let engine = CarbonEngine::new();
+        let geojson = r#"{"type":"Point","coordinates":[104.0,30.5]}"#;
+        let csv = "source,category,factor_value,unit,valid_from_year,valid_to_year\nIPCC_2019,forest,5.0,tCO2e/ha/yr,2019,2030";
+
+        let result = engine.calculate_from_geojson(geojson, csv, 2025);
+        assert!(result.is_err());
+    }
+
+    /// Invalid CSV should return an error.
+    #[test]
+    fn test_integration_invalid_csv() {
+        let engine = CarbonEngine::new();
+        let geojson = r#"{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"class":"forest"},"geometry":{"type":"Polygon","coordinates":[[[104.0,30.5],[104.1,30.5],[104.1,30.6],[104.0,30.6],[104.0,30.5]]]}}]}"#;
+
+        // Completely malformed CSV (only header, no data → parse will fail because
+        // there are no valid rows with required fields like 'category' and 'factor_value')
+        let csv = "totally,wrong,headers,only\njust,one,row,here";
+        let result = engine.calculate_from_geojson(geojson, csv, 2025);
+        assert!(result.is_err(), "malformed CSV should fail: {:?}", result.ok());
+    }
+
+    /// Year filtering: using a year outside valid range should exclude factors.
+    #[test]
+    fn test_integration_year_filtering() {
+        let engine = CarbonEngine::new();
+        let geojson = r#"{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"class":"forest"},"geometry":{"type":"Polygon","coordinates":[[[104.0,30.5],[104.1,30.5],[104.1,30.6],[104.0,30.6],[104.0,30.5]]]}}]}"#;
+
+        // Factor valid 2019-2030, query year 2050 → no matching factors
+        let csv = "source,category,factor_value,unit,valid_from_year,valid_to_year\nIPCC_2019,forest,5.0,tCO2e/ha/yr,2019,2030";
+        let result = engine.calculate_from_geojson(geojson, csv, 2050);
+        assert!(result.is_err());
+    }
+
+    /// Subcategory matching: specific subcategories should match granular factors.
+    #[test]
+    fn test_integration_subcategory_matching() {
+        let geojson = r#"{"type":"FeatureCollection","features":[
+            {"type":"Feature","properties":{"class":"forest","subcategory":"evergreen_broadleaf"},"geometry":{"type":"Polygon","coordinates":[[[104.0,30.5],[104.1,30.5],[104.1,30.6],[104.0,30.6],[104.0,30.5]]]}}
+        ]}"#;
+
+        // Two factors: one generic "forest", one specific "forest:evergreen_broadleaf"
+        let csv = "source,category,subcategory,factor_value,unit,valid_from_year,valid_to_year\nIPCC_2019,forest,,5.0,tCO2e/ha/yr,2019,2030\nIPCC_2019,forest,evergreen_broadleaf,-380.0,tCO2e/ha,2019,2030";
+
+        let engine = CarbonEngine::new();
+        let report = engine.calculate_from_geojson(geojson, csv, 2025).unwrap();
+        assert_eq!(report.classes.len(), 1);
+        // Should compute an emission (positive or negative) using subcategory match
+        assert!(report.total_emission_tco2e != 0.0);
+    }
+
+    /// Verify report can be serialized to JSON (for API/MCP transport).
+    #[test]
+    fn test_integration_report_json_roundtrip() {
+        let engine = CarbonEngine::new();
+        let report = engine.calculate(
+            &make_features(), &make_factors(), 2025
+        ).unwrap();
+
+        let json = serde_json::to_value(&report).unwrap();
+        assert!(json.is_object());
+        assert!(json["classes"].is_array());
+        assert!(json["total_emission_tco2e"].is_number());
+        assert!(json["audit_trail"].is_array());
+
+        // Round-trip: JSON → Report
+        let report2: CarbonReport = serde_json::from_value(json).unwrap();
+        assert_eq!(report.total_emission_tco2e, report2.total_emission_tco2e);
+        assert_eq!(report.classes.len(), report2.classes.len());
+    }
 }

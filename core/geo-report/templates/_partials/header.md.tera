@@ -1,0 +1,19 @@
+{# ── 通用页眉组件 ── #}
+{% macro header(title, subtitle="", date="", logo="") %}
+
+# {{ title }}
+
+{% if subtitle %}
+**{{ subtitle }}**
+{% endif %}
+
+| | |
+|---|---|
+| **项目区域** | {{ aoi_name }} |
+| **评估年份** | {{ year }} |
+{% if date %} | **生成日期** | {{ date }} |{% endif %}
+{% if source %} | **数据源** | {{ source }} |{% endif %}
+
+---
+
+{% endmacro header %}
