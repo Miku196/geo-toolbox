@@ -2036,3 +2036,68 @@ geo-toolbox 实施了以下安全措施：
 **已知风险**（低优先级）：
 - CLI `store write` 命令不校验文件路径，可能读取任意文件（但仅读取，不写入）
 - `format!("COMPRESS={}", user_input)` 在 GDAL CLI 中可能被空格拆分参数
+
+---
+
+## 11. HTTP API Server（`crates/geo-server`）
+
+### 11.1 启动
+
+```bash
+cargo run -p geo-server --release
+# 监听 http://0.0.0.0:9378
+```
+
+### 11.2 API
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/health` | GET | 健康检查 |
+| `/api/tools` | GET | 列出所有工具 |
+| `/api/call/{tool}` | POST | 调用工具，body 为 JSON 参数 |
+
+### 11.3 使用示例
+
+```bash
+# 坐标变换
+curl -X POST http://localhost:9378/api/call/crs_transform \
+  -d '{"from_epsg":4326,"to_epsg":3857,"x":104.06,"y":30.57}'
+
+# 碳核算
+curl -X POST http://localhost:9378/api/call/carbon_calculate_raw \
+  -d '{"geojson":"...","csv":"source,category,factor_value\nIPCC_2019,forest,-5.0","year":2025}'
+
+# 列出所有可用工具
+curl http://localhost:9378/api/tools
+```
+
+---
+
+## 12. Plugin 开发（ProcessPlugin trait）
+
+所有插件实现统一的 `ProcessPlugin` trait，可通过 `PluginRegistry::dispatch()` 调度。
+
+### 示例：UrbanPlugin
+
+```rust
+// plugins/geo-plugin-urban/src/trait_impl.rs
+use crate::UrbanPlugin;
+use geo_core::plugin::{Plugin, ProcessPlugin, PluginCategory};
+use geo_core::errors::GeoResult;
+
+impl Plugin for UrbanPlugin {
+    fn name(&self) -> &str { "urban" }
+    fn description(&self) -> &str { "Urban planning" }
+    fn category(&self) -> PluginCategory { PluginCategory::Process }
+}
+
+impl ProcessPlugin for UrbanPlugin {
+    fn process_type(&self) -> &str { "urban" }
+    async fn execute(&self, p: serde_json::Value) -> GeoResult<serde_json::Value> {
+        // 调用现有方法
+        Ok(serde_json::json!({"far": self.far(...)}))
+    }
+}
+```
+
+所有 10 个插件均已实现此 trait，可通过 `registry.dispatch("urban", args)` 统一调用。
