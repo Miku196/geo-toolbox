@@ -1341,6 +1341,28 @@ pub trait Plugin: Send + Sync {
     fn init(&mut self) -> GeoResult<()> { Ok(()) }
     fn shutdown(&mut self) -> GeoResult<()> { Ok(()) }
     fn is_healthy(&self) -> bool { true }
+
+    /// 构建 PluginMeta 快照（默认委托给上面方法；可覆盖提供 extra 字段）
+    fn metadata(&self) -> PluginMeta {
+        PluginMeta {
+            name: self.name().to_string(),
+            version: self.version().to_string(),
+            description: self.description().to_string(),
+            category: self.category(),
+            healthy: self.is_healthy(),
+            extra: serde_json::Value::Null,
+        }
+    }
+
+    /// Adapter 判断快捷方式
+    fn is_adapter(&self) -> bool {
+        self.category() == PluginCategory::Adapter
+    }
+
+    /// Carbon 插件判断快捷方式
+    fn is_carbon(&self) -> bool {
+        self.category() == PluginCategory::Carbon
+    }
 }
 ```
 

@@ -69,6 +69,8 @@
 
 核心设计原则：依赖方向严格单向、WASM 数据不出网、Rust 做胶水 Python 做重活、每 crate 独立可测、Feature flags 控制依赖。
 
+> 💡 **2026-06 代码质量治理**：`Plugin` trait 新增 `metadata()`/`is_adapter()`/`is_carbon()` 默认方法，70+ 实现者自动继承，未来扩展不破裂；`output.rs` 超大函数拆分（CC 16→4，消除 4× DATABASE_URL 重复）；`load_factors_from_csv` 拆为三函数（CC 35→4+12）；`EmissionFactor` 17 字段按领域分 7 组；`transform_geojson_coords` 错误传播替代静默吞值。详见 [WIKI 完整指南](WIKI.md)。
+
 ---
 
 ## 🤖 MCP 工具一览（44 tools）

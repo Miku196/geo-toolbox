@@ -28,6 +28,10 @@ use serde::{Deserialize, Serialize};
 ///
 /// Provides identity and lifecycle hooks used by the [`PluginRegistry`]
 /// for discovery, configuration, and teardown.
+///
+/// # Extension safety
+/// New default methods should be added here instead of required methods
+/// to avoid breaking all 70+ implementors across the workspace.
 pub trait Plugin: Send + Sync {
     /// Unique name for this plugin (e.g. `"postgis"`, `"gee-adapter"`).
     fn name(&self) -> &str;
@@ -54,6 +58,34 @@ pub trait Plugin: Send + Sync {
     /// Whether this plugin is currently healthy / available.
     fn is_healthy(&self) -> bool {
         true
+    }
+
+    /// Build a [`PluginMeta`] snapshot from this plugin's identity fields.
+    ///
+    /// Default implementation delegates to `name()`, `version()`, `description()`,
+    /// `category()`, and `is_healthy()`. Override to supply `extra` fields (e.g.
+    /// adapter endpoints, output format hints).
+    fn metadata(&self) -> PluginMeta {
+        PluginMeta {
+            name: self.name().to_string(),
+            version: self.version().to_string(),
+            description: self.description().to_string(),
+            category: self.category(),
+            healthy: self.is_healthy(),
+            extra: serde_json::Value::Null,
+        }
+    }
+
+    /// Returns true when this plugin is an adapter bridging an external tool.
+    /// Default: checks `category() == PluginCategory::Adapter`.
+    fn is_adapter(&self) -> bool {
+        self.category() == PluginCategory::Adapter
+    }
+
+    /// Returns true when this plugin is a carbon accounting engine.
+    /// Default: checks `category() == PluginCategory::Carbon`.
+    fn is_carbon(&self) -> bool {
+        self.category() == PluginCategory::Carbon
     }
 }
 
