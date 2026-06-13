@@ -36,9 +36,9 @@ jobs:
       - name: Check all features (linux only - needs GDAL)
         if: runner.os == 'Linux'
         run: cargo check --workspace --all-features
-      - name: Check selected features (windows - no GDAL on CI)
+      - name: Check (windows — pure Rust features, no GDAL)
         if: runner.os == 'Windows'
-        run: cargo check --workspace --no-default-features --features minimal,postgis,temporal,qgis,energy,duckdb
+        run: cargo check --workspace --no-default-features --features minimal,postgis
       - run: cargo check --workspace --no-default-features --features minimal
 
   test:
@@ -58,9 +58,9 @@ jobs:
       - name: Test (ubuntu — all features, needs GDAL)
         if: runner.os == 'Linux'
         run: cargo test --workspace --no-fail-fast
-      - name: Test (windows — no gdal feature)
+      - name: Test (windows — pure Rust features, no GDAL)
         if: runner.os == 'Windows'
-        run: cargo test --workspace --no-fail-fast --no-default-features --features minimal,postgis,cad,gee,qgis
+        run: cargo test --workspace --no-fail-fast --no-default-features --features minimal,postgis
 
   lint:
     name: Lint
