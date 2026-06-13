@@ -31,4 +31,20 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let src = match args["source"].as_str().unwrap_or("osm") { "gaode"=>crate::TileSource::Gaode, "tianditu"=>crate::TileSource::TianDiTu, _=>crate::TileSource::OpenStreetMap };
         Ok(serde_json::json!({"url":crate::tile_url(src, args["x"].as_u64().unwrap_or(0) as u32, args["y"].as_u64().unwrap_or(0) as u32, args["z"].as_u64().unwrap_or(0) as u8)}))
     });
+
+    registry.register_tool_sync("tile", ToolDef {
+        name: "tile_encode_mvt".into(),
+        description: "Encode GeoJSON features to MVT (Mapbox Vector Tile) bytes".into(),
+        input_schema: serde_json::json!({"type":"object","properties":{"layer":{"type":"string"},"features":{"type":"array"},"x":{"type":"integer"},"y":{"type":"integer"},"z":{"type":"integer"},"extent":{"type":"integer","default":4096}},"required":["layer","features","x","y","z"]}),
+    }, |args| -> ToolResult {
+        let features: Vec<serde_json::Value> = args["features"].as_array().unwrap_or(&vec![]).clone();
+        let x = args["x"].as_u64().unwrap_or(0) as u32;
+        let y = args["y"].as_u64().unwrap_or(0) as u32;
+        let z = args["z"].as_u64().unwrap_or(0) as u8;
+        let extent = args["extent"].as_u64().unwrap_or(4096) as u32;
+        let encoder = crate::MvtEncoder::new(extent);
+        let bytes = encoder.encode_tile(args["layer"].as_str().unwrap_or("default"), &features, x, y, z)
+            .map_err(|e| geo_core::GeoError::Validation(e.to_string()))?;
+        Ok(serde_json::json!({"byte_count": bytes.len()}))
+    });
 }

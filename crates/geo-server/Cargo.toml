@@ -1,0 +1,41 @@
+[package]
+name = "geo-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "HTTP API server for geo-toolbox — REST interface to all MCP tools"
+
+[[bin]]
+name = "geo-server"
+path = "src/main.rs"
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
+geo-io = { path = "../../core/geo-io" }
+geo-carbon-math = { path = "../../core/geo-carbon-math" }
+geo-tile = { path = "../../core/geo-tile" }
+geo-temporal = { path = "../../core/geo-temporal" }
+geo-vector = { path = "../../core/geo-vector" }
+geo-index = { path = "../../core/geo-index" }
+geo-stats = { path = "../../core/geo-stats" }
+geo-report = { path = "../../core/geo-report" }
+geo-plugin-carbon = { path = "../../plugins/geo-plugin-carbon" }
+geo-plugin-ecology = { path = "../../plugins/geo-plugin-ecology" }
+geo-plugin-energy = { path = "../../plugins/geo-plugin-energy" }
+geo-plugin-forestry = { path = "../../plugins/geo-plugin-forestry" }
+geo-plugin-coastal = { path = "../../plugins/geo-plugin-coastal" }
+geo-plugin-survey = { path = "../../plugins/geo-plugin-survey" }
+geo-plugin-hydro = { path = "../../plugins/geo-plugin-hydro" }
+geo-plugin-geohazard = { path = "../../plugins/geo-plugin-geohazard" }
+geo-plugin-agri = { path = "../../plugins/geo-plugin-agri" }
+geo-plugin-urban = { path = "../../plugins/geo-plugin-urban" }
+geo-adapter-duckdb = { path = "../../adapters/geo-adapter-duckdb" }
+geo-adapter-stac = { path = "../../adapters/geo-adapter-stac" }
+geo-adapter-osm = { path = "../../adapters/geo-adapter-osm" }
+axum = "0.7"
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

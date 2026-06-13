@@ -1,0 +1,3 @@
+use crate::HydroPlugin; use geo_core::plugin::{Plugin,ProcessPlugin,PluginCategory}; use geo_core::errors::GeoResult;
+impl Plugin for HydroPlugin { fn name(&self)->&str{"hydro"} fn version(&self)->&str{"0.1"} fn description(&self)->&str{"Hydrology"} fn category(&self)->PluginCategory{PluginCategory::Process} }
+impl ProcessPlugin for HydroPlugin { fn process_type(&self)->&str{"hydro"} async fn execute(&self,p:serde_json::Value)->GeoResult<serde_json::Value>{Ok(serde_json::json!({"inundation_ha":self.estimate_inundation_area(p["catchment_area_ha"].as_f64().unwrap_or(0.0),p["rainfall_mm"].as_f64().unwrap_or(0.0)),"runoff":self.runoff_coefficient(p["impervious_ratio"].as_f64().unwrap_or(0.0))}))} }

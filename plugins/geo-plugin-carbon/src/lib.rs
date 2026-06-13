@@ -9,5 +9,6 @@ pub mod config;
 pub mod lca;
 pub mod plugin;
 pub mod tools;
+pub mod trait_impl;
 pub use config::CarbonConfig;
 pub use plugin::CarbonPlugin;

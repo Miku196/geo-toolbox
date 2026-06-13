@@ -2,4 +2,5 @@
 
 pub mod coastal;
 pub mod tools;
+pub mod trait_impl;
 pub use coastal::{CoastalPlugin, ShorelineReport};

@@ -1,0 +1,3 @@
+use crate::GeohazardPlugin; use geo_core::plugin::{Plugin,ProcessPlugin,PluginCategory}; use geo_core::errors::GeoResult;
+impl Plugin for GeohazardPlugin { fn name(&self)->&str{"geohazard"} fn version(&self)->&str{"0.1"} fn description(&self)->&str{"Geohazard risk assessment"} fn category(&self)->PluginCategory{PluginCategory::Process} }
+impl ProcessPlugin for GeohazardPlugin { fn process_type(&self)->&str{"geohazard"} async fn execute(&self,p:serde_json::Value)->GeoResult<serde_json::Value>{let s=self.landslide_susceptibility(p["slope_norm"].as_f64().unwrap_or(0.0),p["lithology_norm"].as_f64().unwrap_or(0.0),p["rainfall_norm"].as_f64().unwrap_or(0.0));Ok(serde_json::json!({"susceptibility":s,"risk_level":self.risk_level(s)}))} }

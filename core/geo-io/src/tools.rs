@@ -22,10 +22,15 @@ pub fn register_tools(registry: &mut PluginRegistry) {
     registry.register_tool_sync("crs", ToolDef {
         name: "crs_list".into(),
         description: "List all registered coordinate reference systems".into(),
-        input_schema: serde_json::json!({"type":"object","properties":{},"required":[]}),
-    }, |_args| -> ToolResult {
+        input_schema: serde_json::json!({"type":"object","properties":{"category":{"type":"string","description":"Filter: Storage/Display/Carbon/CadLocal"}},"required":[]}),
+    }, |args| -> ToolResult {
+        let cat_filter = args["category"].as_str();
         let list: Vec<serde_json::Value> = geo_core::crs::CrsRegistry::new()
             .list()
+            .filter(|c| match cat_filter {
+                Some(cat) => format!("{:?}", c.category).to_lowercase() == cat.to_lowercase(),
+                None => true,
+            })
             .map(|c| serde_json::json!({
                 "epsg": c.epsg,
                 "name": c.name,
@@ -138,4 +143,19 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             "records": records.iter().take(10).cloned().collect::<Vec<_>>(),
         }))
     }));
+
+    // ── Coordinate validation ──
+    registry.register_tool_sync("ingest", ToolDef {
+        name: "validate_coord".into(),
+        description: "Validate a coordinate pair (longitude, latitude)".into(),
+        input_schema: serde_json::json!({"type":"object","properties":{"lon":{"type":"number"},"lat":{"type":"number"}},"required":["lon","lat"]}),
+    }, |args| -> ToolResult {
+        let lon = args["lon"].as_f64().unwrap_or(999.0);
+        let lat = args["lat"].as_f64().unwrap_or(999.0);
+        let valid = geo_core::types::validate_coord(lon, lat).is_ok();
+        let mut issues = Vec::new();
+        if !(-180.0..=180.0).contains(&lon) { issues.push("lon out of range [-180,180]"); }
+        if !(-90.0..=90.0).contains(&lat) { issues.push("lat out of range [-90,90]"); }
+        Ok(serde_json::json!({"valid": valid, "lon": lon, "lat": lat, "issues": issues}))
+    });
 }

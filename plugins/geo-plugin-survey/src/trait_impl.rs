@@ -1,0 +1,3 @@
+use crate::SurveyPlugin; use geo_core::plugin::{Plugin,ProcessPlugin,PluginCategory}; use geo_core::errors::GeoResult;
+impl Plugin for SurveyPlugin { fn name(&self)->&str{"survey"} fn version(&self)->&str{"0.1"} fn description(&self)->&str{"Surveying"} fn category(&self)->PluginCategory{PluginCategory::Process} }
+impl ProcessPlugin for SurveyPlugin { fn process_type(&self)->&str{"survey"} async fn execute(&self,p:serde_json::Value)->GeoResult<serde_json::Value>{let polys:Vec<(f64,f64)>=p["polygons"].as_array().unwrap_or(&vec![]).iter().filter_map(|v|{let a=v.as_array()?;Some((a.get(0)?.as_f64()?,a.get(1)?.as_f64()?))}).collect();Ok(serde_json::json!({"volume_m3":self.calculate_earthwork(&polys)}))} }

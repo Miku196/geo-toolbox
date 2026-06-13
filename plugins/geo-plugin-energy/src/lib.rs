@@ -8,6 +8,7 @@
 pub mod config;
 pub mod energy;
 pub mod tools;
+pub mod trait_impl;
 
 pub use config::EnergyConfig;
 pub use energy::{EnergyPlugin, SolarAssessment, WindAssessment};

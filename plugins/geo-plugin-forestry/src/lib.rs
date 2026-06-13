@@ -7,6 +7,7 @@
 pub mod config;
 pub mod forestry;
 pub mod tools;
+pub mod trait_impl;
 
 pub use config::ForestryConfig;
 pub use forestry::{ForestryPlugin, CarbonStockAssessment};

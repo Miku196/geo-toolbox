@@ -7,6 +7,7 @@
 pub mod config;
 pub mod survey;
 pub mod tools;
+pub mod trait_impl;
 
 pub use config::SurveyConfig;
 pub use survey::SurveyPlugin;

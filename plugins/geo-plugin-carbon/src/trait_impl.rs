@@ -1,0 +1,3 @@
+use crate::CarbonPlugin as Cp; use geo_core::plugin::{Plugin,ProcessPlugin,PluginCategory}; use geo_core::errors::{GeoError,GeoResult};
+impl Plugin for Cp { fn name(&self)->&str{"carbon"} fn version(&self)->&str{"0.1"} fn description(&self)->&str{"IPCC Tier 1 carbon accounting"} fn category(&self)->PluginCategory{PluginCategory::Carbon} }
+impl ProcessPlugin for Cp { fn process_type(&self)->&str{"carbon"} async fn execute(&self,p:serde_json::Value)->GeoResult<serde_json::Value>{let g=p["geojson"].as_str().unwrap_or("");let y=p["year"].as_u64().unwrap_or(2025)as u16;Ok(serde_json::to_value(self.calculate_from_geojson(g,y)?).map_err(GeoError::Serde)?)} }
