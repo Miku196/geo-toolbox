@@ -55,11 +55,12 @@ jobs:
       - name: Install system deps (ubuntu)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libgdal-dev libsqlite3-dev libssl-dev pkg-config
-      - name: Install system deps (windows)
+      - name: Test (ubuntu — all features, needs GDAL)
+        if: runner.os == 'Linux'
+        run: cargo test --workspace --no-fail-fast
+      - name: Test (windows — no gdal feature)
         if: runner.os == 'Windows'
-        shell: bash
-        run: cargo test --list 2>&1 || echo "test listing failed (may need GDAL); running what we can"
-      - run: cargo test --workspace --no-fail-fast
+        run: cargo test --workspace --no-fail-fast --no-default-features --features minimal,postgis,cad,gee,qgis
 
   lint:
     name: Lint
