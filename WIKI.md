@@ -19,6 +19,14 @@
   - [4.2 碳核算](#42-碳核算)
   - [4.3 NDVI 计算](#43-ndvi-计算)
   - [4.4 GeoJSON IO](#44-geojson-io)
+  - [4.5 瓦片索引（MVT/PMTiles）](#45-瓦片索引-mvtpmtiles)
+  - [4.6 时空趋势分析](#46-时空趋势分析)
+  - [4.7 新能源选址](#47-新能源选址)
+  - [4.8 DuckDB 嵌入式数据库](#48-duckdb-嵌入式数据库)
+  - [4.9 STAC 影像搜索](#49-stac-影像搜索)
+  - [4.10 林业碳汇](#410-林业碳汇)
+  - [4.11 海岸带监测](#411-海岸带监测)
+  - [4.12 OSM 数据拉取](#412-osm-数据拉取)
 - [5. 插件开发](#5-插件开发)
   - [5.1 创建插件骨架](#51-创建插件骨架)
   - [5.2 编写配置](#52-编写配置)
@@ -487,16 +495,178 @@ let items = client.search(
 
 ### 4.10 林业碳汇
 
+geo-toolbox 的林业碳汇体系遵循 **"数据采集 → 数据处理与建模 → 碳汇计量与决策"** 三层智能架构：
+
+| 层级 | geo-toolbox 组件 | 核心能力 |
+|------|-----------------|--------|
+| **天（卫星遥感）** | `geo-adapter-stac` + `geo-adapter-gee` | Sentinel-2/Landsat 多时相影像发现与下载 |
+| **空（无人机）** | `geo-io` (NMEA/GPS) + `geo-ogc` (WMS/WFS) | 无人机航迹解析、正射影像接入 |
+| **地（IoT 传感器）** | `geo-adapter-iot` (MQTT) | 气象站、土壤传感器、树木胸径实时数据流 |
+| **数据集成** | `geo-io` (GeoJSON/CSV) + `geo-adapter-postgis` | 样地调查数据落库、空间数据"一张图"管理 |
+| **遥感分析** | `geo-raster` (NDVI/NDWI) + `geo-index` (GeoHash) | 植被指数计算、森林扰动检测 |
+| **时空建模** | `geo-temporal` (MK趋势 + 变化检测) | 多期NDVI序列分析、植被恢复/退化趋势 |
+| **碳汇计量** | `geo-carbon-math` + `geo-plugin-forestry` | IPCC Tier 1 生物量扩展方程、碳储量 → tCO₂e 换算 |
+| **报告输出** | `geo-report` (Tera模板) | 碳汇评估报告 Markdown 渲染 |
+
+#### 核心用法
+
+##### 1. 碳储量变化评估
+
+基于两期卫星影像的 NDVI 变化 + 野外样地蓄积量调查，用 IPCC 生物量扩展因子法（BEF）估算碳储量变化。
+
 ```rust
 use geo_plugin_forestry::{ForestryPlugin, ForestryConfig};
 
 let plugin = ForestryPlugin::new(ForestryConfig::default());
 let result = plugin.assess_carbon_stock(
-    "林场A", aoi, &red_old, &nir_old, &red_new, &nir_new,
-    2020, 2025, 200.0, 500.0,
+    "龙泉山林场", aoi_geojson,
+    &red_2020, &nir_2020, &red_2025, &nir_2025,
+    2020, 2025,
+    sample_volume_m3_ha,  // 样地蓄积量 (m³/ha)
+    forest_area_ha,        // 林地面积
 )?;
-println!("年碳汇: {:.0} tCO₂/yr, CCER: {}", -result.annual_sink_tco2_per_yr, result.ccer_applicable);
+
+println!("蓄积量变化:   {:.0} m³", result.volume_change_m3);
+println!("碳储量变化:   {:.1} tC", result.carbon_stock_change_tc);
+println!("碳汇量:       {:.1} tCO₂e", -result.carbon_sink_tco2e);
+println!("年碳汇:       {:.0} tCO₂/yr", -result.annual_sink_tco2_per_yr);
+println!("CCER可开发:   {}", result.ccer_applicable);
+println!("评估等级:     {}", result.grade);
 ```
+
+> **CCER 判定逻辑**：年碳汇 > 10 tCO₂/yr 且林地面积 ≥ 100 ha → `ccer_applicable = true`。
+
+##### 2. 多期NDVI趋势分析
+
+利用 `geo-temporal` 对 4 期以上 NDVI 序列做逐像素 Mann-Kendall 趋势检验，识别植被恢复/退化区域。
+
+```rust
+let ndvi_series = vec![&ndvi_2019, &ndvi_2021, &ndvi_2023, &ndvi_2025];
+let years = vec![2019, 2021, 2023, 2025];
+
+let report = plugin.trend_assessment("卧龙保护区", aoi_geojson, &ndvi_series, &years)?;
+// 输出: "卧龙保护区 林业趋势: 68% 像素恢复, 当前均NDVI 0.72"
+```
+
+##### 3. 自定义碳参数
+
+通过 `rules.toml` 配置树种特异性参数（木材密度、含碳率按树种、区域调整）：
+
+```toml
+[plugin]
+name = "forestry"
+version = "0.1.0"
+description = "四川针叶林碳汇评估"
+
+[carbon]
+source = "IPCC_2019"
+biomass_expansion_factor = 1.74  # 针叶林 BEF
+wood_density = 0.45              # 云杉木材密度 (t/m³)
+root_shoot_ratio = 0.23          # 针叶林根冠比
+carbon_fraction = 0.51           # 针叶树含碳率
+```
+
+```rust
+let config = ForestryConfig::from_file("rules.toml")?;
+let plugin = ForestryPlugin::new(config);
+```
+
+##### 4. 完整碳汇评估管线（端到端）
+
+将以上组件串联为一条自动评估管线：
+
+```text
+STAC 搜索两期 Sentinel-2 L2A
+  → geo-raster 计算 NDVI 差值
+  → geo-temporal 变化检测（恢复/退化图）
+  → geo-carbon-math 生物量→碳储量换算
+  → geo-plugin-forestry 输出 CarbonStockAssessment
+  → geo-report 渲染 Markdown 报告
+```
+
+### 算法参考：forestat R 包
+
+geo-toolbox 的林业碳汇计算方法参考了中国林业科学研究院资源信息研究所开发的 R 包 **forestat**（[GitHub](https://github.com/caf-ifrit/forestat)），该包实现了基于林分潜在生长量的立地质量评价与碳汇潜力计算。
+
+#### 六种树高生长模型
+
+| 模型 | 公式 | 适用场景 |
+|------|------|---------|
+| **Richards** | `H = 1.3 + a(1 - e⁻ᵇᴬᴳᴱ)ᶜ` | 通用，最广泛使用 |
+| **Logistic** | `H = 1.3 + a/(1 + be⁻ᶜᴬᴳᴱ)` | S 形生长，速生期明显 |
+| **Korf** | `H = 1.3 + ae⁻ᵇᴬᴳᴱ⁻ᶜ` | 慢生树种，上方渐近 |
+| **Gompertz** | `H = 1.3 + ae⁻ᵇᵉ⁻ᶜᴬᴳᴱ` | 不对称 S 形 |
+| **Weibull** | `H = 1.3 + a(1 - e⁻ᵇᴬᴳᴱᶜ)` | 灵活形状参数 |
+| **Schumacher** | `H = 1.3 + ae⁻ᵇ/ᴬᴳᴱ` | 简单，少参数 |
+
+#### 断面积与生物量生长模型
+
+两种模型共用 Richard 形式，引入林分密度指数 S 作为协变量：
+
+```
+BA = a(1 - exp(-b × (S/1000)ᶜ × AGE))ᵈ
+Bio = a(1 - exp(-b × (S/1000)ᶜ × AGE))ᵈ
+```
+
+其中 `S` = 林分密度指数 (SDI)，反映林分拥挤程度。
+
+#### 立地等级划分（迭代分级法）
+
+1. 按林龄分组，等距划分初始树高等级
+2. 拟合非线性混合效应树高模型（林分作为随机效应）
+3. 根据拟合曲线重新分配每块样地的立地等级
+4. 迭代至收敛，得到每个林分类型的分级树高生长曲线
+
+#### 潜在生产力计算
+
+给定立地等级下，通过**黄金分割法**搜索最优林分密度 S，使年生长增量最大化：
+
+```
+Max MI = maxₛ [M(S, AGE+1) - M(S, AGE)]
+```
+
+其中 M 为生物量生长模型预测值。黄金分割法在 [Smin=20, Smax=3000] 区间搜索最优 S。
+
+#### 现实生产力计算
+
+对每块样地，使用实际观测的 AGE、S 和立地等级代入生长模型，计算当前的断面积年生长量 (BAI) 和生物量年生长量 (VI)。
+
+#### 碳汇潜力
+
+```
+碳汇潜力 = 潜在生产力 - 现实生产力
+```
+
+定量回答：给定立地条件下最大能达到多少、现在是多少、提升空间有多大。
+
+---
+
+> **集成路线图**：以上算法目前以 R 包 `forestat` 实现，geo-toolbox 计划分阶段将核心模型移植为 Rust 原生实现（`geo-carbon-math` 扩展），并保留 R 语言桥接适配器（`geo-adapter-forestat`）作为过渡方案。
+
+#### 关键参数说明
+
+| 参数 | 符号 | 默认值 | 说明 |
+|------|------|--------|------|
+| `biomass_expansion_factor` | BEF | 1.7 | 生物量扩展因子，地上生物量→全树生物量 |
+| `wood_density` | WD | 0.55 t/m³ | 木材基本密度 |
+| `root_shoot_ratio` | R | 0.25 | 根冠比，地下/地上生物量 |
+| `carbon_fraction` | CF | 0.47 | 生物量含碳率 (IPCC 默认) |
+| `co2_c_ratio` | 44/12 | 3.6667 | CO₂/C 分子量比 |
+
+**计算链**：
+```
+蓄积量变化 (m³) × BEF × WD × (1+R) × CF = 碳储量变化 (tC)
+碳储量变化 × (44/12) = 碳汇量 (tCO₂e)
+```
+
+#### 前沿展望
+
+geo-toolbox 的林业模块正朝以下方向演进：
+
+- **AI 增强**：集成 ML 模型实现树种自动分类、病虫害早期识别
+- **数字孪生森林**：在虚拟空间构建与真实林场对应的动态模型，推演经营方案
+- **区块链存证**：碳汇监测数据上链，保障 CCER 交易数据的真实性、完整性和可追溯性
+- **大模型接入**：通过 MCP 协议对接 LLM，实现自然语言驱动的林业查询与报告生成
 
 ### 4.11 海岸带监测
 
