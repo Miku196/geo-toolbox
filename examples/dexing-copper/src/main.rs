@@ -15,7 +15,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config: EcologyConfig = toml::from_str(include_str!("../rules_dexing.toml"))?;
     let plugin = EcologyPlugin::new(config);
 
-    println!("📋 加载配置: {} v{}", plugin.config().plugin.name, plugin.config().plugin.version);
+    println!(
+        "📋 加载配置: {} v{}",
+        plugin.config().plugin.name,
+        plugin.config().plugin.version
+    );
     println!("   方法学: IPCC Tier 1 — {}", plugin.config().carbon.source);
 
     // ── 2. 加载 AOI ──
@@ -76,8 +80,8 @@ fn render_report_with_template(
         .join("../../plugins/geo-plugin-ecology/templates");
 
     let pattern = template_dir.join("**/*.tera");
-    let mut tera = tera::Tera::new(&pattern.to_string_lossy())
-        .map_err(|e| format!("模板加载失败: {e}"))?;
+    let mut tera =
+        tera::Tera::new(&pattern.to_string_lossy()).map_err(|e| format!("模板加载失败: {e}"))?;
 
     // 注册自定义过滤器（与 geo-report 引擎一致）
     tera.register_filter("ha_fmt", ha_fmt_filter);
@@ -86,36 +90,49 @@ fn render_report_with_template(
     tera.register_filter("date_fmt", date_fmt_filter);
 
     let context = serde_json::to_value(a)?;
-    let ctx = tera::Context::from_serialize(&context)
-        .map_err(|e| format!("上下文序列化失败: {e}"))?;
+    let ctx =
+        tera::Context::from_serialize(&context).map_err(|e| format!("上下文序列化失败: {e}"))?;
 
-    let md = tera.render("restoration-report.md.tera", &ctx)
+    let md = tera
+        .render("restoration-report.md.tera", &ctx)
         .map_err(|e| format!("模板渲染失败: {e}"))?;
     Ok(md)
 }
 
-fn ha_fmt_filter(value: &tera::Value, _: &std::collections::HashMap<String, tera::Value>) -> std::result::Result<tera::Value, tera::Error> {
+fn ha_fmt_filter(
+    value: &tera::Value,
+    _: &std::collections::HashMap<String, tera::Value>,
+) -> std::result::Result<tera::Value, tera::Error> {
     if let Some(v) = value.as_f64() {
         Ok(tera::Value::String(format!("{:.1} ha", v)))
     } else {
         Ok(value.clone())
     }
 }
-fn co2_fmt_filter(value: &tera::Value, _: &std::collections::HashMap<String, tera::Value>) -> std::result::Result<tera::Value, tera::Error> {
+fn co2_fmt_filter(
+    value: &tera::Value,
+    _: &std::collections::HashMap<String, tera::Value>,
+) -> std::result::Result<tera::Value, tera::Error> {
     if let Some(v) = value.as_f64() {
         Ok(tera::Value::String(format!("{:.2} tCO₂e", v)))
     } else {
         Ok(value.clone())
     }
 }
-fn percent_fmt_filter(value: &tera::Value, _: &std::collections::HashMap<String, tera::Value>) -> std::result::Result<tera::Value, tera::Error> {
+fn percent_fmt_filter(
+    value: &tera::Value,
+    _: &std::collections::HashMap<String, tera::Value>,
+) -> std::result::Result<tera::Value, tera::Error> {
     if let Some(v) = value.as_f64() {
         Ok(tera::Value::String(format!("{:.1}%", v * 100.0)))
     } else {
         Ok(value.clone())
     }
 }
-fn date_fmt_filter(value: &tera::Value, _: &std::collections::HashMap<String, tera::Value>) -> std::result::Result<tera::Value, tera::Error> {
+fn date_fmt_filter(
+    value: &tera::Value,
+    _: &std::collections::HashMap<String, tera::Value>,
+) -> std::result::Result<tera::Value, tera::Error> {
     if let Some(s) = value.as_str() {
         if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
             Ok(tera::Value::String(dt.format("%Y-%m-%d %H:%M").to_string()))
@@ -133,7 +150,10 @@ fn wrap_html(md: &str, a: &RestorationAssessment) -> String {
     let mut html_body = String::new();
     pulldown_cmark::html::push_html(&mut html_body, parser);
 
-    let title = format!("{} 生态修复评估报告 ({}→{})", a.aoi_name, a.baseline_year, a.assessment_year);
+    let title = format!(
+        "{} 生态修复评估报告 ({}→{})",
+        a.aoi_name, a.baseline_year, a.assessment_year
+    );
 
     format!(
         r#"<!DOCTYPE html>
@@ -178,7 +198,9 @@ li{{margin:3px 0}}
 // ═══════════════════════════════════════════════════
 
 fn make_bands_2015() -> (RasterBand, RasterBand) {
-    let rows = 14; let cols = 18; let n = rows * cols;
+    let rows = 14;
+    let cols = 18;
+    let n = rows * cols;
     #[rustfmt::skip]
     let lc: [[u8; 18]; 14] = [
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -196,19 +218,28 @@ fn make_bands_2015() -> (RasterBand, RasterBand) {
         [0,0,0,0,0,0,4,4,4,4,4,4,4,4,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
     ];
-    gen_bands(n, rows, cols, &lc, &[
-        (0.03, 0.52),  // 0=天然林
-        (0.25, 0.30),  // 1=采场/裸地
-        (0.18, 0.22),  // 2=工业区
-        (0.06, 0.35),  // 3=农田
-        (0.05, 0.02),  // 4=水体
-        (0.28, 0.30),  // 5=废石场
-        (0.30, 0.31),  // 6=尾矿库
-    ], "2015")
+    gen_bands(
+        n,
+        rows,
+        cols,
+        &lc,
+        &[
+            (0.03, 0.52), // 0=天然林
+            (0.25, 0.30), // 1=采场/裸地
+            (0.18, 0.22), // 2=工业区
+            (0.06, 0.35), // 3=农田
+            (0.05, 0.02), // 4=水体
+            (0.28, 0.30), // 5=废石场
+            (0.30, 0.31), // 6=尾矿库
+        ],
+        "2015",
+    )
 }
 
 fn make_bands_2025() -> (RasterBand, RasterBand) {
-    let rows = 14; let cols = 18; let n = rows * cols;
+    let rows = 14;
+    let cols = 18;
+    let n = rows * cols;
     #[rustfmt::skip]
     let lc: [[u8; 18]; 14] = [
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -226,21 +257,30 @@ fn make_bands_2025() -> (RasterBand, RasterBand) {
         [0,0,0,0,0,0,4,4,4,4,4,4,4,4,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
     ];
-    gen_bands(n, rows, cols, &lc, &[
-        (0.03, 0.55),  // 0=天然林
-        (0.24, 0.31),  // 1=采场
-        (0.17, 0.23),  // 2=工业区
-        (0.05, 0.37),  // 3=农田
-        (0.05, 0.02),  // 4=水体
-        (0.12, 0.35),  // 5=废石场(部分恢复)
-        (0.28, 0.31),  // 6=尾矿库
-        (0.10, 0.40),  // 7=修复灌草地
-        (0.05, 0.48),  // 8=修复森林
-    ], "2025")
+    gen_bands(
+        n,
+        rows,
+        cols,
+        &lc,
+        &[
+            (0.03, 0.55), // 0=天然林
+            (0.24, 0.31), // 1=采场
+            (0.17, 0.23), // 2=工业区
+            (0.05, 0.37), // 3=农田
+            (0.05, 0.02), // 4=水体
+            (0.12, 0.35), // 5=废石场(部分恢复)
+            (0.28, 0.31), // 6=尾矿库
+            (0.10, 0.40), // 7=修复灌草地
+            (0.05, 0.48), // 8=修复森林
+        ],
+        "2025",
+    )
 }
 
 fn gen_bands(
-    n: usize, rows: usize, cols: usize,
+    n: usize,
+    rows: usize,
+    cols: usize,
     lc: &[[u8; 18]; 14],
     refl: &[(f64, f64)],
     year: &str,
@@ -254,6 +294,8 @@ fn gen_bands(
             nir.push(noise(nb));
         }
     }
-    (RasterBand::new(format!("RED_{year}"), rows, cols, red, -999.0),
-     RasterBand::new(format!("NIR_{year}"), rows, cols, nir, -999.0))
+    (
+        RasterBand::new(format!("RED_{year}"), rows, cols, red, -999.0),
+        RasterBand::new(format!("NIR_{year}"), rows, cols, nir, -999.0),
+    )
 }

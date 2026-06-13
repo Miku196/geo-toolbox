@@ -1,7 +1,7 @@
 //! Tool registration — STAC.
 use geo_core::plugin::PluginCategory;
-use geo_registry::PluginRegistry;
 use geo_registry::registry::ToolDef;
+use geo_registry::PluginRegistry;
 pub fn register_tools(registry: &mut PluginRegistry) {
     registry.register(geo_core::plugin::PluginMeta { name: "stac".into(), version: "0.1.0".into(), description: "STAC API client — search satellite imagery".into(), category: PluginCategory::Adapter, healthy: true, extra: serde_json::json!({"endpoint":"https://planetarycomputer.microsoft.com/api/stac/v1"}) });
     registry.register_tool_async("stac", ToolDef { name: "stac_search".into(), description: "Search STAC catalog by bbox and date range".into(), input_schema: serde_json::json!({"type":"object","properties":{"collection":{"type":"string","default":"sentinel-2-l2a"},"min_lon":{"type":"number"},"min_lat":{"type":"number"},"max_lon":{"type":"number"},"max_lat":{"type":"number"},"date_from":{"type":"string"},"date_to":{"type":"string"},"limit":{"type":"integer"},"endpoint":{"type":"string"}},"required":["min_lon","min_lat","max_lon","max_lat","date_from","date_to"]}) }, |args| Box::pin(async move {

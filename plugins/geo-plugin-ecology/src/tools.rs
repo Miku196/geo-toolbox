@@ -4,8 +4,8 @@
 //! not through hardcoded struct methods.
 
 use geo_core::plugin::{Plugin, ProcessPlugin};
-use geo_registry::PluginRegistry;
 use geo_registry::registry::ToolDef;
+use geo_registry::PluginRegistry;
 
 /// Register ecology tools into the PluginRegistry.
 pub fn register_tools(registry: &mut PluginRegistry) {
@@ -14,7 +14,8 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         std::path::PathBuf::from("plugins/geo-plugin-ecology/rules.toml"),
         std::path::PathBuf::from("../../plugins/geo-plugin-ecology/rules.toml"),
     ];
-    let plugin = config_paths.iter()
+    let plugin = config_paths
+        .iter()
         .find_map(|p| crate::EcologyPlugin::load_from_file(p).ok())
         .unwrap_or_else(|| crate::EcologyPlugin::new(Default::default()));
 
@@ -27,27 +28,29 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         extra: serde_json::json!({}),
     });
 
-    registry.register_tool_async("ecology", ToolDef {
-        name: "ecology_assess".into(),
-        description: plugin.description().to_string(),
-        input_schema: serde_json::json!({
-            "type": "object",
-            "properties": {
-                "aoi_name": {"type": "string"},
-                "baseline_year": {"type": "integer"},
-                "assessment_year": {"type": "integer"},
-                "aoi_geojson": {"type": "string"},
-                "config_path": {"type": "string"},
-            },
-            "required": ["aoi_name", "baseline_year", "assessment_year"],
-        }),
-    }, {
-        let plugin = std::sync::Arc::new(plugin);
-        move |args| {
-            let plugin = std::sync::Arc::clone(&plugin);
-            Box::pin(async move {
-                plugin.execute(args).await
-            })
-        }
-    });
+    registry.register_tool_async(
+        "ecology",
+        ToolDef {
+            name: "ecology_assess".into(),
+            description: plugin.description().to_string(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "aoi_name": {"type": "string"},
+                    "baseline_year": {"type": "integer"},
+                    "assessment_year": {"type": "integer"},
+                    "aoi_geojson": {"type": "string"},
+                    "config_path": {"type": "string"},
+                },
+                "required": ["aoi_name", "baseline_year", "assessment_year"],
+            }),
+        },
+        {
+            let plugin = std::sync::Arc::new(plugin);
+            move |args| {
+                let plugin = std::sync::Arc::clone(&plugin);
+                Box::pin(async move { plugin.execute(args).await })
+            }
+        },
+    );
 }

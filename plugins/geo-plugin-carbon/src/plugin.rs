@@ -2,9 +2,9 @@
 //!
 //! 封装 geo-carbon-math 引擎，提供从 GeoJSON + 配置直接输出报告的接口。
 
+use crate::config::CarbonConfig;
 use geo_carbon_math::{CarbonEngine, CarbonReport, EmissionFactor, GeoFeature};
 use geo_core::errors::{GeoError, GeoResult};
-use crate::config::CarbonConfig;
 
 /// 碳核算插件。
 pub struct CarbonPlugin {
@@ -24,22 +24,18 @@ impl CarbonPlugin {
     /// 从 GeoJSON FeatureCollection 计算碳核算。
     ///
     /// Features 的 properties 必须包含 `landcover`/`class`/`category` 之一。
-    pub fn calculate_from_geojson(
-        &self,
-        geojson_fc: &str,
-        year: u16,
-    ) -> GeoResult<CarbonReport> {
+    pub fn calculate_from_geojson(&self, geojson_fc: &str, year: u16) -> GeoResult<CarbonReport> {
         // 1. 解析 GeoJSON features
         let fc: serde_json::Value = serde_json::from_str(geojson_fc)
             .map_err(|e| GeoError::Validation(format!("Invalid GeoJSON: {e}")))?;
 
-        let features_json = fc["features"].as_array()
+        let features_json = fc["features"]
+            .as_array()
             .ok_or_else(|| GeoError::invalid_input("aoi_geojson", "missing 'features' array"))?;
 
         let mut features = Vec::with_capacity(features_json.len());
         for f in features_json {
-            let feat_str = serde_json::to_string(f)
-                .map_err(GeoError::Serde)?;
+            let feat_str = serde_json::to_string(f).map_err(GeoError::Serde)?;
             match GeoFeature::from_feature_json(&feat_str) {
                 Ok(gf) => features.push(gf),
                 Err(_) => continue, // skip unparseable features
@@ -59,12 +55,15 @@ impl CarbonPlugin {
             ("bare", defaults.bare),
         ];
 
-        let factors: Vec<EmissionFactor> = all_classes.iter()
+        let factors: Vec<EmissionFactor> = all_classes
+            .iter()
             .map(|(class, value)| EmissionFactor::new(*class, *value, source.as_str()))
             .collect();
 
         // 3. 计算
-        let mut report = self.engine.calculate(&features, &factors, year)
+        let mut report = self
+            .engine
+            .calculate(&features, &factors, year)
             .map_err(GeoError::Validation)?;
 
         report.methodology = Some(format!("IPCC Tier 1 — {}", source));
@@ -72,11 +71,7 @@ impl CarbonPlugin {
     }
 
     /// 使用外部提供的 features 和 factors 计算。
-    pub fn calculate(
-        &self,
-        features: &[GeoFeature],
-        year: u16,
-    ) -> Result<CarbonReport, String> {
+    pub fn calculate(&self, features: &[GeoFeature], year: u16) -> Result<CarbonReport, String> {
         let defaults = &self.config.carbon;
         let source = &defaults.source;
         let all_classes = [
@@ -89,7 +84,8 @@ impl CarbonPlugin {
             ("bare", defaults.bare),
         ];
 
-        let factors: Vec<EmissionFactor> = all_classes.iter()
+        let factors: Vec<EmissionFactor> = all_classes
+            .iter()
             .map(|(class, value)| EmissionFactor::new(*class, *value, source.as_str()))
             .collect();
 
@@ -105,12 +101,15 @@ mod tests {
 
     #[test]
     fn test_plugin_from_geojson() {
-        let config: CarbonConfig = toml::from_str(r#"
+        let config: CarbonConfig = toml::from_str(
+            r#"
             [plugin]
             name = "carbon"
             version = "0.1.0"
             description = "test"
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
 
         let plugin = CarbonPlugin::load(config);
 

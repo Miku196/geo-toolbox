@@ -54,7 +54,8 @@ impl ReportEngine {
     pub fn render<T: Serialize>(&self, template_name: &str, context: &T) -> GeoResult<String> {
         let ctx = Context::from_serialize(context)
             .map_err(|e| GeoError::Validation(format!("Context error: {e}")))?;
-        self.tera.render(template_name, &ctx)
+        self.tera
+            .render(template_name, &ctx)
             .map_err(|e| GeoError::Validation(format!("Render error: {e}")))
     }
 

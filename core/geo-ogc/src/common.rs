@@ -1,6 +1,6 @@
 //! Common types shared across OGC service implementations.
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Standard OGC service types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -70,14 +70,17 @@ impl OgcError {
 
     /// Render as OGC XML ExceptionReport.
     pub fn to_xml(&self) -> String {
-        let exceptions_xml: String = self.exceptions
+        let exceptions_xml: String = self
+            .exceptions
             .iter()
-            .map(|e| format!(
-                r#"    <ows:Exception exceptionCode="{}" locator="{}">
+            .map(|e| {
+                format!(
+                    r#"    <ows:Exception exceptionCode="{}" locator="{}">
         <ows:ExceptionText>{}</ows:ExceptionText>
     </ows:Exception>"#,
-                e.code, e.locator, e.text
-            ))
+                    e.code, e.locator, e.text
+                )
+            })
             .collect::<Vec<_>>()
             .join("\n");
 
@@ -112,7 +115,12 @@ pub struct Wgs84Bbox {
 impl Wgs84Bbox {
     /// Create a new WGS84 bounding box.
     pub fn new(west: f64, south: f64, east: f64, north: f64) -> Self {
-        Self { west, south, east, north }
+        Self {
+            west,
+            south,
+            east,
+            north,
+        }
     }
 }
 

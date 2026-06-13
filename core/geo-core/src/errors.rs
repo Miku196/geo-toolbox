@@ -101,15 +101,24 @@ pub type GeoResult<T> = Result<T, GeoError>;
 impl GeoError {
     /// Entity not found (AOI, task, feature, etc.).
     pub fn not_found(entity: impl Into<String>, id: impl Into<String>) -> Self {
-        Self::NotFound { entity: entity.into(), id: id.into() }
+        Self::NotFound {
+            entity: entity.into(),
+            id: id.into(),
+        }
     }
     /// Invalid input parameter.
     pub fn invalid_input(field: impl Into<String>, reason: impl Into<String>) -> Self {
-        Self::InvalidInput { field: field.into(), reason: reason.into() }
+        Self::InvalidInput {
+            field: field.into(),
+            reason: reason.into(),
+        }
     }
     /// Configuration file error.
     pub fn config_error(path: impl Into<String>, detail: impl Into<String>) -> Self {
-        Self::ConfigError { path: path.into(), detail: detail.into() }
+        Self::ConfigError {
+            path: path.into(),
+            detail: detail.into(),
+        }
     }
 }
 
@@ -118,8 +127,8 @@ impl GeoError {
 pub fn validate_select_sql(sql: &str) -> GeoResult<()> {
     let upper = sql.to_uppercase();
     let forbidden = [
-        "DROP", "DELETE", "INSERT", "UPDATE", "ALTER", "CREATE",
-        "TRUNCATE", "GRANT", "REVOKE", "COPY", "EXECUTE", "CALL",
+        "DROP", "DELETE", "INSERT", "UPDATE", "ALTER", "CREATE", "TRUNCATE", "GRANT", "REVOKE",
+        "COPY", "EXECUTE", "CALL",
     ];
     for kw in &forbidden {
         if upper.contains(kw) {
@@ -130,7 +139,7 @@ pub fn validate_select_sql(sql: &str) -> GeoResult<()> {
     }
     if upper.contains('\\') || upper.contains("PROGRAM") {
         return Err(GeoError::Validation(
-            "SQL query rejected: contains unsafe characters".into()
+            "SQL query rejected: contains unsafe characters".into(),
         ));
     }
     Ok(())
@@ -144,22 +153,29 @@ pub fn validate_safe_path(path: &str) -> GeoResult<()> {
     // 禁止路径遍历
     if path.contains("..") {
         return Err(GeoError::Validation(
-            "Path rejected: contains '..' (directory traversal)".into()
+            "Path rejected: contains '..' (directory traversal)".into(),
         ));
     }
     // 禁止 shell 元字符
     let forbidden = [';', '|', '&', '$', '`', '(', ')', '<', '>', '\n', '\r'];
     if path.contains(forbidden.as_slice()) {
         return Err(GeoError::Validation(
-            "Path rejected: contains shell metacharacters".into()
+            "Path rejected: contains shell metacharacters".into(),
         ));
     }
     // 禁止绝对系统路径（/etc /proc /sys /dev）
     let lower = path.to_lowercase();
-    for sensitive in &["/etc/", "/proc/", "/sys/", "/dev/", "c:\\windows", "c:\\windows\\system32"] {
+    for sensitive in &[
+        "/etc/",
+        "/proc/",
+        "/sys/",
+        "/dev/",
+        "c:\\windows",
+        "c:\\windows\\system32",
+    ] {
         if lower.starts_with(sensitive) || lower.contains(sensitive) {
             return Err(GeoError::Validation(
-                "Path rejected: references sensitive system location".into()
+                "Path rejected: references sensitive system location".into(),
             ));
         }
     }
@@ -176,7 +192,9 @@ pub fn validate_sql_identifier(name: &str) -> GeoResult<()> {
     }
 
     // Reject any metacharacters that could break out of an identifier context
-    let forbidden = [';', '\'', '"', ' ', '\t', '\n', '\r', '-', '/', '(', ')', ',', '='];
+    let forbidden = [
+        ';', '\'', '"', ' ', '\t', '\n', '\r', '-', '/', '(', ')', ',', '=',
+    ];
     for ch in name.chars() {
         if forbidden.contains(&ch) {
             return Err(GeoError::Validation(format!(

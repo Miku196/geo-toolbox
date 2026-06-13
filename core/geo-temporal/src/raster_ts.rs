@@ -36,7 +36,6 @@ pub struct RasterTimeSeries {
     cols: usize,
 }
 
-
 impl RasterTimeSeries {
     /// 创建空序列。
     pub fn new() -> Self {
@@ -84,12 +83,13 @@ impl RasterTimeSeries {
         let nodata = f64::NAN;
 
         for (px, tau_out) in tau_values.iter_mut().enumerate() {
-            let values: Vec<f64> = years.iter()
-                .map(|y| self.steps[y].data[px])
-                .collect();
+            let values: Vec<f64> = years.iter().map(|y| self.steps[y].data[px]).collect();
 
             // 跳过含 nodata 的像素
-            if values.iter().any(|v| v.is_nan() || *v == self.steps[&years[0]].nodata) {
+            if values
+                .iter()
+                .any(|v| v.is_nan() || *v == self.steps[&years[0]].nodata)
+            {
                 *tau_out = nodata;
                 continue;
             }
@@ -98,7 +98,9 @@ impl RasterTimeSeries {
             *tau_out = tau;
         }
 
-        Ok(RasterBand::new("mk_tau", self.rows, self.cols, tau_values, nodata))
+        Ok(RasterBand::new(
+            "mk_tau", self.rows, self.cols, tau_values, nodata,
+        ))
     }
 
     /// 逐像素变化检测（两年对比差值）。
@@ -113,9 +115,13 @@ impl RasterTimeSeries {
         year_target: u16,
         threshold: f64,
     ) -> GeoResult<RasterBand> {
-        let baseline = self.steps.get(&year_baseline)
+        let baseline = self
+            .steps
+            .get(&year_baseline)
             .ok_or_else(|| GeoError::not_found("year", year_baseline.to_string()))?;
-        let target = self.steps.get(&year_target)
+        let target = self
+            .steps
+            .get(&year_target)
             .ok_or_else(|| GeoError::Validation(format!("year {year_target} not found")))?;
 
         let n = self.cols * self.rows;
@@ -130,26 +136,43 @@ impl RasterTimeSeries {
                 continue;
             }
             let diff = b - a;
-            if diff > threshold { *cls = 1.0; }
-            else if diff < -threshold { *cls = -1.0; }
-            else { *cls = 0.0; }
+            if diff > threshold {
+                *cls = 1.0;
+            } else if diff < -threshold {
+                *cls = -1.0;
+            } else {
+                *cls = 0.0;
+            }
         }
 
-        Ok(RasterBand::new("change", self.rows, self.cols, classes, nodata))
+        Ok(RasterBand::new(
+            "change", self.rows, self.cols, classes, nodata,
+        ))
     }
 
     /// 逐年统计（每年均值 + 有效像素数）。
     pub fn yearly_stats(&self) -> Vec<YearlyStats> {
-        self.steps.iter().map(|(&year, band)| {
-            let valid: Vec<f64> = band.data.iter()
-                .filter(|&&v| !v.is_nan() && v != band.nodata)
-                .copied()
-                .collect();
-            let mean = if valid.is_empty() { None } else {
-                Some(valid.iter().sum::<f64>() / valid.len() as f64)
-            };
-            YearlyStats { year, mean_ndvi: mean, valid_pixels: valid.len() }
-        }).collect()
+        self.steps
+            .iter()
+            .map(|(&year, band)| {
+                let valid: Vec<f64> = band
+                    .data
+                    .iter()
+                    .filter(|&&v| !v.is_nan() && v != band.nodata)
+                    .copied()
+                    .collect();
+                let mean = if valid.is_empty() {
+                    None
+                } else {
+                    Some(valid.iter().sum::<f64>() / valid.len() as f64)
+                };
+                YearlyStats {
+                    year,
+                    mean_ndvi: mean,
+                    valid_pixels: valid.len(),
+                }
+            })
+            .collect()
     }
 
     /// 输出像素级线性回归斜率（°NDVI/yr）。
@@ -169,11 +192,17 @@ impl RasterTimeSeries {
                 continue;
             }
             let y_mean = values.iter().sum::<f64>() / values.len() as f64;
-            let xy_cov: f64 = years.iter().zip(&values).map(|(&x, &y)| (x - x_mean) * (y - y_mean)).sum();
+            let xy_cov: f64 = years
+                .iter()
+                .zip(&values)
+                .map(|(&x, &y)| (x - x_mean) * (y - y_mean))
+                .sum();
             *slope = xy_cov / xx_var.max(1e-10);
         }
 
-        Ok(RasterBand::new("slope", self.rows, self.cols, slopes, nodata))
+        Ok(RasterBand::new(
+            "slope", self.rows, self.cols, slopes, nodata,
+        ))
     }
 }
 
@@ -201,10 +230,14 @@ mod tests {
     fn test_pixelwise_trend() {
         let mut ts = RasterTimeSeries::new();
         // 4 年，4 像素，逐年递增
-        ts.add(2020, make_band(vec![0.30, 0.40, 0.50, 0.60])).unwrap();
-        ts.add(2021, make_band(vec![0.35, 0.42, 0.52, 0.61])).unwrap();
-        ts.add(2022, make_band(vec![0.40, 0.44, 0.54, 0.62])).unwrap();
-        ts.add(2023, make_band(vec![0.45, 0.46, 0.56, 0.63])).unwrap();
+        ts.add(2020, make_band(vec![0.30, 0.40, 0.50, 0.60]))
+            .unwrap();
+        ts.add(2021, make_band(vec![0.35, 0.42, 0.52, 0.61]))
+            .unwrap();
+        ts.add(2022, make_band(vec![0.40, 0.44, 0.54, 0.62]))
+            .unwrap();
+        ts.add(2023, make_band(vec![0.45, 0.46, 0.56, 0.63]))
+            .unwrap();
 
         let tau_band = ts.pixelwise_trend().unwrap();
         // 所有像素都应正趋势
@@ -222,8 +255,8 @@ mod tests {
         let change = ts.change_detection(2020, 2025, 0.1).unwrap();
         // 0:退化(-0.15)  1:无变化(+0.02)  2:改善(+0.20)
         assert_eq!(change.data[0], -1.0); // 退化
-        assert_eq!(change.data[1], 0.0);  // 无变化
-        assert_eq!(change.data[2], 1.0);  // 改善
+        assert_eq!(change.data[1], 0.0); // 无变化
+        assert_eq!(change.data[2], 1.0); // 改善
     }
 
     #[test]

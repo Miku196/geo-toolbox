@@ -7,6 +7,6 @@ pub mod trait_impl;
 
 pub use config::ForestryConfig;
 pub use forestry::{
-    CarbonStockAssessment, ForestryPlugin, GrowthModel, PlotData,
-    PotentialProductivity, SiteClassResult,
+    CarbonStockAssessment, ForestryPlugin, GrowthModel, PlotData, PotentialProductivity,
+    SiteClassResult,
 };

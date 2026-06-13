@@ -89,14 +89,12 @@ impl NatsMq {
 
         let response = tokio::time::timeout(
             timeout,
-            self.client.request(self.task_subject.clone(), payload.into()),
+            self.client
+                .request(self.task_subject.clone(), payload.into()),
         )
         .await
         .map_err(|_| {
-            GeoError::MessageQueue(format!(
-                "NATS request timeout after {}s",
-                timeout.as_secs()
-            ))
+            GeoError::MessageQueue(format!("NATS request timeout after {}s", timeout.as_secs()))
         })?
         .map_err(|e| GeoError::MessageQueue(format!("NATS request: {e}")))?;
 
@@ -152,15 +150,16 @@ impl NatsMq {
             .await
             .map_err(|e| GeoError::MessageQueue(format!("NATS subscribe: {e}")))?;
 
-        tracing::info!(
-            "Subscribed to NATS callbacks on {}",
-            self.callback_subject
-        );
+        tracing::info!("Subscribed to NATS callbacks on {}", self.callback_subject);
 
         while let Some(msg) = subscriber.next().await {
             match serde_json::from_slice::<GeeCallback>(&msg.payload) {
                 Ok(callback) => {
-                    tracing::debug!("NATS callback: {} ({})", callback.correlation_id, callback.status);
+                    tracing::debug!(
+                        "NATS callback: {} ({})",
+                        callback.correlation_id,
+                        callback.status
+                    );
                     handler(callback);
                 }
                 Err(e) => {
@@ -293,8 +292,7 @@ pub async fn create_mq() -> GeoResult<Box<dyn GeeMq>> {
     }
 
     // Fallback: file-based queue (always available).
-    let queue_dir = std::env::var("GEO_QUEUE_DIR")
-        .unwrap_or_else(|_| "./queue".to_string());
+    let queue_dir = std::env::var("GEO_QUEUE_DIR").unwrap_or_else(|_| "./queue".to_string());
     Ok(Box::new(FileMq::new(queue_dir)))
 }
 

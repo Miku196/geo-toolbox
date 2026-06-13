@@ -32,7 +32,8 @@ pub fn parse_feature_collection(geojson: &str) -> GeoResult<(Vec<GeoJsonFeature>
         )));
     }
 
-    let features_arr = fc["features"].as_array()
+    let features_arr = fc["features"]
+        .as_array()
         .ok_or_else(|| GeoError::Validation("GeoJSON has no 'features' array".into()))?;
 
     let mut features = Vec::with_capacity(features_arr.len());
@@ -76,10 +77,18 @@ fn extract_bbox_from_fc(fc: &serde_json::Value) -> Option<BBox> {
     for feat in features {
         if let Some(coords) = extract_all_coords(&feat["geometry"]) {
             for (x, y) in coords {
-                if x < min_x { min_x = x; }
-                if y < min_y { min_y = y; }
-                if x > max_x { max_x = x; }
-                if y > max_y { max_y = y; }
+                if x < min_x {
+                    min_x = x;
+                }
+                if y < min_y {
+                    min_y = y;
+                }
+                if x > max_x {
+                    max_x = x;
+                }
+                if y > max_y {
+                    max_y = y;
+                }
                 found = true;
             }
         }
@@ -99,7 +108,10 @@ fn extract_all_coords(geom: &serde_json::Value) -> Option<Vec<(f64, f64)>> {
     match geom_type {
         "Polygon" => {
             let rings = coords.as_array()?;
-            rings.first()?.as_array()?.iter()
+            rings
+                .first()?
+                .as_array()?
+                .iter()
                 .filter_map(|p| {
                     let arr = p.as_array()?;
                     Some((arr.first()?.as_f64()?, arr.get(1)?.as_f64()?))

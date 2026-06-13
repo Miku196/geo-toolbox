@@ -20,8 +20,9 @@ pub struct ToolDef {
 pub type ToolResult = GeoResult<serde_json::Value>;
 
 /// 异步工具处理器：接收 args JSON，返回结果 JSON。
-pub type AsyncHandler =
-    Arc<dyn Fn(serde_json::Value) -> Pin<Box<dyn Future<Output = ToolResult> + Send>> + Send + Sync>;
+pub type AsyncHandler = Arc<
+    dyn Fn(serde_json::Value) -> Pin<Box<dyn Future<Output = ToolResult> + Send>> + Send + Sync,
+>;
 
 /// 同步工具处理器。
 pub type SyncHandler = Arc<dyn Fn(serde_json::Value) -> ToolResult + Send + Sync>;
@@ -280,11 +281,7 @@ mod tests {
                 description: "Echo with async".into(),
                 input_schema: serde_json::json!({"type":"object","properties":{},"required":[]}),
             },
-            |args| {
-                Box::pin(async move {
-                    Ok(serde_json::json!({"echo": args}))
-                })
-            },
+            |args| Box::pin(async move { Ok(serde_json::json!({"echo": args})) }),
         );
 
         let result = reg

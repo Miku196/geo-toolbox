@@ -9,7 +9,6 @@
 //! τ ∈ [-1, 1]: 正值 = 上升趋势，负值 = 下降趋势
 //! p < 0.05: 趋势显著
 
-
 /// 趋势分析结果。
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct TrendResult {
@@ -44,8 +43,11 @@ pub fn mann_kendall(values: &[f64]) -> (f64, f64) {
     for i in 0..n {
         for j in (i + 1)..n {
             let diff = values[j] - values[i];
-            if diff > 0.0 { s += 1; }
-            else if diff < 0.0 { s -= 1; }
+            if diff > 0.0 {
+                s += 1;
+            } else if diff < 0.0 {
+                s -= 1;
+            }
         }
     }
 
@@ -93,8 +95,13 @@ pub fn linear_trend(values: &[f64]) -> TrendResult {
     let n = values.len();
     if n < 2 {
         return TrendResult {
-            tau: 0.0, p_value: 1.0, significant: false,
-            sen_slope: 0.0, ols_slope: 0.0, ols_intercept: 0.0, r_squared: 0.0,
+            tau: 0.0,
+            p_value: 1.0,
+            significant: false,
+            sen_slope: 0.0,
+            ols_slope: 0.0,
+            ols_intercept: 0.0,
+            r_squared: 0.0,
         };
     }
 
@@ -114,7 +121,9 @@ pub fn linear_trend(values: &[f64]) -> TrendResult {
     let ols_intercept = y_mean - ols_slope * x_mean;
 
     // R²
-    let ss_res: f64 = values.iter().enumerate()
+    let ss_res: f64 = values
+        .iter()
+        .enumerate()
         .map(|(i, &y)| (y - (ols_intercept + ols_slope * i as f64)).powi(2))
         .sum();
     let ss_tot: f64 = values.iter().map(|&y| (y - y_mean).powi(2)).sum();
@@ -129,12 +138,24 @@ pub fn linear_trend(values: &[f64]) -> TrendResult {
         }
     }
     slopes.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let sen_slope = if slopes.is_empty() { 0.0 } else { slopes[slopes.len() / 2] };
+    let sen_slope = if slopes.is_empty() {
+        0.0
+    } else {
+        slopes[slopes.len() / 2]
+    };
 
     let (tau, p_value) = mann_kendall(values);
     let significant = p_value < 0.05;
 
-    TrendResult { tau, p_value, significant, sen_slope, ols_slope, ols_intercept, r_squared }
+    TrendResult {
+        tau,
+        p_value,
+        significant,
+        sen_slope,
+        ols_slope,
+        ols_intercept,
+        r_squared,
+    }
 }
 
 /// 标准正态 CDF（Abramowitz & Stegun 近似）。

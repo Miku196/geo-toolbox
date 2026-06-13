@@ -109,7 +109,8 @@ impl<R: Read + Seek> PmtilesReader<R> {
         let header = read_header(&mut reader)?;
         if header.magic != *b"PM" || header.version != 3 {
             return Err(GeoError::Validation(format!(
-                "Invalid PMTiles: magic={:?} version={}", header.magic, header.version
+                "Invalid PMTiles: magic={:?} version={}",
+                header.magic, header.version
             )));
         }
 
@@ -127,12 +128,18 @@ impl<R: Read + Seek> PmtilesReader<R> {
             .map(|e| ((e.z, e.x, e.y), (e.offset, e.length)))
             .collect();
 
-        Ok(Self { reader, header, tile_index })
+        Ok(Self {
+            reader,
+            header,
+            tile_index,
+        })
     }
 
     /// 读取指定瓦片的数据。
     pub fn get_tile(&mut self, z: u8, x: u32, y: u32) -> GeoResult<Vec<u8>> {
-        let &(offset, length) = self.tile_index.get(&(z, x, y))
+        let &(offset, length) = self
+            .tile_index
+            .get(&(z, x, y))
             .ok_or_else(|| GeoError::not_found("tile", format!("{z}/{x}/{y}")))?;
 
         self.reader.seek(SeekFrom::Start(offset))?;
@@ -189,15 +196,27 @@ impl<W: Write + Seek> PmtilesWriter<W> {
     /// 添加一个瓦片。
     pub fn add_tile(&mut self, z: u8, x: u32, y: u32, data: Vec<u8>) {
         // 更新 header 范围
-        if z < self.header.min_zoom { self.header.min_zoom = z; }
-        if z > self.header.max_zoom { self.header.max_zoom = z; }
+        if z < self.header.min_zoom {
+            self.header.min_zoom = z;
+        }
+        if z > self.header.max_zoom {
+            self.header.max_zoom = z;
+        }
 
         let (lon, lat) = crate::tile_index::tile_to_latlon(x, y, z);
         let (lat, lon) = (lat as f32, lon as f32);
-        if lat < self.header.min_lat { self.header.min_lat = lat; }
-        if lat > self.header.max_lat { self.header.max_lat = lat; }
-        if lon < self.header.min_lon { self.header.min_lon = lon; }
-        if lon > self.header.max_lon { self.header.max_lon = lon; }
+        if lat < self.header.min_lat {
+            self.header.min_lat = lat;
+        }
+        if lat > self.header.max_lat {
+            self.header.max_lat = lat;
+        }
+        if lon < self.header.min_lon {
+            self.header.min_lon = lon;
+        }
+        if lon > self.header.max_lon {
+            self.header.max_lon = lon;
+        }
 
         self.tiles.insert((z, x, y), data);
     }
@@ -232,7 +251,9 @@ impl<W: Write + Seek> PmtilesWriter<W> {
 
         for ((z, x, y), data) in &sorted {
             entries.push(TileEntry {
-                z: *z, x: *x, y: *y,
+                z: *z,
+                x: *x,
+                y: *y,
                 offset: current_offset,
                 length: data.len() as u32,
             });
@@ -252,7 +273,9 @@ impl<W: Write + Seek> PmtilesWriter<W> {
         current_offset = actual_data_offset;
         for ((z, x, y), data) in sorted.iter() {
             final_entries.push(TileEntry {
-                z: *z, x: *x, y: *y,
+                z: *z,
+                x: *x,
+                y: *y,
                 offset: current_offset,
                 length: data.len() as u32,
             });
@@ -313,8 +336,12 @@ fn read_header<R: Read>(reader: &mut R) -> GeoResult<PmtilesHeader> {
         magic: [buf[0], buf[1]],
         version: buf[2],
         tile_type: match buf[3] {
-            1 => TileType::Mvt, 2 => TileType::Png, 3 => TileType::Jpeg,
-            4 => TileType::Webp, 5 => TileType::Avif, _ => TileType::Unknown,
+            1 => TileType::Mvt,
+            2 => TileType::Png,
+            3 => TileType::Jpeg,
+            4 => TileType::Webp,
+            5 => TileType::Avif,
+            _ => TileType::Unknown,
         },
         min_zoom: buf[4],
         max_zoom: buf[5],
@@ -329,8 +356,10 @@ fn read_header<R: Read>(reader: &mut R) -> GeoResult<PmtilesHeader> {
         num_unique_tiles: 0,
         clustered: buf[53] != 0,
         tile_compression: match buf[54] {
-            1 => Compression::Gzip, 2 => Compression::Brotli,
-            3 => Compression::Zstd, _ => Compression::None,
+            1 => Compression::Gzip,
+            2 => Compression::Brotli,
+            3 => Compression::Zstd,
+            _ => Compression::None,
         },
     })
 }
@@ -341,7 +370,6 @@ fn parse_directory_entries(data: &[u8], expected_count: u64) -> GeoResult<Vec<Ti
     let mut pos = 0usize;
 
     while entries.len() < expected_count as usize && pos + 1 < data.len() {
-
         // 读取 varint 编码的条目
         let (z, adv) = read_varint_u8(&data[pos..])?;
         pos += adv;
@@ -354,7 +382,13 @@ fn parse_directory_entries(data: &[u8], expected_count: u64) -> GeoResult<Vec<Ti
         let (length, adv) = read_varint_u32(&data[pos..])?;
         pos += adv;
 
-        entries.push(TileEntry { z, x, y, offset, length });
+        entries.push(TileEntry {
+            z,
+            x,
+            y,
+            offset,
+            length,
+        });
     }
 
     Ok(entries)

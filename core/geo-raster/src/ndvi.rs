@@ -36,7 +36,9 @@ pub fn compute_ndvi(red: &RasterBand, nir: &RasterBand) -> GeoResult<NdviResult>
     let valid_pixels = ndvi.valid_count();
 
     let healthy_ratio = if valid_pixels > 0 {
-        let healthy_count = ndvi.data.iter()
+        let healthy_count = ndvi
+            .data
+            .iter()
             .filter(|v| !v.is_nan() && **v != ndvi.nodata && **v >= 0.5)
             .count();
         Some(healthy_count as f64 / valid_pixels as f64)
@@ -45,7 +47,9 @@ pub fn compute_ndvi(red: &RasterBand, nir: &RasterBand) -> GeoResult<NdviResult>
     };
 
     let degraded_ratio = if valid_pixels > 0 {
-        let degraded_count = ndvi.data.iter()
+        let degraded_count = ndvi
+            .data
+            .iter()
             .filter(|v| !v.is_nan() && **v != ndvi.nodata && **v <= 0.2)
             .count();
         Some(degraded_count as f64 / valid_pixels as f64)

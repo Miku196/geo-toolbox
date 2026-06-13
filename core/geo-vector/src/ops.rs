@@ -2,7 +2,7 @@
 //!
 //! 基于 geo crate 的 BooleanOps（相交/合并）和 BoundingRect（bbox 缓冲）。
 
-use geo::algorithm::{Area, BoundingRect, BooleanOps};
+use geo::algorithm::{Area, BooleanOps, BoundingRect};
 use geo_types::{Coord, LineString, MultiPolygon, Polygon};
 
 /// 对多边形做 bbox 缓冲（axis-aligned bounding box expansion）。
@@ -21,11 +21,26 @@ pub fn buffer(poly: &Polygon<f64>, distance: f64) -> Polygon<f64> {
     let max = bbox.max();
     Polygon::new(
         LineString::new(vec![
-            Coord { x: min.x - distance, y: min.y - distance },
-            Coord { x: max.x + distance, y: min.y - distance },
-            Coord { x: max.x + distance, y: max.y + distance },
-            Coord { x: min.x - distance, y: max.y + distance },
-            Coord { x: min.x - distance, y: min.y - distance },
+            Coord {
+                x: min.x - distance,
+                y: min.y - distance,
+            },
+            Coord {
+                x: max.x + distance,
+                y: min.y - distance,
+            },
+            Coord {
+                x: max.x + distance,
+                y: max.y + distance,
+            },
+            Coord {
+                x: min.x - distance,
+                y: max.y + distance,
+            },
+            Coord {
+                x: min.x - distance,
+                y: min.y - distance,
+            },
         ]),
         vec![],
     )
@@ -66,8 +81,10 @@ fn bbox_intersect(a: &Polygon<f64>, b: &Polygon<f64>) -> bool {
     let bb = b.bounding_rect();
     match (ba, bb) {
         (Some(ra), Some(rb)) => {
-            ra.min().x < rb.max().x && ra.max().x > rb.min().x
-                && ra.min().y < rb.max().y && ra.max().y > rb.min().y
+            ra.min().x < rb.max().x
+                && ra.max().x > rb.min().x
+                && ra.min().y < rb.max().y
+                && ra.max().y > rb.min().y
         }
         _ => false,
     }

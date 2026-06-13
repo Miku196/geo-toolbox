@@ -13,11 +13,11 @@
 //! - 坡度 < 15°
 //! - 粗糙度低（草地/裸地）
 
+use crate::config::EnergyConfig;
 use geo_core::errors::GeoResult;
 use geo_core::types::BBox;
 use geo_raster::RasterBand;
 use serde::Serialize;
-use crate::config::EnergyConfig;
 
 /// 光伏选址评估结果。
 #[derive(Debug, Clone, Serialize)]
@@ -49,12 +49,14 @@ pub struct EnergyPlugin {
 }
 
 impl EnergyPlugin {
-    pub fn new(config: EnergyConfig) -> Self { Self { config } }
+    pub fn new(config: EnergyConfig) -> Self {
+        Self { config }
+    }
 
     pub fn from_file(path: &std::path::Path) -> GeoResult<Self> {
         let s = std::fs::read_to_string(path)?;
-        let config: EnergyConfig = toml::from_str(&s)
-            .map_err(|e| geo_core::GeoError::Validation(e.to_string()))?;
+        let config: EnergyConfig =
+            toml::from_str(&s).map_err(|e| geo_core::GeoError::Validation(e.to_string()))?;
         Ok(Self { config })
     }
 
@@ -80,13 +82,17 @@ impl EnergyPlugin {
         for i in 0..dem.data.len().min(radiation.data.len()) {
             let elev = dem.data[i];
             let rad = radiation.data[i];
-            if elev == dem.nodata || rad == radiation.nodata { continue; }
+            if elev == dem.nodata || rad == radiation.nodata {
+                continue;
+            }
             total += 1;
 
             // 简化坡度估计：相邻像素高程差/分辨率（假设10m分辨率）
             let slope = if i > 0 {
-                ((elev - dem.data[i-1]).abs() / 10.0).atan().to_degrees()
-            } else { 0.0 };
+                ((elev - dem.data[i - 1]).abs() / 10.0).atan().to_degrees()
+            } else {
+                0.0
+            };
 
             let slope_factor = (1.0 - slope / cfg.slope_max_deg).max(0.0);
             let rad_factor = (rad / 2000.0).min(1.0);
@@ -98,13 +104,33 @@ impl EnergyPlugin {
             sum_suitability += suitability;
         }
 
-        let suitable_ratio = if total > 0 { suitable as f64 / total as f64 } else { 0.0 };
-        let mean_suitability = if total > 0 { sum_suitability / total as f64 } else { 0.0 };
+        let suitable_ratio = if total > 0 {
+            suitable as f64 / total as f64
+        } else {
+            0.0
+        };
+        let mean_suitability = if total > 0 {
+            sum_suitability / total as f64
+        } else {
+            0.0
+        };
 
         let (grade, summary) = if suitable_ratio >= 0.6 {
-            ("🏆 优秀", format!("{aoi_name} 光伏适宜性优秀：{:.0}% 区域达标", suitable_ratio * 100.0))
+            (
+                "🏆 优秀",
+                format!(
+                    "{aoi_name} 光伏适宜性优秀：{:.0}% 区域达标",
+                    suitable_ratio * 100.0
+                ),
+            )
         } else if suitable_ratio >= 0.3 {
-            ("✅ 良好", format!("{aoi_name} 光伏适宜性良好：{:.0}% 区域达标", suitable_ratio * 100.0))
+            (
+                "✅ 良好",
+                format!(
+                    "{aoi_name} 光伏适宜性良好：{:.0}% 区域达标",
+                    suitable_ratio * 100.0
+                ),
+            )
         } else {
             ("⚠ 一般", format!("{aoi_name} 光伏适宜性一般，建议另选场址"))
         };
@@ -138,24 +164,39 @@ impl EnergyPlugin {
         for i in 0..dem.data.len().min(wind_speed.data.len()) {
             let elev = dem.data[i];
             let wind = wind_speed.data[i];
-            if elev == dem.nodata || wind == wind_speed.nodata { continue; }
+            if elev == dem.nodata || wind == wind_speed.nodata {
+                continue;
+            }
             total += 1;
             wind_sum += wind;
 
             let slope = if i > 0 {
-                ((elev - dem.data[i-1]).abs() / 10.0).atan().to_degrees()
-            } else { 0.0 };
+                ((elev - dem.data[i - 1]).abs() / 10.0).atan().to_degrees()
+            } else {
+                0.0
+            };
 
             if wind >= cfg.wind_speed_min_ms && slope <= cfg.slope_max_deg {
                 suitable += 1;
             }
         }
 
-        let suitable_ratio = if total > 0 { suitable as f64 / total as f64 } else { 0.0 };
-        let mean_ws = if total > 0 { wind_sum / total as f64 } else { 0.0 };
+        let suitable_ratio = if total > 0 {
+            suitable as f64 / total as f64
+        } else {
+            0.0
+        };
+        let mean_ws = if total > 0 {
+            wind_sum / total as f64
+        } else {
+            0.0
+        };
 
         let (grade, summary) = if suitable_ratio >= 0.4 && mean_ws >= 6.0 {
-            ("🏆 优秀", format!("{aoi_name} 风电适宜性优秀，均风速 {:.1} m/s", mean_ws))
+            (
+                "🏆 优秀",
+                format!("{aoi_name} 风电适宜性优秀，均风速 {:.1} m/s", mean_ws),
+            )
         } else if suitable_ratio >= 0.2 {
             ("✅ 良好", format!("{aoi_name} 风电适宜性良好"))
         } else {

@@ -4,7 +4,7 @@
 //! before reading full data from storage (critical for cloud-native
 //! performance on object storage).
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Filter features based on spatial predicates.
 ///
@@ -58,9 +58,20 @@ impl SpatialFilter {
     ///
     /// Returns `Intersects`, `Disjoint`, or `Unknown`.
     /// Used for row-group-level predicate pushdown.
-    pub fn evaluate_bbox(&self, bbox_min_x: f64, bbox_min_y: f64, bbox_max_x: f64, bbox_max_y: f64) -> SpatialPredicate {
+    pub fn evaluate_bbox(
+        &self,
+        bbox_min_x: f64,
+        bbox_min_y: f64,
+        bbox_max_x: f64,
+        bbox_max_y: f64,
+    ) -> SpatialPredicate {
         match self {
-            SpatialFilter::Bbox { min_x, min_y, max_x, max_y } => {
+            SpatialFilter::Bbox {
+                min_x,
+                min_y,
+                max_x,
+                max_y,
+            } => {
                 if bbox_max_x >= *min_x
                     && bbox_min_x <= *max_x
                     && bbox_max_y >= *min_y
@@ -71,7 +82,11 @@ impl SpatialFilter {
                     SpatialPredicate::Disjoint
                 }
             }
-            SpatialFilter::Radius { center_x, center_y, radius_m } => {
+            SpatialFilter::Radius {
+                center_x,
+                center_y,
+                radius_m,
+            } => {
                 // Convert radius from meters to approximate degrees
                 let radius_deg = *radius_m / 111_320.0;
                 let expanded_min_x = center_x - radius_deg;
@@ -110,7 +125,10 @@ mod tests {
     #[test]
     fn test_bbox_filter_intersects() {
         let filter = SpatialFilter::Bbox {
-            min_x: 103.0, min_y: 30.0, max_x: 105.0, max_y: 31.0,
+            min_x: 103.0,
+            min_y: 30.0,
+            max_x: 105.0,
+            max_y: 31.0,
         };
 
         // Data bbox fully inside filter
@@ -129,7 +147,10 @@ mod tests {
     #[test]
     fn test_bbox_filter_disjoint() {
         let filter = SpatialFilter::Bbox {
-            min_x: 103.0, min_y: 30.0, max_x: 105.0, max_y: 31.0,
+            min_x: 103.0,
+            min_y: 30.0,
+            max_x: 105.0,
+            max_y: 31.0,
         };
 
         // Data bbox completely outside
@@ -142,7 +163,9 @@ mod tests {
     #[test]
     fn test_radius_filter() {
         let filter = SpatialFilter::Radius {
-            center_x: 104.0, center_y: 30.5, radius_m: 5000.0,
+            center_x: 104.0,
+            center_y: 30.5,
+            radius_m: 5000.0,
         };
 
         // Bbox completely inside radius → Unknown (need geometry check)

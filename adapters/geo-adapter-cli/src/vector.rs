@@ -106,13 +106,12 @@ impl VectorOps {
             )));
         }
 
-        let output_format = VectorFormat::from_path(&output)
-            .ok_or_else(|| {
-                GeoError::Validation(format!(
-                    "Cannot determine output format from extension: {}",
-                    output.display()
-                ))
-            })?;
+        let output_format = VectorFormat::from_path(&output).ok_or_else(|| {
+            GeoError::Validation(format!(
+                "Cannot determine output format from extension: {}",
+                output.display()
+            ))
+        })?;
 
         // Build ogr2ogr arguments.
         let mut args: Vec<String> = Vec::new();
@@ -270,8 +269,12 @@ impl VectorOps {
                     .as_array()
                     .map(|f| {
                         f.iter()
-                            .map(|field| (field["name"].as_str().unwrap_or("").to_string(),
-                                           field["type"].as_str().unwrap_or("").to_string()))
+                            .map(|field| {
+                                (
+                                    field["name"].as_str().unwrap_or("").to_string(),
+                                    field["type"].as_str().unwrap_or("").to_string(),
+                                )
+                            })
                             .collect()
                     })
                     .unwrap_or_default(),
@@ -363,10 +366,7 @@ mod tests {
             VectorFormat::from_path("data.geojson"),
             Some(VectorFormat::GeoJson)
         );
-        assert_eq!(
-            VectorFormat::from_path("data.csv"),
-            Some(VectorFormat::Csv)
-        );
+        assert_eq!(VectorFormat::from_path("data.csv"), Some(VectorFormat::Csv));
         assert_eq!(
             VectorFormat::from_path("data.shp"),
             Some(VectorFormat::Shapefile)

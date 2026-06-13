@@ -3,9 +3,9 @@
 //! Writes GeoJSON/vector data to GeoParquet format with
 //! spatial metadata (bbox, CRS, geometry types).
 
-use crate::metadata::{GeoParquetMetadata, ColumnMetadata, projjson_for_epsg};
-use crate::schema::GeoSchema;
+use crate::metadata::{projjson_for_epsg, ColumnMetadata, GeoParquetMetadata};
 use crate::reader::GeoRecord;
+use crate::schema::GeoSchema;
 use geo_types::Geometry;
 
 /// Writes GeoParquet files from geometry records.
@@ -111,19 +111,22 @@ impl GeoParquetWriter {
     pub fn build_metadata(&self, epsg: Option<u32>) -> GeoParquetMetadata {
         let crs = epsg.and_then(projjson_for_epsg);
 
-        let bbox = self.bbox.map(|(min_x, min_y, max_x, max_y)| {
-            vec![min_x, min_y, max_x, max_y]
-        });
+        let bbox = self
+            .bbox
+            .map(|(min_x, min_y, max_x, max_y)| vec![min_x, min_y, max_x, max_y]);
 
         let mut columns = std::collections::HashMap::new();
-        columns.insert(self.schema.geometry_column.clone(), ColumnMetadata {
-            encoding: self.schema.geometry_encoding.clone(),
-            geometry_types: self.geometry_types.clone(),
-            crs,
-            bbox,
-            edges: Some("planar".into()),
-            orientation: Some("counterclockwise".into()),
-        });
+        columns.insert(
+            self.schema.geometry_column.clone(),
+            ColumnMetadata {
+                encoding: self.schema.geometry_encoding.clone(),
+                geometry_types: self.geometry_types.clone(),
+                crs,
+                bbox,
+                edges: Some("planar".into()),
+                orientation: Some("counterclockwise".into()),
+            },
+        );
 
         GeoParquetMetadata {
             version: "1.1.0".into(),
@@ -201,12 +204,10 @@ fn parse_wkb_bbox(wkb: &[u8]) -> Option<Geometry<f64>> {
     if geom_type == 1 && wkb.len() >= 21 {
         // Point: 1 + 4 (type) + 8 (x) + 8 (y) = 21 bytes
         let x = f64::from_le_bytes([
-            wkb[5], wkb[6], wkb[7], wkb[8],
-            wkb[9], wkb[10], wkb[11], wkb[12],
+            wkb[5], wkb[6], wkb[7], wkb[8], wkb[9], wkb[10], wkb[11], wkb[12],
         ]);
         let y = f64::from_le_bytes([
-            wkb[13], wkb[14], wkb[15], wkb[16],
-            wkb[17], wkb[18], wkb[19], wkb[20],
+            wkb[13], wkb[14], wkb[15], wkb[16], wkb[17], wkb[18], wkb[19], wkb[20],
         ]);
         return Some(Geometry::Point(geo_types::Point::new(x, y)));
     }
@@ -225,11 +226,13 @@ mod tests {
         let mut writer = GeoParquetWriter::new(schema);
 
         let point = Geometry::Point(Point::new(104.0, 30.5));
-        writer.add_geometry(&point, {
-            let mut m = std::collections::HashMap::new();
-            m.insert("name".into(), serde_json::json!("Chengdu"));
-            m
-        }).unwrap();
+        writer
+            .add_geometry(&point, {
+                let mut m = std::collections::HashMap::new();
+                m.insert("name".into(), serde_json::json!("Chengdu"));
+                m
+            })
+            .unwrap();
 
         assert_eq!(writer.len(), 1);
     }
@@ -239,14 +242,18 @@ mod tests {
         let schema = GeoSchema::default();
         let mut writer = GeoParquetWriter::new(schema);
 
-        writer.add_geometry(
-            &Geometry::Point(Point::new(103.0, 30.0)),
-            std::collections::HashMap::new(),
-        ).unwrap();
-        writer.add_geometry(
-            &Geometry::Point(Point::new(105.0, 31.0)),
-            std::collections::HashMap::new(),
-        ).unwrap();
+        writer
+            .add_geometry(
+                &Geometry::Point(Point::new(103.0, 30.0)),
+                std::collections::HashMap::new(),
+            )
+            .unwrap();
+        writer
+            .add_geometry(
+                &Geometry::Point(Point::new(105.0, 31.0)),
+                std::collections::HashMap::new(),
+            )
+            .unwrap();
 
         let meta = writer.build_metadata(Some(4326));
         let bbox = meta.columns["geometry"].bbox.as_ref().unwrap();
@@ -260,9 +267,13 @@ mod tests {
         let mut writer = GeoParquetWriter::new(schema);
 
         let point = Geometry::Point(Point::new(104.0, 30.5));
-        writer.add_geometry(&point, std::collections::HashMap::new()).unwrap();
+        writer
+            .add_geometry(&point, std::collections::HashMap::new())
+            .unwrap();
 
         let meta = writer.build_metadata(Some(4326));
-        assert!(meta.columns["geometry"].geometry_types.contains(&"Point".to_string()));
+        assert!(meta.columns["geometry"]
+            .geometry_types
+            .contains(&"Point".to_string()));
     }
 }

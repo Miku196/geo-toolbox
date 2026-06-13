@@ -22,4 +22,4 @@ mod client;
 pub mod tools;
 
 pub use adapter::StacAdapter;
-pub use client::{StacClient, StacItem, StacCollection};
+pub use client::{StacClient, StacCollection, StacItem};

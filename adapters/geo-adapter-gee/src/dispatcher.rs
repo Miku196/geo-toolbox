@@ -101,20 +101,20 @@ impl GeeDispatcher {
             aoi_path: aoi_path.into(),
             year,
             output_gcs: output_gcs.into(),
-            params: algorithm_params.unwrap_or_else(|| serde_json::json!({
-                "algorithm": "random_forest",
-                "n_trees": 50,
-                "scale": 10,
-                "max_pixels": 1e13
-            })),
+            params: algorithm_params.unwrap_or_else(|| {
+                serde_json::json!({
+                    "algorithm": "random_forest",
+                    "n_trees": 50,
+                    "scale": 10,
+                    "max_pixels": 1e13
+                })
+            }),
             dispatched_at: default_timestamp(),
         };
 
         let cid = task.correlation_id.clone();
         self.mq.publish_task(&task).await?;
-        tracing::info!(
-            "GEE task dispatched: {cid} (landcover_classification, {year})"
-        );
+        tracing::info!("GEE task dispatched: {cid} (landcover_classification, {year})");
 
         Ok(cid)
     }
@@ -172,9 +172,7 @@ impl GeeDispatcher {
 
         let cid = task.correlation_id.clone();
         self.mq.publish_task(&task).await?;
-        tracing::info!(
-            "GEE change detection dispatched: {cid} ({year_from}→{year_to})"
-        );
+        tracing::info!("GEE change detection dispatched: {cid} ({year_from}→{year_to})");
         Ok(cid)
     }
 

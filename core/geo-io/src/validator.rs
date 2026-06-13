@@ -52,10 +52,7 @@ pub fn validate_iot_reading(sensor_type: &str, value: f64) -> GeoResult<()> {
 }
 
 /// Validate that required JSON fields exist and are non-null.
-pub fn validate_required_fields(
-    record: &serde_json::Value,
-    fields: &[&str],
-) -> GeoResult<()> {
+pub fn validate_required_fields(record: &serde_json::Value, fields: &[&str]) -> GeoResult<()> {
     for field in fields {
         match record.get(field) {
             None | Some(serde_json::Value::Null) => {

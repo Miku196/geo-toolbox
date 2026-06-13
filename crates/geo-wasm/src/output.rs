@@ -19,7 +19,11 @@ use wasm_bindgen::prelude::*;
 ///
 /// Uint8Array containing the XLSX file bytes.
 #[wasm_bindgen(js_name = exportExcel)]
-pub fn export_excel(columns_json: &str, rows_json: &str, sheet_name: Option<String>) -> Result<Box<[u8]>, JsValue> {
+pub fn export_excel(
+    columns_json: &str,
+    rows_json: &str,
+    sheet_name: Option<String>,
+) -> Result<Box<[u8]>, JsValue> {
     use rust_xlsxwriter::*;
 
     let columns: Vec<String> = serde_json::from_str(columns_json)
@@ -30,7 +34,8 @@ pub fn export_excel(columns_json: &str, rows_json: &str, sheet_name: Option<Stri
     let mut workbook = Workbook::new();
     let sheet = workbook.add_worksheet();
     let name = sheet_name.unwrap_or_else(|| "Sheet1".into());
-    sheet.set_name(&name)
+    sheet
+        .set_name(&name)
         .map_err(|e| JsValue::from_str(&format!("Sheet name error: {e}")))?;
 
     // Header style
@@ -42,7 +47,8 @@ pub fn export_excel(columns_json: &str, rows_json: &str, sheet_name: Option<Stri
 
     // Write headers
     for (i, col_name) in columns.iter().enumerate() {
-        sheet.write_string_with_format(0, i as u16, col_name, &header_fmt)
+        sheet
+            .write_string_with_format(0, i as u16, col_name, &header_fmt)
             .map_err(|e| JsValue::from_str(&format!("Write header error: {e}")))?;
     }
 
@@ -79,7 +85,8 @@ pub fn export_excel(columns_json: &str, rows_json: &str, sheet_name: Option<Stri
     sheet.set_freeze_panes(1, 0).ok();
 
     // Write to buffer
-    let buffer = workbook.save_to_buffer()
+    let buffer = workbook
+        .save_to_buffer()
         .map_err(|e| JsValue::from_str(&format!("XLSX save: {e}")))?;
 
     Ok(buffer.into_boxed_slice())
@@ -104,8 +111,7 @@ pub fn export_geojson(features_json: &str) -> Result<String, JsValue> {
         "features": features,
     });
 
-    serde_json::to_string_pretty(&fc)
-        .map_err(|e| JsValue::from_str(&format!("Serialization: {e}")))
+    serde_json::to_string_pretty(&fc).map_err(|e| JsValue::from_str(&format!("Serialization: {e}")))
 }
 
 /// Generate a carbon accounting Markdown report.
@@ -120,11 +126,16 @@ pub fn export_geojson(features_json: &str) -> Result<String, JsValue> {
 ///
 /// Markdown string suitable for download or preview.
 #[wasm_bindgen(js_name = exportCarbonReport)]
-pub fn export_carbon_report(report_json: &str, aoi_name: &str, auditor: &str) -> Result<String, JsValue> {
+pub fn export_carbon_report(
+    report_json: &str,
+    aoi_name: &str,
+    auditor: &str,
+) -> Result<String, JsValue> {
     let report: serde_json::Value = serde_json::from_str(report_json)
         .map_err(|e| JsValue::from_str(&format!("Invalid report: {e}")))?;
 
-    let classes = report["classes"].as_array()
+    let classes = report["classes"]
+        .as_array()
         .ok_or_else(|| JsValue::from_str("Report has no 'classes' array"))?;
 
     let total_area = report["total_area_ha"].as_f64().unwrap_or(0.0);
@@ -145,11 +156,16 @@ pub fn export_carbon_report(report_json: &str, aoi_name: &str, auditor: &str) ->
     md.push_str("| Metric | Value |\n");
     md.push_str("|--------|-------|\n");
     md.push_str(&format!("| Total Area | {:.1} ha |\n", total_area));
-    md.push_str(&format!("| Net Emissions | {:.1} tCO₂e |\n", total_emission));
+    md.push_str(&format!(
+        "| Net Emissions | {:.1} tCO₂e |\n",
+        total_emission
+    ));
     md.push_str("\n---\n\n");
 
     md.push_str("## Landcover Breakdown\n\n");
-    md.push_str("| Landcover Class | Area (ha) | Factor | Emission (tCO₂e) | Features | Source |\n");
+    md.push_str(
+        "| Landcover Class | Area (ha) | Factor | Emission (tCO₂e) | Features | Source |\n",
+    );
     md.push_str("|----------------|-----------|--------|-----------------|----------|--------|\n");
 
     for class in classes {
@@ -186,7 +202,8 @@ pub fn csv_to_json(csv_text: &str) -> Result<String, JsValue> {
         .has_headers(true)
         .from_reader(csv_text.as_bytes());
 
-    let headers: Vec<String> = reader.headers()
+    let headers: Vec<String> = reader
+        .headers()
         .map_err(|e| JsValue::from_str(&format!("CSV headers: {e}")))?
         .iter()
         .map(|h| h.to_string())
@@ -195,16 +212,21 @@ pub fn csv_to_json(csv_text: &str) -> Result<String, JsValue> {
     let mut rows: Vec<serde_json::Map<String, serde_json::Value>> = Vec::new();
 
     for result in reader.records() {
-        let record = result
-            .map_err(|e| JsValue::from_str(&format!("CSV row: {e}")))?;
+        let record = result.map_err(|e| JsValue::from_str(&format!("CSV row: {e}")))?;
         let mut row = serde_json::Map::new();
         for (i, value) in record.iter().enumerate() {
-            let key = headers.get(i).cloned().unwrap_or_else(|| format!("col_{i}"));
+            let key = headers
+                .get(i)
+                .cloned()
+                .unwrap_or_else(|| format!("col_{i}"));
             // Try parse as number
             if let Ok(num) = value.parse::<f64>() {
-                row.insert(key, serde_json::Value::Number(
-                    serde_json::Number::from_f64(num).unwrap_or(serde_json::Number::from(0))
-                ));
+                row.insert(
+                    key,
+                    serde_json::Value::Number(
+                        serde_json::Number::from_f64(num).unwrap_or(serde_json::Number::from(0)),
+                    ),
+                );
             } else {
                 row.insert(key, serde_json::Value::String(value.to_string()));
             }
@@ -212,8 +234,7 @@ pub fn csv_to_json(csv_text: &str) -> Result<String, JsValue> {
         rows.push(row);
     }
 
-    serde_json::to_string_pretty(&rows)
-        .map_err(|e| JsValue::from_str(&format!("JSON: {e}")))
+    serde_json::to_string_pretty(&rows).map_err(|e| JsValue::from_str(&format!("JSON: {e}")))
 }
 
 #[cfg(test)]

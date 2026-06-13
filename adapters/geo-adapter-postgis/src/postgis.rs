@@ -2,8 +2,8 @@
 
 use geo_core::errors::{GeoError, GeoResult};
 use sqlx::postgres::{PgPool, PgPoolOptions};
-use sqlx::Row;
 use sqlx::Column;
+use sqlx::Row;
 use uuid::Uuid;
 
 /// Wraps a `PgPool` with geo-toolbox–specific convenience methods.
@@ -125,14 +125,24 @@ pub async fn run_migrations(pool: &PgPool) -> GeoResult<()> {
 
     if has_postgis {
         let migrations: &[(&str, &str)] = &[
-            ("001_factor_registry", include_str!("../migrations/001_factor_registry.sql")),
-            ("002_carbon_accounting_results", include_str!("../migrations/002_carbon_accounting_results.sql")),
-            ("003_spatial_assets", include_str!("../migrations/003_spatial_assets.sql")),
+            (
+                "001_factor_registry",
+                include_str!("../migrations/001_factor_registry.sql"),
+            ),
+            (
+                "002_carbon_accounting_results",
+                include_str!("../migrations/002_carbon_accounting_results.sql"),
+            ),
+            (
+                "003_spatial_assets",
+                include_str!("../migrations/003_spatial_assets.sql"),
+            ),
         ];
         for (name, sql) in migrations {
-            sqlx::raw_sql(sql).execute(pool).await.map_err(|e| {
-                GeoError::Database(format!("migration {name} failed: {e}"))
-            })?;
+            sqlx::raw_sql(sql)
+                .execute(pool)
+                .await
+                .map_err(|e| GeoError::Database(format!("migration {name} failed: {e}")))?;
             tracing::info!("Migration {name} applied");
         }
         tracing::info!("All migrations complete (3 tables with PostGIS)");

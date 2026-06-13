@@ -101,10 +101,13 @@ mod tests {
     fn test_bounds() {
         let (x, y, _) = latlon_to_tile(104.06, 30.57, 12);
         let (min_lon, min_lat, max_lon, max_lat) = tile_bounds(x, y, 12);
-        assert!(min_lon <= 104.06 && max_lon >= 104.06,
-            "lon 104.06 not in [{min_lon}, {max_lon}]");
-        assert!(min_lat <= 30.57 && max_lat >= 30.57,
-            "lat 30.57 not in [{min_lat}, {max_lat}]");
+        assert!(
+            min_lon <= 104.06 && max_lon >= 104.06,
+            "lon 104.06 not in [{min_lon}, {max_lon}]"
+        );
+        assert!(
+            min_lat <= 30.57 && max_lat >= 30.57,
+            "lat 30.57 not in [{min_lat}, {max_lat}]"
+        );
     }
-
 }

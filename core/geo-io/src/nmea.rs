@@ -81,7 +81,9 @@ pub fn parse_gga(sentence: &str) -> GeoResult<GgaFix> {
 
     let talker = fields.first().unwrap_or(&"");
     if !talker.ends_with("GGA") {
-        return Err(GeoError::Validation(format!("not a GGA sentence: {talker}")));
+        return Err(GeoError::Validation(format!(
+            "not a GGA sentence: {talker}"
+        )));
     }
 
     let time = fields[1].to_string();
@@ -101,7 +103,15 @@ pub fn parse_gga(sentence: &str) -> GeoResult<GgaFix> {
     let hdop: f64 = fields[8].parse().unwrap_or(99.9);
     let altitude: f64 = fields[9].parse().unwrap_or(0.0);
 
-    Ok(GgaFix { time, lat, lng, quality, satellites, hdop, altitude })
+    Ok(GgaFix {
+        time,
+        lat,
+        lng,
+        quality,
+        satellites,
+        hdop,
+        altitude,
+    })
 }
 
 /// Parse a $GPRMC sentence.
@@ -117,7 +127,9 @@ pub fn parse_rmc(sentence: &str) -> GeoResult<RmcSentence> {
 
     let talker = fields[0];
     if !talker.ends_with("RMC") {
-        return Err(GeoError::Validation(format!("not an RMC sentence: {talker}")));
+        return Err(GeoError::Validation(format!(
+            "not an RMC sentence: {talker}"
+        )));
     }
 
     let time = fields[1].to_string();
@@ -133,7 +145,15 @@ pub fn parse_rmc(sentence: &str) -> GeoResult<RmcSentence> {
     let track: f64 = fields[8].parse().unwrap_or(0.0);
     let date = fields[9].to_string();
 
-    Ok(RmcSentence { time, status, lat, lng, speed_knots: speed, track, date })
+    Ok(RmcSentence {
+        time,
+        status,
+        lat,
+        lng,
+        speed_knots: speed,
+        track,
+        date,
+    })
 }
 
 /// Process a raw NMEA line (possibly prefixed with checksum, e.g. `$GPGGA,...*XX`).
@@ -218,7 +238,8 @@ mod tests {
 
     #[test]
     fn test_parse_nmea_line_with_checksum() {
-        let msg = parse_nmea_line("$GPGGA,123519,2232.1234,N,11355.5678,E,1,12,0.8,100.0,M,,,*7F").unwrap();
+        let msg = parse_nmea_line("$GPGGA,123519,2232.1234,N,11355.5678,E,1,12,0.8,100.0,M,,,*7F")
+            .unwrap();
         match msg {
             NmeaMessage::Gga(fix) => {
                 assert_eq!(fix.satellites, 12);

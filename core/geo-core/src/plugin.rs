@@ -326,7 +326,11 @@ pub trait ExternalAdapter: Plugin {
     async fn pull(&self, query: &str) -> GeoResult<Vec<GeoFeature>>;
 
     /// 执行外部命令。
-    async fn execute(&self, command: &str, params: serde_json::Value) -> GeoResult<serde_json::Value>;
+    async fn execute(
+        &self,
+        command: &str,
+        params: serde_json::Value,
+    ) -> GeoResult<serde_json::Value>;
 }
 
 // ── Plugin metadata for registry introspection ────────────────────────────

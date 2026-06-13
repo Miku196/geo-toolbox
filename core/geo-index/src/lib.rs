@@ -10,4 +10,4 @@
 pub mod geohash;
 pub mod tools;
 
-pub use geohash::{encode, decode, neighbors, bbox_to_geohashes, GeohashBounds};
+pub use geohash::{bbox_to_geohashes, decode, encode, neighbors, GeohashBounds};

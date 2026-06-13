@@ -150,7 +150,10 @@ impl RasterOps {
 
         Self::run_gdal("gdalwarp", &args).await?;
 
-        tracing::info!("Raster reprojected to EPSG:{target_epsg}: {}", output.display());
+        tracing::info!(
+            "Raster reprojected to EPSG:{target_epsg}: {}",
+            output.display()
+        );
         Ok(output.to_path_buf())
     }
 
@@ -166,9 +169,12 @@ impl RasterOps {
         Self::run_gdal(
             "gdal_translate",
             &[
-                "-b".to_string(), band.to_string(),
-                "-of".to_string(), "COG".to_string(),
-                "-co".to_string(), "COMPRESS=DEFLATE".to_string(),
+                "-b".to_string(),
+                band.to_string(),
+                "-of".to_string(),
+                "COG".to_string(),
+                "-co".to_string(),
+                "COMPRESS=DEFLATE".to_string(),
                 input.to_string_lossy().to_string(),
                 output.to_string_lossy().to_string(),
             ],
@@ -234,7 +240,11 @@ impl RasterOps {
 
         Self::run_gdal("gdal_merge.py", &args).await?;
 
-        tracing::info!("Mosaic created: {} ({} inputs)", output.display(), inputs.len());
+        tracing::info!(
+            "Mosaic created: {} ({} inputs)",
+            output.display(),
+            inputs.len()
+        );
         Ok(output)
     }
 
@@ -271,11 +281,8 @@ impl RasterOps {
     /// Get basic raster info (size, bands, CRS, extent).
     pub async fn info(input: impl AsRef<Path>) -> GeoResult<RasterInfo> {
         let input = input.as_ref();
-        let output = Self::run_gdal_capture("gdalinfo", &[
-            "-json",
-            &input.to_string_lossy(),
-        ])
-        .await?;
+        let output =
+            Self::run_gdal_capture("gdalinfo", &["-json", &input.to_string_lossy()]).await?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let info: serde_json::Value = serde_json::from_str(stdout.trim())
@@ -292,13 +299,24 @@ impl RasterOps {
             bands: info["bands"].as_array().map(|b| b.len()).unwrap_or(0),
             pixel_size: (
                 info["geoTransform"][1].as_f64().unwrap_or(1.0),
-                info["geoTransform"][5].as_f64().map(|v| v.abs()).unwrap_or(1.0),
+                info["geoTransform"][5]
+                    .as_f64()
+                    .map(|v| v.abs())
+                    .unwrap_or(1.0),
             ),
             extent: [
-                info["cornerCoordinates"]["lowerLeft"][0].as_f64().unwrap_or(0.0),
-                info["cornerCoordinates"]["lowerLeft"][1].as_f64().unwrap_or(0.0),
-                info["cornerCoordinates"]["upperRight"][0].as_f64().unwrap_or(0.0),
-                info["cornerCoordinates"]["upperRight"][1].as_f64().unwrap_or(0.0),
+                info["cornerCoordinates"]["lowerLeft"][0]
+                    .as_f64()
+                    .unwrap_or(0.0),
+                info["cornerCoordinates"]["lowerLeft"][1]
+                    .as_f64()
+                    .unwrap_or(0.0),
+                info["cornerCoordinates"]["upperRight"][0]
+                    .as_f64()
+                    .unwrap_or(0.0),
+                info["cornerCoordinates"]["upperRight"][1]
+                    .as_f64()
+                    .unwrap_or(0.0),
             ],
         })
     }
@@ -379,12 +397,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_missing_input() {
-        let result = RasterOps::to_cog(
-            "/nonexistent/path.tif",
-            "/tmp/out.tif",
-            None,
-        )
-        .await;
+        let result = RasterOps::to_cog("/nonexistent/path.tif", "/tmp/out.tif", None).await;
         assert!(result.is_err());
     }
 

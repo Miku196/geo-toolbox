@@ -203,14 +203,12 @@ impl CrsRegistry {
             // WGS84 → Equal Area (carbon accounting)
             (4326, 3405) => Ok(builtin::wgs84_to_equal_area(x, y)),
 
-            _ => Err(GeoError::Unimplemented(
-                format!(
-                    "Transform EPSG:{from_epsg}→{to_epsg} not built-in.\n\
+            _ => Err(GeoError::Unimplemented(format!(
+                "Transform EPSG:{from_epsg}→{to_epsg} not built-in.\n\
                      Built-in: 4326↔3857, 4326↔9000(GCJ-02), 9000↔9001(BD-09),\n\
                      4326↔9001, 4326→3405.\n\
                      For UTM/proj-based transforms, build with: cargo build --features proj"
-                )
-            )),
+            ))),
         }
     }
 
@@ -259,7 +257,10 @@ pub mod builtin {
     /// WGS84 (EPSG:4326) → 等积投影（近似 EPSG:3405）。
     pub fn wgs84_to_equal_area(lon: f64, lat: f64) -> (f64, f64) {
         let sp = 30.0_f64.to_radians();
-        (lon * DEG_TO_RAD * EARTH_RADIUS * sp.cos(), lat.sin() * EARTH_RADIUS)
+        (
+            lon * DEG_TO_RAD * EARTH_RADIUS * sp.cos(),
+            lat.sin() * EARTH_RADIUS,
+        )
     }
 
     // ── Chinese coordinate systems (GCJ-02 / BD-09) ───────────
@@ -269,14 +270,18 @@ pub mod builtin {
 
     /// WGS84 → GCJ-02（火星坐标系）。
     pub fn wgs84_to_gcj02(lon: f64, lat: f64) -> (f64, f64) {
-        if out_of_china(lon, lat) { return (lon, lat); }
+        if out_of_china(lon, lat) {
+            return (lon, lat);
+        }
         let (dlon, dlat) = delta(lon, lat);
         (lon + dlon, lat + dlat)
     }
 
     /// GCJ-02（火星坐标系） → WGS84。
     pub fn gcj02_to_wgs84(lon: f64, lat: f64) -> (f64, f64) {
-        if out_of_china(lon, lat) { return (lon, lat); }
+        if out_of_china(lon, lat) {
+            return (lon, lat);
+        }
         let (mut wx, mut wy) = (lon, lat);
         for _ in 0..5 {
             let (gx, gy) = wgs84_to_gcj02(wx, wy);
@@ -288,18 +293,18 @@ pub mod builtin {
 
     /// GCJ-02 → BD-09（百度坐标系）。
     pub fn gcj02_to_bd09(lon: f64, lat: f64) -> (f64, f64) {
-        let z = (lon*lon + lat*lat).sqrt() + 0.00002*(lat*X_PI).sin();
-        let t = lat.atan2(lon) + 0.000003*(lon*X_PI).cos();
-        (z*t.cos() + 0.0065, z*t.sin() + 0.006)
+        let z = (lon * lon + lat * lat).sqrt() + 0.00002 * (lat * X_PI).sin();
+        let t = lat.atan2(lon) + 0.000003 * (lon * X_PI).cos();
+        (z * t.cos() + 0.0065, z * t.sin() + 0.006)
     }
 
     /// BD-09（百度坐标系） → GCJ-02。
     pub fn bd09_to_gcj02(lon: f64, lat: f64) -> (f64, f64) {
         let x = lon - 0.0065;
         let y = lat - 0.006;
-        let z = (x*x + y*y).sqrt() - 0.00002*(y*X_PI).sin();
-        let t = y.atan2(x) - 0.000003*(x*X_PI).cos();
-        (z*t.cos(), z*t.sin())
+        let z = (x * x + y * y).sqrt() - 0.00002 * (y * X_PI).sin();
+        let t = y.atan2(x) - 0.000003 * (x * X_PI).cos();
+        (z * t.cos(), z * t.sin())
     }
 
     fn out_of_china(lon: f64, lat: f64) -> bool {
@@ -312,22 +317,25 @@ pub mod builtin {
         let r = lat * PI / 180.0;
         let m = 1.0 - EE * r.sin() * r.sin();
         let s = m.sqrt();
-        ((dl*180.0)/(A/s*r.cos()*PI), (db*180.0)/((A*(1.0-EE))/(m*s)*PI))
+        (
+            (dl * 180.0) / (A / s * r.cos() * PI),
+            (db * 180.0) / ((A * (1.0 - EE)) / (m * s) * PI),
+        )
     }
 
     fn tb(x: f64, y: f64) -> f64 {
-        let mut r = -100.0 + 2.0*x + 3.0*y + 0.2*y*y + 0.1*x*y + 0.2*x.abs().sqrt();
-        r += (20.0*(6.0*x*PI).sin()+20.0*(2.0*x*PI).sin())*2.0/3.0;
-        r += (20.0*(y*PI).sin()+40.0*(y/3.0*PI).sin())*2.0/3.0;
-        r += (160.0*(y/12.0*PI).sin()+320.0*(y*PI/30.0).sin())*2.0/3.0;
+        let mut r = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * x.abs().sqrt();
+        r += (20.0 * (6.0 * x * PI).sin() + 20.0 * (2.0 * x * PI).sin()) * 2.0 / 3.0;
+        r += (20.0 * (y * PI).sin() + 40.0 * (y / 3.0 * PI).sin()) * 2.0 / 3.0;
+        r += (160.0 * (y / 12.0 * PI).sin() + 320.0 * (y * PI / 30.0).sin()) * 2.0 / 3.0;
         r
     }
 
     fn tl(x: f64, y: f64) -> f64 {
-        let mut r = 300.0 + x + 2.0*y + 0.1*x*x + 0.1*x*y + 0.1*x.abs().sqrt();
-        r += (20.0*(6.0*x*PI).sin()+20.0*(2.0*x*PI).sin())*2.0/3.0;
-        r += (20.0*(x*PI).sin()+40.0*(x/3.0*PI).sin())*2.0/3.0;
-        r += (150.0*(x/12.0*PI).sin()+300.0*(x/30.0*PI).sin())*2.0/3.0;
+        let mut r = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * x.abs().sqrt();
+        r += (20.0 * (6.0 * x * PI).sin() + 20.0 * (2.0 * x * PI).sin()) * 2.0 / 3.0;
+        r += (20.0 * (x * PI).sin() + 40.0 * (x / 3.0 * PI).sin()) * 2.0 / 3.0;
+        r += (150.0 * (x / 12.0 * PI).sin() + 300.0 * (x / 30.0 * PI).sin()) * 2.0 / 3.0;
         r
     }
 }
@@ -421,14 +429,20 @@ mod tests {
     fn test_cli_transform_4326_to_9000() {
         let reg = CrsRegistry::new();
         let (gx, _gy) = reg.transform_point(4326, 9000, 104.06, 30.57).unwrap();
-        assert!((gx - 104.06).abs() > 0.001, "GCJ-02 should differ from WGS84");
+        assert!(
+            (gx - 104.06).abs() > 0.001,
+            "GCJ-02 should differ from WGS84"
+        );
     }
 
     #[test]
     fn test_cli_transform_4326_to_9001() {
         let reg = CrsRegistry::new();
         let (bx, _by) = reg.transform_point(4326, 9001, 104.06, 30.57).unwrap();
-        assert!((bx - 104.06).abs() > 0.001, "BD-09 should differ from WGS84");
+        assert!(
+            (bx - 104.06).abs() > 0.001,
+            "BD-09 should differ from WGS84"
+        );
     }
 
     #[test]

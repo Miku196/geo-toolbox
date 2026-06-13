@@ -1,7 +1,7 @@
 //! 浏览器端瓦片工具 — lat/lon → z/x/y + MVT 编码。
 
-use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
+use wasm_bindgen::prelude::*;
 
 /// 瓦片坐标。
 #[wasm_bindgen]
@@ -22,7 +22,9 @@ pub struct TileEngine;
 impl TileEngine {
     /// 创建瓦片引擎。
     #[wasm_bindgen(constructor)]
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 
     /// 经纬度 → 瓦片坐标。
     pub fn latlon_to_tile(&self, lon: f64, lat: f64, zoom: u8) -> TileCoord {
@@ -66,16 +68,20 @@ impl TileEngine {
         &self,
         layer_name: &str,
         geojson_fc: &str,
-        tile_x: u32, tile_y: u32, zoom: u8,
+        tile_x: u32,
+        tile_y: u32,
+        zoom: u8,
         extent: u32,
     ) -> Result<Vec<u8>, JsValue> {
-        let fc: serde_json::Value = serde_json::from_str(geojson_fc)
-            .map_err(|e| JsValue::from_str(&e.to_string()))?;
-        let features = fc["features"].as_array()
+        let fc: serde_json::Value =
+            serde_json::from_str(geojson_fc).map_err(|e| JsValue::from_str(&e.to_string()))?;
+        let features = fc["features"]
+            .as_array()
             .ok_or_else(|| JsValue::from_str("no features"))?;
 
         let encoder = geo_tile::MvtEncoder::new(extent);
-        encoder.encode_tile(layer_name, features, tile_x, tile_y, zoom)
+        encoder
+            .encode_tile(layer_name, features, tile_x, tile_y, zoom)
             .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 }

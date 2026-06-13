@@ -3,7 +3,6 @@
 //! 轻量级内存栅格，支持从 GeoJSON 格式的 2D 数组构造、
 //! 基本像素访问和统计计算。
 
-
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -26,7 +25,13 @@ pub struct RasterBand {
 
 impl RasterBand {
     /// 从 Vec 创建栅格。
-    pub fn new(name: impl Into<String>, rows: usize, cols: usize, data: Vec<f64>, nodata: f64) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        rows: usize,
+        cols: usize,
+        data: Vec<f64>,
+        nodata: f64,
+    ) -> Self {
         Self {
             name: name.into(),
             rows,
@@ -78,12 +83,16 @@ impl RasterBand {
 
     /// 有效像素数。
     pub fn valid_count(&self) -> usize {
-        self.data.iter().filter(|v| !v.is_nan() && **v != self.nodata).count()
+        self.data
+            .iter()
+            .filter(|v| !v.is_nan() && **v != self.nodata)
+            .count()
     }
 
     /// 最小值。
     pub fn min(&self) -> Option<f64> {
-        self.data.iter()
+        self.data
+            .iter()
             .filter(|v| !v.is_nan() && **v != self.nodata)
             .cloned()
             .fold(None, |acc: Option<f64>, x| {
@@ -93,7 +102,8 @@ impl RasterBand {
 
     /// 最大值。
     pub fn max(&self) -> Option<f64> {
-        self.data.iter()
+        self.data
+            .iter()
             .filter(|v| !v.is_nan() && **v != self.nodata)
             .cloned()
             .fold(None, |acc: Option<f64>, x| {
@@ -103,21 +113,32 @@ impl RasterBand {
 
     /// 平均值。
     pub fn mean(&self) -> Option<f64> {
-        let (sum, count) = self.data.iter()
+        let (sum, count) = self
+            .data
+            .iter()
             .filter(|v| !v.is_nan() && **v != self.nodata)
             .fold((0.0, 0usize), |(s, c), v| (s + v, c + 1));
-        if count > 0 { Some(sum / count as f64) } else { None }
+        if count > 0 {
+            Some(sum / count as f64)
+        } else {
+            None
+        }
     }
 
     /// 标准差。
     pub fn stddev(&self) -> Option<f64> {
         let mean = self.mean()?;
-        let valid: Vec<f64> = self.data.iter()
+        let valid: Vec<f64> = self
+            .data
+            .iter()
             .filter(|v| !v.is_nan() && **v != self.nodata)
             .cloned()
             .collect();
-        if valid.len() < 2 { return Some(0.0); }
-        let variance = valid.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / (valid.len() - 1) as f64;
+        if valid.len() < 2 {
+            return Some(0.0);
+        }
+        let variance =
+            valid.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / (valid.len() - 1) as f64;
         Some(variance.sqrt())
     }
 }

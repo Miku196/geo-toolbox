@@ -58,9 +58,12 @@ impl StacClient {
     pub async fn search(
         &self,
         collection: &str,
-        min_lon: f64, min_lat: f64,
-        max_lon: f64, max_lat: f64,
-        date_from: &str, date_to: &str,
+        min_lon: f64,
+        min_lat: f64,
+        max_lon: f64,
+        max_lat: f64,
+        date_from: &str,
+        date_to: &str,
         limit: u32,
     ) -> GeoResult<Vec<StacItem>> {
         let url = format!("{}/search", self.base_url);
@@ -74,18 +77,25 @@ impl StacClient {
             }
         });
 
-        let resp = self.client.post(&url)
+        let resp = self
+            .client
+            .post(&url)
             .json(&body)
-            .send().await
+            .send()
+            .await
             .map_err(|e| GeoError::ExternalProcess {
                 command: format!("STAC search {url}"),
                 message: e.to_string(),
             })?;
 
-        let search_resp: StacSearchResponse = resp.json().await
+        let search_resp: StacSearchResponse = resp
+            .json()
+            .await
             .map_err(|e| GeoError::Other(e.to_string()))?;
 
-        let items: Vec<StacItem> = search_resp.features.iter()
+        let items: Vec<StacItem> = search_resp
+            .features
+            .iter()
             .filter_map(|f| serde_json::from_value(f.clone()).ok())
             .collect();
 
@@ -96,16 +106,23 @@ impl StacClient {
     /// 列出可用集合。
     pub async fn list_collections(&self) -> GeoResult<Vec<StacCollection>> {
         let url = format!("{}/collections", self.base_url);
-        let resp = self.client.get(&url).send().await
+        let resp = self
+            .client
+            .get(&url)
+            .send()
+            .await
             .map_err(|e| GeoError::ExternalProcess {
                 command: format!("STAC collections {url}"),
                 message: e.to_string(),
             })?;
 
-        let json: serde_json::Value = resp.json().await
+        let json: serde_json::Value = resp
+            .json()
+            .await
             .map_err(|e| GeoError::Other(e.to_string()))?;
 
-        let collections: Vec<StacCollection> = json["collections"].as_array()
+        let collections: Vec<StacCollection> = json["collections"]
+            .as_array()
             .unwrap_or(&vec![])
             .iter()
             .filter_map(|c| serde_json::from_value(c.clone()).ok())
@@ -118,13 +135,19 @@ impl StacClient {
     /// 获取单个 Item 的详情。
     pub async fn get_item(&self, collection: &str, item_id: &str) -> GeoResult<StacItem> {
         let url = format!("{}/collections/{collection}/items/{item_id}", self.base_url);
-        let resp = self.client.get(&url).send().await
+        let resp = self
+            .client
+            .get(&url)
+            .send()
+            .await
             .map_err(|e| GeoError::ExternalProcess {
                 command: format!("STAC item {url}"),
                 message: e.to_string(),
             })?;
 
-        let item: StacItem = resp.json().await
+        let item: StacItem = resp
+            .json()
+            .await
             .map_err(|e| GeoError::Other(e.to_string()))?;
 
         Ok(item)

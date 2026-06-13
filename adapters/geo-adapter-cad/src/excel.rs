@@ -11,15 +11,21 @@ pub struct ExcelDashboard {
 }
 
 macro_rules! xe {
-    ($e:expr) => { $e.map_err(|e| GeoError::Other(format!("xlsx: {e}"))) };
+    ($e:expr) => {
+        $e.map_err(|e| GeoError::Other(format!("xlsx: {e}")))
+    };
 }
 
 impl ExcelDashboard {
-    pub fn new(pool: PgPool) -> Self { Self { pool } }
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
 
     pub async fn from_sql(&self, sql: &str, output_path: &str, sheet_name: &str) -> GeoResult<()> {
         errors::validate_select_sql(sql)?;
-        let rows = sqlx::query(sql).fetch_all(&self.pool).await
+        let rows = sqlx::query(sql)
+            .fetch_all(&self.pool)
+            .await
             .map_err(|e| GeoError::Database(e.to_string()))?;
         if rows.is_empty() {
             return Err(GeoError::Validation("Query returned 0 rows".into()));
@@ -29,7 +35,11 @@ impl ExcelDashboard {
         let sheet = workbook.add_worksheet();
         xe!(sheet.set_name(sheet_name))?;
 
-        let columns: Vec<String> = rows[0].columns().iter().map(|c| c.name().to_string()).collect();
+        let columns: Vec<String> = rows[0]
+            .columns()
+            .iter()
+            .map(|c| c.name().to_string())
+            .collect();
         let column_types = self.detect_types(&rows, &columns);
 
         let header_fmt = Format::new()
@@ -45,7 +55,10 @@ impl ExcelDashboard {
         for (row_idx, row) in rows.iter().enumerate() {
             let r = (row_idx + 1) as u32;
             for (col_idx, col_name) in columns.iter().enumerate() {
-                let ct = column_types.get(col_name).map(|s| s.as_str()).unwrap_or("text");
+                let ct = column_types
+                    .get(col_name)
+                    .map(|s| s.as_str())
+                    .unwrap_or("text");
                 self.write_cell(sheet, r, col_idx as u16, row, col_name, ct)?;
             }
         }
@@ -68,7 +81,7 @@ impl ExcelDashboard {
                ROUND(emission_tco2e::numeric,1) AS "tCO₂e",
                audit_status AS "Audit Status"
                FROM carbon_accounting_results WHERE aoi_id = $1
-               ORDER BY calculation_at DESC"#
+               ORDER BY calculation_at DESC"#,
         )
         .bind(aoi_id)
         .fetch_all(&self.pool)
@@ -83,7 +96,11 @@ impl ExcelDashboard {
         let sheet = workbook.add_worksheet();
         xe!(sheet.set_name("Carbon Report"))?;
 
-        let columns: Vec<String> = rows[0].columns().iter().map(|c| c.name().to_string()).collect();
+        let columns: Vec<String> = rows[0]
+            .columns()
+            .iter()
+            .map(|c| c.name().to_string())
+            .collect();
         let column_types = self.detect_types(&rows, &columns);
 
         let header_fmt = Format::new()
@@ -99,7 +116,10 @@ impl ExcelDashboard {
         for (row_idx, row) in rows.iter().enumerate() {
             let r = (row_idx + 1) as u32;
             for (col_idx, col_name) in columns.iter().enumerate() {
-                let ct = column_types.get(col_name).map(|s| s.as_str()).unwrap_or("text");
+                let ct = column_types
+                    .get(col_name)
+                    .map(|s| s.as_str())
+                    .unwrap_or("text");
                 self.write_cell(sheet, r, col_idx as u16, row, col_name, ct)?;
             }
         }
@@ -114,14 +134,24 @@ impl ExcelDashboard {
         Ok(())
     }
 
-    fn detect_types(&self, rows: &[sqlx::postgres::PgRow], columns: &[String]) -> HashMap<String, String> {
+    fn detect_types(
+        &self,
+        rows: &[sqlx::postgres::PgRow],
+        columns: &[String],
+    ) -> HashMap<String, String> {
         let mut types = HashMap::new();
         for col in columns {
             let mut d = "text";
             for row in rows.iter().take(5) {
                 if let Some(i) = row.columns().iter().position(|c| c.name() == col) {
-                    if row.try_get::<f64, _>(i).is_ok() { d = "number"; break; }
-                    if row.try_get::<i64, _>(i).is_ok() { d = "integer"; break; }
+                    if row.try_get::<f64, _>(i).is_ok() {
+                        d = "number";
+                        break;
+                    }
+                    if row.try_get::<i64, _>(i).is_ok() {
+                        d = "integer";
+                        break;
+                    }
                 }
             }
             types.insert(col.clone(), d.into());
@@ -129,8 +159,15 @@ impl ExcelDashboard {
         types
     }
 
-    fn write_cell(&self, sheet: &mut Worksheet, row: u32, col: u16,
-                  pg_row: &sqlx::postgres::PgRow, col_name: &str, col_type: &str) -> GeoResult<()> {
+    fn write_cell(
+        &self,
+        sheet: &mut Worksheet,
+        row: u32,
+        col: u16,
+        pg_row: &sqlx::postgres::PgRow,
+        col_name: &str,
+        col_type: &str,
+    ) -> GeoResult<()> {
         let idx = pg_row.columns().iter().position(|c| c.name() == col_name);
         let Some(i) = idx else {
             xe!(sheet.write_string(row, col, ""))?;

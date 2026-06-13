@@ -20,7 +20,9 @@ impl CarbonEngine {
     /// Create a new carbon engine.
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        Self { inner: geo_carbon_math::CarbonEngine::new() }
+        Self {
+            inner: geo_carbon_math::CarbonEngine::new(),
+        }
     }
 
     /// Calculate carbon emissions from GeoJSON features and emission factors.
@@ -42,7 +44,9 @@ impl CarbonEngine {
         factors_csv: &str,
         year: u16,
     ) -> Result<String, JsValue> {
-        let report = self.inner.calculate_from_geojson(geojson_str, factors_csv, year)
+        let report = self
+            .inner
+            .calculate_from_geojson(geojson_str, factors_csv, year)
             .map_err(|e| JsValue::from_str(&e))?;
 
         serde_json::to_string_pretty(&report)
@@ -65,17 +69,18 @@ impl CarbonEngine {
         let factors: Vec<geo_carbon_math::EmissionFactor> = serde_json::from_str(factors_json)
             .map_err(|e| JsValue::from_str(&format!("Invalid factors JSON: {e}")))?;
 
-        let features_json = fc["features"].as_array()
+        let features_json = fc["features"]
+            .as_array()
             .ok_or_else(|| JsValue::from_str("GeoJSON has no 'features' array"))?;
 
         let features: Vec<geo_carbon_math::GeoFeature> = features_json
             .iter()
-            .filter_map(|f| {
-                geo_carbon_math::GeoFeature::from_feature_json(&f.to_string()).ok()
-            })
+            .filter_map(|f| geo_carbon_math::GeoFeature::from_feature_json(&f.to_string()).ok())
             .collect();
 
-        let report = self.inner.calculate(&features, &factors, year)
+        let report = self
+            .inner
+            .calculate(&features, &factors, year)
             .map_err(|e| JsValue::from_str(&e))?;
 
         serde_json::to_string_pretty(&report)
@@ -84,5 +89,7 @@ impl CarbonEngine {
 }
 
 impl Default for CarbonEngine {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }

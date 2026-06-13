@@ -1,14 +1,17 @@
 //! Tool registration — Carbon math engine.
 use geo_core::plugin::PluginCategory;
-use geo_registry::PluginRegistry;
 use geo_registry::registry::{ToolDef, ToolResult};
+use geo_registry::PluginRegistry;
 
 /// Register carbon-math tools into the PluginRegistry.
 pub fn register_tools(registry: &mut PluginRegistry) {
     registry.register(geo_core::plugin::PluginMeta {
-        name: "carbon-math".into(), version: env!("CARGO_PKG_VERSION").into(),
+        name: "carbon-math".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
         description: "Pure-Rust IPCC Tier 1 carbon accounting engine".into(),
-        category: PluginCategory::Carbon, healthy: true, extra: serde_json::json!({}),
+        category: PluginCategory::Carbon,
+        healthy: true,
+        extra: serde_json::json!({}),
     });
     registry.register_tool_sync("carbon-math", ToolDef {
         name: "carbon_calculate_raw".into(),

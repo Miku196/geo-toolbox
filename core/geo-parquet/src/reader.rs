@@ -77,10 +77,14 @@ impl GeoParquetReader {
     }
 
     /// Get the file path.
-    pub fn path(&self) -> &str { &self.path }
+    pub fn path(&self) -> &str {
+        &self.path
+    }
 
     /// Get the schema definition.
-    pub fn schema(&self) -> &GeoSchema { &self.schema }
+    pub fn schema(&self) -> &GeoSchema {
+        &self.schema
+    }
 
     // Internal: parse the "geo" key-value metadata from a Parquet file.
     fn parse_file_metadata(&self) -> Result<GeoParquetMetadata, String> {

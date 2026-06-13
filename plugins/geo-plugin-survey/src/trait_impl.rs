@@ -1,3 +1,40 @@
-use crate::SurveyPlugin; use geo_core::plugin::{Plugin,ProcessPlugin,PluginCategory}; use geo_core::errors::GeoResult;
-impl Plugin for SurveyPlugin { fn name(&self)->&str{"survey"} fn version(&self)->&str{"0.1"} fn description(&self)->&str{"Surveying"} fn category(&self)->PluginCategory{PluginCategory::Process} }
-impl ProcessPlugin for SurveyPlugin { fn process_type(&self)->&str{"survey"} async fn execute(&self,p:serde_json::Value)->GeoResult<serde_json::Value>{let polys:Vec<(f64,f64)>=p["polygons"].as_array().unwrap_or(&vec![]).iter().filter_map(|v|{let a=v.as_array()?;Some((a.get(0)?.as_f64()?,a.get(1)?.as_f64()?))}).collect();Ok(serde_json::json!({"volume_m3":self.calculate_earthwork(&polys)}))} }
+use crate::{SurveyConfig, SurveyPlugin};
+use geo_core::errors::GeoResult;
+use geo_core::plugin::{Plugin, PluginCategory, ProcessPlugin};
+
+impl Plugin for SurveyPlugin {
+    fn name(&self) -> &str {
+        "survey"
+    }
+    fn version(&self) -> &str {
+        "0.2"
+    }
+    fn description(&self) -> &str {
+        "Surveying: grid earthwork, cross-section, TIN, control network adjustment"
+    }
+    fn category(&self) -> PluginCategory {
+        PluginCategory::Process
+    }
+}
+
+impl ProcessPlugin for SurveyPlugin {
+    fn process_type(&self) -> &str {
+        "survey"
+    }
+
+    async fn execute(&self, p: serde_json::Value) -> GeoResult<serde_json::Value> {
+        let elev: Vec<f64> = p["existing_elevation"]
+            .as_array()
+            .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
+            .unwrap_or_default();
+        let design = p["design_elevation"].as_f64().unwrap_or(0.0);
+        let cols = p["grid_cols"].as_u64().unwrap_or(0) as usize;
+        let rows = p["grid_rows"].as_u64().unwrap_or(0) as usize;
+        let a = self.assess(&elev, design, cols, rows);
+        Ok(serde_json::to_value(&a).map_err(|e| geo_core::errors::GeoError::Serde(e))?)
+    }
+}
+
+pub fn make_default_config() -> SurveyConfig {
+    toml::from_str("[plugin]\nname=\"survey\"\nversion=\"0.2\"\ndescription=\"\"\n").unwrap()
+}

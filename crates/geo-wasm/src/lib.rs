@@ -12,9 +12,9 @@
 //! All public functions return `Result<T, JsValue>` — no `unwrap()` in
 //! code paths reachable from JS. Panics = WASM traps = bad UX.
 
+mod carbon;
 mod crs;
 mod ingest;
-mod carbon;
 mod output;
 mod spatial;
 mod storage;
@@ -23,8 +23,8 @@ mod utils;
 
 use wasm_bindgen::prelude::*;
 
-pub use crs::CrsEngine;
 pub use carbon::CarbonEngine;
+pub use crs::CrsEngine;
 pub use storage::GeoStore;
 pub use tile::TileEngine;
 

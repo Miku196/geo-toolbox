@@ -1,13 +1,16 @@
 //! Tool registration — GeoHash index.
 use geo_core::plugin::PluginCategory;
-use geo_registry::PluginRegistry;
 use geo_registry::registry::{ToolDef, ToolResult};
+use geo_registry::PluginRegistry;
 
 pub fn register_tools(registry: &mut PluginRegistry) {
     registry.register(geo_core::plugin::PluginMeta {
-        name: "index".into(), version: env!("CARGO_PKG_VERSION").into(),
+        name: "index".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
         description: "GeoHash spatial index: encode, decode, neighbors".into(),
-        category: PluginCategory::Process, healthy: true, extra: serde_json::json!({}),
+        category: PluginCategory::Process,
+        healthy: true,
+        extra: serde_json::json!({}),
     });
     registry.register_tool_sync("index", ToolDef {
         name: "geohash_encode".into(), description: "Encode lat/lon to GeoHash".into(),

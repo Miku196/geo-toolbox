@@ -102,7 +102,10 @@ pub fn point(lon: f64, lat: f64) -> Result<Point<f64>, crate::GeoError> {
 pub fn from_wkt(wkt_str: &str) -> Result<Geometry<f64>, crate::GeoError> {
     let trimmed = wkt_str.trim();
 
-    if let Some(coords) = trimmed.strip_prefix("POINT(").and_then(|s| s.strip_suffix(")")) {
+    if let Some(coords) = trimmed
+        .strip_prefix("POINT(")
+        .and_then(|s| s.strip_suffix(")"))
+    {
         let parts: Vec<&str> = coords.split_whitespace().collect();
         if parts.len() >= 2 {
             let x: f64 = parts[0]

@@ -53,7 +53,10 @@ pub struct IngestResult {
 ///
 /// Returns a vec of validated [`SpatialRow`]s ready for batch insert,
 /// plus an [`IngestResult`] summary.
-pub fn parse_camofox_file(json_content: &str, source_name: &str) -> GeoResult<(Vec<SpatialRow>, IngestResult)> {
+pub fn parse_camofox_file(
+    json_content: &str,
+    source_name: &str,
+) -> GeoResult<(Vec<SpatialRow>, IngestResult)> {
     // Try array first, then single object
     let records: Vec<CamofoxRecord> = if json_content.trim().starts_with('[') {
         serde_json::from_str(json_content)?
@@ -131,7 +134,9 @@ pub fn parse_camofox_file(json_content: &str, source_name: &str) -> GeoResult<(V
 
     tracing::info!(
         "CamoFox ingest: {} accepted, {} rejected ({} records)",
-        result.accepted, result.rejected, records.len()
+        result.accepted,
+        result.rejected,
+        records.len()
     );
 
     Ok((rows, result))

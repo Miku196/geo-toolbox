@@ -1,9 +1,16 @@
 //! Tool registration — Forestry plugin.
 use geo_core::plugin::PluginCategory;
-use geo_registry::PluginRegistry;
 use geo_registry::registry::{ToolDef, ToolResult};
+use geo_registry::PluginRegistry;
 pub fn register_tools(registry: &mut PluginRegistry) {
-    registry.register(geo_core::plugin::PluginMeta { name: "forestry".into(), version: "0.1.0".into(), description: "Forest carbon stock assessment (IPCC biomass)".into(), category: PluginCategory::Carbon, healthy: true, extra: serde_json::json!({}) });
+    registry.register(geo_core::plugin::PluginMeta {
+        name: "forestry".into(),
+        version: "0.1.0".into(),
+        description: "Forest carbon stock assessment (IPCC biomass)".into(),
+        category: PluginCategory::Carbon,
+        healthy: true,
+        extra: serde_json::json!({}),
+    });
     registry.register_tool_sync("forestry", ToolDef { name: "forestry_carbon_stock".into(), description: "Assess forest carbon stock change between two periods".into(), input_schema: serde_json::json!({"type":"object","properties":{"aoi_name":{"type":"string"},"aoi_geojson":{"type":"string"},"red_old":{"type":"array","items":{"type":"number"}},"nir_old":{"type":"array","items":{"type":"number"}},"red_new":{"type":"array","items":{"type":"number"}},"nir_new":{"type":"array","items":{"type":"number"}},"cols":{"type":"integer"},"rows":{"type":"integer"},"year_old":{"type":"integer"},"year_new":{"type":"integer"},"baseline_area_ha":{"type":"number"},"baseline_volume_m3_ha":{"type":"number"},"nodata":{"type":"number"}},"required":["aoi_name","red_old","nir_old","red_new","nir_new","cols","rows","year_old","year_new"]}) }, |args| -> ToolResult {
         use geo_raster::RasterBand;
         let nd=args["nodata"].as_f64().unwrap_or(-999.0);let c=args["cols"].as_u64().unwrap_or(1) as usize;let r=args["rows"].as_u64().unwrap_or(1) as usize;

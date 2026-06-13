@@ -79,8 +79,12 @@ impl<'a> ZonalStats<'a> {
                 }
                 count += 1;
                 sum += v;
-                if v < min_val { min_val = v; }
-                if v > max_val { max_val = v; }
+                if v < min_val {
+                    min_val = v;
+                }
+                if v > max_val {
+                    max_val = v;
+                }
             }
         }
 
@@ -101,23 +105,33 @@ impl<'a> ZonalStats<'a> {
         let mean = sum / count as f64;
 
         // 阈值分类
-        let healthy_count = self.data.iter()
+        let healthy_count = self
+            .data
+            .iter()
             .filter(|v| **v != self.nodata && !v.is_nan() && **v >= 0.5)
             .count();
-        let degraded_count = self.data.iter()
+        let degraded_count = self
+            .data
+            .iter()
             .filter(|v| **v != self.nodata && !v.is_nan() && **v <= 0.2)
             .count();
-        let total_valid = self.data.iter()
+        let total_valid = self
+            .data
+            .iter()
             .filter(|v| **v != self.nodata && !v.is_nan())
             .count();
 
         let healthy_ratio = if total_valid > 0 {
             Some(healthy_count as f64 / total_valid as f64)
-        } else { None };
+        } else {
+            None
+        };
 
         let degraded_ratio = if total_valid > 0 {
             Some(degraded_count as f64 / total_valid as f64)
-        } else { None };
+        } else {
+            None
+        };
 
         Ok(ZonalResult {
             zone_name: zone_name.to_string(),
@@ -189,7 +203,8 @@ mod tests {
         let raster_bbox = BBox::new(0.0, 0.0, 1.0, 1.0);
         let aoi_bbox = BBox::new(0.0, 0.0, 1.0, 1.0);
 
-        let result = zonal_stats(&data, 3, 3, -999.0, raster_bbox, &aoi_bbox, "with_nodata").unwrap();
+        let result =
+            zonal_stats(&data, 3, 3, -999.0, raster_bbox, &aoi_bbox, "with_nodata").unwrap();
 
         assert_eq!(result.pixel_count, 6);
         assert_eq!(result.min, 0.3);

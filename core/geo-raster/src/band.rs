@@ -14,8 +14,10 @@ pub fn band_add(a: &RasterBand, b: &RasterBand, out_name: &str) -> GeoResult<Ras
     let mut out = a.clone();
     out.name = out_name.to_string();
     for i in 0..out.data.len() {
-        if a.data[i] != a.nodata && !a.data[i].is_nan()
-            && b.data[i] != b.nodata && !b.data[i].is_nan()
+        if a.data[i] != a.nodata
+            && !a.data[i].is_nan()
+            && b.data[i] != b.nodata
+            && !b.data[i].is_nan()
         {
             out.data[i] = a.data[i] + b.data[i];
         } else {
@@ -31,8 +33,10 @@ pub fn band_sub(a: &RasterBand, b: &RasterBand, out_name: &str) -> GeoResult<Ras
     let mut out = a.clone();
     out.name = out_name.to_string();
     for i in 0..out.data.len() {
-        if a.data[i] != a.nodata && !a.data[i].is_nan()
-            && b.data[i] != b.nodata && !b.data[i].is_nan()
+        if a.data[i] != a.nodata
+            && !a.data[i].is_nan()
+            && b.data[i] != b.nodata
+            && !b.data[i].is_nan()
         {
             out.data[i] = a.data[i] - b.data[i];
         } else {
@@ -48,8 +52,10 @@ pub fn band_div(a: &RasterBand, b: &RasterBand, out_name: &str) -> GeoResult<Ras
     let mut out = a.clone();
     out.name = out_name.to_string();
     for i in 0..out.data.len() {
-        if a.data[i] != a.nodata && !a.data[i].is_nan()
-            && b.data[i] != b.nodata && !b.data[i].is_nan()
+        if a.data[i] != a.nodata
+            && !a.data[i].is_nan()
+            && b.data[i] != b.nodata
+            && !b.data[i].is_nan()
             && b.data[i] != 0.0
         {
             out.data[i] = a.data[i] / b.data[i];

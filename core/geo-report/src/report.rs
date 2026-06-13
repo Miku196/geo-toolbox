@@ -31,44 +31,34 @@ impl ReportGenerator {
     }
 
     /// Render a carbon accounting report to Markdown.
-    pub fn carbon_report(
-        &self,
-        data: &CarbonReportData,
-    ) -> GeoResult<String> {
-        let ctx = Context::from_serialize(data).map_err(|e| GeoError::Other(format!("tera serialize: {e}")))?;
+    pub fn carbon_report(&self, data: &CarbonReportData) -> GeoResult<String> {
+        let ctx = Context::from_serialize(data)
+            .map_err(|e| GeoError::Other(format!("tera serialize: {e}")))?;
         self.tera
             .render("carbon_report.md", &ctx)
             .map_err(|e| GeoError::Validation(e.to_string()))
     }
 
     /// Render an audit trail summary.
-    pub fn audit_summary(
-        &self,
-        data: &AuditSummaryData,
-    ) -> GeoResult<String> {
-        let ctx = Context::from_serialize(data).map_err(|e| GeoError::Other(format!("tera serialize: {e}")))?;
+    pub fn audit_summary(&self, data: &AuditSummaryData) -> GeoResult<String> {
+        let ctx = Context::from_serialize(data)
+            .map_err(|e| GeoError::Other(format!("tera serialize: {e}")))?;
         self.tera
             .render("audit_summary.md", &ctx)
             .map_err(|e| GeoError::Validation(e.to_string()))
     }
 
     /// Render a full HTML report with embedded CSS.
-    pub fn html_report(
-        &self,
-        data: &CarbonReportData,
-    ) -> GeoResult<String> {
-        let ctx = Context::from_serialize(data).map_err(|e| GeoError::Other(format!("tera serialize: {e}")))?;
+    pub fn html_report(&self, data: &CarbonReportData) -> GeoResult<String> {
+        let ctx = Context::from_serialize(data)
+            .map_err(|e| GeoError::Other(format!("tera serialize: {e}")))?;
         self.tera
             .render("html_report.html", &ctx)
             .map_err(|e| GeoError::Validation(e.to_string()))
     }
 
     /// Render and save a report to a file.
-    pub fn save_report(
-        &self,
-        content: &str,
-        output_path: &str,
-    ) -> GeoResult<()> {
+    pub fn save_report(&self, content: &str, output_path: &str) -> GeoResult<()> {
         std::fs::write(output_path, content)?;
         tracing::info!("Report saved: {output_path}");
         Ok(())
@@ -309,15 +299,13 @@ mod tests {
                     tco2e: 142.0,
                 },
             ],
-            audit_trails: vec![
-                AuditTrailEntry {
-                    class: "forest".into(),
-                    lc_hash: "abc123".into(),
-                    factor_id: "def45678-1234-5678-abcd-ef1234567890".into(),
-                    factor_hash: "def456".into(),
-                    complete: true,
-                },
-            ],
+            audit_trails: vec![AuditTrailEntry {
+                class: "forest".into(),
+                lc_hash: "abc123".into(),
+                factor_id: "def45678-1234-5678-abcd-ef1234567890".into(),
+                factor_hash: "def456".into(),
+                complete: true,
+            }],
         };
 
         let md = gen.carbon_report(&data).unwrap();

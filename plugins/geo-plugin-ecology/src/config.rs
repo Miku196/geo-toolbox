@@ -59,18 +59,29 @@ pub struct ReportConfig {
 
 // ── 默认值 ──
 
-fn default_healthy_min() -> f64 { 0.5 }
-fn default_degraded_max() -> f64 { 0.2 }
-fn default_improvement_threshold() -> f64 { 0.1 }
-fn default_degradation_threshold() -> f64 { -0.1 }
+fn default_healthy_min() -> f64 {
+    0.5
+}
+fn default_degraded_max() -> f64 {
+    0.2
+}
+fn default_improvement_threshold() -> f64 {
+    0.1
+}
+fn default_degradation_threshold() -> f64 {
+    -0.1
+}
 
-fn default_template() -> String { "restoration-report.md.tera".into() }
-fn default_format() -> String { "markdown".into() }
+fn default_template() -> String {
+    "restoration-report.md.tera".into()
+}
+fn default_format() -> String {
+    "markdown".into()
+}
 
 impl Default for EcologyConfig {
     fn default() -> Self {
-        toml::from_str(include_str!("../rules.toml"))
-            .expect("Default ecology rules.toml is valid")
+        toml::from_str(include_str!("../rules.toml")).expect("Default ecology rules.toml is valid")
     }
 }
 

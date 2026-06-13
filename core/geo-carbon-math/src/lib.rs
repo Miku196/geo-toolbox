@@ -38,12 +38,10 @@ pub mod tools;
 pub use config::CarbonParams;
 pub use engine::CarbonEngine;
 pub use factor::{
-    EmissionFactor, EmissionScope, FuelType, GasFactor,
+    gwp100, load_factors_from_csv, EmissionFactor, EmissionScope, FuelType, GasFactor,
     GreenhouseGas, GridEmissionFactor, GwpVersion,
-    gwp100, load_factors_from_csv,
 };
-pub use feature::{GeoFeature, compute_area_ha};
+pub use feature::{compute_area_ha, GeoFeature};
 pub use report::{
-    CarbonReport, ClassResult, FactorSourceUnit,
-    GasBreakdown, AuditEntry, ScopeSummary,
+    AuditEntry, CarbonReport, ClassResult, FactorSourceUnit, GasBreakdown, ScopeSummary,
 };

@@ -1,12 +1,31 @@
-# geo-plugin-urban 业务规则配置
-# 城乡规划指标参数
-
 [plugin]
 name = "urban"
-version = "0.1.0"
-description = "城乡规划插件 — 用地分类统计、容积率、建筑密度"
+version = "0.2.0"
+description = "城乡规划插件：容积率、建筑密度、用地分类、日照分析、热岛效应、通风走廊"
 
 [density]
-far_max = 3.5                  # 容积率上限
-building_density_max = 0.4     # 建筑密度上限
-green_ratio_min = 0.3          # 绿地率下限
+far_max = 3.5
+density_max = 0.4
+height_per_floor_m = 3.0
+
+[land_use]
+water_ndvi_max = -0.1
+green_impervious_max = 0.2
+low_impervious_max = 0.5
+medium_impervious_max = 0.8
+
+[solar]
+winter_sun_altitude_deg = 26.5
+summer_sun_altitude_deg = 73.5
+winter_sun_azimuth_deg = 135.0
+
+[uhi]
+impervious_weight = 0.6
+density_weight = 0.3
+green_weight = 0.1
+high_threshold = 0.7
+medium_threshold = 0.4
+
+[vegetation]
+min_green_ratio = 0.3
+min_green_per_capita_m2 = 9.0

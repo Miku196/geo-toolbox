@@ -92,10 +92,7 @@ impl BatchQgisRunner {
         .await
         .map_err(|_| GeoError::ExternalProcess {
             command: format!("{} {}", self.config.executable.display(), args.join(" ")),
-            message: format!(
-                "Timed out after {} seconds",
-                self.config.timeout.as_secs()
-            ),
+            message: format!("Timed out after {} seconds", self.config.timeout.as_secs()),
         })??;
 
         if !output.status.success() {
@@ -129,7 +126,9 @@ impl BatchQgisRunner {
     ) -> GeoResult<PathBuf> {
         geo_core::errors::validate_safe_path(&initial_input.to_string_lossy())?;
         if tools.is_empty() {
-            return Err(GeoError::Validation("Pipeline requires at least one tool".into()));
+            return Err(GeoError::Validation(
+                "Pipeline requires at least one tool".into(),
+            ));
         }
 
         let mut current_input = initial_input.to_path_buf();
@@ -186,7 +185,10 @@ impl BatchQgisRunner {
             params: vec![
                 ("INPUT".into(), input.as_ref().to_string_lossy().to_string()),
                 ("DISTANCE".into(), distance.to_string()),
-                ("OUTPUT".into(), output.as_ref().to_string_lossy().to_string()),
+                (
+                    "OUTPUT".into(),
+                    output.as_ref().to_string_lossy().to_string(),
+                ),
             ],
         })
         .await
@@ -205,7 +207,10 @@ impl BatchQgisRunner {
             params: vec![
                 ("INPUT".into(), input.as_ref().to_string_lossy().to_string()),
                 ("TARGET_CRS".into(), format!("EPSG:{target_epsg}")),
-                ("OUTPUT".into(), output.as_ref().to_string_lossy().to_string()),
+                (
+                    "OUTPUT".into(),
+                    output.as_ref().to_string_lossy().to_string(),
+                ),
             ],
         })
         .await
@@ -224,8 +229,14 @@ impl BatchQgisRunner {
             algorithm: "native:clip".into(),
             params: vec![
                 ("INPUT".into(), input.as_ref().to_string_lossy().to_string()),
-                ("OVERLAY".into(), overlay.as_ref().to_string_lossy().to_string()),
-                ("OUTPUT".into(), output.as_ref().to_string_lossy().to_string()),
+                (
+                    "OVERLAY".into(),
+                    overlay.as_ref().to_string_lossy().to_string(),
+                ),
+                (
+                    "OUTPUT".into(),
+                    output.as_ref().to_string_lossy().to_string(),
+                ),
             ],
         })
         .await
@@ -244,8 +255,14 @@ impl BatchQgisRunner {
             algorithm: "native:intersection".into(),
             params: vec![
                 ("INPUT".into(), input.as_ref().to_string_lossy().to_string()),
-                ("OVERLAY".into(), overlay.as_ref().to_string_lossy().to_string()),
-                ("OUTPUT".into(), output.as_ref().to_string_lossy().to_string()),
+                (
+                    "OVERLAY".into(),
+                    overlay.as_ref().to_string_lossy().to_string(),
+                ),
+                (
+                    "OUTPUT".into(),
+                    output.as_ref().to_string_lossy().to_string(),
+                ),
             ],
         })
         .await
@@ -264,8 +281,14 @@ impl BatchQgisRunner {
             algorithm: "native:union".into(),
             params: vec![
                 ("INPUT".into(), input.as_ref().to_string_lossy().to_string()),
-                ("OVERLAY".into(), overlay.as_ref().to_string_lossy().to_string()),
-                ("OUTPUT".into(), output.as_ref().to_string_lossy().to_string()),
+                (
+                    "OVERLAY".into(),
+                    overlay.as_ref().to_string_lossy().to_string(),
+                ),
+                (
+                    "OUTPUT".into(),
+                    output.as_ref().to_string_lossy().to_string(),
+                ),
             ],
         })
         .await
@@ -285,12 +308,21 @@ impl BatchQgisRunner {
         self.run_tool(&QgisTool {
             algorithm: "native:zonalstatisticsfb".into(),
             params: vec![
-                ("INPUT".into(), polygons.as_ref().to_string_lossy().to_string()),
-                ("INPUT_RASTER".into(), raster.as_ref().to_string_lossy().to_string()),
+                (
+                    "INPUT".into(),
+                    polygons.as_ref().to_string_lossy().to_string(),
+                ),
+                (
+                    "INPUT_RASTER".into(),
+                    raster.as_ref().to_string_lossy().to_string(),
+                ),
                 ("RASTER_BAND".into(), "1".into()),
                 ("COLUMN_PREFIX".into(), "zs_".into()),
                 ("STATISTICS".into(), stats_str),
-                ("OUTPUT".into(), output.as_ref().to_string_lossy().to_string()),
+                (
+                    "OUTPUT".into(),
+                    output.as_ref().to_string_lossy().to_string(),
+                ),
             ],
         })
         .await

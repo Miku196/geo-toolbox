@@ -5,8 +5,8 @@
 //! - `DescribeProcess` — input/output schema for a process
 //! - `Execute` — run a geospatial processing task (sync or async)
 
-use serde::{Serialize, Deserialize};
 use crate::common::{OgcError, ServiceType};
+use serde::{Deserialize, Serialize};
 
 /// WPS request types per OGC WPS 2.0 spec.
 #[derive(Debug, Clone)]
@@ -47,8 +47,12 @@ pub struct ExecuteParams {
     pub response: String,
 }
 
-fn default_mode() -> String { "sync".into() }
-fn default_response() -> String { "raw".into() }
+fn default_mode() -> String {
+    "sync".into()
+}
+fn default_response() -> String {
+    "raw".into()
+}
 
 /// Input parameter to a WPS process.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -132,7 +136,9 @@ pub struct WpsProcess {
     pub outputs: Vec<ProcessParamDef>,
 }
 
-fn default_process_version() -> String { "1.0.0".into() }
+fn default_process_version() -> String {
+    "1.0.0".into()
+}
 
 /// Definition of a process input or output parameter.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -193,23 +199,34 @@ impl WpsService {
         }
     }
 
-    fn handle_describe_process(&self, params: &DescribeProcessParams) -> Result<WpsResponse, OgcError> {
+    fn handle_describe_process(
+        &self,
+        params: &DescribeProcessParams,
+    ) -> Result<WpsResponse, OgcError> {
         for id in &params.identifiers {
             if !self.processes.iter().any(|p| p.identifier == *id) {
                 return Err(OgcError::new(
-                    ServiceType::WPS, "2.0.0",
+                    ServiceType::WPS,
+                    "2.0.0",
                     "InvalidParameterValue",
                     format!("Process '{}' not found", id),
                 ));
             }
         }
-        Ok(WpsResponse::Xml(self.build_describe_process_xml(&params.identifiers)))
+        Ok(WpsResponse::Xml(
+            self.build_describe_process_xml(&params.identifiers),
+        ))
     }
 
     fn handle_execute(&self, params: &ExecuteParams) -> Result<WpsResponse, OgcError> {
-        if !self.processes.iter().any(|p| p.identifier == params.identifier) {
+        if !self
+            .processes
+            .iter()
+            .any(|p| p.identifier == params.identifier)
+        {
             return Err(OgcError::new(
-                ServiceType::WPS, "2.0.0",
+                ServiceType::WPS,
+                "2.0.0",
                 "InvalidParameterValue",
                 format!("Process '{}' not found", params.identifier),
             ));
@@ -227,43 +244,55 @@ impl WpsService {
         }
 
         // Placeholder: execute process synchronously
-        Ok(WpsResponse::Xml(r#"<wps:ProcessOutputs>
+        Ok(WpsResponse::Xml(
+            r#"<wps:ProcessOutputs>
   <wps:Output id="result">
     <wps:Data>Processing complete.</wps:Data>
   </wps:Output>
-</wps:ProcessOutputs>"#.to_string()))
+</wps:ProcessOutputs>"#
+                .to_string(),
+        ))
     }
 
     fn handle_get_status(&self, _job_id: &str) -> Result<WpsResponse, OgcError> {
-        Ok(WpsResponse::Xml(r#"<wps:StatusInfo>
+        Ok(WpsResponse::Xml(
+            r#"<wps:StatusInfo>
   <wps:Status>Succeeded</wps:Status>
-</wps:StatusInfo>"#.to_string()))
+</wps:StatusInfo>"#
+                .to_string(),
+        ))
     }
 
     fn handle_get_result(&self, _job_id: &str) -> Result<WpsResponse, OgcError> {
-        Ok(WpsResponse::Xml(r#"<wps:ProcessOutputs>
+        Ok(WpsResponse::Xml(
+            r#"<wps:ProcessOutputs>
   <wps:Output id="result">
     <wps:Data>Result data here.</wps:Data>
   </wps:Output>
-</wps:ProcessOutputs>"#.to_string()))
+</wps:ProcessOutputs>"#
+                .to_string(),
+        ))
     }
 
     /// Build WPS 2.0 GetCapabilities XML.
     pub fn build_capabilities_xml(&self) -> String {
-        let processes_xml: String = self.processes
+        let processes_xml: String = self
+            .processes
             .iter()
-            .map(|p| format!(
-                r#"      <Process>
+            .map(|p| {
+                format!(
+                    r#"      <Process>
         <ows:Identifier>{id}</ows:Identifier>
         <ows:Title>{title}</ows:Title>
         <ows:Abstract>{abstract_}</ows:Abstract>
         <wps:ProcessVersion>{version}</wps:ProcessVersion>
       </Process>"#,
-                id = p.identifier,
-                title = p.title,
-                abstract_ = p.abstract_.as_deref().unwrap_or(""),
-                version = p.version,
-            ))
+                    id = p.identifier,
+                    title = p.title,
+                    abstract_ = p.abstract_.as_deref().unwrap_or(""),
+                    version = p.version,
+                )
+            })
             .collect::<Vec<_>>()
             .join("\n");
 
@@ -336,18 +365,16 @@ impl WpsService {
                     max_occurs: Some(1),
                 },
             ],
-            outputs: vec![
-                ProcessParamDef {
-                    identifier: "report".into(),
-                    title: "Carbon Report".into(),
-                    abstract_: Some("JSON: {total_area_ha, total_emission_tco2e, classes, ...}".into()),
-                    param_type: "complex".into(),
-                    data_type: None,
-                    mime_types: Some(vec!["application/json".into()]),
-                    min_occurs: 1,
-                    max_occurs: Some(1),
-                },
-            ],
+            outputs: vec![ProcessParamDef {
+                identifier: "report".into(),
+                title: "Carbon Report".into(),
+                abstract_: Some("JSON: {total_area_ha, total_emission_tco2e, classes, ...}".into()),
+                param_type: "complex".into(),
+                data_type: None,
+                mime_types: Some(vec!["application/json".into()]),
+                min_occurs: 1,
+                max_occurs: Some(1),
+            }],
         });
 
         self.add_process(WpsProcess {
@@ -387,18 +414,16 @@ impl WpsService {
                     max_occurs: Some(1),
                 },
             ],
-            outputs: vec![
-                ProcessParamDef {
-                    identifier: "transformed".into(),
-                    title: "Transformed Coordinates".into(),
-                    abstract_: Some("JSON: [{x,y},...]".into()),
-                    param_type: "complex".into(),
-                    data_type: None,
-                    mime_types: Some(vec!["application/json".into()]),
-                    min_occurs: 1,
-                    max_occurs: Some(1),
-                },
-            ],
+            outputs: vec![ProcessParamDef {
+                identifier: "transformed".into(),
+                title: "Transformed Coordinates".into(),
+                abstract_: Some("JSON: [{x,y},...]".into()),
+                param_type: "complex".into(),
+                data_type: None,
+                mime_types: Some(vec!["application/json".into()]),
+                min_occurs: 1,
+                max_occurs: Some(1),
+            }],
         });
     }
 }
@@ -436,9 +461,9 @@ mod tests {
     #[test]
     fn test_describe_process_exists() {
         let svc = make_service();
-        let result = svc.handle(&WpsRequest::DescribeProcess(
-            DescribeProcessParams { identifiers: vec!["carbon:emission-factor".into()] }
-        ));
+        let result = svc.handle(&WpsRequest::DescribeProcess(DescribeProcessParams {
+            identifiers: vec!["carbon:emission-factor".into()],
+        }));
         assert!(result.is_ok());
     }
 

@@ -4,7 +4,7 @@
 //! carbon calculation throughput.
 
 use geo::algorithm::area::Area;
-use geo_types::{Geometry, Polygon, MultiPolygon};
+use geo_types::{Geometry, MultiPolygon, Polygon};
 /// A spatial feature with landcover classification.
 ///
 /// The geometry must be a Polygon or MultiPolygon in EPSG:4326 (WGS84).
@@ -20,8 +20,8 @@ pub struct GeoFeature {
 impl GeoFeature {
     /// Create a new feature from a landcover class and GeoJSON geometry string.
     pub fn new(class: impl Into<String>, geojson_geometry: &str) -> Result<Self, String> {
-        let geom_value: serde_json::Value = serde_json::from_str(geojson_geometry)
-            .map_err(|e| format!("Invalid JSON: {e}"))?;
+        let geom_value: serde_json::Value =
+            serde_json::from_str(geojson_geometry).map_err(|e| format!("Invalid JSON: {e}"))?;
 
         let geometry = parse_geojson_geometry(&geom_value)?;
 
@@ -42,20 +42,20 @@ impl GeoFeature {
     /// Parse from a full GeoJSON Feature (with properties.class/category/landcover).
     /// Also checks `properties.subcategory` for finer factor matching.
     pub fn from_feature_json(feature_json: &str) -> Result<Self, String> {
-        let feat: serde_json::Value = serde_json::from_str(feature_json)
-            .map_err(|e| format!("Invalid JSON: {e}"))?;
+        let feat: serde_json::Value =
+            serde_json::from_str(feature_json).map_err(|e| format!("Invalid JSON: {e}"))?;
 
         let props = &feat["properties"];
         // Try multiple property names for landcover class
-        let class = props["class"].as_str()
+        let class = props["class"]
+            .as_str()
             .or_else(|| props["category"].as_str())
             .or_else(|| props["landcover"].as_str())
             .or_else(|| props["landuse"].as_str())
             .unwrap_or("unknown");
 
         // Subcategory for granular factor matching
-        let subcategory: Option<String> = props["subcategory"].as_str()
-            .map(|s| s.to_string());
+        let subcategory: Option<String> = props["subcategory"].as_str().map(|s| s.to_string());
 
         // Build composite key: "category:subcategory" or "category"
         let landcover_class = match subcategory {
@@ -65,7 +65,10 @@ impl GeoFeature {
 
         let geometry = parse_geojson_geometry(&feat["geometry"])?;
 
-        Ok(Self { landcover_class, geometry })
+        Ok(Self {
+            landcover_class,
+            geometry,
+        })
     }
 
     /// Compute area in hectares.
@@ -83,7 +86,7 @@ impl GeoFeature {
 /// For carbon accounting within ±3% accuracy for areas < 10,000 km².
 pub fn compute_area_ha(geom: &Geometry<f64>) -> f64 {
     use geo::algorithm::centroid::Centroid;
-    
+
     let area_sq_deg = match geom {
         Geometry::Polygon(p) => p.unsigned_area(),
         Geometry::MultiPolygon(mp) => mp.unsigned_area(),
@@ -97,13 +100,14 @@ pub fn compute_area_ha(geom: &Geometry<f64>) -> f64 {
     let m_per_deg_lat = 111_320.0;
     let m_per_deg_lon = 111_320.0 * lat_mid.cos();
     let m2_per_sq_deg = m_per_deg_lat * m_per_deg_lon;
-    
-    area_sq_deg * m2_per_sq_deg / 10_000.0  // m² → ha
+
+    area_sq_deg * m2_per_sq_deg / 10_000.0 // m² → ha
 }
 
 /// Parse a GeoJSON geometry object into a geo_types::Geometry.
 fn parse_geojson_geometry(value: &serde_json::Value) -> Result<Geometry<f64>, String> {
-    let geom_type = value["type"].as_str()
+    let geom_type = value["type"]
+        .as_str()
         .ok_or_else(|| "Missing geometry type".to_string())?;
     let coords = &value["coordinates"];
 
@@ -121,8 +125,7 @@ fn parse_geojson_geometry(value: &serde_json::Value) -> Result<Geometry<f64>, St
 }
 
 fn parse_polygon(coords: &serde_json::Value) -> Result<Polygon<f64>, String> {
-    let rings = coords.as_array()
-        .ok_or("Polygon coords not an array")?;
+    let rings = coords.as_array().ok_or("Polygon coords not an array")?;
     if rings.is_empty() {
         return Err("Polygon has no rings".into());
     }
@@ -135,7 +138,8 @@ fn parse_polygon(coords: &serde_json::Value) -> Result<Polygon<f64>, String> {
 }
 
 fn parse_multi_polygon(coords: &serde_json::Value) -> Result<MultiPolygon<f64>, String> {
-    let polys = coords.as_array()
+    let polys = coords
+        .as_array()
         .ok_or("MultiPolygon coords not an array")?;
     let polygons: Vec<Polygon<f64>> = polys
         .iter()
@@ -145,8 +149,7 @@ fn parse_multi_polygon(coords: &serde_json::Value) -> Result<MultiPolygon<f64>, 
 }
 
 fn parse_ring(ring: &serde_json::Value) -> Result<geo_types::LineString<f64>, String> {
-    let points = ring.as_array()
-        .ok_or("Ring is not an array")?;
+    let points = ring.as_array().ok_or("Ring is not an array")?;
     let coords: Vec<geo_types::Coord<f64>> = points
         .iter()
         .filter_map(|p| {
@@ -156,7 +159,9 @@ fn parse_ring(ring: &serde_json::Value) -> Result<geo_types::LineString<f64>, St
                     x: arr[0].as_f64()?,
                     y: arr[1].as_f64()?,
                 })
-            } else { None }
+            } else {
+                None
+            }
         })
         .collect();
     if coords.len() < 3 {

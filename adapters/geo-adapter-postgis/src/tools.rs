@@ -6,11 +6,11 @@
 
 use geo_core::errors::GeoResult;
 use geo_core::plugin::{ExternalAdapter, Plugin, PluginCategory};
-use geo_registry::PluginRegistry;
 use geo_registry::registry::{ToolDef, ToolResult};
+use geo_registry::PluginRegistry;
 
 use crate::adapter::PostgisAdapter;
-use crate::{PostgisCarbonEngine, PostgisStore, run_migrations, dvc_hash, dvc_snapshot};
+use crate::{dvc_hash, dvc_snapshot, run_migrations, PostgisCarbonEngine, PostgisStore};
 
 /// Register all PostGIS adapter tools into the PluginRegistry.
 ///
@@ -27,7 +27,8 @@ pub fn register_tools(registry: &mut PluginRegistry) -> GeoResult<()> {
     let healthy = if !db_url.is_empty() {
         // Do a real health check at registration time
         let rt = tokio::runtime::Handle::current();
-        rt.block_on(async { adapter.health_check().await }).unwrap_or(false)
+        rt.block_on(async { adapter.health_check().await })
+            .unwrap_or(false)
     } else {
         false
     };
@@ -65,20 +66,26 @@ pub fn register_tools(registry: &mut PluginRegistry) -> GeoResult<()> {
     // ── Store tools (async, needs DATABASE_URL) ──
     let db_url_for_store = db_url.clone();
     if !db_url_for_store.is_empty() {
-        registry.register_tool_async("postgis", ToolDef {
-            name: "store_migrate".into(),
-            description: "Run PostGIS database migrations".into(),
-            input_schema: serde_json::json!({"type":"object","properties":{},"required":[]}),
-        }, move |_args| {
-            let url = db_url_for_store.clone();
-            Box::pin(async move {
-                let store = PostgisStore::connect(&url).await
-                    .map_err(|e| geo_core::GeoError::Database(e.to_string()))?;
-                run_migrations(store.pool()).await
-                    .map_err(|e| geo_core::GeoError::Database(e.to_string()))?;
-                Ok(serde_json::json!("Migrations applied successfully"))
-            })
-        });
+        registry.register_tool_async(
+            "postgis",
+            ToolDef {
+                name: "store_migrate".into(),
+                description: "Run PostGIS database migrations".into(),
+                input_schema: serde_json::json!({"type":"object","properties":{},"required":[]}),
+            },
+            move |_args| {
+                let url = db_url_for_store.clone();
+                Box::pin(async move {
+                    let store = PostgisStore::connect(&url)
+                        .await
+                        .map_err(|e| geo_core::GeoError::Database(e.to_string()))?;
+                    run_migrations(store.pool())
+                        .await
+                        .map_err(|e| geo_core::GeoError::Database(e.to_string()))?;
+                    Ok(serde_json::json!("Migrations applied successfully"))
+                })
+            },
+        );
 
         let db_url_for_query = db_url.clone();
         registry.register_tool_async("postgis", ToolDef {

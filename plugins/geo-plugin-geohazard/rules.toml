@@ -1,12 +1,34 @@
 # geo-plugin-geohazard 业务规则配置
-# 地质灾害评估参数
+# 地质灾害风险评估参数
 
 [plugin]
 name = "geohazard"
 version = "0.1.0"
-description = "地质灾害插件 — 滑坡敏感性、地震烈度衰减、泥石流风险评估"
+description = "地质灾害插件 — 滑坡敏感性（6因子模糊隶属度）、泥石流危险性、综合风险评级"
 
+# ── 滑坡因子权重（总和应 ≈ 1.0）──
 [landslide]
-slope_weight = 0.4             # 坡度权重
-lithology_weight = 0.35        # 岩性权重
-rainfall_weight = 0.25         # 降雨权重
+slope_weight = 0.25
+aspect_weight = 0.10
+lithology_weight = 0.20
+rainfall_weight = 0.20
+fault_weight = 0.10
+vegetation_weight = 0.15
+
+# ── 模糊隶属度转折点 ──
+slope_a = 15.0          # °，低于此值安全
+slope_b = 35.0          # °，高于此值高度危险
+rainfall_a = 100.0      # mm/24h
+rainfall_b = 300.0      # mm/24h
+fault_a = 200.0         # m，低于此值高度危险
+fault_b = 1000.0        # m，高于此值安全
+veg_a = 0.2             # NDVI，低于此值高危险
+veg_b = 0.6             # NDVI，高于此值安全
+
+# ── 泥石流参数 ──
+[debris_flow]
+channel_gradient_threshold = 15.0    # °
+channel_gradient_max = 35.0          # °
+material_threshold = 1000.0          # m³/km
+material_max = 10000.0               # m³/km
+rainfall_trigger = 50.0              # mm/24h

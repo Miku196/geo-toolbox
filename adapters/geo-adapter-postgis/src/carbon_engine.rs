@@ -131,7 +131,9 @@ impl PostgisCarbonEngine {
     ) -> GeoResult<Vec<EmissionResult>> {
         let year_i32 = year as i32;
 
-        let rows = self.query_calculation_rows(aoi_id, year_i32, factor_source).await?;
+        let rows = self
+            .query_calculation_rows(aoi_id, year_i32, factor_source)
+            .await?;
 
         if rows.is_empty() {
             return Err(GeoError::Validation(format!(
@@ -175,7 +177,8 @@ impl PostgisCarbonEngine {
         let total_tco2e: f64 = results.iter().map(|r| r.emission_tco2e).sum();
         tracing::info!(
             "Carbon: {:.1} tCO₂e total ({} classes, AOI={aoi_id}, year={year})",
-            total_tco2e, results.len(),
+            total_tco2e,
+            results.len(),
         );
 
         Ok(results)
@@ -192,7 +195,9 @@ impl PostgisCarbonEngine {
         factor_source: &str,
     ) -> GeoResult<Vec<EmissionResult>> {
         let year_i32 = year as i32;
-        let rows = self.query_calculation_rows(aoi_id, year_i32, factor_source).await?;
+        let rows = self
+            .query_calculation_rows(aoi_id, year_i32, factor_source)
+            .await?;
 
         if rows.is_empty() {
             return Err(GeoError::Validation(format!(
@@ -236,11 +241,17 @@ impl PostgisCarbonEngine {
         .map_err(|e| GeoError::Database(e.to_string()))?;
 
         if let Some((existing_id,)) = overlap {
-            let to_str = input.valid_to_year.map_or("∞".to_string(), |y| y.to_string());
+            let to_str = input
+                .valid_to_year
+                .map_or("∞".to_string(), |y| y.to_string());
             return Err(GeoError::Validation(format!(
                 "Overlapping factor already exists: {existing_id}\n\
                  source={src} category={cat} region={rkey} [{from}..{to})",
-                src = input.source, cat = input.category, rkey = region_key, from = input.valid_from_year, to = to_str
+                src = input.source,
+                cat = input.category,
+                rkey = region_key,
+                from = input.valid_from_year,
+                to = to_str
             )));
         }
 
@@ -267,7 +278,10 @@ impl PostgisCarbonEngine {
 
         tracing::info!(
             "Registered factor {factor_set_id}: {}/{cat} = {val} {unit}",
-            input.source, cat = input.category, val = input.factor_value, unit = input.unit
+            input.source,
+            cat = input.category,
+            val = input.factor_value,
+            unit = input.unit
         );
         Ok(factor_set_id)
     }
@@ -278,15 +292,14 @@ impl PostgisCarbonEngine {
     ///
     /// Skips rows that would violate the EXCLUDE constraint (overlapping time ranges).
     pub async fn import_factors_csv(&self, csv_path: &str) -> GeoResult<usize> {
-        let mut reader = csv::Reader::from_path(csv_path)
-            .map_err(|e| GeoError::Csv(e.to_string()))?;
+        let mut reader =
+            csv::Reader::from_path(csv_path).map_err(|e| GeoError::Csv(e.to_string()))?;
 
         let mut imported = 0usize;
         let mut skipped = 0usize;
 
         for result in reader.deserialize() {
-            let record: serde_json::Value = result
-                .map_err(|e| GeoError::Csv(e.to_string()))?;
+            let record: serde_json::Value = result.map_err(|e| GeoError::Csv(e.to_string()))?;
 
             let source = record["source"].as_str().unwrap_or("IPCC_2019");
             let category = record["category"].as_str().unwrap_or("unknown");
@@ -348,10 +361,7 @@ impl PostgisCarbonEngine {
     }
 
     /// Query historical calculations for an AOI.
-    pub async fn query_by_aoi(
-        &self,
-        aoi_id: Uuid,
-    ) -> GeoResult<Vec<EmissionResult>> {
+    pub async fn query_by_aoi(&self, aoi_id: Uuid) -> GeoResult<Vec<EmissionResult>> {
         let rows = sqlx::query_as::<_, EmissionFactorRow>(
             r#"
             SELECT

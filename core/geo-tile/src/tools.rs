@@ -1,14 +1,17 @@
 //! Tool registration — Tile engine.
 use geo_core::plugin::PluginCategory;
-use geo_registry::PluginRegistry;
 use geo_registry::registry::{ToolDef, ToolResult};
+use geo_registry::PluginRegistry;
 
 /// Register tile tools into the PluginRegistry.
 pub fn register_tools(registry: &mut PluginRegistry) {
     registry.register(geo_core::plugin::PluginMeta {
-        name: "tile".into(), version: env!("CARGO_PKG_VERSION").into(),
+        name: "tile".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
         description: "Vector tile (MVT) encoder + raster tile (PMTiles)".into(),
-        category: PluginCategory::Process, healthy: true, extra: serde_json::json!({}),
+        category: PluginCategory::Process,
+        healthy: true,
+        extra: serde_json::json!({}),
     });
     registry.register_tool_sync("tile", ToolDef {
         name: "tile_latlon_to_tile".into(), description: "Convert lat/lon to tile z/x/y".into(),

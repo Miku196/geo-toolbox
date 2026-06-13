@@ -138,10 +138,7 @@ pub async fn create_gps_hypertable(pool: &PgPool) -> GeoResult<()> {
 ///
 /// Uses UNNEST for high-throughput streaming writes (no COPY needed —
 /// time-series data is row-oriented rather than bulk geometry).
-pub async fn batch_insert_gps(
-    pool: &PgPool,
-    records: &[GpsRecord],
-) -> GeoResult<u64> {
+pub async fn batch_insert_gps(pool: &PgPool, records: &[GpsRecord]) -> GeoResult<u64> {
     if records.is_empty() {
         return Ok(0);
     }
@@ -202,10 +199,7 @@ pub struct GpsRecord {
 }
 
 /// Batch-insert rows into the IoT readings hypertable.
-pub async fn batch_insert_iot(
-    pool: &PgPool,
-    records: &[IotRecord],
-) -> GeoResult<u64> {
+pub async fn batch_insert_iot(pool: &PgPool, records: &[IotRecord]) -> GeoResult<u64> {
     if records.is_empty() {
         return Ok(0);
     }

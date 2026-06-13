@@ -90,9 +90,8 @@ impl GeoJsonExporter {
             .map_err(|e| GeoError::Database(e.to_string()))?
             .flatten();
 
-        let geojson_str = geojson_str.unwrap_or_else(|| {
-            r#"{"type":"FeatureCollection","features":[]}"#.to_string()
-        });
+        let geojson_str = geojson_str
+            .unwrap_or_else(|| r#"{"type":"FeatureCollection","features":[]}"#.to_string());
 
         // Pretty-print
         let parsed: serde_json::Value = serde_json::from_str(&geojson_str)?;
@@ -105,11 +104,7 @@ impl GeoJsonExporter {
     }
 
     /// Export an entire AOI as GeoJSON with all properties.
-    pub async fn export_aoi(
-        &self,
-        aoi_id: uuid::Uuid,
-        output_path: &str,
-    ) -> GeoResult<usize> {
+    pub async fn export_aoi(&self, aoi_id: uuid::Uuid, output_path: &str) -> GeoResult<usize> {
         // 安全：使用参数化查询，aoi_id 作为 $1 绑定
         let geojson_str: Option<String> = sqlx::query_scalar(
             r#"
@@ -125,7 +120,7 @@ impl GeoJsonExporter {
             )::text AS geojson
             FROM spatial_assets
             WHERE aoi_id = $1
-            "#
+            "#,
         )
         .bind(aoi_id)
         .fetch_optional(&self.pool)
@@ -133,9 +128,8 @@ impl GeoJsonExporter {
         .map_err(|e| GeoError::Database(e.to_string()))?
         .flatten();
 
-        let geojson_str = geojson_str.unwrap_or_else(|| {
-            r#"{"type":"FeatureCollection","features":[]}"#.to_string()
-        });
+        let geojson_str = geojson_str
+            .unwrap_or_else(|| r#"{"type":"FeatureCollection","features":[]}"#.to_string());
 
         let parsed: serde_json::Value = serde_json::from_str(&geojson_str)?;
         let pretty = serde_json::to_string_pretty(&parsed)?;

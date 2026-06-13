@@ -33,13 +33,13 @@
 #![warn(missing_docs)]
 
 pub mod metadata;
-pub mod schema;
-pub mod reader;
-pub mod writer;
 pub mod predicate;
+pub mod reader;
+pub mod schema;
+pub mod writer;
 
 pub use metadata::GeoParquetMetadata;
-pub use schema::GeoSchema;
-pub use reader::GeoParquetReader;
-pub use writer::GeoParquetWriter;
 pub use predicate::{SpatialFilter, SpatialPredicate};
+pub use reader::GeoParquetReader;
+pub use schema::GeoSchema;
+pub use writer::GeoParquetWriter;

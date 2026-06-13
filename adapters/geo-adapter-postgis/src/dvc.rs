@@ -99,9 +99,7 @@ pub fn dvc_snapshot(file_path: &str) -> GeoResult<DvcSnapshot> {
     }
 
     // ── Read .dvc file for the hash ──
-    let dvc_content = std::fs::read_to_string(&dvc_file).map_err(|e| {
-        GeoError::Io(e)
-    })?;
+    let dvc_content = std::fs::read_to_string(&dvc_file).map_err(|e| GeoError::Io(e))?;
 
     let dvc_hash = extract_dvc_hash(&dvc_content).unwrap_or_else(|| {
         tracing::warn!("Could not extract DVC hash from {dvc_file}");
@@ -167,13 +165,14 @@ pub fn dvc_hash(file_path: &str) -> GeoResult<String> {
 /// Executes the pipeline defined in `dvc.yaml` and returns the list
 /// of stages that were run.
 pub fn dvc_repro() -> GeoResult<Vec<String>> {
-    let output = Command::new("dvc")
-        .arg("repro")
-        .output()
-        .map_err(|e| GeoError::ExternalProcess {
-            command: "dvc repro".into(),
-            message: e.to_string(),
-        })?;
+    let output =
+        Command::new("dvc")
+            .arg("repro")
+            .output()
+            .map_err(|e| GeoError::ExternalProcess {
+                command: "dvc repro".into(),
+                message: e.to_string(),
+            })?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);

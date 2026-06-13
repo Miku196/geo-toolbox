@@ -5,8 +5,8 @@
 //! - `DescribeFeatureType` — schema for a feature type
 //! - `GetFeature` — query features (with spatial/temporal/attribute filters)
 
-use serde::{Serialize, Deserialize};
 use crate::common::{OgcError, ServiceType, Wgs84Bbox};
+use serde::{Deserialize, Serialize};
 
 /// WFS request types per OGC WFS 2.0 spec.
 #[derive(Debug, Clone)]
@@ -61,8 +61,12 @@ pub struct GetFeatureParams {
     pub srs_name: Option<String>,
 }
 
-fn default_count() -> Option<u32> { Some(1000) }
-fn default_output_format() -> String { "application/gml+xml; version=3.2".into() }
+fn default_count() -> Option<u32> {
+    Some(1000)
+}
+fn default_output_format() -> String {
+    "application/gml+xml; version=3.2".into()
+}
 
 /// A WFS feature type definition.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -86,7 +90,9 @@ pub struct FeatureType {
     pub other_crs: Vec<String>,
 }
 
-fn default_crs() -> String { "EPSG:4326".into() }
+fn default_crs() -> String {
+    "EPSG:4326".into()
+}
 
 /// Property definition for a feature type (DescribeFeatureType response).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -106,7 +112,9 @@ pub struct FeatureProperty {
     pub nillable: bool,
 }
 
-fn one() -> u32 { 1 }
+fn one() -> u32 {
+    1
+}
 
 /// WFS service implementation.
 pub struct WfsService {
@@ -143,31 +151,41 @@ impl WfsService {
             WfsRequest::DescribeFeatureType(params) => self.handle_describe_feature_type(params),
             WfsRequest::GetFeature(params) => self.handle_get_feature(params),
             WfsRequest::ListStoredQueries => Ok(WfsResponse::Xml(self.empty_stored_queries_xml())),
-            WfsRequest::DescribeStoredQueries(_id) => {
-                Err(OgcError::new(ServiceType::WFS, "2.0.0", "NotFound", "Stored query not found"))
-            }
+            WfsRequest::DescribeStoredQueries(_id) => Err(OgcError::new(
+                ServiceType::WFS,
+                "2.0.0",
+                "NotFound",
+                "Stored query not found",
+            )),
         }
     }
 
-    fn handle_describe_feature_type(&self, params: &DescribeFeatureTypeParams) -> Result<WfsResponse, OgcError> {
+    fn handle_describe_feature_type(
+        &self,
+        params: &DescribeFeatureTypeParams,
+    ) -> Result<WfsResponse, OgcError> {
         for name in &params.type_names {
             if !self.feature_types.iter().any(|ft| ft.name == *name) {
                 return Err(OgcError::new(
-                    ServiceType::WFS, "2.0.0",
+                    ServiceType::WFS,
+                    "2.0.0",
                     "NotFound",
                     format!("Feature type '{}' not found", name),
                 ));
             }
         }
 
-        Ok(WfsResponse::Xml(self.build_describe_feature_type_xml(&params.type_names)))
+        Ok(WfsResponse::Xml(
+            self.build_describe_feature_type_xml(&params.type_names),
+        ))
     }
 
     fn handle_get_feature(&self, params: &GetFeatureParams) -> Result<WfsResponse, OgcError> {
         for name in &params.type_names {
             if !self.feature_types.iter().any(|ft| ft.name == *name) {
                 return Err(OgcError::new(
-                    ServiceType::WFS, "2.0.0",
+                    ServiceType::WFS,
+                    "2.0.0",
                     "NotFound",
                     format!("Feature type '{}' not found", name),
                 ));
@@ -177,7 +195,8 @@ impl WfsService {
         let count = params.count.unwrap_or(1000).min(self.max_features);
         if count > self.max_features {
             return Err(OgcError::new(
-                ServiceType::WFS, "2.0.0",
+                ServiceType::WFS,
+                "2.0.0",
                 "InvalidParameterValue",
                 format!("count {count} exceeds max {max}", max = self.max_features),
             ));
@@ -199,16 +218,21 @@ impl WfsService {
 
     /// Build WFS 2.0 GetCapabilities XML.
     pub fn build_capabilities_xml(&self) -> String {
-        let feature_types_xml: String = self.feature_types
+        let feature_types_xml: String = self
+            .feature_types
             .iter()
-            .map(|ft| format!(
-                r#"    <FeatureType>
+            .map(|ft| {
+                format!(
+                    r#"    <FeatureType>
       <Name>{name}</Name>
       <Title>{title}</Title>
       <DefaultCRS>{crs}</DefaultCRS>
     </FeatureType>"#,
-                name = ft.name, title = ft.title, crs = ft.default_crs,
-            ))
+                    name = ft.name,
+                    title = ft.title,
+                    crs = ft.default_crs,
+                )
+            })
             .collect::<Vec<_>>()
             .join("\n");
 
@@ -244,7 +268,8 @@ impl WfsService {
         elementFormDefault="qualified">
   <import namespace="http://www.opengis.net/gml/3.2"
           schemaLocation="http://schemas.opengis.net/gml/3.2.1/gml.xsd"/>
-</schema>"#.to_string()
+</schema>"#
+            .to_string()
     }
 
     fn empty_stored_queries_xml(&self) -> String {
@@ -252,7 +277,8 @@ impl WfsService {
 <wfs:ListStoredQueriesResponse xmlns:wfs="http://www.opengis.net/wfs/2.0">
   <wfs:StoredQuery id="urn:ogc:def:query:OGC-WFS::GetFeatureById"
                    title="Get feature by ID"/>
-</wfs:ListStoredQueriesResponse>"#.to_string()
+</wfs:ListStoredQueriesResponse>"#
+            .to_string()
     }
 }
 
@@ -297,7 +323,9 @@ mod tests {
     fn test_describe_feature_type_not_found() {
         let svc = make_service();
         let result = svc.handle(&WfsRequest::DescribeFeatureType(
-            DescribeFeatureTypeParams { type_names: vec!["unknown".into()] }
+            DescribeFeatureTypeParams {
+                type_names: vec!["unknown".into()],
+            },
         ));
         assert!(result.is_err());
     }

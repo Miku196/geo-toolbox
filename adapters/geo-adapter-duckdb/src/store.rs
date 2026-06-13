@@ -2,8 +2,8 @@
 //!
 //! 零安装部署，一个二进制搞定。支持内存和文件两种模式。
 
-use rusqlite::{params, Connection};
 use geo_core::errors::{GeoError, GeoResult};
+use rusqlite::{params, Connection};
 use std::path::Path;
 use std::sync::Mutex;
 
@@ -27,39 +27,47 @@ pub struct DuckDbStore {
 impl DuckDbStore {
     /// 内存数据库（临时分析）。
     pub fn in_memory() -> GeoResult<Self> {
-        let conn = Connection::open_in_memory()
-            .map_err(|e| GeoError::Database(e.to_string()))?;
+        let conn = Connection::open_in_memory().map_err(|e| GeoError::Database(e.to_string()))?;
         conn.execute_batch("PRAGMA journal_mode=WAL")
             .map_err(|e| GeoError::Database(e.to_string()))?;
-        Ok(Self { conn: Mutex::new(conn) })
+        Ok(Self {
+            conn: Mutex::new(conn),
+        })
     }
 
     /// 文件数据库（持久化）。
     pub fn open(path: impl AsRef<Path>) -> GeoResult<Self> {
-        let conn = Connection::open(path)
-            .map_err(|e| GeoError::Database(e.to_string()))?;
+        let conn = Connection::open(path).map_err(|e| GeoError::Database(e.to_string()))?;
         conn.execute_batch("PRAGMA journal_mode=WAL")
             .map_err(|e| GeoError::Database(e.to_string()))?;
-        Ok(Self { conn: Mutex::new(conn) })
+        Ok(Self {
+            conn: Mutex::new(conn),
+        })
     }
 
     /// 从 GeoJSON FeatureCollection 字符串导入。
     pub fn ingest_geojson_raw(&self, table: &str, fc_json: &str) -> GeoResult<usize> {
         validate_table_name(table)?;
-        let fc: serde_json::Value = serde_json::from_str(fc_json)
-            .map_err(GeoError::Serde)?;
-        let features = fc["features"].as_array()
+        let fc: serde_json::Value = serde_json::from_str(fc_json).map_err(GeoError::Serde)?;
+        let features = fc["features"]
+            .as_array()
             .ok_or_else(|| GeoError::Validation("no features array".into()))?;
 
         // 建表
-        self.conn.lock().unwrap().execute(
-            &format!("CREATE TABLE IF NOT EXISTS \"{table}\" (\
+        self.conn
+            .lock()
+            .unwrap()
+            .execute(
+                &format!(
+                    "CREATE TABLE IF NOT EXISTS \"{table}\" (\
                 id INTEGER PRIMARY KEY AUTOINCREMENT, \
                 name TEXT, category TEXT, \
                 lon REAL, lat REAL, area_ha REAL, \
-                props TEXT)"),
-            [],
-        ).map_err(|e| GeoError::Database(e.to_string()))?;
+                props TEXT)"
+                ),
+                [],
+            )
+            .map_err(|e| GeoError::Database(e.to_string()))?;
 
         let mut count = 0;
         let conn = self.conn.lock().unwrap();
@@ -72,19 +80,29 @@ impl DuckDbStore {
             let geom = &feat["geometry"];
             let coords = &geom["coordinates"];
             let (lon, lat) = if geom["type"] == "Point" {
-                (coords[0].as_f64().unwrap_or(0.0), coords[1].as_f64().unwrap_or(0.0))
+                (
+                    coords[0].as_f64().unwrap_or(0.0),
+                    coords[1].as_f64().unwrap_or(0.0),
+                )
             } else {
                 // Polygon/Multi: 取第一个坐标作为参考点
                 let c = &coords[0];
                 if c.is_array() && c[0].is_array() {
-                    (c[0][0].as_f64().unwrap_or(0.0), c[0][1].as_f64().unwrap_or(0.0))
+                    (
+                        c[0][0].as_f64().unwrap_or(0.0),
+                        c[0][1].as_f64().unwrap_or(0.0),
+                    )
                 } else {
                     (c[0].as_f64().unwrap_or(0.0), c[1].as_f64().unwrap_or(0.0))
                 }
             };
 
             let name = props["name"].as_str().unwrap_or("").to_string();
-            let cat = props["type"].as_str().or(props["class"].as_str()).unwrap_or("").to_string();
+            let cat = props["type"]
+                .as_str()
+                .or(props["class"].as_str())
+                .unwrap_or("")
+                .to_string();
             let area = props["area_ha"].as_f64();
             let props_str = serde_json::to_string(props).unwrap_or_default();
 
@@ -102,28 +120,33 @@ impl DuckDbStore {
         geo_core::errors::validate_select_sql(sql)?;
 
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare(sql)
+        let mut stmt = conn
+            .prepare(sql)
             .map_err(|e| GeoError::Database(e.to_string()))?;
 
         let col_names: Vec<String> = (0..stmt.column_count())
             .map(|i| stmt.column_name(i).unwrap_or("?").to_string())
             .collect();
 
-        let rows = stmt.query_map([], |row| {
-            let mut map = serde_json::Map::new();
-            for (i, name) in col_names.iter().enumerate() {
-                let val: rusqlite::types::Value = row.get_unwrap(i);
-                let json_val = match val {
-                    rusqlite::types::Value::Null => serde_json::Value::Null,
-                    rusqlite::types::Value::Integer(i) => serde_json::json!(i),
-                    rusqlite::types::Value::Real(f) => serde_json::json!(f),
-                    rusqlite::types::Value::Text(s) => serde_json::Value::String(s),
-                    rusqlite::types::Value::Blob(_) => serde_json::Value::String("<blob>".into()),
-                };
-                map.insert(name.clone(), json_val);
-            }
-            Ok(serde_json::Value::Object(map))
-        }).map_err(|e| GeoError::Database(e.to_string()))?;
+        let rows = stmt
+            .query_map([], |row| {
+                let mut map = serde_json::Map::new();
+                for (i, name) in col_names.iter().enumerate() {
+                    let val: rusqlite::types::Value = row.get_unwrap(i);
+                    let json_val = match val {
+                        rusqlite::types::Value::Null => serde_json::Value::Null,
+                        rusqlite::types::Value::Integer(i) => serde_json::json!(i),
+                        rusqlite::types::Value::Real(f) => serde_json::json!(f),
+                        rusqlite::types::Value::Text(s) => serde_json::Value::String(s),
+                        rusqlite::types::Value::Blob(_) => {
+                            serde_json::Value::String("<blob>".into())
+                        }
+                    };
+                    map.insert(name.clone(), json_val);
+                }
+                Ok(serde_json::Value::Object(map))
+            })
+            .map_err(|e| GeoError::Database(e.to_string()))?;
 
         let mut results = Vec::new();
         for row in rows {
@@ -133,7 +156,14 @@ impl DuckDbStore {
     }
 
     /// 空间范围查询（按经纬度 bbox 过滤）。
-    pub fn query_bbox(&self, table: &str, min_lon: f64, min_lat: f64, max_lon: f64, max_lat: f64) -> GeoResult<Vec<serde_json::Value>> {
+    pub fn query_bbox(
+        &self,
+        table: &str,
+        min_lon: f64,
+        min_lat: f64,
+        max_lon: f64,
+        max_lat: f64,
+    ) -> GeoResult<Vec<serde_json::Value>> {
         validate_table_name(table)?;
         let sql = format!(
             "SELECT * FROM \"{table}\" WHERE lon BETWEEN {min_lon} AND {max_lon} AND lat BETWEEN {min_lat} AND {max_lat}"
@@ -143,26 +173,38 @@ impl DuckDbStore {
 
     /// 列出所有表。
     pub fn list_tables(&self) -> GeoResult<Vec<String>> {
-        let rows = self.query_json("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")?;
-        Ok(rows.iter().filter_map(|r| r["name"].as_str().map(str::to_string)).collect())
+        let rows =
+            self.query_json("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")?;
+        Ok(rows
+            .iter()
+            .filter_map(|r| r["name"].as_str().map(str::to_string))
+            .collect())
     }
 
     /// 暴露底层连接。
-    pub fn lock(&self) -> std::sync::MutexGuard<'_, Connection> { self.conn.lock().unwrap() }
+    pub fn lock(&self) -> std::sync::MutexGuard<'_, Connection> {
+        self.conn.lock().unwrap()
+    }
 
     /// 健康检查。
     pub fn ping(&self) -> GeoResult<()> {
-        self.conn.lock().unwrap().execute_batch("SELECT 1")
+        self.conn
+            .lock()
+            .unwrap()
+            .execute_batch("SELECT 1")
             .map_err(|_| GeoError::Database("ping failed".into()))
     }
 
     /// 表行数。
     pub fn count(&self, table: &str) -> GeoResult<i64> {
         validate_table_name(table)?;
-        self.conn.lock().unwrap().query_row(
-            &format!("SELECT COUNT(*) FROM \"{table}\""), [],
-            |row| row.get(0),
-        ).map_err(|e| GeoError::Database(e.to_string()))
+        self.conn
+            .lock()
+            .unwrap()
+            .query_row(&format!("SELECT COUNT(*) FROM \"{table}\""), [], |row| {
+                row.get(0)
+            })
+            .map_err(|e| GeoError::Database(e.to_string()))
     }
 }
 
@@ -201,7 +243,10 @@ mod tests {
     #[test]
     fn test_list_tables() {
         let store = DuckDbStore::in_memory().unwrap();
-        store.lock().execute("CREATE TABLE test (id INT)", []).unwrap();
+        store
+            .lock()
+            .execute("CREATE TABLE test (id INT)", [])
+            .unwrap();
         assert!(store.list_tables().unwrap().contains(&"test".to_string()));
     }
 

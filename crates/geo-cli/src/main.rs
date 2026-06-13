@@ -67,29 +67,55 @@ enum Commands {
 
 #[derive(Subcommand)]
 enum PluginsAction {
-    List { #[arg(long)] category: Option<String> },
-    Show { name: String },
+    List {
+        #[arg(long)]
+        category: Option<String>,
+    },
+    Show {
+        name: String,
+    },
 }
 
 #[derive(Subcommand)]
 enum CrsAction {
     List,
-    Show { epsg: u16 },
-    Transform {
-        #[arg(long, default_value = "4326")] from: u16,
-        #[arg(long, default_value = "4326")] to: u16,
-        x: Option<f64>, y: Option<f64>,
-        #[arg(long)] batch: bool,
+    Show {
+        epsg: u16,
     },
-    Register { epsg: u16, name: String, proj4: String },
+    Transform {
+        #[arg(long, default_value = "4326")]
+        from: u16,
+        #[arg(long, default_value = "4326")]
+        to: u16,
+        x: Option<f64>,
+        y: Option<f64>,
+        #[arg(long)]
+        batch: bool,
+    },
+    Register {
+        epsg: u16,
+        name: String,
+        proj4: String,
+    },
 }
 
 #[derive(Subcommand)]
 enum IngestAction {
-    Camofox { file: String },
-    Nmea { file: String },
+    Camofox {
+        file: String,
+    },
+    Nmea {
+        file: String,
+    },
     #[cfg(feature = "mqtt")]
-    Mqtt { #[arg(long, default_value = "localhost")] broker: String, #[arg(long, default_value = "1883")] port: u16, #[arg(long)] topic: String },
+    Mqtt {
+        #[arg(long, default_value = "localhost")]
+        broker: String,
+        #[arg(long, default_value = "1883")]
+        port: u16,
+        #[arg(long)]
+        topic: String,
+    },
 }
 
 #[cfg(feature = "postgis")]
@@ -106,38 +132,125 @@ enum StoreAction {
 #[derive(Subcommand)]
 enum ProcessAction {
     #[cfg(feature = "gee")]
-    Gee { #[command(subcommand)] action: GeeAction },
+    Gee {
+        #[command(subcommand)]
+        action: GeeAction,
+    },
     #[cfg(feature = "gdal")]
-    Gdal { #[command(subcommand)] action: GdalAction },
+    Gdal {
+        #[command(subcommand)]
+        action: GdalAction,
+    },
     #[cfg(feature = "qgis")]
-    Qgis { #[command(subcommand)] action: QgisAction },
+    Qgis {
+        #[command(subcommand)]
+        action: QgisAction,
+    },
 }
 
 #[cfg(feature = "gee")]
 #[derive(Subcommand)]
 enum GeeAction {
-    Classify { #[arg(long)] aoi: String, #[arg(long)] year: u16, #[arg(long)] output_gcs: String, #[arg(long)] params: Option<String> },
-    Ndvi { #[arg(long)] aoi: String, #[arg(long)] year: u16, #[arg(long)] output_gcs: String },
-    Change { #[arg(long)] aoi: String, #[arg(long)] from: u16, #[arg(long)] to: u16, #[arg(long)] output_gcs: String },
-    Status { #[arg(long)] cid: String },
+    Classify {
+        #[arg(long)]
+        aoi: String,
+        #[arg(long)]
+        year: u16,
+        #[arg(long)]
+        output_gcs: String,
+        #[arg(long)]
+        params: Option<String>,
+    },
+    Ndvi {
+        #[arg(long)]
+        aoi: String,
+        #[arg(long)]
+        year: u16,
+        #[arg(long)]
+        output_gcs: String,
+    },
+    Change {
+        #[arg(long)]
+        aoi: String,
+        #[arg(long)]
+        from: u16,
+        #[arg(long)]
+        to: u16,
+        #[arg(long)]
+        output_gcs: String,
+    },
+    Status {
+        #[arg(long)]
+        cid: String,
+    },
     Summary,
 }
 
 #[cfg(feature = "gdal")]
 #[derive(Subcommand)]
 enum GdalAction {
-    Cog { input: String, output: String, #[arg(long, default_value = "DEFLATE")] compression: String },
-    Reproject { input: String, output: String, #[arg(long)] epsg: u16 },
-    Ogr2Ogr { input: String, output: String, #[arg(long)] epsg: Option<u16>, #[arg(long)] r#where: Option<String>, #[arg(long)] overwrite: bool },
-    GcsBridge { gcs_uri: String, #[arg(long, default_value = "gee-exports")] prefix: String, #[arg(long)] cog: bool, #[arg(long)] local: bool },
+    Cog {
+        input: String,
+        output: String,
+        #[arg(long, default_value = "DEFLATE")]
+        compression: String,
+    },
+    Reproject {
+        input: String,
+        output: String,
+        #[arg(long)]
+        epsg: u16,
+    },
+    Ogr2Ogr {
+        input: String,
+        output: String,
+        #[arg(long)]
+        epsg: Option<u16>,
+        #[arg(long)]
+        r#where: Option<String>,
+        #[arg(long)]
+        overwrite: bool,
+    },
+    GcsBridge {
+        gcs_uri: String,
+        #[arg(long, default_value = "gee-exports")]
+        prefix: String,
+        #[arg(long)]
+        cog: bool,
+        #[arg(long)]
+        local: bool,
+    },
 }
 
 #[cfg(feature = "qgis")]
 #[derive(Subcommand)]
 enum QgisAction {
-    Submit { #[arg(long)] algorithm: String, #[arg(long)] params: String, #[arg(long)] input: String, #[arg(long)] output: String, #[arg(long, default_value = "http://localhost:9100")] server: String },
-    Batch { #[arg(long)] algorithm: String, #[arg(long)] input: String, #[arg(long)] output: String, #[arg(long, default_value = "[]")] extra: String },
-    Health { #[arg(long, default_value = "http://localhost:9100")] server: String },
+    Submit {
+        #[arg(long)]
+        algorithm: String,
+        #[arg(long)]
+        params: String,
+        #[arg(long)]
+        input: String,
+        #[arg(long)]
+        output: String,
+        #[arg(long, default_value = "http://localhost:9100")]
+        server: String,
+    },
+    Batch {
+        #[arg(long)]
+        algorithm: String,
+        #[arg(long)]
+        input: String,
+        #[arg(long)]
+        output: String,
+        #[arg(long, default_value = "[]")]
+        extra: String,
+    },
+    Health {
+        #[arg(long, default_value = "http://localhost:9100")]
+        server: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -146,7 +259,9 @@ enum CarbonAction {
         #[command(subcommand)]
         action: EfAction,
     },
-    Lca { inventory: String },
+    Lca {
+        inventory: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -154,23 +269,62 @@ enum EfAction {
     #[cfg(feature = "postgis")]
     Register { csv: String },
     #[cfg(feature = "postgis")]
-    Calculate { #[arg(long)] aoi: String, #[arg(long)] year: u16, #[arg(long, default_value = "IPCC_2019")] source: String },
+    Calculate {
+        #[arg(long)]
+        aoi: String,
+        #[arg(long)]
+        year: u16,
+        #[arg(long, default_value = "IPCC_2019")]
+        source: String,
+    },
 }
 
 #[derive(Subcommand)]
 enum OutputAction {
     #[cfg(feature = "cad")]
-    Excel { sql: String, #[arg(long)] output: String, #[arg(long, default_value = "Data")] sheet: String },
+    Excel {
+        sql: String,
+        #[arg(long)]
+        output: String,
+        #[arg(long, default_value = "Data")]
+        sheet: String,
+    },
     Geojson {
-        #[arg(required_unless_present = "from_file")] sql: Option<String>,
-        #[arg(long)] output: String,
-        #[arg(long)] aggregate: bool,
-        #[arg(long)] from_file: Option<String>,
-        #[arg(long)] to_epsg: Option<u16>,
+        #[arg(required_unless_present = "from_file")]
+        sql: Option<String>,
+        #[arg(long)]
+        output: String,
+        #[arg(long)]
+        aggregate: bool,
+        #[arg(long)]
+        from_file: Option<String>,
+        #[arg(long)]
+        to_epsg: Option<u16>,
     },
     #[cfg(feature = "cad")]
-    Dxf { sql: String, #[arg(long)] output: String, #[arg(long, default_value = "4326")] from_epsg: u16, #[arg(long, default_value = "4326")] to_epsg: u16 },
-    Report { #[arg(long)] aoi: String, #[arg(long)] year: u16, #[arg(long, default_value = "Unknown AOI")] name: String, #[arg(long, default_value = "IPCC_2019")] source: String, #[arg(long, default_value = "md")] format: String, #[arg(long)] output: String },
+    Dxf {
+        sql: String,
+        #[arg(long)]
+        output: String,
+        #[arg(long, default_value = "4326")]
+        from_epsg: u16,
+        #[arg(long, default_value = "4326")]
+        to_epsg: u16,
+    },
+    Report {
+        #[arg(long)]
+        aoi: String,
+        #[arg(long)]
+        year: u16,
+        #[arg(long, default_value = "Unknown AOI")]
+        name: String,
+        #[arg(long, default_value = "IPCC_2019")]
+        source: String,
+        #[arg(long, default_value = "md")]
+        format: String,
+        #[arg(long)]
+        output: String,
+    },
 }
 
 // ── main ───────────────────────────────────────────────────────────────────
@@ -198,7 +352,10 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-async fn dispatch_cli(registry: &PluginRegistry, command: Commands) -> Result<(), Box<dyn std::error::Error>> {
+async fn dispatch_cli(
+    registry: &PluginRegistry,
+    command: Commands,
+) -> Result<(), Box<dyn std::error::Error>> {
     match command {
         Commands::Crs { action } => commands::crs::handle(registry, action),
         Commands::Ingest { action } => commands::ingest::handle(registry, action).await,
@@ -254,7 +411,9 @@ fn build_registry() -> PluginRegistry {
         tracing::warn!("PostGIS tool registration failed: {e}");
     }
     #[cfg(feature = "gee")]
-    { geo_adapter_gee::tools::register_tools(&mut reg); }
+    {
+        geo_adapter_gee::tools::register_tools(&mut reg);
+    }
     #[cfg(feature = "qgis")]
     geo_adapter_qgis::tools::register_tools(&mut reg);
     #[cfg(feature = "cad")]
@@ -269,18 +428,33 @@ fn build_registry() -> PluginRegistry {
 
 // ── plugins handler ────────────────────────────────────────────────────────
 
-fn handle_plugins(registry: &PluginRegistry, action: PluginsAction) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_plugins(
+    registry: &PluginRegistry,
+    action: PluginsAction,
+) -> Result<(), Box<dyn std::error::Error>> {
     match action {
         PluginsAction::List { category } => {
             let plugins = registry.list_plugins();
             let filtered: Vec<_> = if let Some(cat) = &category {
-                let cat = PluginCategory::parse(cat).ok_or_else(|| format!("Unknown category: {cat}"))?;
+                let cat =
+                    PluginCategory::parse(cat).ok_or_else(|| format!("Unknown category: {cat}"))?;
                 plugins.iter().filter(|p| p.category == cat).collect()
-            } else { plugins.iter().collect() };
-            println!("{:<15} {:<8} {:<10} DESCRIPTION", "NAME", "VERSION", "CATEGORY");
+            } else {
+                plugins.iter().collect()
+            };
+            println!(
+                "{:<15} {:<8} {:<10} DESCRIPTION",
+                "NAME", "VERSION", "CATEGORY"
+            );
             println!("{}", "-".repeat(80));
             for p in &filtered {
-                println!("{:<15} {:<8} {:<10} {}", p.name, p.version, p.category.as_str(), p.description);
+                println!(
+                    "{:<15} {:<8} {:<10} {}",
+                    p.name,
+                    p.version,
+                    p.category.as_str(),
+                    p.description
+                );
             }
             println!("\nTotal: {} plugins/adapters", filtered.len());
         }
@@ -292,9 +466,15 @@ fn handle_plugins(registry: &PluginRegistry, action: PluginsAction) -> Result<()
                 println!("Category:    {:?}", p.category);
                 println!("Description: {}", p.description);
                 println!("Healthy:     {}", p.healthy);
-                let tools = registry.list_tools().iter().filter(|t| t.name.starts_with(&name)).count();
+                let tools = registry
+                    .list_tools()
+                    .iter()
+                    .filter(|t| t.name.starts_with(&name))
+                    .count();
                 println!("Tools:       {tools}");
-            } else { println!("Plugin '{name}' not found"); }
+            } else {
+                println!("Plugin '{name}' not found");
+            }
         }
     }
     Ok(())

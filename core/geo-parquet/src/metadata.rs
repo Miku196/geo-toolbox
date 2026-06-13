@@ -2,7 +2,7 @@
 //!
 //! Implements the [GeoParquet 1.1 specification](https://geoparquet.org/).
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// GeoParquet file-level metadata, stored in the Parquet file's key-value metadata.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -20,14 +20,17 @@ pub struct GeoParquetMetadata {
 impl Default for GeoParquetMetadata {
     fn default() -> Self {
         let mut columns = std::collections::HashMap::new();
-        columns.insert("geometry".into(), ColumnMetadata {
-            encoding: "WKB".into(),
-            geometry_types: vec![],
-            crs: None,
-            bbox: None,
-            edges: None,
-            orientation: None,
-        });
+        columns.insert(
+            "geometry".into(),
+            ColumnMetadata {
+                encoding: "WKB".into(),
+                geometry_types: vec![],
+                crs: None,
+                bbox: None,
+                edges: None,
+                orientation: None,
+            },
+        );
         Self {
             version: "1.1.0".into(),
             primary_column: "geometry".into(),

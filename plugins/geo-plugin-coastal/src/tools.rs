@@ -1,9 +1,16 @@
 //! Tool registration — Coastal plugin.
 use geo_core::plugin::PluginCategory;
-use geo_registry::PluginRegistry;
 use geo_registry::registry::{ToolDef, ToolResult};
+use geo_registry::PluginRegistry;
 pub fn register_tools(registry: &mut PluginRegistry) {
-    registry.register(geo_core::plugin::PluginMeta { name: "coastal".into(), version: "0.1.0".into(), description: "Coastal change monitoring: erosion + inundation".into(), category: PluginCategory::Process, healthy: true, extra: serde_json::json!({}) });
+    registry.register(geo_core::plugin::PluginMeta {
+        name: "coastal".into(),
+        version: "0.1.0".into(),
+        description: "Coastal change monitoring: erosion + inundation".into(),
+        category: PluginCategory::Process,
+        healthy: true,
+        extra: serde_json::json!({}),
+    });
     registry.register_tool_sync("coastal", ToolDef { name: "coastal_shoreline".into(), description: "Assess shoreline erosion and inundation between two periods".into(), input_schema: serde_json::json!({"type":"object","properties":{"aoi_name":{"type":"string"},"aoi_geojson":{"type":"string"},"dem_data":{"type":"array","items":{"type":"number"}},"ndvi_old":{"type":"array","items":{"type":"number"}},"ndvi_new":{"type":"array","items":{"type":"number"}},"cols":{"type":"integer"},"rows":{"type":"integer"},"baseline_year":{"type":"integer"},"assessment_year":{"type":"integer"},"erosion_threshold_m":{"type":"number"},"nodata":{"type":"number"}},"required":["aoi_name","dem_data","ndvi_old","ndvi_new","cols","rows","baseline_year","assessment_year"]}) }, |args| -> ToolResult {
         use geo_raster::RasterBand;
         let nd=args["nodata"].as_f64().unwrap_or(-999.0);let c=args["cols"].as_u64().unwrap_or(1) as usize;let r=args["rows"].as_u64().unwrap_or(1) as usize;

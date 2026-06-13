@@ -63,12 +63,7 @@ pub struct ObjectStoreClient {
 
 impl ObjectStoreClient {
     /// Create an S3-compatible client (MinIO / AWS S3).
-    pub fn s3(
-        endpoint: &str,
-        access_key: &str,
-        secret_key: &str,
-        bucket: &str,
-    ) -> GeoResult<Self> {
+    pub fn s3(endpoint: &str, access_key: &str, secret_key: &str, bucket: &str) -> GeoResult<Self> {
         let store = AmazonS3Builder::new()
             .with_endpoint(endpoint)
             .with_access_key_id(access_key)
@@ -90,10 +85,7 @@ impl ObjectStoreClient {
     /// For explicit service account keys, set
     /// `GOOGLE_APPLICATION_CREDENTIALS` before calling this, or pass
     /// `service_account_key` as `Some(path)` to override.
-    pub fn gcs(
-        bucket: &str,
-        service_account_key: Option<&str>,
-    ) -> GeoResult<Self> {
+    pub fn gcs(bucket: &str, service_account_key: Option<&str>) -> GeoResult<Self> {
         // Override ADC if explicit key provided
         if let Some(key_path) = service_account_key {
             std::env::set_var("GOOGLE_APPLICATION_CREDENTIALS", key_path);
@@ -147,10 +139,7 @@ impl ObjectStoreClient {
     /// Put a Cloud-Optimized GeoTIFF (COG) and return its object path.
     ///
     /// Files are stored under `cog/<uuid>.tif` for deduplication.
-    pub async fn put_geotiff(
-        &self,
-        data: bytes::Bytes,
-    ) -> GeoResult<String> {
+    pub async fn put_geotiff(&self, data: bytes::Bytes) -> GeoResult<String> {
         let id = Uuid::new_v4();
         let path = format!("cog/{id}.tif");
         self.put(&path, data).await?;
@@ -158,22 +147,14 @@ impl ObjectStoreClient {
     }
 
     /// Put a GeoJSON file and return its object path.
-    pub async fn put_geojson(
-        &self,
-        name: &str,
-        data: bytes::Bytes,
-    ) -> GeoResult<String> {
+    pub async fn put_geojson(&self, name: &str, data: bytes::Bytes) -> GeoResult<String> {
         let path = format!("geojson/{name}");
         self.put(&path, data).await?;
         Ok(path)
     }
 
     /// Upload arbitrary bytes to a key.
-    pub async fn put(
-        &self,
-        key: &str,
-        data: bytes::Bytes,
-    ) -> GeoResult<()> {
+    pub async fn put(&self, key: &str, data: bytes::Bytes) -> GeoResult<()> {
         let path = ObjectPath::from(key);
         self.inner
             .put(&path, data)
@@ -221,21 +202,18 @@ impl ObjectStoreClient {
 
     /// Generate a presigned download URL (S3 only, 1-hour expiry).
     #[cfg(feature = "minio")]
-    pub async fn presigned_get(
-        &self,
-        key: &str,
-        expiry: Duration,
-    ) -> GeoResult<String> {
+    pub async fn presigned_get(&self, key: &str, expiry: Duration) -> GeoResult<String> {
         use object_store::signer::Signer;
         let path = ObjectPath::from(key);
         // object_store 0.11 signer API
         let url = self
             .inner
-            .signed_url(object_store::signer::SignOptions {
-                expires_in: expiry,
-                ..Default::default()
-            },
-            &path,
+            .signed_url(
+                object_store::signer::SignOptions {
+                    expires_in: expiry,
+                    ..Default::default()
+                },
+                &path,
             )
             .await
             .map_err(|e| GeoError::ObjectStore(e.to_string()))?;
@@ -243,10 +221,7 @@ impl ObjectStoreClient {
     }
 
     /// List objects under a prefix.
-    pub async fn list(
-        &self,
-        prefix: &str,
-    ) -> GeoResult<Vec<String>> {
+    pub async fn list(&self, prefix: &str) -> GeoResult<Vec<String>> {
         let path = ObjectPath::from(prefix);
         let mut stream = self.inner.list(Some(&path));
         let mut keys = Vec::new();
@@ -291,21 +266,13 @@ mod tests {
 
     #[test]
     fn test_from_uri_gcs() {
-        let client = ObjectStoreClient::from_uri(
-            "gs://my-bucket/data/",
-            None,
-            None,
-            None,
-        );
+        let client = ObjectStoreClient::from_uri("gs://my-bucket/data/", None, None, None);
         assert!(client.is_ok());
     }
 
     #[test]
     fn test_invalid_uri() {
-        let client = ObjectStoreClient::from_uri(
-            "ftp://bad/",
-            None, None, None,
-        );
+        let client = ObjectStoreClient::from_uri("ftp://bad/", None, None, None);
         assert!(client.is_err());
     }
 }

@@ -38,7 +38,12 @@ pub fn seasonal_decompose(values: &[f64], period: usize, mode: DecomposeMode) ->
         let trend = centered_moving_average(values, period);
         let seasonal = vec![0.0; n];
         let residual = values.iter().zip(&trend).map(|(y, t)| y - t).collect();
-        return DecomposeResult { trend, seasonal, residual, original: values.to_vec() };
+        return DecomposeResult {
+            trend,
+            seasonal,
+            residual,
+            original: values.to_vec(),
+        };
     }
 
     // 1. 趋势 = 中心移动平均
@@ -47,7 +52,11 @@ pub fn seasonal_decompose(values: &[f64], period: usize, mode: DecomposeMode) ->
     // 2. 去趋势
     let detrended: Vec<f64> = match mode {
         DecomposeMode::Additive => values.iter().zip(&trend).map(|(y, t)| y - t).collect(),
-        DecomposeMode::Multiplicative => values.iter().zip(&trend).map(|(y, t)| if *t != 0.0 { y / t } else { 1.0 }).collect(),
+        DecomposeMode::Multiplicative => values
+            .iter()
+            .zip(&trend)
+            .map(|(y, t)| if *t != 0.0 { y / t } else { 1.0 })
+            .collect(),
     };
 
     // 3. 季节分量 = 各周期同位置的平均值
@@ -77,13 +86,26 @@ pub fn seasonal_decompose(values: &[f64], period: usize, mode: DecomposeMode) ->
 
     // 4. 残差
     let residual: Vec<f64> = match mode {
-        DecomposeMode::Additive => values.iter().zip(&trend).zip(&seasonal)
-            .map(|((y, t), s)| y - t - s).collect(),
-        DecomposeMode::Multiplicative => values.iter().zip(&trend).zip(&seasonal)
-            .map(|((y, t), s)| if *t * *s != 0.0 { y / (t * s) } else { 1.0 }).collect(),
+        DecomposeMode::Additive => values
+            .iter()
+            .zip(&trend)
+            .zip(&seasonal)
+            .map(|((y, t), s)| y - t - s)
+            .collect(),
+        DecomposeMode::Multiplicative => values
+            .iter()
+            .zip(&trend)
+            .zip(&seasonal)
+            .map(|((y, t), s)| if *t * *s != 0.0 { y / (t * s) } else { 1.0 })
+            .collect(),
     };
 
-    DecomposeResult { trend, seasonal, residual, original: values.to_vec() }
+    DecomposeResult {
+        trend,
+        seasonal,
+        residual,
+        original: values.to_vec(),
+    }
 }
 
 #[allow(clippy::needless_range_loop)]

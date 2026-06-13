@@ -123,8 +123,7 @@ impl EcologyPlugin {
 
     /// 从 rules.toml 文件路径加载。
     pub fn load_from_file(path: &std::path::Path) -> GeoResult<Self> {
-        let content = std::fs::read_to_string(path)
-            .map_err(GeoError::Io)?;
+        let content = std::fs::read_to_string(path).map_err(GeoError::Io)?;
         let config: EcologyConfig = toml::from_str(&content)
             .map_err(|e| GeoError::config_error("rules.toml", e.to_string()))?;
         Ok(Self { config })
@@ -148,10 +147,7 @@ impl EcologyPlugin {
     // ── 完整矿山修复评估 ──
 
     /// 运行完整的生态修复评估（使用参数结构体）。
-    pub fn assess_restoration(
-        &self,
-        input: &AssessmentInput,
-    ) -> GeoResult<RestorationAssessment> {
+    pub fn assess_restoration(&self, input: &AssessmentInput) -> GeoResult<RestorationAssessment> {
         // 1. 解析 AOI
         let aoi_bbox = geo_io::extract_bbox(input.aoi_geojson)?;
 
@@ -166,7 +162,9 @@ impl EcologyPlugin {
         let thresholds = &self.config.ndvi;
         let total_valid = ndvi_diff.valid_count();
         let (improved_count, degraded_count, stable_count) = if total_valid > 0 {
-            let (imp, deg, stab) = ndvi_diff.data.iter()
+            let (imp, deg, stab) = ndvi_diff
+                .data
+                .iter()
                 .filter(|v| !v.is_nan() && **v != ndvi_diff.nodata)
                 .fold((0usize, 0usize, 0usize), |(imp, deg, stab), v| {
                     if *v > thresholds.improvement_threshold {
@@ -188,7 +186,9 @@ impl EcologyPlugin {
         // 6. 评估结论
         let restored_ratio = if total_valid > 0 {
             Some(improved_count as f64 / total_valid as f64)
-        } else { None };
+        } else {
+            None
+        };
 
         let carbon_sink = carbon.total_emission_tco2e.abs();
         let improved_enough = restored_ratio.unwrap_or(0.0) >= 0.3; // 30%+ pixels improved
@@ -238,13 +238,19 @@ impl EcologyPlugin {
                 mean_diff: ndvi_diff.mean(),
                 improved_ratio: if total_valid > 0 {
                     Some(improved_count as f64 / total_valid as f64)
-                } else { None },
+                } else {
+                    None
+                },
                 degraded_ratio: if total_valid > 0 {
                     Some(degraded_count as f64 / total_valid as f64)
-                } else { None },
+                } else {
+                    None
+                },
                 stable_ratio: if total_valid > 0 {
                     Some(stable_count as f64 / total_valid as f64)
-                } else { None },
+                } else {
+                    None
+                },
             },
             carbon,
             conclusion: RestorationConclusion {
@@ -263,11 +269,10 @@ impl EcologyPlugin {
     /// 将 RestorationAssessment 渲染为人类可读的报告文本，
     /// 内部调用 geo-report 引擎。
     pub fn generate_report(&self, assessment: &RestorationAssessment) -> GeoResult<String> {
-        use geo_report::ReportGenerator;
         use geo_report::report::CarbonReportData;
+        use geo_report::ReportGenerator;
 
-        let gen = ReportGenerator::new()
-            .map_err(|e| GeoError::Other(e.to_string()))?;
+        let gen = ReportGenerator::new().map_err(|e| GeoError::Other(e.to_string()))?;
 
         let breakdown: Vec<geo_report::report::LandcoverBreakdown> = assessment
             .carbon
@@ -292,7 +297,8 @@ impl EcologyPlugin {
             audit_trails: vec![],
         };
 
-        let mut md = gen.carbon_report(&report_data)
+        let mut md = gen
+            .carbon_report(&report_data)
             .map_err(|e| GeoError::Other(e.to_string()))?;
 
         // Append NDVI assessment section
@@ -321,27 +327,26 @@ impl EcologyPlugin {
         md.push_str("## 评估结论\n\n");
         md.push_str(&format!("- **评级**: {}\n", assessment.conclusion.grade));
         md.push_str(&format!("- **{}**\n", assessment.conclusion.summary));
-        md.push_str(&format!("- 年碳汇量: {:.1} tCO₂/yr\n", assessment.conclusion.carbon_sink_tco2_per_yr));
+        md.push_str(&format!(
+            "- 年碳汇量: {:.1} tCO₂/yr\n",
+            assessment.conclusion.carbon_sink_tco2_per_yr
+        ));
 
         Ok(md)
     }
 
     /// 碳核算（直接调用 geo-carbon-math，不依赖 geo-plugin-carbon）。
-    fn calculate_carbon(
-        &self,
-        aoi_geojson: &str,
-        year: u16,
-    ) -> GeoResult<CarbonReport> {
+    fn calculate_carbon(&self, aoi_geojson: &str, year: u16) -> GeoResult<CarbonReport> {
         let fc: serde_json::Value = serde_json::from_str(aoi_geojson)
             .map_err(|e| GeoError::Validation(format!("Invalid GeoJSON: {e}")))?;
 
-        let features_json = fc["features"].as_array()
+        let features_json = fc["features"]
+            .as_array()
             .ok_or_else(|| GeoError::invalid_input("aoi_geojson", "missing 'features' array"))?;
 
         let mut features = Vec::with_capacity(features_json.len());
         for f in features_json {
-            let feat_str = serde_json::to_string(f)
-                .map_err(GeoError::Serde)?;
+            let feat_str = serde_json::to_string(f).map_err(GeoError::Serde)?;
             match GeoFeature::from_feature_json(&feat_str) {
                 Ok(gf) => features.push(gf),
                 Err(_) => continue,
@@ -359,7 +364,8 @@ impl EcologyPlugin {
         ];
 
         let engine = CarbonEngine::new();
-        let mut report = engine.calculate(&features, &factors, year)
+        let mut report = engine
+            .calculate(&features, &factors, year)
             .map_err(GeoError::Validation)?;
         report.methodology = Some(format!("IPCC Tier 1 — {}", cp.source));
         Ok(report)
@@ -369,28 +375,42 @@ impl EcologyPlugin {
 // ── Plugin trait impl ──
 
 impl geo_core::plugin::Plugin for EcologyPlugin {
-    fn name(&self) -> &str { "ecology" }
-    fn version(&self) -> &str { env!("CARGO_PKG_VERSION") }
+    fn name(&self) -> &str {
+        "ecology"
+    }
+    fn version(&self) -> &str {
+        env!("CARGO_PKG_VERSION")
+    }
     fn description(&self) -> &str {
         "Ecological restoration assessment — NDVI change detection, carbon sink"
     }
     fn category(&self) -> geo_core::plugin::PluginCategory {
         geo_core::plugin::PluginCategory::Process
     }
-    fn is_healthy(&self) -> bool { true }
+    fn is_healthy(&self) -> bool {
+        true
+    }
 }
 
 impl geo_core::plugin::ProcessPlugin for EcologyPlugin {
-    fn process_type(&self) -> &str { "ecology_assess" }
+    fn process_type(&self) -> &str {
+        "ecology_assess"
+    }
 
-    async fn execute(&self, params: serde_json::Value) -> geo_core::errors::GeoResult<serde_json::Value> {
+    async fn execute(
+        &self,
+        params: serde_json::Value,
+    ) -> geo_core::errors::GeoResult<serde_json::Value> {
         use crate::ecology::AssessmentInput;
 
         let aoi_name = params["aoi_name"].as_str().unwrap_or("Unknown");
         let baseline_year = params["baseline_year"].as_u64().unwrap_or(2020) as u16;
         let assessment_year = params["assessment_year"].as_u64().unwrap_or(2025) as u16;
         let default_geojson = r#"{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"class":"forest"},"geometry":{"type":"Polygon","coordinates":[[[104.0,30.5],[104.1,30.5],[104.1,30.6],[104.0,30.6],[104.0,30.5]]]}}]}"#;
-        let geojson_str = params["aoi_geojson"].as_str().unwrap_or(default_geojson).to_string();
+        let geojson_str = params["aoi_geojson"]
+            .as_str()
+            .unwrap_or(default_geojson)
+            .to_string();
 
         let red = geo_raster::RasterBand::new("B4", 100, 100, vec![0.05; 10000], -999.0);
         let nir = geo_raster::RasterBand::new("B8", 100, 100, vec![0.50; 10000], -999.0);
@@ -431,7 +451,8 @@ mod tests {
 
     #[test]
     fn test_mine_restoration_assessment() {
-        let config: EcologyConfig = toml::from_str(r#"
+        let config: EcologyConfig = toml::from_str(
+            r#"
             [plugin]
             name = "ecology"
             version = "0.1.0"
@@ -449,7 +470,9 @@ mod tests {
             grassland = -1.2
             built_up = 2.0
             bare = 0.0
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
 
         let plugin = EcologyPlugin::new(config);
 
@@ -508,12 +531,15 @@ mod tests {
     #[test]
     fn test_carbon_not_via_plugin() {
         // 验证我们不 import geo-plugin-carbon
-        let config: EcologyConfig = toml::from_str(r#"
+        let config: EcologyConfig = toml::from_str(
+            r#"
             [plugin]
             name = "ecology"
             version = "0.1.0"
             description = "test"
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
 
         let plugin = EcologyPlugin::new(config);
 

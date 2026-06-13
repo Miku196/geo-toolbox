@@ -157,7 +157,8 @@ impl MvtEncoder {
         let gtype = geom["type"].as_str().unwrap_or("Point");
         let coords = &geom["coordinates"];
 
-        let (min_lon, min_lat, max_lon, max_lat) = crate::tile_index::tile_bounds(tile_x, tile_y, zoom);
+        let (min_lon, min_lat, max_lon, max_lat) =
+            crate::tile_index::tile_bounds(tile_x, tile_y, zoom);
 
         let to_tile = |lon: f64, lat: f64| -> (u32, u32) {
             let x = ((lon - min_lon) / (max_lon - min_lon) * self.extent as f64) as u32;
@@ -173,38 +174,35 @@ impl MvtEncoder {
                 (GeomType::Point, encode_point(tx, ty))
             }
             "LineString" => {
-                let pts: Vec<(u32, u32)> = coords.as_array()
+                let pts: Vec<(u32, u32)> = coords
+                    .as_array()
                     .unwrap_or(&vec![])
                     .iter()
-                    .filter_map(|c| {
-                        Some(to_tile(c[0].as_f64()?, c[1].as_f64()?))
-                    })
+                    .filter_map(|c| Some(to_tile(c[0].as_f64()?, c[1].as_f64()?)))
                     .collect();
                 (GeomType::Linestring, encode_linestring(&pts))
             }
             "Polygon" => {
-                let rings: Vec<Vec<(u32, u32)>> = coords.as_array()
+                let rings: Vec<Vec<(u32, u32)>> = coords
+                    .as_array()
                     .unwrap_or(&vec![])
                     .iter()
                     .map(|ring| {
                         ring.as_array()
                             .unwrap_or(&vec![])
                             .iter()
-                            .filter_map(|c| {
-                                Some(to_tile(c[0].as_f64()?, c[1].as_f64()?))
-                            })
+                            .filter_map(|c| Some(to_tile(c[0].as_f64()?, c[1].as_f64()?)))
                             .collect()
                     })
                     .collect();
                 (GeomType::Polygon, encode_polygon(&rings))
             }
             "MultiPoint" => {
-                let pts: Vec<(u32, u32)> = coords.as_array()
+                let pts: Vec<(u32, u32)> = coords
+                    .as_array()
                     .unwrap_or(&vec![])
                     .iter()
-                    .filter_map(|c| {
-                        Some(to_tile(c[0].as_f64()?, c[1].as_f64()?))
-                    })
+                    .filter_map(|c| Some(to_tile(c[0].as_f64()?, c[1].as_f64()?)))
                     .collect();
                 (GeomType::Point, encode_multipoint(&pts))
             }
@@ -212,12 +210,11 @@ impl MvtEncoder {
                 let mut all = Vec::new();
                 if let Some(lines) = coords.as_array() {
                     for line in lines {
-                        let pts: Vec<(u32, u32)> = line.as_array()
+                        let pts: Vec<(u32, u32)> = line
+                            .as_array()
                             .unwrap_or(&vec![])
                             .iter()
-                            .filter_map(|c| {
-                                Some(to_tile(c[0].as_f64()?, c[1].as_f64()?))
-                            })
+                            .filter_map(|c| Some(to_tile(c[0].as_f64()?, c[1].as_f64()?)))
                             .collect();
                         if !pts.is_empty() {
                             all.push(pts);
@@ -230,16 +227,15 @@ impl MvtEncoder {
                 let mut all_rings = Vec::new();
                 if let Some(polys) = coords.as_array() {
                     for poly in polys {
-                        let rings: Vec<Vec<(u32, u32)>> = poly.as_array()
+                        let rings: Vec<Vec<(u32, u32)>> = poly
+                            .as_array()
                             .unwrap_or(&vec![])
                             .iter()
                             .map(|ring| {
                                 ring.as_array()
                                     .unwrap_or(&vec![])
                                     .iter()
-                                    .filter_map(|c| {
-                                        Some(to_tile(c[0].as_f64()?, c[1].as_f64()?))
-                                    })
+                                    .filter_map(|c| Some(to_tile(c[0].as_f64()?, c[1].as_f64()?)))
                                     .collect()
                             })
                             .collect();
@@ -249,7 +245,9 @@ impl MvtEncoder {
                 (GeomType::Polygon, encode_polygon(&all_rings))
             }
             _ => {
-                return Err(GeoError::Validation(format!("unsupported geometry type: {gtype}")));
+                return Err(GeoError::Validation(format!(
+                    "unsupported geometry type: {gtype}"
+                )));
             }
         };
 
@@ -335,10 +333,16 @@ impl MvtEncoder {
                 // tags (field 2, packed)
                 let mut tag_ints = Vec::new();
                 for (k, v) in &feat.tags {
-                    let ki = keys.iter().position(|x| x == k)
-                        .map(|i| i as u32).unwrap_or(0);
-                    let vi = values.iter().position(|x| x == v)
-                        .map(|i| i as u32).unwrap_or(0);
+                    let ki = keys
+                        .iter()
+                        .position(|x| x == k)
+                        .map(|i| i as u32)
+                        .unwrap_or(0);
+                    let vi = values
+                        .iter()
+                        .position(|x| x == v)
+                        .map(|i| i as u32)
+                        .unwrap_or(0);
                     tag_ints.push(ki);
                     tag_ints.push(vi);
                 }
@@ -377,7 +381,7 @@ const CMD_CLOSE_PATH: u32 = 7;
 /// 编码 MoveTo + 坐标。
 fn encode_move_to(x: u32, y: u32) -> Vec<u32> {
     vec![
-        (CMD_MOVE_TO << 3) | 1,  // command_id=1, count=1
+        (CMD_MOVE_TO << 3) | 1, // command_id=1, count=1
         zigzag(x as i32, 0),
         zigzag(y as i32, 0),
     ]
@@ -385,7 +389,9 @@ fn encode_move_to(x: u32, y: u32) -> Vec<u32> {
 
 /// 编码 LineTo + 多个坐标（delta encoding）。
 fn encode_line_to(points: &[(u32, u32)]) -> Vec<u32> {
-    if points.is_empty() { return vec![]; }
+    if points.is_empty() {
+        return vec![];
+    }
     let mut cmds = vec![(CMD_LINE_TO << 3) | (points.len() as u32)];
     let mut prev_x = 0i32;
     let mut prev_y = 0i32;
@@ -407,7 +413,9 @@ fn encode_point(x: u32, y: u32) -> Vec<u32> {
 
 /// 编码线 (MoveTo + LineTo)。
 fn encode_linestring(points: &[(u32, u32)]) -> Vec<u32> {
-    if points.is_empty() { return vec![]; }
+    if points.is_empty() {
+        return vec![];
+    }
     let mut cmds = encode_move_to(points[0].0, points[0].1);
     cmds.extend(encode_line_to(&points[1..]));
     cmds
@@ -417,7 +425,9 @@ fn encode_linestring(points: &[(u32, u32)]) -> Vec<u32> {
 fn encode_polygon(rings: &[Vec<(u32, u32)>]) -> Vec<u32> {
     let mut cmds = Vec::new();
     for ring in rings {
-        if ring.is_empty() { continue; }
+        if ring.is_empty() {
+            continue;
+        }
         cmds.extend(encode_move_to(ring[0].0, ring[0].1));
         cmds.extend(encode_line_to(&ring[1..]));
         cmds.push((CMD_CLOSE_PATH << 3) | 1);
@@ -483,13 +493,31 @@ fn build_value_tables(features: &[MvtFeature]) -> (Vec<String>, Vec<MvtValue>) {
 fn encode_mvt_value(buf: &mut Vec<u8>, field_number: u32, value: &MvtValue) {
     let mut val_buf = Vec::new();
     match value {
-        MvtValue::String(s)    => write_string(&mut val_buf, 1, s),
-        MvtValue::Float(f)     => { write_tag(&mut val_buf, 2, WireType::Varint); write_varint(&mut val_buf, f.to_bits() as u64); }
-        MvtValue::Double(d)    => { write_tag(&mut val_buf, 3, WireType::Varint); write_varint(&mut val_buf, d.to_bits()); }
-        MvtValue::Int(i)       => { write_tag(&mut val_buf, 4, WireType::Varint); write_varint(&mut val_buf, *i as u64); }
-        MvtValue::Uint(u)      => { write_tag(&mut val_buf, 5, WireType::Varint); write_varint(&mut val_buf, *u); }
-        MvtValue::Sint(s)      => { write_tag(&mut val_buf, 6, WireType::Varint); write_varint(&mut val_buf, ((s << 1) ^ (s >> 63)) as u64); }
-        MvtValue::Bool(b)      => { write_tag(&mut val_buf, 7, WireType::Varint); write_varint(&mut val_buf, if *b { 1 } else { 0 }); }
+        MvtValue::String(s) => write_string(&mut val_buf, 1, s),
+        MvtValue::Float(f) => {
+            write_tag(&mut val_buf, 2, WireType::Varint);
+            write_varint(&mut val_buf, f.to_bits() as u64);
+        }
+        MvtValue::Double(d) => {
+            write_tag(&mut val_buf, 3, WireType::Varint);
+            write_varint(&mut val_buf, d.to_bits());
+        }
+        MvtValue::Int(i) => {
+            write_tag(&mut val_buf, 4, WireType::Varint);
+            write_varint(&mut val_buf, *i as u64);
+        }
+        MvtValue::Uint(u) => {
+            write_tag(&mut val_buf, 5, WireType::Varint);
+            write_varint(&mut val_buf, *u);
+        }
+        MvtValue::Sint(s) => {
+            write_tag(&mut val_buf, 6, WireType::Varint);
+            write_varint(&mut val_buf, ((s << 1) ^ (s >> 63)) as u64);
+        }
+        MvtValue::Bool(b) => {
+            write_tag(&mut val_buf, 7, WireType::Varint);
+            write_varint(&mut val_buf, if *b { 1 } else { 0 });
+        }
     }
     write_bytes(buf, field_number, &val_buf);
 }
@@ -497,15 +525,19 @@ fn encode_mvt_value(buf: &mut Vec<u8>, field_number: u32, value: &MvtValue) {
 /// serde_json::Value → MvtValue。
 fn json_to_mvt_value(v: &Value) -> MvtValue {
     match v {
-        Value::String(s)  => MvtValue::String(s.clone()),
-        Value::Number(n)  => {
-            if let Some(i) = n.as_i64() { MvtValue::Sint(i) }
-            else if let Some(f) = n.as_f64() { MvtValue::Double(f) }
-            else { MvtValue::String(n.to_string()) }
+        Value::String(s) => MvtValue::String(s.clone()),
+        Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                MvtValue::Sint(i)
+            } else if let Some(f) = n.as_f64() {
+                MvtValue::Double(f)
+            } else {
+                MvtValue::String(n.to_string())
+            }
         }
-        Value::Bool(b)    => MvtValue::Bool(*b),
-        Value::Null       => MvtValue::String("".into()),
-        _                 => MvtValue::String(v.to_string()),
+        Value::Bool(b) => MvtValue::Bool(*b),
+        Value::Null => MvtValue::String("".into()),
+        _ => MvtValue::String(v.to_string()),
     }
 }
 
@@ -525,7 +557,9 @@ mod tests {
             "properties": {"name": "test", "value": 42},
             "geometry": {"type": "Point", "coordinates": [104.06, 30.57]}
         })];
-        let bytes = encoder.encode_tile("test", &features, 3270, 1671, 12).unwrap();
+        let bytes = encoder
+            .encode_tile("test", &features, 3270, 1671, 12)
+            .unwrap();
         assert!(!bytes.is_empty(), "MVT should produce bytes");
         // 应该以 protobuf 方式开头
         assert!(bytes.len() > 10, "MVT tile too small");
@@ -542,7 +576,9 @@ mod tests {
                 "coordinates": [[[104.0,30.5],[104.1,30.5],[104.1,30.6],[104.0,30.6],[104.0,30.5]]]
             }
         })];
-        let bytes = encoder.encode_tile("zones", &features, 3270, 1671, 12).unwrap();
+        let bytes = encoder
+            .encode_tile("zones", &features, 3270, 1671, 12)
+            .unwrap();
         assert!(!bytes.is_empty());
     }
 

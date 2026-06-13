@@ -19,8 +19,7 @@ fn bench_new_each_time(c: &mut Criterion) {
 
     c.bench_function("proj_new_each_call", |b| {
         b.iter(|| {
-            let proj =
-                Proj::new_known_crs(from_proj, to_proj, None).expect("create proj");
+            let proj = Proj::new_known_crs(from_proj, to_proj, None).expect("create proj");
             // Transform Shenzhen coordinate
             let (x, y) = proj.convert((113.9, 22.5)).expect("convert");
             criterion::black_box((x, y));
@@ -76,9 +75,21 @@ fn bench_pre_allocated(c: &mut Criterion) {
 fn bench_multiple_transforms(c: &mut Criterion) {
     // Common transforms: WGS84 → UTM 49N, UTM 49N → WGS84, WGS84 → Equal Area
     let pairs = vec![
-        ("4326→32649", "+proj=longlat +datum=WGS84 +no_defs", "+proj=utm +zone=49 +datum=WGS84 +units=m +no_defs"),
-        ("32649→4326", "+proj=utm +zone=49 +datum=WGS84 +units=m +no_defs", "+proj=longlat +datum=WGS84 +no_defs"),
-        ("4326→3405", "+proj=longlat +datum=WGS84 +no_defs", "+proj=cea +lon_0=0 +lat_ts=30 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"),
+        (
+            "4326→32649",
+            "+proj=longlat +datum=WGS84 +no_defs",
+            "+proj=utm +zone=49 +datum=WGS84 +units=m +no_defs",
+        ),
+        (
+            "32649→4326",
+            "+proj=utm +zone=49 +datum=WGS84 +units=m +no_defs",
+            "+proj=longlat +datum=WGS84 +no_defs",
+        ),
+        (
+            "4326→3405",
+            "+proj=longlat +datum=WGS84 +no_defs",
+            "+proj=cea +lon_0=0 +lat_ts=30 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs",
+        ),
     ];
 
     thread_local! {

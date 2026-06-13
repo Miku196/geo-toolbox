@@ -7,7 +7,10 @@ use serde_json::{json, Value};
 use tokio::sync::mpsc;
 
 /// Run MCP server in background, return (tx, rx) channels for JSON-RPC.
-fn spawn_mcp_server() -> (mpsc::UnboundedSender<String>, mpsc::UnboundedReceiver<String>) {
+fn spawn_mcp_server() -> (
+    mpsc::UnboundedSender<String>,
+    mpsc::UnboundedReceiver<String>,
+) {
     let (to_server, mut from_client) = mpsc::unbounded_channel::<String>();
     let (to_client, from_server) = mpsc::unbounded_channel::<String>();
 
@@ -120,9 +123,14 @@ async fn test_mcp_initialize_and_list_tools() {
     assert_eq!(init["result"]["serverInfo"]["name"], "geo-toolbox");
 
     // List tools
-    let list = mcp_call(&tx, &mut rx, &json!({
-        "jsonrpc": "2.0", "id": 2, "method": "tools/list"
-    })).await;
+    let list = mcp_call(
+        &tx,
+        &mut rx,
+        &json!({
+            "jsonrpc": "2.0", "id": 2, "method": "tools/list"
+        }),
+    )
+    .await;
 
     let tools = list["result"]["tools"].as_array().unwrap();
     let names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
@@ -164,11 +172,19 @@ async fn test_mcp_unknown_tool() {
         "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test", "version": "1.0"}}
     })).await;
 
-    let resp = mcp_call(&tx, &mut rx, &json!({
-        "jsonrpc": "2.0", "id": 2, "method": "tools/call",
-        "params": {"name": "nonexistent_tool", "arguments": {}}
-    })).await;
+    let resp = mcp_call(
+        &tx,
+        &mut rx,
+        &json!({
+            "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+            "params": {"name": "nonexistent_tool", "arguments": {}}
+        }),
+    )
+    .await;
 
-    assert!(resp["result"]["isError"].as_bool().unwrap_or(false),
-        "unknown tool should return isError: true, got {}", resp);
+    assert!(
+        resp["result"]["isError"].as_bool().unwrap_or(false),
+        "unknown tool should return isError: true, got {}",
+        resp
+    );
 }

@@ -35,12 +35,24 @@ pub struct CarbonParams {
     pub co2_c_ratio: f64,
 }
 
-fn default_source() -> String { "IPCC_2019".into() }
-fn default_bef() -> f64 { 1.7 }
-fn default_root_shoot() -> f64 { 0.25 }
-fn default_carbon_fraction() -> f64 { 0.47 }
-fn default_wood_density() -> f64 { 0.55 }
-fn default_co2_c_ratio() -> f64 { 44.0 / 12.0 }
+fn default_source() -> String {
+    "IPCC_2019".into()
+}
+fn default_bef() -> f64 {
+    1.7
+}
+fn default_root_shoot() -> f64 {
+    0.25
+}
+fn default_carbon_fraction() -> f64 {
+    0.47
+}
+fn default_wood_density() -> f64 {
+    0.55
+}
+fn default_co2_c_ratio() -> f64 {
+    44.0 / 12.0
+}
 
 impl Default for ForestryConfig {
     fn default() -> Self {

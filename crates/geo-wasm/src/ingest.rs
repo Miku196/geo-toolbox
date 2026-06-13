@@ -3,8 +3,8 @@
 //! Pure-Rust NMEA 0183 parser and coordinate validators.
 //! Zero unwrap — all errors returned as JsValue.
 
-use wasm_bindgen::prelude::*;
 use serde::Serialize;
+use wasm_bindgen::prelude::*;
 
 use geo_core::errors::GeoError;
 use geo_core::types::validate_coord as geo_validate_coord;
@@ -13,17 +13,28 @@ use geo_core::types::validate_coord as geo_validate_coord;
 
 #[wasm_bindgen(js_name = parseNmea)]
 pub fn parse_nmea(sentence: &str) -> Result<JsValue, JsValue> {
-    let msg = parse_nmea_line(sentence)
-        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let msg = parse_nmea_line(sentence).map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     let js_msg = match msg {
         NmeaMessage::Gga(fix) => to_js(&GgaFixJs {
-            msg_type: "GGA".into(), time: fix.time, lat: fix.lat, lng: fix.lng,
-            quality: fix.quality, satellites: fix.satellites, hdop: fix.hdop, altitude: fix.altitude,
+            msg_type: "GGA".into(),
+            time: fix.time,
+            lat: fix.lat,
+            lng: fix.lng,
+            quality: fix.quality,
+            satellites: fix.satellites,
+            hdop: fix.hdop,
+            altitude: fix.altitude,
         })?,
         NmeaMessage::Rmc(fix) => to_js(&RmcFixJs {
-            msg_type: "RMC".into(), time: fix.time, status: fix.status.to_string(),
-            lat: fix.lat, lng: fix.lng, speed_knots: fix.speed_knots, track: fix.track, date: fix.date,
+            msg_type: "RMC".into(),
+            time: fix.time,
+            status: fix.status.to_string(),
+            lat: fix.lat,
+            lng: fix.lng,
+            speed_knots: fix.speed_knots,
+            track: fix.track,
+            date: fix.date,
         })?,
         NmeaMessage::Unknown(raw) => to_js(&serde_json::json!({"type":"Unknown","raw":raw}))?,
     };
@@ -95,20 +106,44 @@ pub fn validate_coord(lon: f64, lat: f64) -> Result<JsValue, JsValue> {
 // ── Core NMEA parser (pure Rust, no wasm-bindgen) ───────────────
 
 #[derive(Debug, Clone)]
-struct GgaFix { time: String, lat: f64, lng: f64, quality: u8, satellites: u8, hdop: f64, altitude: f64 }
+struct GgaFix {
+    time: String,
+    lat: f64,
+    lng: f64,
+    quality: u8,
+    satellites: u8,
+    hdop: f64,
+    altitude: f64,
+}
 
 #[derive(Debug, Clone)]
-struct RmcSentence { time: String, status: char, lat: f64, lng: f64, speed_knots: f64, track: f64, date: String }
+struct RmcSentence {
+    time: String,
+    status: char,
+    lat: f64,
+    lng: f64,
+    speed_knots: f64,
+    track: f64,
+    date: String,
+}
 
 #[derive(Debug, Clone)]
-enum NmeaMessage { Gga(GgaFix), Rmc(RmcSentence), Unknown(String) }
+enum NmeaMessage {
+    Gga(GgaFix),
+    Rmc(RmcSentence),
+    Unknown(String),
+}
 
 fn parse_nmea_line(line: &str) -> Result<NmeaMessage, GeoError> {
     let line = line.trim();
     if line.is_empty() || !line.starts_with('$') {
         return Err(GeoError::Validation("not an NMEA sentence".into()));
     }
-    let sentence = if let Some(idx) = line.find('*') { &line[..idx] } else { line };
+    let sentence = if let Some(idx) = line.find('*') {
+        &line[..idx]
+    } else {
+        line
+    };
     if sentence.contains("GGA") {
         Ok(NmeaMessage::Gga(parse_gga(sentence)?))
     } else if sentence.contains("RMC") {
@@ -120,12 +155,28 @@ fn parse_nmea_line(line: &str) -> Result<NmeaMessage, GeoError> {
 
 fn parse_gga(sentence: &str) -> Result<GgaFix, GeoError> {
     let fields: Vec<&str> = sentence.split(',').collect();
-    if fields.len() < 14 { return Err(GeoError::Validation("GGA too short".into())); }
-    if !fields[0].ends_with("GGA") { return Err(GeoError::Validation("not GGA".into())); }
-    let lat = nmea_to_decimal(fields[2].parse().map_err(|_| GeoError::Validation("bad lat".into()))?, fields.get(3).unwrap_or(&"N"));
-    let lng = nmea_to_decimal(fields[4].parse().map_err(|_| GeoError::Validation("bad lng".into()))?, fields.get(5).unwrap_or(&"E"));
+    if fields.len() < 14 {
+        return Err(GeoError::Validation("GGA too short".into()));
+    }
+    if !fields[0].ends_with("GGA") {
+        return Err(GeoError::Validation("not GGA".into()));
+    }
+    let lat = nmea_to_decimal(
+        fields[2]
+            .parse()
+            .map_err(|_| GeoError::Validation("bad lat".into()))?,
+        fields.get(3).unwrap_or(&"N"),
+    );
+    let lng = nmea_to_decimal(
+        fields[4]
+            .parse()
+            .map_err(|_| GeoError::Validation("bad lng".into()))?,
+        fields.get(5).unwrap_or(&"E"),
+    );
     Ok(GgaFix {
-        time: fields[1].into(), lat, lng,
+        time: fields[1].into(),
+        lat,
+        lng,
         quality: fields[6].parse().unwrap_or(0),
         satellites: fields[7].parse().unwrap_or(0),
         hdop: fields[8].parse().unwrap_or(99.9),
@@ -135,12 +186,25 @@ fn parse_gga(sentence: &str) -> Result<GgaFix, GeoError> {
 
 fn parse_rmc(sentence: &str) -> Result<RmcSentence, GeoError> {
     let fields: Vec<&str> = sentence.split(',').collect();
-    if fields.len() < 12 { return Err(GeoError::Validation("RMC too short".into())); }
-    if !fields[0].ends_with("RMC") { return Err(GeoError::Validation("not RMC".into())); }
-    let lat = nmea_to_decimal(fields[3].parse().unwrap_or(0.0), fields.get(4).unwrap_or(&"N"));
-    let lng = nmea_to_decimal(fields[5].parse().unwrap_or(0.0), fields.get(6).unwrap_or(&"E"));
+    if fields.len() < 12 {
+        return Err(GeoError::Validation("RMC too short".into()));
+    }
+    if !fields[0].ends_with("RMC") {
+        return Err(GeoError::Validation("not RMC".into()));
+    }
+    let lat = nmea_to_decimal(
+        fields[3].parse().unwrap_or(0.0),
+        fields.get(4).unwrap_or(&"N"),
+    );
+    let lng = nmea_to_decimal(
+        fields[5].parse().unwrap_or(0.0),
+        fields.get(6).unwrap_or(&"E"),
+    );
     Ok(RmcSentence {
-        time: fields[1].into(), status: fields[2].chars().next().unwrap_or('V'), lat, lng,
+        time: fields[1].into(),
+        status: fields[2].chars().next().unwrap_or('V'),
+        lat,
+        lng,
         speed_knots: fields[7].parse().unwrap_or(0.0),
         track: fields[8].parse().unwrap_or(0.0),
         date: fields[9].into(),
@@ -150,7 +214,10 @@ fn parse_rmc(sentence: &str) -> Result<RmcSentence, GeoError> {
 fn nmea_to_decimal(raw: f64, hemisphere: &str) -> f64 {
     let degrees = (raw / 100.0).floor();
     let decimal = degrees + (raw - degrees * 100.0) / 60.0;
-    match hemisphere { "S" | "W" => -decimal, _ => decimal }
+    match hemisphere {
+        "S" | "W" => -decimal,
+        _ => decimal,
+    }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -169,5 +236,27 @@ fn to_js(v: &impl Serialize) -> Result<JsValue, JsValue> {
 
 // ── JS-friendly types ────────────────────────────────────────────
 
-#[derive(Serialize)] struct GgaFixJs { #[serde(rename="type")] msg_type: String, time: String, lat: f64, lng: f64, quality: u8, satellites: u8, hdop: f64, altitude: f64 }
-#[derive(Serialize)] struct RmcFixJs { #[serde(rename="type")] msg_type: String, time: String, status: String, lat: f64, lng: f64, speed_knots: f64, track: f64, date: String }
+#[derive(Serialize)]
+struct GgaFixJs {
+    #[serde(rename = "type")]
+    msg_type: String,
+    time: String,
+    lat: f64,
+    lng: f64,
+    quality: u8,
+    satellites: u8,
+    hdop: f64,
+    altitude: f64,
+}
+#[derive(Serialize)]
+struct RmcFixJs {
+    #[serde(rename = "type")]
+    msg_type: String,
+    time: String,
+    status: String,
+    lat: f64,
+    lng: f64,
+    speed_knots: f64,
+    track: f64,
+    date: String,
+}

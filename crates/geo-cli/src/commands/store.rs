@@ -1,12 +1,15 @@
 //! Store subcommand handler — PostGIS / DVC.
 
+use super::super::StoreAction;
 #[cfg(feature = "postgis")]
 use geo_registry::PluginRegistry;
-use super::super::StoreAction;
 
 /// Handle `store migrate | write | read | dvc-*`.
 #[cfg(feature = "postgis")]
-pub async fn handle(_registry: &PluginRegistry, action: StoreAction) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn handle(
+    _registry: &PluginRegistry,
+    action: StoreAction,
+) -> Result<(), Box<dyn std::error::Error>> {
     let db_url = std::env::var("DATABASE_URL")
         .map_err(|_| "DATABASE_URL environment variable must be set")?;
 
@@ -20,18 +23,23 @@ pub async fn handle(_registry: &PluginRegistry, action: StoreAction) -> Result<(
             geo_adapter_postgis::run_migrations(store.pool()).await?;
             println!("Migrations applied successfully.");
             let tables: Vec<(String,)> = sqlx::query_as(
-                "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename"
-            ).fetch_all(store.pool()).await?;
+                "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename",
+            )
+            .fetch_all(store.pool())
+            .await?;
             println!("\nTables in public schema:");
-            for (name,) in &tables { println!("  • {name}"); }
+            for (name,) in &tables {
+                println!("  • {name}");
+            }
         }
         StoreAction::Write { table, file } => {
             println!("[store] Writing {file} → {table} ...");
             let store = geo_adapter_postgis::PostgisStore::connect(&db_url).await?;
             let content = tokio::fs::read_to_string(&file).await?;
             let geojson: serde_json::Value = serde_json::from_str(&content)?;
-            let features = geojson["features"].as_array()
-                .ok_or_else(|| geo_core::GeoError::invalid_input("file", "not a FeatureCollection"))?;
+            let features = geojson["features"].as_array().ok_or_else(|| {
+                geo_core::GeoError::invalid_input("file", "not a FeatureCollection")
+            })?;
             let mut count = 0u64;
             for feat in features {
                 let props = &feat["properties"];
@@ -42,7 +50,10 @@ pub async fn handle(_registry: &PluginRegistry, action: StoreAction) -> Result<(
                     props_with_coords["lat"] = serde_json::json!(lat);
                 }
                 sqlx::query("INSERT INTO spatial_assets (source, properties) VALUES ($1, $2)")
-                    .bind(&file).bind(&props_with_coords).execute(store.pool()).await?;
+                    .bind(&file)
+                    .bind(&props_with_coords)
+                    .execute(store.pool())
+                    .await?;
                 count += 1;
             }
             println!("  Wrote {count} rows to {table}");
@@ -70,12 +81,10 @@ pub async fn handle(_registry: &PluginRegistry, action: StoreAction) -> Result<(
             geo_adapter_postgis::dvc_pull(target.as_deref())?;
             println!("DVC pull complete");
         }
-        StoreAction::DvcHash { file } => {
-            match geo_adapter_postgis::dvc_hash(&file) {
-                Ok(hash) => println!("{hash}"),
-                Err(e) => eprintln!("Error: {e}"),
-            }
-        }
+        StoreAction::DvcHash { file } => match geo_adapter_postgis::dvc_hash(&file) {
+            Ok(hash) => println!("{hash}"),
+            Err(e) => eprintln!("Error: {e}"),
+        },
     }
     Ok(())
 }

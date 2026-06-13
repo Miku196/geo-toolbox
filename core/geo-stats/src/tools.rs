@@ -1,14 +1,17 @@
 //! Tool registration — Zonal statistics.
 use geo_core::plugin::PluginCategory;
-use geo_registry::PluginRegistry;
 use geo_registry::registry::{ToolDef, ToolResult};
+use geo_registry::PluginRegistry;
 
 /// Register stats tools into the PluginRegistry.
 pub fn register_tools(registry: &mut PluginRegistry) {
     registry.register(geo_core::plugin::PluginMeta {
-        name: "stats".into(), version: env!("CARGO_PKG_VERSION").into(),
+        name: "stats".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
         description: "Zonal statistics: compute raster stats within polygon zones".into(),
-        category: PluginCategory::Process, healthy: true, extra: serde_json::json!({}),
+        category: PluginCategory::Process,
+        healthy: true,
+        extra: serde_json::json!({}),
     });
     registry.register_tool_sync("stats", ToolDef {
         name: "zonal_stats".into(), description: "Compute zonal statistics for raster data within bboxes".into(),

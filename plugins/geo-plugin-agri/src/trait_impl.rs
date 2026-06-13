@@ -1,3 +1,6 @@
-use crate::AgriPlugin; use geo_core::plugin::{Plugin,ProcessPlugin,PluginCategory}; use geo_core::errors::GeoResult;
-impl Plugin for AgriPlugin { fn name(&self)->&str{"agri"} fn version(&self)->&str{"0.1"} fn description(&self)->&str{"Agriculture"} fn category(&self)->PluginCategory{PluginCategory::Process} }
-impl ProcessPlugin for AgriPlugin { fn process_type(&self)->&str{"agri"} async fn execute(&self,p:serde_json::Value)->GeoResult<serde_json::Value>{Ok(serde_json::json!({"yield_kg":self.estimate_yield(p["area_ha"].as_f64().unwrap_or(0.0),p["ndvi_mean"].as_f64().unwrap_or(0.0),p["baseline_yield_kg_ha"].as_f64().unwrap_or(5000.0)),"soil":self.soil_rating(p["organic_matter_pct"].as_f64().unwrap_or(0.0),p["ph"].as_f64().unwrap_or(7.0))}))} }
+// trait_impl.rs — Plugin trait implementations.
+//
+// Actual implementations live in agri.rs next to the struct definition,
+// following the ecology plugin pattern. This file is kept for backward
+// compatibility with the existing module structure but delegates nothing
+// — the real impl is picked up automatically from `impl Plugin for AgriPlugin`.

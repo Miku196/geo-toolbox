@@ -28,9 +28,15 @@ pub struct SolarConfig {
     pub aspect_south_weight: f64,
 }
 
-fn default_slope_max() -> f64 { 25.0 }
-fn default_radiation_min() -> f64 { 1500.0 }
-fn default_aspect_south() -> f64 { 1.2 }
+fn default_slope_max() -> f64 {
+    25.0
+}
+fn default_radiation_min() -> f64 {
+    1500.0
+}
+fn default_aspect_south() -> f64 {
+    1.2
+}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct WindConfig {
@@ -40,18 +46,29 @@ pub struct WindConfig {
     pub slope_max_deg: f64,
 }
 
-fn default_wind_speed_min() -> f64 { 5.5 }
-fn default_slope_max_wind() -> f64 { 15.0 }
+fn default_wind_speed_min() -> f64 {
+    5.5
+}
+fn default_slope_max_wind() -> f64 {
+    15.0
+}
 
 impl Default for SolarConfig {
     fn default() -> Self {
-        Self { slope_max_deg: 25.0, radiation_min_kwh: 1500.0, aspect_south_weight: 1.2 }
+        Self {
+            slope_max_deg: 25.0,
+            radiation_min_kwh: 1500.0,
+            aspect_south_weight: 1.2,
+        }
     }
 }
 
 impl Default for WindConfig {
     fn default() -> Self {
-        Self { wind_speed_min_ms: 5.5, slope_max_deg: 15.0 }
+        Self {
+            wind_speed_min_ms: 5.5,
+            slope_max_deg: 15.0,
+        }
     }
 }
 

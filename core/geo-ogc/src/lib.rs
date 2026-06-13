@@ -28,9 +28,9 @@
 
 #![warn(missing_docs)]
 
-pub mod wms;
-pub mod wfs;
-pub mod wps;
 pub mod common;
+pub mod wfs;
+pub mod wms;
+pub mod wps;
 
 pub use common::{OgcError, OgcException, ServiceType};

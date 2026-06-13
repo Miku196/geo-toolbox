@@ -38,14 +38,17 @@ impl GeoSchema {
         let geo_col = geometry_column.into();
 
         let mut columns = std::collections::HashMap::new();
-        columns.insert(geo_col.clone(), ColumnMetadata {
-            encoding: "WKB".into(),
-            geometry_types: vec![],
-            crs: None,
-            bbox: None,
-            edges: None,
-            orientation: None,
-        });
+        columns.insert(
+            geo_col.clone(),
+            ColumnMetadata {
+                encoding: "WKB".into(),
+                geometry_types: vec![],
+                crs: None,
+                bbox: None,
+                edges: None,
+                orientation: None,
+            },
+        );
 
         Self {
             geo_meta: crate::metadata::GeoParquetMetadata {
@@ -61,17 +64,25 @@ impl GeoSchema {
 
     /// Validate that a column name exists in the schema.
     pub fn has_column(&self, name: &str) -> bool {
-        self.attribute_columns.iter().any(|c| c.name == name)
-            || name == self.geometry_column
+        self.attribute_columns.iter().any(|c| c.name == name) || name == self.geometry_column
     }
 }
 
 impl Default for GeoSchema {
     fn default() -> Self {
-        Self::new("geometry", vec![
-            AttrColumn { name: "id".into(), arrow_type: "Utf8".into() },
-            AttrColumn { name: "name".into(), arrow_type: "Utf8".into() },
-        ])
+        Self::new(
+            "geometry",
+            vec![
+                AttrColumn {
+                    name: "id".into(),
+                    arrow_type: "Utf8".into(),
+                },
+                AttrColumn {
+                    name: "name".into(),
+                    arrow_type: "Utf8".into(),
+                },
+            ],
+        )
     }
 }
 

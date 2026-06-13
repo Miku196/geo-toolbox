@@ -7,11 +7,13 @@ use wasm_bindgen::prelude::*;
 use geo::algorithm::area::Area;
 use geo::algorithm::bounding_rect::BoundingRect;
 use geo::algorithm::centroid::Centroid;
-use geo::algorithm::simplify::Simplify;
 use geo::algorithm::convex_hull::ConvexHull;
-use geo_types::{Coord, LineString, Polygon, MultiPolygon};
+use geo::algorithm::simplify::Simplify;
+use geo_types::{Coord, LineString, MultiPolygon, Polygon};
 
-fn err(e: impl std::fmt::Display) -> JsValue { JsValue::from_str(&e.to_string()) }
+fn err(e: impl std::fmt::Display) -> JsValue {
+    JsValue::from_str(&e.to_string())
+}
 fn to_json(v: &impl serde::Serialize) -> Result<String, JsValue> {
     serde_json::to_string(v).map_err(err)
 }
@@ -27,7 +29,9 @@ pub fn compute_area(geojson_geom: &str) -> Result<String, JsValue> {
         None => return Err(JsValue::from_str("Unsupported geometry type")),
     };
     let sqm = area * (111_320.0_f64.powi(2));
-    to_json(&serde_json::json!({"area_sqm":(sqm*100.0).round()/100.0,"area_ha":(sqm/1e4*100.0).round()/100.0}))
+    to_json(
+        &serde_json::json!({"area_sqm":(sqm*100.0).round()/100.0,"area_ha":(sqm/1e4*100.0).round()/100.0}),
+    )
 }
 
 /// Compute bounding box. Returns JSON: `{"minX":...,"minY":...,"maxX":...,"maxY":...}`
@@ -40,7 +44,9 @@ pub fn compute_bbox(geojson_geom: &str) -> Result<String, JsValue> {
         None => return Err(JsValue::from_str("Unsupported geometry type")),
     };
     match bbox {
-        Some(r) => to_json(&serde_json::json!({"minX":r.min().x,"minY":r.min().y,"maxX":r.max().x,"maxY":r.max().y})),
+        Some(r) => to_json(
+            &serde_json::json!({"minX":r.min().x,"minY":r.min().y,"maxX":r.max().x,"maxY":r.max().y}),
+        ),
         None => Err(JsValue::from_str("Could not compute bounding box")),
     }
 }
@@ -86,21 +92,31 @@ pub fn convex_hull(geojson_geom: &str) -> Result<String, JsValue> {
 
 // ── Internal parsing ────────────────────────────────────────────
 
-enum ParsedGeom { Polygon(Polygon<f64>), MultiPolygon(MultiPolygon<f64>) }
+enum ParsedGeom {
+    Polygon(Polygon<f64>),
+    MultiPolygon(MultiPolygon<f64>),
+}
 
 fn parse_geometry(v: &serde_json::Value) -> Option<ParsedGeom> {
     match v["type"].as_str()? {
         "Polygon" => {
             let ext = parse_ring(&v["coordinates"][0])?;
-            let ints: Vec<_> = v["coordinates"].as_array()?[1..].iter().filter_map(parse_ring).collect();
+            let ints: Vec<_> = v["coordinates"].as_array()?[1..]
+                .iter()
+                .filter_map(parse_ring)
+                .collect();
             Some(ParsedGeom::Polygon(Polygon::new(ext, ints)))
         }
         "MultiPolygon" => {
-            let polys: Vec<Polygon<f64>> = v["coordinates"].as_array()?.iter().filter_map(|pc| {
-                let ext = parse_ring(&pc[0])?;
-                let ints: Vec<_> = pc.as_array()?[1..].iter().filter_map(parse_ring).collect();
-                Some(Polygon::new(ext, ints))
-            }).collect();
+            let polys: Vec<Polygon<f64>> = v["coordinates"]
+                .as_array()?
+                .iter()
+                .filter_map(|pc| {
+                    let ext = parse_ring(&pc[0])?;
+                    let ints: Vec<_> = pc.as_array()?[1..].iter().filter_map(parse_ring).collect();
+                    Some(Polygon::new(ext, ints))
+                })
+                .collect();
             Some(ParsedGeom::MultiPolygon(MultiPolygon::new(polys)))
         }
         _ => None,
@@ -108,16 +124,33 @@ fn parse_geometry(v: &serde_json::Value) -> Option<ParsedGeom> {
 }
 
 fn parse_ring(v: &serde_json::Value) -> Option<LineString<f64>> {
-    let pts: Vec<Coord<f64>> = v.as_array()?.iter().filter_map(|p| {
-        let a = p.as_array()?;
-        if a.len() >= 2 { Some(Coord{x:a[0].as_f64()?,y:a[1].as_f64()?}) } else { None }
-    }).collect();
-    if pts.len() >= 3 { Some(LineString::new(pts)) } else { None }
+    let pts: Vec<Coord<f64>> = v
+        .as_array()?
+        .iter()
+        .filter_map(|p| {
+            let a = p.as_array()?;
+            if a.len() >= 2 {
+                Some(Coord {
+                    x: a[0].as_f64()?,
+                    y: a[1].as_f64()?,
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+    if pts.len() >= 3 {
+        Some(LineString::new(pts))
+    } else {
+        None
+    }
 }
 
 // ── GeoJSON serialization ───────────────────────────────────────
 
-fn ring_to_coords(r: &LineString<f64>) -> Vec<Vec<f64>> { r.coords().map(|c| vec![c.x, c.y]).collect() }
+fn ring_to_coords(r: &LineString<f64>) -> Vec<Vec<f64>> {
+    r.coords().map(|c| vec![c.x, c.y]).collect()
+}
 
 fn polygon_to_geojson(p: &Polygon<f64>) -> serde_json::Value {
     let mut rings = vec![ring_to_coords(p.exterior())];
@@ -126,18 +159,23 @@ fn polygon_to_geojson(p: &Polygon<f64>) -> serde_json::Value {
 }
 
 fn multi_polygon_to_geojson(mp: &MultiPolygon<f64>) -> serde_json::Value {
-    let coords: Vec<serde_json::Value> = mp.iter().map(|p| {
-        let mut rings = vec![ring_to_coords(p.exterior())];
-        rings.extend(p.interiors().iter().map(ring_to_coords));
-        serde_json::json!(rings)
-    }).collect();
+    let coords: Vec<serde_json::Value> = mp
+        .iter()
+        .map(|p| {
+            let mut rings = vec![ring_to_coords(p.exterior())];
+            rings.extend(p.interiors().iter().map(ring_to_coords));
+            serde_json::json!(rings)
+        })
+        .collect();
     serde_json::json!({"type":"MultiPolygon","coordinates":coords})
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn sample() -> String { r#"{"type":"Polygon","coordinates":[[[104.0,30.5],[104.1,30.5],[104.1,30.6],[104.0,30.6],[104.0,30.5]]]}"#.into() }
+    fn sample() -> String {
+        r#"{"type":"Polygon","coordinates":[[[104.0,30.5],[104.1,30.5],[104.1,30.6],[104.0,30.6],[104.0,30.5]]]}"#.into()
+    }
 
     #[test]
     fn test_area() {

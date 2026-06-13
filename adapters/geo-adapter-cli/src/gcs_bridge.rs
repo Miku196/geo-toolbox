@@ -27,9 +27,7 @@ impl AssetType {
         let lower = path.to_lowercase();
         if lower.ends_with(".tif") || lower.ends_with(".tiff") || lower.ends_with(".cog.tif") {
             AssetType::Raster
-        } else if lower.ends_with(".geojson")
-            || lower.ends_with(".gpkg")
-            || lower.ends_with(".shp")
+        } else if lower.ends_with(".geojson") || lower.ends_with(".gpkg") || lower.ends_with(".shp")
         {
             AssetType::Vector
         } else {
@@ -75,9 +73,7 @@ impl Default for GcsBridgeConfig {
             minio_bucket: std::env::var("MINIO_BUCKET")
                 .or_else(|_| std::env::var("GEO_DATA_BUCKET"))
                 .ok(),
-            local_dir: Some(
-                dirs_next().unwrap_or_else(|| PathBuf::from(".")),
-            ),
+            local_dir: Some(dirs_next().unwrap_or_else(|| PathBuf::from("."))),
             retries: 3,
             timeout_secs: 600,
         }
@@ -124,11 +120,7 @@ impl GcsBridge {
         }
 
         // Determine file name and asset type.
-        let file_name = gcs_uri
-            .rsplit('/')
-            .next()
-            .unwrap_or("unknown")
-            .to_string();
+        let file_name = gcs_uri.rsplit('/').next().unwrap_or("unknown").to_string();
         let asset_type = AssetType::from_path(&file_name);
 
         // Local download directory.
@@ -168,11 +160,7 @@ impl GcsBridge {
         if let (Some(_endpoint), Some(bucket)) =
             (&self.config.minio_endpoint, &self.config.minio_bucket)
         {
-            let minio_path = format!(
-                "{}/{}/{file_name}",
-                target_prefix,
-                asset_type.prefix()
-            );
+            let minio_path = format!("{}/{}/{file_name}", target_prefix, asset_type.prefix());
 
             self.upload_to_minio(&final_local, &minio_path).await?;
 
@@ -187,17 +175,16 @@ impl GcsBridge {
     }
 
     /// Download a file from GCS using `gsutil cp`.
-    async fn download_from_gcs(
-        &self,
-        gcs_uri: &str,
-        local_path: &Path,
-    ) -> GeoResult<()> {
+    async fn download_from_gcs(&self, gcs_uri: &str, local_path: &Path) -> GeoResult<()> {
         let mut last_error = None;
 
         for attempt in 0..=self.config.retries {
             if attempt > 0 {
                 let delay = std::time::Duration::from_secs(2u64.pow(attempt as u32));
-                tracing::warn!("Retrying GCS download (attempt {attempt}/{} after {delay:?})...", self.config.retries);
+                tracing::warn!(
+                    "Retrying GCS download (attempt {attempt}/{} after {delay:?})...",
+                    self.config.retries
+                );
                 tokio::time::sleep(delay).await;
             }
 
@@ -240,11 +227,7 @@ impl GcsBridge {
 
     /// Upload a local file to MinIO/S3 using the object_store crate.
     #[cfg(feature = "object_store")]
-    async fn upload_to_minio(
-        &self,
-        local_path: &Path,
-        minio_path: &str,
-    ) -> GeoResult<()> {
+    async fn upload_to_minio(&self, local_path: &Path, minio_path: &str) -> GeoResult<()> {
         use object_store::aws::AmazonS3Builder;
         use object_store::path::Path as ObjectPath;
         use object_store::ObjectStore;
@@ -278,11 +261,7 @@ impl GcsBridge {
 
     /// No-op upload when object_store feature is disabled.
     #[cfg(not(feature = "object_store"))]
-    async fn upload_to_minio(
-        &self,
-        _local_path: &Path,
-        minio_path: &str,
-    ) -> GeoResult<()> {
+    async fn upload_to_minio(&self, _local_path: &Path, minio_path: &str) -> GeoResult<()> {
         tracing::warn!(
             "MinIO upload requested but `minio` feature is not enabled. \
              File will remain local. Destination would be: {minio_path}"
@@ -332,18 +311,9 @@ mod tests {
             AssetType::from_path("landcover_2025.tif"),
             AssetType::Raster
         );
-        assert_eq!(
-            AssetType::from_path("sites.geojson"),
-            AssetType::Vector
-        );
-        assert_eq!(
-            AssetType::from_path("landcover.gpkg"),
-            AssetType::Vector
-        );
-        assert_eq!(
-            AssetType::from_path("emissions.csv"),
-            AssetType::Table
-        );
+        assert_eq!(AssetType::from_path("sites.geojson"), AssetType::Vector);
+        assert_eq!(AssetType::from_path("landcover.gpkg"), AssetType::Vector);
+        assert_eq!(AssetType::from_path("emissions.csv"), AssetType::Table);
     }
 
     #[test]
@@ -357,11 +327,7 @@ mod tests {
     fn test_reject_non_gcs_uri() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let bridge = GcsBridge::new(GcsBridgeConfig::default());
-        let result = rt.block_on(bridge.sync(
-            "https://example.com/file.tif",
-            "test",
-            false,
-        ));
+        let result = rt.block_on(bridge.sync("https://example.com/file.tif", "test", false));
         assert!(result.is_err());
     }
 }

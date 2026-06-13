@@ -5,7 +5,7 @@
 //! 2. GWP conversion to CO₂-equivalent
 //! 3. Uncertainty range (±X%) for Monte Carlo propagation
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 // ── Greenhouse Gas Types ──────────────────────────────────────────
 
@@ -149,10 +149,10 @@ impl FuelType {
     /// Net Calorific Value (GJ per unit). Unit depends on fuel type.
     pub fn default_ncv(&self) -> f64 {
         match self {
-            FuelType::RawCoal => 20.908,    // GJ/t
+            FuelType::RawCoal => 20.908, // GJ/t
             FuelType::CleanedCoal => 26.344,
             FuelType::Coke => 28.435,
-            FuelType::CrudeOil => 41.816,   // GJ/t
+            FuelType::CrudeOil => 41.816, // GJ/t
             FuelType::Gasoline => 43.070,
             FuelType::Diesel => 42.652,
             FuelType::FuelOil => 41.816,
@@ -160,7 +160,7 @@ impl FuelType {
             FuelType::NaturalGas => 389.31,  // GJ/10⁴m³
             FuelType::CokeOvenGas => 167.26, // GJ/10⁴m³
             FuelType::BlastFurnaceGas => 33.35,
-            FuelType::Biomass => 17.460,     // GJ/t
+            FuelType::Biomass => 17.460, // GJ/t
             FuelType::OtherFuel => 20.0,
         }
     }
@@ -188,8 +188,11 @@ impl FuelType {
     pub fn default_oxidation_rate(&self) -> f64 {
         match self {
             FuelType::RawCoal | FuelType::CleanedCoal | FuelType::Coke => 0.94,
-            FuelType::CrudeOil | FuelType::Gasoline | FuelType::Diesel
-                | FuelType::FuelOil | FuelType::LPG => 0.98,
+            FuelType::CrudeOil
+            | FuelType::Gasoline
+            | FuelType::Diesel
+            | FuelType::FuelOil
+            | FuelType::LPG => 0.98,
             FuelType::NaturalGas | FuelType::CokeOvenGas | FuelType::BlastFurnaceGas => 0.99,
             FuelType::Biomass => 0.90,
             FuelType::OtherFuel => 0.95,
@@ -199,12 +202,17 @@ impl FuelType {
     /// Unit label for the fuel quantity.
     pub fn unit(&self) -> &'static str {
         match self {
-            FuelType::RawCoal | FuelType::CleanedCoal | FuelType::Coke
-                | FuelType::CrudeOil | FuelType::Gasoline | FuelType::Diesel
-                | FuelType::FuelOil | FuelType::LPG | FuelType::Biomass
-                | FuelType::OtherFuel => "t",
-            FuelType::NaturalGas | FuelType::CokeOvenGas
-                | FuelType::BlastFurnaceGas => "10⁴m³",
+            FuelType::RawCoal
+            | FuelType::CleanedCoal
+            | FuelType::Coke
+            | FuelType::CrudeOil
+            | FuelType::Gasoline
+            | FuelType::Diesel
+            | FuelType::FuelOil
+            | FuelType::LPG
+            | FuelType::Biomass
+            | FuelType::OtherFuel => "t",
+            FuelType::NaturalGas | FuelType::CokeOvenGas | FuelType::BlastFurnaceGas => "10⁴m³",
         }
     }
 
@@ -251,7 +259,12 @@ impl GridEmissionFactor {
             "cn-south" | "south" => Self::CN_SOUTH_2023,
             _ => Self::CN_2023,
         };
-        Self { region: region.to_string(), factor_tco2_per_mwh: factor, year, source: "MEE_2023".into() }
+        Self {
+            region: region.to_string(),
+            factor_tco2_per_mwh: factor,
+            year,
+            source: "MEE_2023".into(),
+        }
     }
 }
 
@@ -269,7 +282,9 @@ pub enum GwpVersion {
 }
 
 impl Default for GwpVersion {
-    fn default() -> Self { GwpVersion::AR5 }
+    fn default() -> Self {
+        GwpVersion::AR5
+    }
 }
 
 /// Return the 100-year Global Warming Potential for a greenhouse gas.
@@ -286,37 +301,37 @@ pub fn gwp100(gas: GreenhouseGas, version: GwpVersion) -> f64 {
 
 fn gwp_ar5(gas: GreenhouseGas) -> f64 {
     match gas {
-        GreenhouseGas::CO2  => 1.0,
-        GreenhouseGas::CH4  => 28.0,    // fossil; non-fossil is 27.2
-        GreenhouseGas::N2O  => 265.0,
-        GreenhouseGas::HFCs => 1400.0,  // aggregate
-        GreenhouseGas::PFCs => 7400.0,  // aggregate
-        GreenhouseGas::SF6  => 23500.0,
-        GreenhouseGas::NF3  => 16100.0,
+        GreenhouseGas::CO2 => 1.0,
+        GreenhouseGas::CH4 => 28.0, // fossil; non-fossil is 27.2
+        GreenhouseGas::N2O => 265.0,
+        GreenhouseGas::HFCs => 1400.0, // aggregate
+        GreenhouseGas::PFCs => 7400.0, // aggregate
+        GreenhouseGas::SF6 => 23500.0,
+        GreenhouseGas::NF3 => 16100.0,
     }
 }
 
 fn gwp_ar4(gas: GreenhouseGas) -> f64 {
     match gas {
-        GreenhouseGas::CO2  => 1.0,
-        GreenhouseGas::CH4  => 25.0,
-        GreenhouseGas::N2O  => 298.0,
+        GreenhouseGas::CO2 => 1.0,
+        GreenhouseGas::CH4 => 25.0,
+        GreenhouseGas::N2O => 298.0,
         GreenhouseGas::HFCs => 1600.0,
         GreenhouseGas::PFCs => 8300.0,
-        GreenhouseGas::SF6  => 22800.0,
-        GreenhouseGas::NF3  => 17200.0,
+        GreenhouseGas::SF6 => 22800.0,
+        GreenhouseGas::NF3 => 17200.0,
     }
 }
 
 fn gwp_ar6(gas: GreenhouseGas) -> f64 {
     match gas {
-        GreenhouseGas::CO2  => 1.0,
-        GreenhouseGas::CH4  => 27.0,    // fossil; non-fossil is 27.2
-        GreenhouseGas::N2O  => 273.0,
-        GreenhouseGas::HFCs => 1500.0,  // aggregate
-        GreenhouseGas::PFCs => 7800.0,  // aggregate
-        GreenhouseGas::SF6  => 24300.0,
-        GreenhouseGas::NF3  => 17400.0,
+        GreenhouseGas::CO2 => 1.0,
+        GreenhouseGas::CH4 => 27.0, // fossil; non-fossil is 27.2
+        GreenhouseGas::N2O => 273.0,
+        GreenhouseGas::HFCs => 1500.0, // aggregate
+        GreenhouseGas::PFCs => 7800.0, // aggregate
+        GreenhouseGas::SF6 => 24300.0,
+        GreenhouseGas::NF3 => 17400.0,
     }
 }
 
@@ -440,7 +455,9 @@ pub struct EmissionFactor {
     pub grid_ef: Option<f64>,
 }
 
-fn default_unit() -> String { "tCO₂e/ha/yr".into() }
+fn default_unit() -> String {
+    "tCO₂e/ha/yr".into()
+}
 
 impl EmissionFactor {
     /// Create a new emission factor with minimal required fields (backward compat).
@@ -474,13 +491,18 @@ impl EmissionFactor {
         uncertainty_pct: Option<f64>,
     ) -> Self {
         let total_tco2e: f64 = gas_factors.iter().map(|g| g.to_tco2e()).sum();
-        Self { factor_value: total_tco2e, gas_factors, uncertainty_pct, ..Self::new(category, total_tco2e, source) }
+        Self {
+            factor_value: total_tco2e,
+            gas_factors,
+            uncertainty_pct,
+            ..Self::new(category, total_tco2e, source)
+        }
     }
 
     /// Create a fuel combustion emission factor (Scope 1).
     pub fn for_fuel(
         fuel_type: FuelType,
-        quantity: f64,  // in native units (t or 10⁴m³)
+        quantity: f64, // in native units (t or 10⁴m³)
     ) -> Self {
         let co2 = fuel_type.compute_co2(quantity);
         let category = format!("fuel_{}", format!("{fuel_type:?}").to_lowercase());
@@ -508,8 +530,8 @@ impl EmissionFactor {
                 source: "MEE_2023".into(),
             }
         };
-        let ef_mwh = grid.factor_tco2_per_mwh;  // tCO₂/MWh
-        let ef_kwh = ef_mwh / 1000.0;           // tCO₂/kWh
+        let ef_mwh = grid.factor_tco2_per_mwh; // tCO₂/MWh
+        let ef_kwh = ef_mwh / 1000.0; // tCO₂/kWh
         let total = kwh * ef_kwh;
         Self {
             category: "electricity".into(),
@@ -525,8 +547,7 @@ impl EmissionFactor {
 
     /// Returns true if this factor is valid for the given year.
     pub fn is_valid_for_year(&self, year: i32) -> bool {
-        year >= self.valid_from_year
-            && self.valid_to_year.is_none_or(|to| year <= to)
+        year >= self.valid_from_year && self.valid_to_year.is_none_or(|to| year <= to)
     }
 
     /// Returns true if this is a carbon sink (negative emission factor).
@@ -544,7 +565,8 @@ impl EmissionFactor {
         if self.gas_factors.is_empty() {
             self.factor_value
         } else {
-            self.gas_factors.iter()
+            self.gas_factors
+                .iter()
                 .map(|g| g.to_tco2e_with_gwp(gwp100(g.gas, version)))
                 .sum()
         }
@@ -579,13 +601,13 @@ fn parse_csv_columns(headers: &[String]) -> Result<CsvColumnIndices, String> {
     let idx = |name: &str| headers.iter().position(|h| h == name);
 
     let gas_columns = vec![
-        (GreenhouseGas::CO2,  idx("gas_co2_factor")),
-        (GreenhouseGas::CH4,  idx("gas_ch4_factor")),
-        (GreenhouseGas::N2O,  idx("gas_n2o_factor")),
+        (GreenhouseGas::CO2, idx("gas_co2_factor")),
+        (GreenhouseGas::CH4, idx("gas_ch4_factor")),
+        (GreenhouseGas::N2O, idx("gas_n2o_factor")),
         (GreenhouseGas::HFCs, idx("gas_hfcs_factor")),
         (GreenhouseGas::PFCs, idx("gas_pfcs_factor")),
-        (GreenhouseGas::SF6,  idx("gas_sf6_factor")),
-        (GreenhouseGas::NF3,  idx("gas_nf3_factor")),
+        (GreenhouseGas::SF6, idx("gas_sf6_factor")),
+        (GreenhouseGas::NF3, idx("gas_nf3_factor")),
     ];
 
     Ok(CsvColumnIndices {
@@ -633,20 +655,24 @@ fn parse_emission_factor_row(
     record: &csv::StringRecord,
     cols: &CsvColumnIndices,
 ) -> Result<EmissionFactor, String> {
-    let get = |idx: Option<usize>| -> Option<&str> {
-        idx.and_then(|i| record.get(i))
-    };
+    let get = |idx: Option<usize>| -> Option<&str> { idx.and_then(|i| record.get(i)) };
     let get_f64 = |idx: Option<usize>| -> Option<Result<f64, String>> {
         let s = record.get(idx?)?;
         Some(s.parse().map_err(|e| format!("Bad float '{s}': {e}")))
     };
 
-    let category = record.get(cols.category).ok_or("Missing category")?.to_string();
+    let category = record
+        .get(cols.category)
+        .ok_or("Missing category")?
+        .to_string();
     let has_multi_gas = cols.gas_columns.iter().any(|(_, idx)| idx.is_some());
 
     let factor_value: f64 = if let Some(vi) = cols.value {
-        record.get(vi).ok_or("Missing factor_value")?
-            .parse().map_err(|e| format!("Bad factor_value: {e}"))?
+        record
+            .get(vi)
+            .ok_or("Missing factor_value")?
+            .parse()
+            .map_err(|e| format!("Bad factor_value: {e}"))?
     } else if has_multi_gas {
         0.0 // computed from gas columns below
     } else {
@@ -657,9 +683,10 @@ fn parse_emission_factor_row(
     let subcategory = get(cols.subcategory).map(|s| s.to_string());
     let unit = get(cols.unit).unwrap_or("tCO₂e/ha/yr").to_string();
     let valid_from_year: i32 = get(cols.valid_from_year)
-        .unwrap_or("2000").parse().unwrap_or(2000);
-    let valid_to_year: Option<i32> = get(cols.valid_to_year)
-        .and_then(|s| s.parse().ok());
+        .unwrap_or("2000")
+        .parse()
+        .unwrap_or(2000);
+    let valid_to_year: Option<i32> = get(cols.valid_to_year).and_then(|s| s.parse().ok());
     let region = get(cols.region).map(|s| s.to_string());
     let uncertainty_pct: Option<f64> = get_f64(cols.uncertainty_pct).transpose()?;
     let activity_type = get(cols.activity_type).map(|s| s.to_string());
@@ -680,11 +707,15 @@ fn parse_emission_factor_row(
     let fuel_type = get(cols.fuel_type).and_then(parse_fuel_type);
 
     // Multi-gas columns
-    let gas_factors: Vec<GasFactor> = cols.gas_columns.iter()
+    let gas_factors: Vec<GasFactor> = cols
+        .gas_columns
+        .iter()
         .filter_map(|(gas, col_idx)| {
             let ci = (*col_idx)?;
             let val: f64 = get_f64(Some(ci))?.ok()?;
-            if val == 0.0 { return None; }
+            if val == 0.0 {
+                return None;
+            }
             let unit_str = match gas {
                 GreenhouseGas::CO2 => "kg CO₂/ha/yr",
                 GreenhouseGas::CH4 => "kg CH₄/ha/yr",
@@ -700,7 +731,11 @@ fn parse_emission_factor_row(
 
     let computed_value = if !gas_factors.is_empty() {
         let computed: f64 = gas_factors.iter().map(|g| g.to_tco2e()).sum();
-        if cols.value.is_none() { computed } else { factor_value }
+        if cols.value.is_none() {
+            computed
+        } else {
+            factor_value
+        }
     } else {
         factor_value
     };
@@ -756,7 +791,8 @@ pub fn load_factors_from_csv(csv_text: &str) -> Result<Vec<EmissionFactor>, Stri
         .trim(csv::Trim::All)
         .from_reader(csv_text.as_bytes());
 
-    let headers: Vec<String> = reader.headers()
+    let headers: Vec<String> = reader
+        .headers()
         .map_err(|e| format!("CSV headers: {e}"))?
         .iter()
         .map(|h| h.to_lowercase().trim().to_string())
@@ -837,7 +873,10 @@ mod tests {
     #[test]
     fn test_gwp_ar4_vs_ar5() {
         // AR4 had higher GWP for N₂O (298 vs 265)
-        assert!(gwp100(GreenhouseGas::N2O, GwpVersion::AR4) > gwp100(GreenhouseGas::N2O, GwpVersion::AR5));
+        assert!(
+            gwp100(GreenhouseGas::N2O, GwpVersion::AR4)
+                > gwp100(GreenhouseGas::N2O, GwpVersion::AR5)
+        );
     }
 
     #[test]

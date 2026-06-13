@@ -29,7 +29,9 @@ pub struct OsmClient {
 }
 
 impl Default for OsmClient {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl OsmClient {
@@ -43,8 +45,10 @@ impl OsmClient {
     /// 按 bbox + 要素类型查询，返回 GeoJSON。
     pub async fn query_bbox(
         &self,
-        min_lon: f64, min_lat: f64,
-        max_lon: f64, max_lat: f64,
+        min_lon: f64,
+        min_lat: f64,
+        max_lon: f64,
+        max_lat: f64,
         feature: OsmFeature,
     ) -> GeoResult<Vec<serde_json::Value>> {
         let osm_tag = match feature {
@@ -59,19 +63,24 @@ impl OsmClient {
             "[out:json];(node[\"{osm_tag}\"]({min_lat},{min_lon},{max_lat},{max_lon});way[\"{osm_tag}\"]({min_lat},{min_lon},{max_lat},{max_lon});relation[\"{osm_tag}\"]({min_lat},{min_lon},{max_lat},{max_lon}););out geom;"
         );
 
-        let resp = self.client.post(&self.base_url)
+        let resp = self
+            .client
+            .post(&self.base_url)
             .body(query)
-            .send().await
+            .send()
+            .await
             .map_err(|e| GeoError::ExternalProcess {
                 command: "OSM Overpass query".into(),
                 message: e.to_string(),
             })?;
 
-        let body = resp.text().await
+        let body = resp
+            .text()
+            .await
             .map_err(|e| GeoError::Other(e.to_string()))?;
 
-        let result: OverpassResponse = serde_json::from_str(&body)
-            .map_err(|e| GeoError::Other(e.to_string()))?;
+        let result: OverpassResponse =
+            serde_json::from_str(&body).map_err(|e| GeoError::Other(e.to_string()))?;
 
         tracing::info!("OSM: {} elements", result.elements.len());
         Ok(result.elements)
@@ -79,21 +88,24 @@ impl OsmClient {
 
     /// 转换为 GeoJSON FeatureCollection。
     pub fn to_geojson(elements: &[serde_json::Value]) -> serde_json::Value {
-        let features: Vec<serde_json::Value> = elements.iter().map(|e| {
-            let tags = e.get("tags").cloned().unwrap_or(serde_json::json!({}));
-            let geom = if let Some(geo) = e.get("geometry") {
-                geo.clone()
-            } else if let (Some(lat), Some(lon)) = (e["lat"].as_f64(), e["lon"].as_f64()) {
-                serde_json::json!({"type":"Point","coordinates":[lon,lat]})
-            } else {
-                serde_json::json!(null)
-            };
-            serde_json::json!({
-                "type": "Feature",
-                "properties": tags,
-                "geometry": geom,
+        let features: Vec<serde_json::Value> = elements
+            .iter()
+            .map(|e| {
+                let tags = e.get("tags").cloned().unwrap_or(serde_json::json!({}));
+                let geom = if let Some(geo) = e.get("geometry") {
+                    geo.clone()
+                } else if let (Some(lat), Some(lon)) = (e["lat"].as_f64(), e["lon"].as_f64()) {
+                    serde_json::json!({"type":"Point","coordinates":[lon,lat]})
+                } else {
+                    serde_json::json!(null)
+                };
+                serde_json::json!({
+                    "type": "Feature",
+                    "properties": tags,
+                    "geometry": geom,
+                })
             })
-        }).collect();
+            .collect();
 
         serde_json::json!({
             "type": "FeatureCollection",

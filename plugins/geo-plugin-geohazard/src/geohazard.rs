@@ -1,29 +1,481 @@
 use crate::config::GeohazardConfig;
-pub struct GeohazardPlugin { config: GeohazardConfig }
-impl GeohazardPlugin {
-    pub fn new(config: GeohazardConfig) -> Self { Self { config } }
-    /// 滑坡敏感性指数：slope*0.4 + lithology*0.35 + rainfall*0.25。
-    /// 各因子归一化到 [0,1]。
-    pub fn landslide_susceptibility(&self, slope_norm: f64, lithology_norm: f64, rainfall_norm: f64) -> f64 {
-        let p = &self.config.landslide;
-        (slope_norm * p.slope_weight + lithology_norm * p.lithology_weight + rainfall_norm * p.rainfall_weight)
-            .clamp(0.0, 1.0)
-    }
+use geo_core::errors::{GeoError, GeoResult};
+use serde::{Deserialize, Serialize};
+
+/// 综合分析结果（滑坡 + 泥石流 + 综合评级）。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GeohazardAssessment {
+    pub aoi_name: String,
+
+    /// 滑坡敏感性。
+    pub landslide: LandslideResult,
+    /// 泥石流危险性（可选）。
+    pub debris_flow: Option<DebrisFlowResult>,
+
+    /// 综合风险等级。
+    pub overall_risk: RiskLevel,
+
+    /// 评估时间。
+    pub calculated_at: String,
+}
+
+/// 滑坡敏感性分析结果。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LandslideResult {
+    /// 综合敏感性指数 [0,1]。
+    pub susceptibility: f64,
+
     /// 风险等级。
-    pub fn risk_level(&self, susceptibility: f64) -> &'static str {
-        if susceptibility >= 0.7 { "高" } else if susceptibility >= 0.4 { "中" } else { "低" }
+    pub risk_level: RiskLevel,
+
+    /// 各因子归一化值。
+    pub factor_scores: FactorScores,
+}
+
+/// 各因子得分（归一化 [0,1]，越高越危险）。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FactorScores {
+    pub slope: f64,
+    pub aspect: f64,
+    pub lithology: f64,
+    pub rainfall: f64,
+    pub fault_distance: f64,
+    pub vegetation: f64,
+}
+
+/// 泥石流危险性结果。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DebrisFlowResult {
+    /// 危险性指数 [0,1]。
+    pub hazard: f64,
+
+    /// 风险等级。
+    pub risk_level: RiskLevel,
+
+    /// 沟床比降得分。
+    pub gradient_score: f64,
+    /// 松散物源量得分。
+    pub material_score: f64,
+    /// 降雨触发得分。
+    pub rainfall_score: f64,
+}
+
+/// 风险等级：5级。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum RiskLevel {
+    /// ≤ 0.15
+    VeryLow,
+    /// 0.15–0.35
+    Low,
+    /// 0.35–0.55
+    Moderate,
+    /// 0.55–0.75
+    High,
+    /// > 0.75
+    VeryHigh,
+}
+
+impl RiskLevel {
+    pub fn from_score(s: f64) -> Self {
+        if s <= 0.15 {
+            RiskLevel::VeryLow
+        } else if s <= 0.35 {
+            RiskLevel::Low
+        } else if s <= 0.55 {
+            RiskLevel::Moderate
+        } else if s <= 0.75 {
+            RiskLevel::High
+        } else {
+            RiskLevel::VeryHigh
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            RiskLevel::VeryLow => "极低",
+            RiskLevel::Low => "低",
+            RiskLevel::Moderate => "中",
+            RiskLevel::High => "高",
+            RiskLevel::VeryHigh => "极高",
+        }
+    }
+
+    pub fn as_english(&self) -> &'static str {
+        match self {
+            RiskLevel::VeryLow => "very_low",
+            RiskLevel::Low => "low",
+            RiskLevel::Moderate => "moderate",
+            RiskLevel::High => "high",
+            RiskLevel::VeryHigh => "very_high",
+        }
+    }
+}
+
+/// 地质灾害插件。
+pub struct GeohazardPlugin {
+    config: GeohazardConfig,
+}
+
+impl GeohazardPlugin {
+    pub fn new(config: GeohazardConfig) -> Self {
+        Self { config }
+    }
+
+    pub fn config(&self) -> &GeohazardConfig {
+        &self.config
+    }
+
+    // ── 模糊隶属度函数 ──
+
+    /// S 型增长隶属度函数（低→高危险）。
+    /// 在 [a, b] 区间内曲线上升。
+    fn fuzzy_s(x: f64, a: f64, b: f64) -> f64 {
+        if x <= a {
+            0.0
+        } else if x >= b {
+            1.0
+        } else {
+            // 余弦过渡，平滑
+            let t = (x - a) / (b - a);
+            t * t * (3.0 - 2.0 * t) // smoothstep
+        }
+    }
+
+    /// L 型下降隶属度函数（高→低危险）。
+    /// x 越小越危险。
+    fn fuzzy_l(x: f64, a: f64, b: f64) -> f64 {
+        if x >= b {
+            0.0
+        } else if x <= a {
+            1.0
+        } else {
+            let t = (x - a) / (b - a);
+            1.0 - t * t * (3.0 - 2.0 * t) // inverse smoothstep
+        }
+    }
+
+    // ── 各因子归一化 ──
+
+    /// 坡度因子归一化（度）。越陡越危险。
+    pub fn normalize_slope(&self, slope_deg: f64) -> f64 {
+        let p = &self.config.landslide;
+        Self::fuzzy_s(slope_deg, p.slope_a, p.slope_b)
+    }
+
+    /// 坡向因子（朝南性）。北半球朝南（180°±45°）更易滑动。
+    /// aspect_deg: 0–360°，北=0°，东=90°，南=180°，西=270°。
+    pub fn normalize_aspect(&self, aspect_deg: f64) -> f64 {
+        // 朝南程度的指标：cos(aspect - 180°) 映射到 [0,1]
+        // 0°(N) = 0, 180°(S) = 1, 90°(E)/270°(W) = 0.5
+        let rad = aspect_deg.to_radians();
+        let southness = (rad - std::f64::consts::PI).cos();
+        // 从 [-1,1] 映射到 [0,1]，并加一点阈值
+        let val = (southness + 1.0) * 0.5;
+        val.clamp(0.0, 1.0)
+    }
+
+    /// 岩性归一化。传入预分类 [0,1]：0=基岩, 0.33=半成岩, 0.67=松散堆积, 1.0=极软岩。
+    pub fn normalize_lithology(&self, lithology_index: f64) -> f64 {
+        lithology_index.clamp(0.0, 1.0)
+    }
+
+    /// 日降雨量归一化（mm/24h）。
+    pub fn normalize_rainfall(&self, rainfall_mm: f64) -> f64 {
+        let p = &self.config.landslide;
+        Self::fuzzy_s(rainfall_mm, p.rainfall_a, p.rainfall_b)
+    }
+
+    /// 距断层距离归一化（m）。越近越危险。
+    pub fn normalize_fault_distance(&self, distance_m: f64) -> f64 {
+        let p = &self.config.landslide;
+        Self::fuzzy_l(distance_m, p.fault_a, p.fault_b)
+    }
+
+    /// 植被覆盖归一化（NDVI）。植被越多越安全。
+    pub fn normalize_vegetation(&self, ndvi: f64) -> f64 {
+        let p = &self.config.landslide;
+        Self::fuzzy_l(ndvi, p.veg_a, p.veg_b)
+    }
+
+    // ── 综合计算 ──
+
+    /// 6因子滑坡敏感性综合指数。
+    pub fn landslide_susceptibility(
+        &self,
+        slope_deg: f64,
+        aspect_deg: f64,
+        lithology_index: f64,
+        rainfall_mm: f64,
+        fault_distance_m: f64,
+        ndvi: f64,
+    ) -> LandslideResult {
+        let w = &self.config.landslide;
+
+        let s_slope = self.normalize_slope(slope_deg);
+        let s_aspect = self.normalize_aspect(aspect_deg);
+        let s_lithology = self.normalize_lithology(lithology_index);
+        let s_rainfall = self.normalize_rainfall(rainfall_mm);
+        let s_fault = self.normalize_fault_distance(fault_distance_m);
+        let s_veg = self.normalize_vegetation(ndvi);
+
+        // 加权综合
+        let total = s_slope * w.slope_weight
+            + s_aspect * w.aspect_weight
+            + s_lithology * w.lithology_weight
+            + s_rainfall * w.rainfall_weight
+            + s_fault * w.fault_weight
+            + s_veg * w.vegetation_weight;
+
+        let susceptibility = total.clamp(0.0, 1.0);
+
+        LandslideResult {
+            susceptibility,
+            risk_level: RiskLevel::from_score(susceptibility),
+            factor_scores: FactorScores {
+                slope: s_slope,
+                aspect: s_aspect,
+                lithology: s_lithology,
+                rainfall: s_rainfall,
+                fault_distance: s_fault,
+                vegetation: s_veg,
+            },
+        }
+    }
+
+    /// 泥石流危险性评估。
+    ///
+    /// # Arguments
+    /// * `channel_gradient_deg` - 沟床比降（°）
+    /// * `material_volume_per_km` - 松散物源量（m³/km）
+    /// * `rainfall_24h_mm` - 24小时降雨量（mm）
+    pub fn debris_flow_hazard(
+        &self,
+        channel_gradient_deg: f64,
+        material_volume_per_km: f64,
+        rainfall_24h_mm: f64,
+    ) -> DebrisFlowResult {
+        let dp = &self.config.debris_flow;
+
+        let gradient_score = Self::fuzzy_s(
+            channel_gradient_deg,
+            dp.channel_gradient_threshold,
+            dp.channel_gradient_max,
+        );
+        let material_score = Self::fuzzy_s(
+            material_volume_per_km,
+            dp.material_threshold,
+            dp.material_max,
+        );
+        let rainfall_score = Self::fuzzy_s(
+            rainfall_24h_mm,
+            dp.rainfall_trigger,
+            dp.rainfall_trigger * 3.0,
+        );
+
+        // 加权平均：沟床条件 0.45 + 物源 0.35 + 降雨触发 0.20
+        let hazard =
+            (gradient_score * 0.45 + material_score * 0.35 + rainfall_score * 0.20).clamp(0.0, 1.0);
+
+        DebrisFlowResult {
+            hazard,
+            risk_level: RiskLevel::from_score(hazard),
+            gradient_score,
+            material_score,
+            rainfall_score,
+        }
+    }
+
+    /// 综合地质灾害风险评估（滑坡+泥石流取最大）。
+    pub fn overall_assessment(
+        &self,
+        landside: LandslideResult,
+        debris: Option<DebrisFlowResult>,
+        aoi_name: &str,
+    ) -> GeohazardAssessment {
+        let combined = match &debris {
+            Some(d) => landside.susceptibility.max(d.hazard),
+            None => landside.susceptibility,
+        };
+
+        GeohazardAssessment {
+            aoi_name: aoi_name.to_string(),
+            landslide: landside,
+            debris_flow: debris,
+            overall_risk: RiskLevel::from_score(combined),
+            calculated_at: chrono::Utc::now().to_rfc3339(),
+        }
+    }
+
+    /// 估算滑坡体体积（简化方法）。
+    /// 基于滑动面积和平均深度。
+    ///
+    /// # Arguments
+    /// * `slide_area_m2` - 滑动面面积（m²）
+    /// * `average_depth_m` - 平均滑动深度（m）
+    /// * `bulk_density` - 物质容重（t/m³，默认 2.0）
+    pub fn estimate_volume(
+        &self,
+        slide_area_m2: f64,
+        average_depth_m: f64,
+        bulk_density: Option<f64>,
+    ) -> GeoResult<f64> {
+        let density = bulk_density.unwrap_or(2.0);
+        if slide_area_m2 <= 0.0 {
+            return Err(GeoError::Validation("slide area must be positive".into()));
+        }
+        if average_depth_m <= 0.0 {
+            return Err(GeoError::Validation("depth must be positive".into()));
+        }
+        if density <= 0.0 {
+            return Err(GeoError::Validation("density must be positive".into()));
+        }
+        Ok(slide_area_m2 * average_depth_m * density)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::GeohazardConfig;
+
+    fn make_plugin() -> GeohazardPlugin {
+        let config: GeohazardConfig = toml::from_str(
+            "[plugin]\nname = \"geohazard\"\nversion = \"0.1\"\ndescription = \"\"\n",
+        )
+        .unwrap();
+        GeohazardPlugin::new(config)
+    }
+
     #[test]
-    fn test_susceptibility() {
-        let config = toml::from_str("[plugin]\nname=\"geohazard\"\nversion=\"0.1\"\ndescription=\"\"\n").unwrap();
-        let p = GeohazardPlugin::new(config);
-        let s = p.landslide_susceptibility(0.8, 0.5, 0.9);
-        assert!(s > 0.0 && s <= 1.0);
-        assert_eq!(p.risk_level(s), if s >= 0.7 { "高" } else { "" });
+    fn test_fuzzy_s() {
+        assert_eq!(GeohazardPlugin::fuzzy_s(0.0, 10.0, 30.0), 0.0);
+        assert_eq!(GeohazardPlugin::fuzzy_s(40.0, 10.0, 30.0), 1.0);
+        let mid = GeohazardPlugin::fuzzy_s(20.0, 10.0, 30.0);
+        assert!(mid > 0.0 && mid < 1.0, "mid={mid} should be in (0,1)");
+        // smoothstep at t=0.5
+        assert!((mid - 0.5).abs() < 0.01, "mid={mid} should be ~0.5");
+    }
+
+    #[test]
+    fn test_fuzzy_l() {
+        assert_eq!(GeohazardPlugin::fuzzy_l(5.0, 10.0, 30.0), 1.0);
+        assert_eq!(GeohazardPlugin::fuzzy_l(35.0, 10.0, 30.0), 0.0);
+        let mid = GeohazardPlugin::fuzzy_l(20.0, 10.0, 30.0);
+        assert!(mid > 0.0 && mid < 1.0);
+        assert!((mid - 0.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_normalize_aspect() {
+        let p = make_plugin();
+        // 朝南=180°→1.0
+        let south = p.normalize_aspect(180.0);
+        assert!((south - 1.0).abs() < 0.01, "south={south}");
+        // 朝北=0°→~0.0
+        let north = p.normalize_aspect(0.0);
+        assert!(north < 0.01, "north={north}");
+        // 朝东=90°→~0.5
+        let east = p.normalize_aspect(90.0);
+        assert!((east - 0.5).abs() < 0.05, "east={east}");
+    }
+
+    #[test]
+    fn test_normalize_slope() {
+        let p = make_plugin();
+        assert_eq!(p.normalize_slope(5.0), 0.0); // 平坦
+        assert!(p.normalize_slope(25.0) > 0.0 && p.normalize_slope(25.0) < 1.0);
+        assert_eq!(p.normalize_slope(50.0), 1.0); // 极陡
+    }
+
+    #[test]
+    fn test_landslide_susceptibility_6_factor() {
+        let p = make_plugin();
+        // 极端危险场景
+        let result = p.landslide_susceptibility(40.0, 180.0, 1.0, 400.0, 10.0, 0.05);
+        assert!(
+            result.susceptibility > 0.8,
+            "should be very high: {}",
+            result.susceptibility
+        );
+        assert_eq!(result.risk_level, RiskLevel::VeryHigh);
+
+        // 极端安全场景
+        let safe = p.landslide_susceptibility(5.0, 0.0, 0.0, 20.0, 2000.0, 0.8);
+        assert!(
+            safe.susceptibility < 0.2,
+            "should be very low: {}",
+            safe.susceptibility
+        );
+        assert_eq!(safe.risk_level, RiskLevel::VeryLow);
+    }
+
+    #[test]
+    fn test_debris_flow_hazard() {
+        let p = make_plugin();
+        // 极端危险
+        let d = p.debris_flow_hazard(40.0, 20000.0, 200.0);
+        assert!(
+            d.hazard > 0.8,
+            "debris flow hazard should be high: {}",
+            d.hazard
+        );
+        assert_eq!(d.risk_level, RiskLevel::VeryHigh);
+
+        // 安全
+        let safe = p.debris_flow_hazard(5.0, 100.0, 10.0);
+        assert!(safe.hazard < 0.2, "should be low: {}", safe.hazard);
+    }
+
+    #[test]
+    fn test_overall_assessment() {
+        let p = make_plugin();
+        let ls = p.landslide_susceptibility(10.0, 90.0, 0.3, 50.0, 500.0, 0.5);
+        let df = p.debris_flow_hazard(10.0, 500.0, 30.0);
+        let overall = p.overall_assessment(ls, Some(df), "test");
+        assert!(overall.overall_risk.as_str() == "低" || overall.overall_risk.as_str() == "中");
+    }
+
+    #[test]
+    fn test_estimate_volume() {
+        let p = make_plugin();
+        let vol = p.estimate_volume(1000.0, 5.0, Some(2.0)).unwrap();
+        assert!((vol - 10000.0).abs() < 0.01, "vol={vol}");
+    }
+
+    #[test]
+    fn test_estimate_volume_invalid() {
+        let p = make_plugin();
+        assert!(p.estimate_volume(0.0, 5.0, None).is_err());
+        assert!(p.estimate_volume(100.0, 0.0, None).is_err());
+    }
+
+    #[test]
+    fn test_risk_level_from_score() {
+        assert_eq!(RiskLevel::from_score(0.0), RiskLevel::VeryLow);
+        assert_eq!(RiskLevel::from_score(0.2), RiskLevel::Low);
+        assert_eq!(RiskLevel::from_score(0.45), RiskLevel::Moderate);
+        assert_eq!(RiskLevel::from_score(0.65), RiskLevel::High);
+        assert_eq!(RiskLevel::from_score(0.9), RiskLevel::VeryHigh);
+    }
+
+    #[test]
+    fn test_risk_level_str() {
+        let r = RiskLevel::VeryHigh;
+        assert_eq!(r.as_str(), "极高");
+        assert_eq!(r.as_english(), "very_high");
+    }
+
+    #[test]
+    fn test_factor_scores_all_present() {
+        let p = make_plugin();
+        let result = p.landslide_susceptibility(25.0, 180.0, 0.5, 200.0, 500.0, 0.3);
+        // 检查6个因子都有值
+        assert!(result.factor_scores.slope > 0.0);
+        assert!(result.factor_scores.aspect > 0.0);
+        assert!(result.factor_scores.lithology >= 0.0);
+        assert!(result.factor_scores.rainfall > 0.0);
+        assert!(result.factor_scores.fault_distance > 0.0);
+        assert!(result.factor_scores.vegetation > 0.0);
     }
 }

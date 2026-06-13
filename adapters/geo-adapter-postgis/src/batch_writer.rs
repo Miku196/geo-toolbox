@@ -74,9 +74,9 @@ impl BatchWriter {
 
         for row in self.buffer.drain(..) {
             let binary_row = encode_copy_row(&row);
-            copy.send(binary_row).await.map_err(|e| {
-                geo_core::errors::GeoError::Database(format!("COPY send: {e}"))
-            })?;
+            copy.send(binary_row)
+                .await
+                .map_err(|e| geo_core::errors::GeoError::Database(format!("COPY send: {e}")))?;
         }
 
         copy.finish()

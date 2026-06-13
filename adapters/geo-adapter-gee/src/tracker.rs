@@ -74,7 +74,10 @@ impl GeeTracker {
     }
 
     /// Read all callbacks from the file and return a map of correlation_id → callback.
-    async fn read_callbacks_file(&self, path: &std::path::Path) -> GeoResult<HashMap<String, GeeCallback>> {
+    async fn read_callbacks_file(
+        &self,
+        path: &std::path::Path,
+    ) -> GeoResult<HashMap<String, GeeCallback>> {
         let mut map = HashMap::new();
 
         if !path.exists() {
@@ -167,9 +170,9 @@ impl GeeTracker {
             let status = match cb.status.as_str() {
                 "started" => TaskStatus::Started,
                 "completed" => TaskStatus::Completed,
-                "failed" => TaskStatus::Failed(
-                    cb.error.clone().unwrap_or_else(|| "Unknown error".into()),
-                ),
+                "failed" => {
+                    TaskStatus::Failed(cb.error.clone().unwrap_or_else(|| "Unknown error".into()))
+                }
                 _ => TaskStatus::Started,
             };
             Ok(Some(TrackedTask {

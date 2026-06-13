@@ -17,7 +17,8 @@ pub fn get_build_info() -> String {
         "features": {
             "console_error_panic_hook": cfg!(feature = "console_error_panic_hook"),
         }
-    }).to_string()
+    })
+    .to_string()
 }
 
 /// Log a message to the browser console.
@@ -33,5 +34,6 @@ pub fn log_to_console(msg: &str) {
 pub fn get_memory_stats() -> String {
     serde_json::json!({
         "note": "WASM heap stats not available in this build. Use browser DevTools Memory tab."
-    }).to_string()
+    })
+    .to_string()
 }

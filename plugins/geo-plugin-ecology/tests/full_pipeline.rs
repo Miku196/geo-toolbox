@@ -5,10 +5,10 @@
 //!
 //! Uses the ProcessPlugin trait to validate the seam works.
 
+use geo_core::plugin::{Plugin, ProcessPlugin};
 use geo_plugin_ecology::ecology::{AssessmentInput, EcologyPlugin};
 use geo_plugin_ecology::EcologyConfig;
 use geo_raster::RasterBand;
-use geo_core::plugin::{Plugin, ProcessPlugin};
 use serde_json::json;
 
 fn make_band(data: Vec<f64>) -> RasterBand {
@@ -16,7 +16,8 @@ fn make_band(data: Vec<f64>) -> RasterBand {
 }
 
 fn test_config() -> EcologyConfig {
-    toml::from_str(r#"
+    toml::from_str(
+        r#"
         [plugin]
         name = "ecology"
         version = "0.1.0"
@@ -36,7 +37,9 @@ fn test_config() -> EcologyConfig {
         bare = 0.0
         wetland = -8.5
         cropland = 0.5
-    "#).unwrap()
+    "#,
+    )
+    .unwrap()
 }
 
 fn test_aoi() -> String {
@@ -96,7 +99,8 @@ fn test_full_ecology_pipeline() {
         assessment_year: 2025,
     };
 
-    let assessment = plugin.assess_restoration(&input)
+    let assessment = plugin
+        .assess_restoration(&input)
         .expect("assessment should succeed");
 
     // ── Structural assertions ──
@@ -107,18 +111,30 @@ fn test_full_ecology_pipeline() {
     // NDVI should improve (2025 > 2020)
     let base_ndvi = assessment.baseline_ndvi.mean_ndvi.unwrap_or(0.0);
     let assess_ndvi = assessment.assessment_ndvi.mean_ndvi.unwrap_or(0.0);
-    assert!(assess_ndvi > base_ndvi,
-        "restored NDVI ({assess_ndvi:.3}) should exceed baseline ({base_ndvi:.3})");
+    assert!(
+        assess_ndvi > base_ndvi,
+        "restored NDVI ({assess_ndvi:.3}) should exceed baseline ({base_ndvi:.3})"
+    );
 
     // Carbon sink should be net-negative (carbon removal)
-    assert!(assessment.carbon.total_emission_tco2e < 0.0,
-        "should be net carbon sink, got {}", assessment.carbon.total_emission_tco2e);
+    assert!(
+        assessment.carbon.total_emission_tco2e < 0.0,
+        "should be net carbon sink, got {}",
+        assessment.carbon.total_emission_tco2e
+    );
 
     // Carbon classes should include forest and grassland
-    let class_names: Vec<&str> = assessment.carbon.classes.iter()
-        .map(|c| c.landcover_class.as_str()).collect();
+    let class_names: Vec<&str> = assessment
+        .carbon
+        .classes
+        .iter()
+        .map(|c| c.landcover_class.as_str())
+        .collect();
     assert!(class_names.contains(&"forest"), "should have forest class");
-    assert!(class_names.contains(&"grassland"), "should have grassland class");
+    assert!(
+        class_names.contains(&"grassland"),
+        "should have grassland class"
+    );
 
     // Conclusion should be set
     assert!(!assessment.conclusion.grade.is_empty());
@@ -126,7 +142,8 @@ fn test_full_ecology_pipeline() {
     assert!(assessment.conclusion.carbon_sink_tco2_per_yr > 0.0);
 
     // ── Report generation ──
-    let report = plugin.generate_report(&assessment)
+    let report = plugin
+        .generate_report(&assessment)
         .expect("report generation should succeed");
     assert!(report.contains("Test Mining Zone"));
     assert!(report.contains("NDVI"));
@@ -139,11 +156,14 @@ async fn test_process_plugin_trait_execute() {
     let plugin = EcologyPlugin::new(config);
 
     // Call through the ProcessPlugin trait
-    let result = plugin.execute(json!({
-        "aoi_name": "Test via trait",
-        "baseline_year": 2020,
-        "assessment_year": 2025,
-    })).await.expect("trait execute should succeed");
+    let result = plugin
+        .execute(json!({
+            "aoi_name": "Test via trait",
+            "baseline_year": 2020,
+            "assessment_year": 2025,
+        }))
+        .await
+        .expect("trait execute should succeed");
 
     assert_eq!(result["aoi_name"], "Test via trait");
     assert_eq!(result["baseline_year"], 2020);

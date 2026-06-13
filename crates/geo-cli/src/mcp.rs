@@ -106,10 +106,8 @@ pub async fn serve(registry: PluginRegistry) -> Result<(), Box<dyn std::error::E
                             }
                         })
                     } else {
-                        let tool_name = request["params"]["name"]
-                            .as_str()
-                            .unwrap_or("")
-                            .to_string();
+                        let tool_name =
+                            request["params"]["name"].as_str().unwrap_or("").to_string();
                         let args = request["params"]["arguments"].clone();
                         let reg = Arc::clone(&registry);
 
@@ -183,11 +181,7 @@ pub async fn serve(registry: PluginRegistry) -> Result<(), Box<dyn std::error::E
 }
 
 /// Dispatch a single tool call through the registry, wrapping result in MCP JSON-RPC format.
-async fn dispatch_tool(
-    registry: Arc<PluginRegistry>,
-    tool_name: &str,
-    args: Value,
-) -> Value {
+async fn dispatch_tool(registry: Arc<PluginRegistry>, tool_name: &str, args: Value) -> Value {
     match registry.dispatch(tool_name, args).await {
         Ok(result) => {
             // result 是 handler 返回的 Value，直接作为 content text

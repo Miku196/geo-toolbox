@@ -14,10 +14,7 @@ use geo_core::errors::GeoResult;
 /// 3. Intersect with forest inventory polygons
 /// 4. Apply biomass allometric equations
 /// 5. Convert biomass → tCO₂e sequestration
-pub fn estimate_carbon_sink(
-    ndvi_cog_path: &str,
-    forest_inventory_path: &str,
-) -> GeoResult<String> {
+pub fn estimate_carbon_sink(ndvi_cog_path: &str, forest_inventory_path: &str) -> GeoResult<String> {
     tracing::info!(
         "Carbon sink estimation: NDVI={ndvi_cog_path}, inventory={forest_inventory_path}"
     );

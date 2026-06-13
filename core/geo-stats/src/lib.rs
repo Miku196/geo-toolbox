@@ -5,7 +5,7 @@
 
 #![warn(missing_docs)]
 
-pub mod zonal;
 pub mod tools;
+pub mod zonal;
 
-pub use zonal::{ZonalStats, ZonalResult, zonal_stats};
+pub use zonal::{zonal_stats, ZonalResult, ZonalStats};

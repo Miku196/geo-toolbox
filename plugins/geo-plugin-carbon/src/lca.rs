@@ -17,14 +17,22 @@ use std::process::Command;
 /// implemented when the brightway2 service is ready.
 pub fn submit_lca(inventory_path: &str) -> GeoResult<String> {
     // Security: validate path to prevent command injection
-    if inventory_path.contains('\'') || inventory_path.contains('"') || inventory_path.contains(';') || inventory_path.contains('|') {
+    if inventory_path.contains('\'')
+        || inventory_path.contains('"')
+        || inventory_path.contains(';')
+        || inventory_path.contains('|')
+    {
         return Err(geo_core::errors::GeoError::Validation(
-            "Invalid inventory path: contains unsafe characters".into()
+            "Invalid inventory path: contains unsafe characters".into(),
         ));
     }
     // Pass as script argument, not inline code
     let output = Command::new("python")
-        .args(["-c", "import sys; print(f'LCA WIP: inventory={sys.argv[1]}')", inventory_path])
+        .args([
+            "-c",
+            "import sys; print(f'LCA WIP: inventory={sys.argv[1]}')",
+            inventory_path,
+        ])
         .output()
         .map_err(|e| geo_core::errors::GeoError::ExternalProcess {
             command: "lca".into(),

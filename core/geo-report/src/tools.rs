@@ -1,14 +1,17 @@
 //! Tool registration — Report generation.
 use geo_core::plugin::PluginCategory;
-use geo_registry::PluginRegistry;
 use geo_registry::registry::{ToolDef, ToolResult};
+use geo_registry::PluginRegistry;
 use std::path::PathBuf;
 
 pub fn register_tools(registry: &mut PluginRegistry) {
     registry.register(geo_core::plugin::PluginMeta {
-        name: "report".into(), version: env!("CARGO_PKG_VERSION").into(),
+        name: "report".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
         description: "Markdown/HTML report generation".into(),
-        category: PluginCategory::Output, healthy: true, extra: serde_json::json!({}),
+        category: PluginCategory::Output,
+        healthy: true,
+        extra: serde_json::json!({}),
     });
     registry.register_tool_sync("report", ToolDef {
         name: "report_carbon".into(), description: "Generate a carbon accounting report (Markdown)".into(),
@@ -55,4 +58,3 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         Ok(serde_json::json!({"output": output}))
     });
 }
-

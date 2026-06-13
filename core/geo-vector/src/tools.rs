@@ -1,30 +1,51 @@
 //! Tool registration — Vector ops.
 use geo_core::plugin::PluginCategory;
-use geo_registry::PluginRegistry;
 use geo_registry::registry::{ToolDef, ToolResult};
+use geo_registry::PluginRegistry;
 use geo_types::{LineString, Polygon};
 
 fn parse_polygon(geojson: &str) -> Result<Polygon<f64>, geo_core::GeoError> {
     let v: serde_json::Value = serde_json::from_str(geojson).map_err(geo_core::GeoError::Serde)?;
-    let ring = v["coordinates"].as_array().and_then(|r| r[0].as_array())
-        .ok_or_else(|| geo_core::GeoError::invalid_input("geojson","expected Polygon"))?;
-    let pts: Vec<_> = ring.iter().filter_map(|c| Some(geo_types::Coord{x:c[0].as_f64()?,y:c[1].as_f64()?})).collect();
+    let ring = v["coordinates"]
+        .as_array()
+        .and_then(|r| r[0].as_array())
+        .ok_or_else(|| geo_core::GeoError::invalid_input("geojson", "expected Polygon"))?;
+    let pts: Vec<_> = ring
+        .iter()
+        .filter_map(|c| {
+            Some(geo_types::Coord {
+                x: c[0].as_f64()?,
+                y: c[1].as_f64()?,
+            })
+        })
+        .collect();
     Ok(Polygon::new(LineString::from(pts), vec![]))
 }
 fn polygon_to_json(poly: &Polygon<f64>) -> serde_json::Value {
-    let c: Vec<Vec<f64>> = poly.exterior().points().map(|p| vec![p.x(),p.y()]).collect();
+    let c: Vec<Vec<f64>> = poly
+        .exterior()
+        .points()
+        .map(|p| vec![p.x(), p.y()])
+        .collect();
     serde_json::json!({"type":"Polygon","coordinates":[c]})
 }
 fn multipolygon_to_json(mp: &geo_types::MultiPolygon<f64>) -> serde_json::Value {
     let polys: Vec<serde_json::Value> = mp.iter().map(|p| polygon_to_json(p)).collect();
-    if polys.len()==1 { polys.into_iter().next().unwrap() } else { serde_json::json!({"type":"MultiPolygon","coordinates":polys}) }
+    if polys.len() == 1 {
+        polys.into_iter().next().unwrap()
+    } else {
+        serde_json::json!({"type":"MultiPolygon","coordinates":polys})
+    }
 }
 
 pub fn register_tools(registry: &mut PluginRegistry) {
     registry.register(geo_core::plugin::PluginMeta {
-        name: "vector".into(), version: env!("CARGO_PKG_VERSION").into(),
+        name: "vector".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
         description: "Pure-Rust vector ops: buffer, intersect, area, centroid".into(),
-        category: PluginCategory::Process, healthy: true, extra: serde_json::json!({}),
+        category: PluginCategory::Process,
+        healthy: true,
+        extra: serde_json::json!({}),
     });
     registry.register_tool_sync("vector", ToolDef {
         name: "vector_buffer".into(), description: "Create a bbox buffer around a Polygon".into(),

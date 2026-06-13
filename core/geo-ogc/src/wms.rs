@@ -5,8 +5,8 @@
 //! - `GetMap` — render a map image (PNG/JPEG/GeoTIFF)
 //! - `GetFeatureInfo` — query feature attributes at a pixel location
 
-use serde::{Serialize, Deserialize};
 use crate::common::{OgcError, ServiceType, Wgs84Bbox};
+use serde::{Deserialize, Serialize};
 
 /// WMS request types per OGC WMS 1.3.0 spec.
 #[derive(Debug, Clone)]
@@ -46,7 +46,9 @@ pub struct GetMapParams {
     pub bgcolor: Option<String>,
 }
 
-fn default_format() -> String { "image/png".into() }
+fn default_format() -> String {
+    "image/png".into()
+}
 
 /// Parameters for a GetFeatureInfo request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,8 +70,12 @@ pub struct GetFeatureInfoParams {
     pub feature_count: u32,
 }
 
-fn default_info_format() -> String { "application/json".into() }
-fn default_feature_count() -> u32 { 1 }
+fn default_info_format() -> String {
+    "application/json".into()
+}
+fn default_feature_count() -> u32 {
+    1
+}
 
 /// A WMS layer definition (exposed in GetCapabilities).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -150,10 +156,13 @@ impl WmsService {
         // Validate dimensions
         if params.width > self.max_width || params.height > self.max_height {
             return Err(OgcError::new(
-                ServiceType::WMS, "1.3.0",
+                ServiceType::WMS,
+                "1.3.0",
                 "InvalidParameterValue",
-                format!("Image dimensions {}x{} exceed max {}x{}",
-                    params.width, params.height, self.max_width, self.max_height),
+                format!(
+                    "Image dimensions {}x{} exceed max {}x{}",
+                    params.width, params.height, self.max_width, self.max_height
+                ),
             ));
         }
 
@@ -161,7 +170,8 @@ impl WmsService {
         for layer_name in &params.layers {
             if !self.layers.iter().any(|l| l.name == *layer_name) {
                 return Err(OgcError::new(
-                    ServiceType::WMS, "1.3.0",
+                    ServiceType::WMS,
+                    "1.3.0",
                     "LayerNotDefined",
                     format!("Layer '{}' not found", layer_name),
                 ));
@@ -183,21 +193,26 @@ impl WmsService {
         })
     }
 
-    fn handle_get_feature_info(&self, params: &GetFeatureInfoParams) -> Result<WmsResponse, OgcError> {
+    fn handle_get_feature_info(
+        &self,
+        params: &GetFeatureInfoParams,
+    ) -> Result<WmsResponse, OgcError> {
         // Validate query layers
         for layer_name in &params.query_layers {
             let layer = self.layers.iter().find(|l| l.name == *layer_name);
             match layer {
                 Some(l) if !l.queryable => {
                     return Err(OgcError::new(
-                        ServiceType::WMS, "1.3.0",
+                        ServiceType::WMS,
+                        "1.3.0",
                         "LayerNotQueryable",
                         format!("Layer '{}' is not queryable", layer_name),
                     ));
                 }
                 None => {
                     return Err(OgcError::new(
-                        ServiceType::WMS, "1.3.0",
+                        ServiceType::WMS,
+                        "1.3.0",
                         "LayerNotDefined",
                         format!("Layer '{}' not found", layer_name),
                     ));
@@ -220,7 +235,8 @@ impl WmsService {
 
     /// Build WMS 1.3.0 GetCapabilities XML document.
     pub fn build_capabilities_xml(&self) -> String {
-        let layers_xml: String = self.layers
+        let layers_xml: String = self
+            .layers
             .iter()
             .map(|l| self.layer_to_xml(l))
             .collect::<Vec<_>>()
@@ -278,15 +294,28 @@ impl WmsService {
         <northBoundLatitude>{north}</northBoundLatitude>
       </EX_GeographicBoundingBox>
       <BoundingBox CRS="EPSG:4326" minx="{west}" miny="{south}" maxx="{east}" maxy="{north}"/>"#,
-                west = bbox.west, east = bbox.east, south = bbox.south, north = bbox.north
+                west = bbox.west,
+                east = bbox.east,
+                south = bbox.south,
+                north = bbox.north
             )
         } else {
             String::new()
         };
 
-        let crs_xml: String = layer.crs.iter().map(|c| format!("      <CRS>{c}</CRS>")).collect::<Vec<_>>().join("\n");
+        let crs_xml: String = layer
+            .crs
+            .iter()
+            .map(|c| format!("      <CRS>{c}</CRS>"))
+            .collect::<Vec<_>>()
+            .join("\n");
 
-        let children_xml: String = layer.children.iter().map(|c| self.layer_to_xml(c)).collect::<Vec<_>>().join("\n");
+        let children_xml: String = layer
+            .children
+            .iter()
+            .map(|c| self.layer_to_xml(c))
+            .collect::<Vec<_>>()
+            .join("\n");
 
         format!(
             r#"      <Layer queryable="{queryable}">

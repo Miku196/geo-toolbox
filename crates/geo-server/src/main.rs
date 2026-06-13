@@ -4,7 +4,11 @@
 //! Usage: `cargo run -p geo-server --release`
 //! Server listens on http://0.0.0.0:9378
 
-use axum::{Router, routing::{get, post}, extract::{Path, State}, Json};
+use axum::{
+    extract::{Path, State},
+    routing::{get, post},
+    Json, Router,
+};
 use geo_registry::PluginRegistry;
 use std::sync::Arc;
 
@@ -25,7 +29,9 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn health() -> &'static str { "ok" }
+async fn health() -> &'static str {
+    "ok"
+}
 
 async fn list_tools(State(reg): State<Arc<PluginRegistry>>) -> Json<serde_json::Value> {
     Json(reg.generate_mcp_tools())

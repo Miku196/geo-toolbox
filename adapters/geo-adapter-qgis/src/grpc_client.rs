@@ -148,8 +148,7 @@ impl QgisClient {
         let body = serde_json::to_vec(job)?;
 
         let response = Self::http_post_json(&url, &body).await?;
-        let result: JobSubmitResponse =
-            serde_json::from_str(&response).map_err(GeoError::Serde)?;
+        let result: JobSubmitResponse = serde_json::from_str(&response).map_err(GeoError::Serde)?;
 
         tracing::info!(
             "QGIS job submitted: {} (status: {})",
@@ -174,7 +173,10 @@ impl QgisClient {
                     return Ok(status);
                 }
                 "failed" => {
-                    let err = status.error.clone().unwrap_or_else(|| "Unknown error".into());
+                    let err = status
+                        .error
+                        .clone()
+                        .unwrap_or_else(|| "Unknown error".into());
                     tracing::error!("QGIS job {job_id} failed: {err}");
                     return Err(GeoError::ExternalProcess {
                         command: format!("qgis job {job_id}"),
@@ -197,8 +199,7 @@ impl QgisClient {
     pub async fn job_status(&self, job_id: &str) -> GeoResult<JobStatusResponse> {
         let url = format!("{}/status/{job_id}", self.base_url);
         let response = Self::http_get(&url).await?;
-        let status: JobStatusResponse =
-            serde_json::from_str(&response).map_err(GeoError::Serde)?;
+        let status: JobStatusResponse = serde_json::from_str(&response).map_err(GeoError::Serde)?;
 
         Ok(status)
     }
@@ -238,9 +239,7 @@ impl QgisClient {
         };
 
         let job_id = self.submit(&job).await?;
-        let result = self
-            .wait_for_job(&job_id, Duration::from_secs(2))
-            .await?;
+        let result = self.wait_for_job(&job_id, Duration::from_secs(2)).await?;
 
         result
             .output_path
@@ -271,11 +270,7 @@ impl QgisClient {
     }
 
     /// Convenience: reproject a layer.
-    pub async fn reproject(
-        &self,
-        input_path: &str,
-        target_epsg: u16,
-    ) -> GeoResult<String> {
+    pub async fn reproject(&self, input_path: &str, target_epsg: u16) -> GeoResult<String> {
         self.run_tool(
             "native:reprojectlayer",
             serde_json::json!({
@@ -301,13 +296,18 @@ impl QgisClient {
             .build()
             .map_err(|e| GeoError::Other(format!("reqwest: {e}")))?;
 
-        let resp = client.get(url).send().await
+        let resp = client
+            .get(url)
+            .send()
+            .await
             .map_err(|e| GeoError::ExternalProcess {
                 command: format!("GET {url}"),
                 message: e.to_string(),
             })?;
 
-        let body = resp.text().await
+        let body = resp
+            .text()
+            .await
             .map_err(|e| GeoError::Other(format!("read response: {e}")))?;
 
         Ok(body)
@@ -320,16 +320,20 @@ impl QgisClient {
             .build()
             .map_err(|e| GeoError::Other(format!("reqwest: {e}")))?;
 
-        let resp = client.post(url)
+        let resp = client
+            .post(url)
             .header("Content-Type", "application/json")
             .body(body.to_vec())
-            .send().await
+            .send()
+            .await
             .map_err(|e| GeoError::ExternalProcess {
                 command: format!("POST {url}"),
                 message: e.to_string(),
             })?;
 
-        let resp_body = resp.text().await
+        let resp_body = resp
+            .text()
+            .await
             .map_err(|e| GeoError::Other(format!("read response: {e}")))?;
 
         Ok(resp_body)

@@ -1,7 +1,7 @@
 use geo_core::errors::{GeoError, GeoResult};
 use geo_core::types::BBox;
-use geo_raster::RasterBand;
 use geo_raster::ndvi::compute_ndvi;
+use geo_raster::RasterBand;
 use serde::{Deserialize, Serialize};
 
 use crate::config::ForestryConfig;
@@ -43,7 +43,9 @@ pub enum GrowthModel {
 }
 
 impl Default for GrowthModel {
-    fn default() -> Self { Self::Richards }
+    fn default() -> Self {
+        Self::Richards
+    }
 }
 
 impl GrowthModel {
@@ -64,7 +66,9 @@ impl GrowthModel {
     /// 公式: a * (1 - exp(-b * (S/1000)^c * AGE))^d
     pub fn predict_biomass(age: f64, sdi: f64, a: f64, b: f64, c: f64, d: f64) -> f64 {
         let x = (sdi / 1000.0).powf(c) * age;
-        if x * b < 1e-16 { return 0.0; }
+        if x * b < 1e-16 {
+            return 0.0;
+        }
         a * (1.0 - (-b * x).exp()).powf(d)
     }
 }
@@ -110,12 +114,14 @@ pub struct ForestryPlugin {
 }
 
 impl ForestryPlugin {
-    pub fn new(config: ForestryConfig) -> Self { Self { config } }
+    pub fn new(config: ForestryConfig) -> Self {
+        Self { config }
+    }
 
     pub fn from_file(path: &std::path::Path) -> GeoResult<Self> {
         let s = std::fs::read_to_string(path)?;
-        let config: ForestryConfig = toml::from_str(&s)
-            .map_err(|e| geo_core::GeoError::Validation(e.to_string()))?;
+        let config: ForestryConfig =
+            toml::from_str(&s).map_err(|e| geo_core::GeoError::Validation(e.to_string()))?;
         Ok(Self { config })
     }
 
@@ -153,8 +159,15 @@ impl ForestryPlugin {
         // 按树高等距划分初始立地等级
         let mut classes: Vec<u32> = vec![0; plots.len()];
         let h_min = plots.iter().map(|p| p.height).fold(f64::INFINITY, f64::min);
-        let h_max = plots.iter().map(|p| p.height).fold(f64::NEG_INFINITY, f64::max);
-        let class_width = if h_max > h_min { (h_max - h_min) / n_classes as f64 } else { 1.0 };
+        let h_max = plots
+            .iter()
+            .map(|p| p.height)
+            .fold(f64::NEG_INFINITY, f64::max);
+        let class_width = if h_max > h_min {
+            (h_max - h_min) / n_classes as f64
+        } else {
+            1.0
+        };
 
         for (i, p) in plots.iter().enumerate() {
             let c = ((p.height - h_min) / class_width).floor() as u32;
@@ -163,11 +176,17 @@ impl ForestryPlugin {
 
         let asymptotes: Vec<f64> = (1..=n_classes)
             .map(|c| {
-                let hs: Vec<f64> = plots.iter().zip(&classes)
+                let hs: Vec<f64> = plots
+                    .iter()
+                    .zip(&classes)
                     .filter(|(_, &cc)| cc == c)
                     .map(|(p, _)| p.height)
                     .collect();
-                if hs.is_empty() { 0.0 } else { hs.iter().sum::<f64>() / hs.len() as f64 }
+                if hs.is_empty() {
+                    0.0
+                } else {
+                    hs.iter().sum::<f64>() / hs.len() as f64
+                }
             })
             .map(|avg_h| avg_h * 1.05)
             .collect();
@@ -218,13 +237,19 @@ impl ForestryPlugin {
         let mut f2 = mi_at_sdi(x2);
 
         for _ in 0..max_iter {
-            if (hi - lo).abs() < tolerance { break; }
+            if (hi - lo).abs() < tolerance {
+                break;
+            }
             if f1 < f2 {
-                lo = x1; x1 = x2; f1 = f2;
+                lo = x1;
+                x1 = x2;
+                f1 = f2;
                 x2 = lo + phi * (hi - lo);
                 f2 = mi_at_sdi(x2);
             } else {
-                hi = x2; x2 = x1; f2 = f1;
+                hi = x2;
+                x2 = x1;
+                f2 = f1;
                 x1 = lo + inv * (hi - lo);
                 f1 = mi_at_sdi(x1);
             }
@@ -277,7 +302,11 @@ impl ForestryPlugin {
         let mean_base = ndvi_base.mean_ndvi.unwrap_or(0.0);
         let mean_curr = ndvi_curr.mean_ndvi.unwrap_or(0.0);
 
-        let volume_factor = if mean_base > 0.0 { mean_curr / mean_base } else { 1.0 };
+        let volume_factor = if mean_base > 0.0 {
+            mean_curr / mean_base
+        } else {
+            1.0
+        };
         let volume_curr_m3_ha = sample_volume_m3_ha * volume_factor;
         let volume_change_m3 = (volume_curr_m3_ha - sample_volume_m3_ha) * forest_area_ha;
 
@@ -295,11 +324,20 @@ impl ForestryPlugin {
         let ccer_applicable = annual_sink < -10.0 && forest_area_ha >= 100.0;
 
         let (grade, summary) = if annual_sink < -50.0 {
-            ("🏆 优秀碳汇", format!("{aoi_name} 年碳汇 {:.0} tCO₂/yr，CCER可开发", -annual_sink))
+            (
+                "🏆 优秀碳汇",
+                format!("{aoi_name} 年碳汇 {:.0} tCO₂/yr，CCER可开发", -annual_sink),
+            )
         } else if annual_sink < -10.0 {
-            ("✅ 良好碳汇", format!("{aoi_name} 年碳汇 {:.0} tCO₂/yr", -annual_sink))
+            (
+                "✅ 良好碳汇",
+                format!("{aoi_name} 年碳汇 {:.0} tCO₂/yr", -annual_sink),
+            )
         } else if annual_sink < 0.0 {
-            ("⚠ 弱碳汇", format!("{aoi_name} 碳汇偏弱，建议补植高碳汇树种"))
+            (
+                "⚠ 弱碳汇",
+                format!("{aoi_name} 碳汇偏弱，建议补植高碳汇树种"),
+            )
         } else {
             ("❌ 碳源", format!("{aoi_name} 为净碳排放源"))
         };
@@ -341,15 +379,19 @@ impl ForestryPlugin {
         let tau_map = ts.pixelwise_trend()?;
         let stats = ts.yearly_stats();
 
-        let positive_ratio = tau_map.data.iter()
+        let positive_ratio = tau_map
+            .data
+            .iter()
             .filter(|&&v| !v.is_nan() && v != tau_map.nodata && v > 0.0)
-            .count() as f64 / tau_map.data.len() as f64;
+            .count() as f64
+            / tau_map.data.len() as f64;
 
         let mean_ndvi_now = stats.last().and_then(|s| s.mean_ndvi).unwrap_or(0.0);
 
         Ok(format!(
             "{aoi_name} 林业趋势: {:.0}% 像素恢复, 当前均NDVI {:.2}",
-            positive_ratio * 100.0, mean_ndvi_now
+            positive_ratio * 100.0,
+            mean_ndvi_now
         ))
     }
 }
@@ -373,11 +415,20 @@ mod tests {
         let red_curr = make_band(vec![0.10, 0.11]);
         let nir_curr = make_band(vec![0.55, 0.58]);
 
-        let result = plugin.assess_carbon_stock(
-            "测试林场", aoi,
-            &red_base, &nir_base, &red_curr, &nir_curr,
-            2020, 2025, 200.0, 500.0,
-        ).unwrap();
+        let result = plugin
+            .assess_carbon_stock(
+                "测试林场",
+                aoi,
+                &red_base,
+                &nir_base,
+                &red_curr,
+                &nir_curr,
+                2020,
+                2025,
+                200.0,
+                500.0,
+            )
+            .unwrap();
 
         assert!(result.carbon_sink_tco2e < 0.0);
         assert!(result.annual_sink_tco2_per_yr < 0.0);
@@ -413,16 +464,20 @@ mod tests {
     fn test_site_classification() {
         let config = ForestryConfig::default();
         let plugin = ForestryPlugin::new(config);
-        let plots = (0..30).map(|i| PlotData {
-            id: format!("P{i:03}"),
-            age: 20.0 + (i as f64 % 5.0) * 5.0,
-            height: 3.0 + (i as f64 % 3.0) * 4.0,
-            sdi: 500.0,
-            basal_area: 20.0,
-            biomass: 100.0,
-        }).collect::<Vec<_>>();
+        let plots = (0..30)
+            .map(|i| PlotData {
+                id: format!("P{i:03}"),
+                age: 20.0 + (i as f64 % 5.0) * 5.0,
+                height: 3.0 + (i as f64 % 3.0) * 4.0,
+                sdi: 500.0,
+                basal_area: 20.0,
+                biomass: 100.0,
+            })
+            .collect::<Vec<_>>();
 
-        let result = plugin.site_classification(&plots, GrowthModel::Richards, 3, 10).unwrap();
+        let result = plugin
+            .site_classification(&plots, GrowthModel::Richards, 3, 10)
+            .unwrap();
         assert_eq!(result.classes.len(), 30);
         assert_eq!(result.asymptotes.len(), 3);
     }
@@ -440,7 +495,9 @@ mod tests {
             iterations: 5,
         };
 
-        let pp = plugin.potential_productivity(&sites, 30, 20.0, 3000.0, 0.1, 50).unwrap();
+        let pp = plugin
+            .potential_productivity(&sites, 30, 20.0, 3000.0, 0.1, 50)
+            .unwrap();
         assert!(pp.max_annual_increment_t_per_ha > 0.0);
         assert!(pp.optimal_sdi > 0.0);
         assert_eq!(pp.age, 30);

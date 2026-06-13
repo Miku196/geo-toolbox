@@ -3,8 +3,8 @@
 //! Extended with multi-gas breakdown, uncertainty tracking, audit trail,
 //! and GHG Protocol scope classification.
 
-use serde::{Serialize, Deserialize};
-use crate::factor::{GreenhouseGas, EmissionScope};
+use crate::factor::{EmissionScope, GreenhouseGas};
+use serde::{Deserialize, Serialize};
 
 // ── Scope Summary ─────────────────────────────────────────────
 
@@ -78,13 +78,13 @@ impl GasBreakdown {
         let mut bd = GasBreakdown::default();
         for (gas, tco2e) in contributions {
             match gas {
-                GreenhouseGas::CO2  => bd.co2_tco2e += tco2e,
-                GreenhouseGas::CH4  => bd.ch4_tco2e += tco2e,
-                GreenhouseGas::N2O  => bd.n2o_tco2e += tco2e,
+                GreenhouseGas::CO2 => bd.co2_tco2e += tco2e,
+                GreenhouseGas::CH4 => bd.ch4_tco2e += tco2e,
+                GreenhouseGas::N2O => bd.n2o_tco2e += tco2e,
                 GreenhouseGas::HFCs
                 | GreenhouseGas::PFCs
                 | GreenhouseGas::SF6
-                | GreenhouseGas::NF3  => bd.other_tco2e += tco2e,
+                | GreenhouseGas::NF3 => bd.other_tco2e += tco2e,
             }
         }
         bd
@@ -323,8 +323,15 @@ mod tests {
 
     #[test]
     fn test_gas_breakdown_merge() {
-        let mut a = GasBreakdown { co2_tco2e: 5.0, ..Default::default() };
-        let b = GasBreakdown { ch4_tco2e: 3.0, n2o_tco2e: 1.0, ..Default::default() };
+        let mut a = GasBreakdown {
+            co2_tco2e: 5.0,
+            ..Default::default()
+        };
+        let b = GasBreakdown {
+            ch4_tco2e: 3.0,
+            n2o_tco2e: 1.0,
+            ..Default::default()
+        };
         a.merge(&b);
         assert!((a.co2_tco2e - 5.0).abs() < 0.001);
         assert!((a.ch4_tco2e - 3.0).abs() < 0.001);
@@ -350,13 +357,17 @@ mod tests {
     #[test]
     fn test_relative_uncertainty() {
         let report = CarbonReport {
-            aoi_name: None, year: 2025,
+            aoi_name: None,
+            year: 2025,
             classes: vec![],
             total_area_ha: 100.0,
             total_emission_tco2e: -100.0,
-            total_features: 0, classified_features: 0, skipped_features: 0,
+            total_features: 0,
+            classified_features: 0,
+            skipped_features: 0,
             calculated_at: "".into(),
-            auditor: None, methodology: None,
+            auditor: None,
+            methodology: None,
             gas_summary: GasBreakdown::default(),
             uncertainty_total_tco2e: Some(30.0),
             audit_trail: vec![],

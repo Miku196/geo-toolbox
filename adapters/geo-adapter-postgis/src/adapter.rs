@@ -3,11 +3,11 @@
 //! 实现 ExternalAdapter trait：push 写入空间数据、pull 查询空间数据、
 //! execute 执行任意 SQL。内部复用 PostgisStore 的连接池。
 
-use geo_core::errors::{GeoError, GeoResult};
-use geo_core::plugin::{ExternalAdapter, Plugin, PluginCategory};
-use geo_core::plugin::GeoFeature;
-use sqlx::Column;
 use crate::PostgisStore;
+use geo_core::errors::{GeoError, GeoResult};
+use geo_core::plugin::GeoFeature;
+use geo_core::plugin::{ExternalAdapter, Plugin, PluginCategory};
+use sqlx::Column;
 
 /// PostGIS 适配器。
 ///
@@ -28,11 +28,16 @@ impl PostgisAdapter {
     /// 创建适配器（不立即连接）。
     /// 调用 `init()` 后建立数据库连接。
     pub fn new(url: &str) -> Self {
-        Self { url: url.to_string(), store: None }
+        Self {
+            url: url.to_string(),
+            store: None,
+        }
     }
 
     /// 连接字符串。
-    pub fn url(&self) -> &str { &self.url }
+    pub fn url(&self) -> &str {
+        &self.url
+    }
 
     /// 获取内部存储句柄（init 后可用）。
     pub fn store(&self) -> Option<&PostgisStore> {
@@ -41,10 +46,18 @@ impl PostgisAdapter {
 }
 
 impl Plugin for PostgisAdapter {
-    fn name(&self) -> &str { "postgis" }
-    fn version(&self) -> &str { env!("CARGO_PKG_VERSION") }
-    fn description(&self) -> &str { "PostGIS bidirectional adapter for spatial data storage" }
-    fn category(&self) -> PluginCategory { PluginCategory::Adapter }
+    fn name(&self) -> &str {
+        "postgis"
+    }
+    fn version(&self) -> &str {
+        env!("CARGO_PKG_VERSION")
+    }
+    fn description(&self) -> &str {
+        "PostGIS bidirectional adapter for spatial data storage"
+    }
+    fn category(&self) -> PluginCategory {
+        PluginCategory::Adapter
+    }
 
     fn init(&mut self) -> GeoResult<()> {
         if self.url.is_empty() {
@@ -73,18 +86,23 @@ impl Plugin for PostgisAdapter {
     }
 
     fn is_healthy(&self) -> bool {
-        self.store.as_ref().map(|s| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("tokio runtime for is_healthy");
-            rt.block_on(s.ping()).is_ok()
-        }).unwrap_or(false)
+        self.store
+            .as_ref()
+            .map(|s| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("tokio runtime for is_healthy");
+                rt.block_on(s.ping()).is_ok()
+            })
+            .unwrap_or(false)
     }
 }
 
 impl ExternalAdapter for PostgisAdapter {
-    fn external_endpoint(&self) -> &str { &self.url }
+    fn external_endpoint(&self) -> &str {
+        &self.url
+    }
 
     async fn health_check(&self) -> GeoResult<bool> {
         if let Some(ref store) = self.store {
@@ -128,7 +146,9 @@ impl ExternalAdapter for PostgisAdapter {
         Ok("PostgreSQL+PostGIS (via geo-store)".into())
     }
 
-    fn requires_network(&self) -> bool { true }
+    fn requires_network(&self) -> bool {
+        true
+    }
 
     /// 推送 GeoFeature 数据到指定表。
     ///
@@ -141,7 +161,9 @@ impl ExternalAdapter for PostgisAdapter {
 
         geo_core::errors::validate_sql_identifier(table)?;
 
-        let store = self.store.as_ref()
+        let store = self
+            .store
+            .as_ref()
             .ok_or_else(|| GeoError::Other("PostgisAdapter not initialized".into()))?;
 
         push_features(store, table, data).await
@@ -152,7 +174,9 @@ impl ExternalAdapter for PostgisAdapter {
     /// 查询结果会尝试提取 geometry 列（geom/geometry/geojson 名），
     /// 其余列放入 properties。
     async fn pull(&self, query: &str) -> GeoResult<Vec<GeoFeature>> {
-        let store = self.store.as_ref()
+        let store = self
+            .store
+            .as_ref()
             .ok_or_else(|| GeoError::Other("PostgisAdapter not initialized".into()))?;
 
         // Security: validate SELECT-only SQL
@@ -170,8 +194,14 @@ impl ExternalAdapter for PostgisAdapter {
     ///
     /// 安全：仅允许 SELECT 查询，拒绝 INSERT/UPDATE/DELETE/DROP/TRUNCATE/ALTER。
     /// 生产环境建议使用只读数据库用户。
-    async fn execute(&self, command: &str, params: serde_json::Value) -> GeoResult<serde_json::Value> {
-        let store = self.store.as_ref()
+    async fn execute(
+        &self,
+        command: &str,
+        params: serde_json::Value,
+    ) -> GeoResult<serde_json::Value> {
+        let store = self
+            .store
+            .as_ref()
             .ok_or_else(|| GeoError::Other("PostgisAdapter not initialized".into()))?;
 
         let sql = build_sql(command, &params)?;
@@ -265,7 +295,11 @@ async fn push_features(store: &PostgisStore, table: &str, data: &[GeoFeature]) -
         }
     }
 
-    tracing::info!("push_features: inserted {count}/{len} features into {table}", count = count, len = data.len());
+    tracing::info!(
+        "push_features: inserted {count}/{len} features into {table}",
+        count = count,
+        len = data.len()
+    );
     Ok(count)
 }
 
@@ -360,7 +394,9 @@ fn build_sql(command: &str, params: &serde_json::Value) -> GeoResult<String> {
     if !command.is_empty() {
         return Ok(command.to_string());
     }
-    Err(GeoError::Validation("No SQL provided in command or params.sql".into()))
+    Err(GeoError::Validation(
+        "No SQL provided in command or params.sql".into(),
+    ))
 }
 
 #[cfg(test)]
