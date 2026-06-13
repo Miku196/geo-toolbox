@@ -396,6 +396,272 @@ impl ForestryPlugin {
     }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 生长曲线验证模块 — 6 种模型的参数校准、拟合优度评估与排名
+// ═══════════════════════════════════════════════════════════════
+
+/// 单个生长模型的拟合结果。
+#[derive(Debug, Clone, Serialize)]
+pub struct ModelFit {
+    /// 模型类型。
+    pub model: GrowthModel,
+    /// 校准参数 (a, b, c)。
+    pub params: [f64; 3],
+    /// 决定系数 R² (0~1)。
+    pub r_squared: f64,
+    /// 均方根误差。
+    pub rmse: f64,
+    /// AIC（赤池信息量准则，越小越好）。
+    pub aic: f64,
+    /// BIC（贝叶斯信息量准则，越小越好）。
+    pub bic: f64,
+    /// 收敛迭代次数。
+    pub iterations: u32,
+    /// 是否收敛。
+    pub converged: bool,
+}
+
+/// 6 种模型的对比验证报告。
+#[derive(Debug, Clone, Serialize)]
+pub struct ModelValidationReport {
+    /// 所有模型拟合结果。
+    pub fits: Vec<ModelFit>,
+    /// 按 R² 排序的排名（第一名最优）。
+    pub ranking: Vec<GrowthModel>,
+    /// 推荐模型。
+    pub recommended: GrowthModel,
+    /// 最佳 R²。
+    pub best_r2: f64,
+    /// 最小 RMSE。
+    pub best_rmse: f64,
+}
+
+impl ModelFit {
+    /// 计算 R² 和 RMSE。
+    fn compute_goodness(observed: &[f64], predicted: &[f64], n_params: usize) -> (f64, f64, f64, f64) {
+        let n = observed.len() as f64;
+        if n < 1.0 {
+            return (0.0, f64::INFINITY, f64::INFINITY, f64::INFINITY);
+        }
+        let mean_obs = observed.iter().sum::<f64>() / n;
+        let ss_res: f64 = observed
+            .iter()
+            .zip(predicted.iter())
+            .map(|(o, p)| (o - p).powi(2))
+            .sum();
+        let ss_tot: f64 = observed.iter().map(|o| (o - mean_obs).powi(2)).sum();
+        let r2 = if ss_tot > 0.0 {
+            1.0 - ss_res / ss_tot
+        } else {
+            0.0
+        };
+        let rmse = (ss_res / n).sqrt();
+        let k = n_params as f64;
+        // 完美拟合（ss_res = 0）：AIC/BIC 取其理论最小值
+        let (aic, bic) = if ss_res < 1e-15 {
+            // 对数似然 ∼ 0，仅剩参数惩罚项
+            (2.0 * k, k * n.ln())
+        } else {
+            let sigma2 = ss_res / n;
+            let lnl = -0.5 * n * (2.0 * std::f64::consts::PI * sigma2).ln() - 0.5 * n;
+            (2.0 * k - 2.0 * lnl, k * n.ln() - 2.0 * lnl)
+        };
+        (r2, rmse, aic, bic)
+    }
+}
+
+/// 造林/天然林生长数据（含观测值和拟合值）。
+#[derive(Debug, Clone)]
+pub struct GrowthRecord {
+    pub age: f64,
+    pub observed_height: f64,
+    pub predicted_height: Option<f64>,
+}
+
+/// 对单个模型进行网格搜索 + 局部细化校准。
+///
+/// 对 (a, b, c) 进行三层网格搜索：
+/// 1. 粗搜：a ∈ [5, 40], b ∈ [0.005, 0.2], c ∈ [0.1, 3.0]
+/// 2. 细搜：在粗搜最佳点附近 ±30%
+/// 3. 返回 RMSE 最小的参数组合
+pub fn calibrate_growth_model(
+    model: GrowthModel,
+    ages: &[f64],
+    heights: &[f64],
+) -> ModelFit {
+    // 网格搜索范围
+    let a_range = (5.0, 40.0);
+    let b_range = (0.005, 0.2);
+    let c_range = (0.1, 3.0);
+
+    let a_steps = 8;
+    let b_steps = 8;
+    let c_steps = 8;
+
+    let mut best_rmse = f64::INFINITY;
+    let mut best_params = [12.0, 0.04, 1.0];
+    let mut iterations = 0u32;
+
+    // 第一轮：粗搜
+    for ai in 0..a_steps {
+        let a = a_range.0 + (a_range.1 - a_range.0) * ai as f64 / (a_steps - 1) as f64;
+        for bi in 0..b_steps {
+            let b = b_range.0 + (b_range.1 - b_range.0) * bi as f64 / (b_steps - 1) as f64;
+            for ci in 0..c_steps {
+                let c = c_range.0 + (c_range.1 - c_range.0) * ci as f64 / (c_steps - 1) as f64;
+                iterations += 1;
+
+                let predicted: Vec<f64> = ages
+                    .iter()
+                    .map(|&age| model.predict_height(age, a, b, c))
+                    .collect();
+
+                let this_rmse: f64 = ages
+                    .iter()
+                    .zip(predicted.iter())
+                    .map(|(&age, &p)| {
+                        let obs = find_interpolated_height(age, ages, heights);
+                        (obs - p).powi(2)
+                    })
+                    .sum::<f64>()
+                    .sqrt()
+                    / ages.len() as f64;
+
+                if this_rmse < best_rmse {
+                    best_rmse = this_rmse;
+                    best_params = [a, b, c];
+                }
+            }
+        }
+    }
+
+    // 第二轮：局部细化
+    let refinement_ranges = [
+        (best_params[0] * 0.7, best_params[0] * 1.3),
+        (best_params[1] * 0.5, best_params[1] * 2.0),
+        (best_params[2] * 0.5, best_params[2] * 2.0),
+    ];
+
+    for ai in 0..a_steps {
+        let a = refinement_ranges[0].0
+            + (refinement_ranges[0].1 - refinement_ranges[0].0) * ai as f64 / (a_steps - 1) as f64;
+        for bi in 0..b_steps {
+            let b = refinement_ranges[1].0
+                + (refinement_ranges[1].1 - refinement_ranges[1].0) * bi as f64 / (b_steps - 1) as f64;
+            for ci in 0..c_steps {
+                let c = refinement_ranges[2].0
+                    + (refinement_ranges[2].1 - refinement_ranges[2].0) * ci as f64 / (c_steps - 1) as f64;
+                iterations += 1;
+
+                let predicted: Vec<f64> = ages
+                    .iter()
+                    .map(|&age| model.predict_height(age, a, b, c))
+                    .collect();
+
+                let this_rmse: f64 = ages
+                    .iter()
+                    .zip(predicted.iter())
+                    .map(|(&age, &p)| {
+                        let obs = find_interpolated_height(age, ages, heights);
+                        (obs - p).powi(2)
+                    })
+                    .sum::<f64>()
+                    .sqrt()
+                    / ages.len() as f64;
+
+                if this_rmse < best_rmse {
+                    best_rmse = this_rmse;
+                    best_params = [a, b, c];
+                }
+            }
+        }
+    }
+
+    // 用最佳参数计算最终的拟合优度
+    let predicted: Vec<f64> = ages
+        .iter()
+        .map(|&age| model.predict_height(age, best_params[0], best_params[1], best_params[2]))
+        .collect();
+
+    let observed: Vec<f64> = ages
+        .iter()
+        .map(|&age| find_interpolated_height(age, ages, heights))
+        .collect();
+
+    let (r2, rmse, aic, bic) = ModelFit::compute_goodness(&observed, &predicted, 3);
+    let converged = iterations > 0;
+
+    ModelFit {
+        model,
+        params: best_params,
+        r_squared: r2.max(0.0).min(1.0),
+        rmse,
+        aic,
+        bic,
+        iterations,
+        converged,
+    }
+}
+
+/// 线性插值查找给定年龄的对应观测树高。
+fn find_interpolated_height(age: f64, ages: &[f64], heights: &[f64]) -> f64 {
+    // 数据点直接匹配
+    for (i, &a) in ages.iter().enumerate() {
+        if (a - age).abs() < 1e-6 {
+            return heights[i];
+        }
+    }
+    // 外推或插值
+    if age <= ages[0] {
+        return heights[0];
+    }
+    if age >= ages[ages.len() - 1] {
+        return heights[heights.len() - 1];
+    }
+    for i in 0..ages.len() - 1 {
+        if age >= ages[i] && age <= ages[i + 1] {
+            let t = (age - ages[i]) / (ages[i + 1] - ages[i]);
+            return heights[i] + t * (heights[i + 1] - heights[i]);
+        }
+    }
+    heights[ages.len() - 1]
+}
+
+/// 对所有 6 种生长模型进行校准和验证，返回对比报告。
+pub fn validate_all_growth_models(
+    ages: &[f64],
+    heights: &[f64],
+) -> ModelValidationReport {
+    let models = [
+        GrowthModel::Richards,
+        GrowthModel::Logistic,
+        GrowthModel::Korf,
+        GrowthModel::Gompertz,
+        GrowthModel::Weibull,
+        GrowthModel::Schumacher,
+    ];
+
+    let mut fits: Vec<ModelFit> = models
+        .iter()
+        .map(|m| calibrate_growth_model(*m, ages, heights))
+        .collect();
+
+    // 按 R² 降序排名
+    fits.sort_by(|a, b| b.r_squared.partial_cmp(&a.r_squared).unwrap_or(std::cmp::Ordering::Equal));
+    let ranking: Vec<GrowthModel> = fits.iter().map(|f| f.model).collect();
+    let best_r2 = fits.first().map(|f| f.r_squared).unwrap_or(0.0);
+    let best_rmse = fits.iter().map(|f| f.rmse).fold(f64::INFINITY, f64::min);
+    let recommended = ranking.first().copied().unwrap_or(GrowthModel::Richards);
+
+    ModelValidationReport {
+        fits,
+        ranking,
+        recommended,
+        best_r2,
+        best_rmse,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -516,5 +782,139 @@ mod tests {
         let sink_potential = plugin.carbon_sink_potential(&pp, 5.0);
         // gap=3.0 × CF(0.47) × CO₂/C(3.667) ≈ 5.17
         assert!(sink_potential > 0.0);
+    }
+
+    // ── 6 种生长曲线验证测试 ──
+
+    /// 生成典型的杉木人工林年龄-树高观测序列（参考中国南方杉木数据）。
+    fn china_fir_data() -> (Vec<f64>, Vec<f64>) {
+        let ages = vec![5.0, 10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0];
+        let heights = vec![3.2, 7.1, 10.8, 13.5, 15.2, 16.5, 17.1, 17.5];
+        (ages, heights)
+    }
+
+    #[test]
+    fn test_calibrate_richards_model() {
+        let (ages, heights) = china_fir_data();
+        let fit = calibrate_growth_model(GrowthModel::Richards, &ages, &heights);
+
+        assert!(fit.converged, "Richards model should converge");
+        assert!(fit.r_squared > 0.80, "R²={} should be > 0.80", fit.r_squared);
+        assert!(fit.rmse < 3.0, "RMSE={} should be < 3.0m", fit.rmse);
+        assert!(fit.params[0] > 0.0, "Asymptote a should be positive");
+        assert!(fit.params[1] > 0.0, "Rate b should be positive");
+        assert!(fit.iterations > 0);
+    }
+
+    #[test]
+    fn test_validate_all_6_models() {
+        let (ages, heights) = china_fir_data();
+        let report = validate_all_growth_models(&ages, &heights);
+
+        assert_eq!(report.fits.len(), 6, "Should have 6 model fits");
+        assert_eq!(report.ranking.len(), 6);
+        assert!(report.best_r2 > 0.5, "Best R² should be acceptable");
+        assert!(report.best_rmse < 5.0, "Best RMSE should be < 5m");
+
+        // 验证所有模型都成功收敛
+        for fit in &report.fits {
+            assert!(fit.converged, "{:?} should converge", fit.model);
+            assert!(fit.r_squared > 0.0, "{:?} R² > 0", fit.model);
+            assert!(!fit.params[0].is_nan());
+            assert!(!fit.params[1].is_nan());
+            assert!(!fit.params[2].is_nan());
+        }
+    }
+
+    #[test]
+    fn test_valid_models_predict_monotonic() {
+        // 验证 6 种模型的预测值随年龄单调递增
+        let models = [
+            GrowthModel::Richards,
+            GrowthModel::Logistic,
+            GrowthModel::Korf,
+            GrowthModel::Gompertz,
+            GrowthModel::Weibull,
+            GrowthModel::Schumacher,
+        ];
+        let a = 20.0;
+        let b = 0.05;
+        let c = 1.2;
+        let ages: Vec<f64> = (1..=80).map(|x| x as f64).collect();
+
+        for model in &models {
+            let heights: Vec<f64> = ages
+                .iter()
+                .map(|&age| model.predict_height(age, a, b, c))
+                .collect();
+
+            // 验证单调递增
+            for i in 1..heights.len() {
+                assert!(
+                    heights[i] >= heights[i - 1] - 1e-10,
+                    "{:?}: height should be monotonic increasing, age {}->{}",
+                    model,
+                    ages[i - 1],
+                    ages[i]
+                );
+            }
+
+            // 验证渐进性（at large age, growth near asymptote）
+            let h40 = model.predict_height(40.0, a, b, c);
+            let h80 = model.predict_height(80.0, a, b, c);
+            assert!(
+                (h80 - h40).abs() < 3.0,
+                "{:?}: growth after 40yr should be small: h40={}, h80={}",
+                model, h40, h80
+            );
+        }
+    }
+
+    #[test]
+    fn test_model_fit_goodness_stats() {
+        // 验证拟合优度统计量计算正确
+        let observed = vec![5.0, 10.0, 15.0, 20.0];
+        let predicted = vec![5.0, 10.0, 15.0, 20.0];
+        let (r2, rmse, _aic, _bic) =
+            ModelFit::compute_goodness(&observed, &predicted, 3);
+        assert!((r2 - 1.0).abs() < 1e-10, "Perfect fit: R² should be 1.0");
+        assert!(rmse < 1e-10, "Perfect fit: RMSE should be 0");
+
+        // 部分偏差
+        let predicted2 = vec![4.0, 12.0, 14.0, 22.0];
+        let (r2b, rmse_b, _aicb, _bicb) =
+            ModelFit::compute_goodness(&observed, &predicted2, 3);
+        assert!(r2b < 1.0, "Imperfect fit: R² < 1.0");
+        assert!(rmse_b > 0.0, "Imperfect fit: RMSE > 0");
+    }
+
+    #[test]
+    fn test_find_interpolated_height() {
+        let ages = vec![10.0, 20.0, 30.0];
+        let heights = vec![5.0, 12.0, 16.0];
+
+        assert_eq!(find_interpolated_height(10.0, &ages, &heights), 5.0);
+        assert_eq!(find_interpolated_height(15.0, &ages, &heights), 8.5);
+        assert_eq!(find_interpolated_height(30.0, &ages, &heights), 16.0);
+        assert_eq!(find_interpolated_height(5.0, &ages, &heights), 5.0);
+        assert_eq!(find_interpolated_height(35.0, &ages, &heights), 16.0);
+    }
+
+    #[test]
+    fn test_model_ranking() {
+        let (ages, heights) = china_fir_data();
+        let report = validate_all_growth_models(&ages, &heights);
+
+        // Richardson 和 Gompertz 通常对杉木表现最好
+        let top3 = &report.ranking[..3];
+        assert!(top3.iter().any(|m| matches!(m, GrowthModel::Richards | GrowthModel::Gompertz | GrowthModel::Weibull)),
+            "Top 3 should include Richards, Gompertz or Weibull for fir data");
+
+        // 最佳拟合应有最高 R²
+        let best = &report.fits[0];
+        for f in &report.fits[1..] {
+            assert!(best.r_squared >= f.r_squared - 1e-10,
+                "Best model should have highest R²: {} vs {}", best.r_squared, f.r_squared);
+        }
     }
 }

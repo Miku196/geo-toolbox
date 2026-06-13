@@ -69,6 +69,147 @@ impl Default for CogOptions {
     }
 }
 
+/// 输出文件格式（对应 GDAL driver 简称）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OutputDriver {
+    Cog,
+    GeoTiff,
+    Png,
+    Jp2,
+    NetCdf,
+    Bmp,
+}
+
+impl OutputDriver {
+    fn as_driver(&self) -> &'static str {
+        match self {
+            Self::Cog => "COG",
+            Self::GeoTiff => "GTiff",
+            Self::Png => "PNG",
+            Self::Jp2 => "JP2OpenJPEG",
+            Self::NetCdf => "netCDF",
+            Self::Bmp => "BMP",
+        }
+    }
+}
+
+/// 重采样方法（对应 gdalwarp -r）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResamplingMethod {
+    Nearest,
+    Bilinear,
+    Cubic,
+    CubicSpline,
+    Lanczos,
+    Average,
+    Mode,
+    Max,
+    Min,
+    Med,
+    Q1,
+    Q3,
+}
+
+impl ResamplingMethod {
+    fn as_arg(&self) -> &'static str {
+        match self {
+            Self::Nearest => "near",
+            Self::Bilinear => "bilinear",
+            Self::Cubic => "cubic",
+            Self::CubicSpline => "cubicspline",
+            Self::Lanczos => "lanczos",
+            Self::Average => "average",
+            Self::Mode => "mode",
+            Self::Max => "max",
+            Self::Min => "min",
+            Self::Med => "med",
+            Self::Q1 => "q1",
+            Self::Q3 => "q3",
+        }
+    }
+}
+
+/// `gdalwarp` 完整选项。
+#[derive(Debug, Clone)]
+pub struct GdalWarpOptions {
+    /// 输出格式驱动（默认 COG）。
+    pub driver: OutputDriver,
+    /// 目标 EPSG（如 `Some(4326)`）。None=不改变。
+    pub target_epsg: Option<u16>,
+    /// 分辨率 (x, y)，None 则保持原分辨率。
+    pub resolution: Option<(f64, f64)>,
+    /// 重采样方法（默认 Bilinear）。
+    pub resampling: ResamplingMethod,
+    /// 压缩算法（默认 DEFLATE）。
+    pub compression: String,
+    /// 压缩级别 (1–9)。
+    pub compress_level: u8,
+    /// 输出 NoData 值。
+    pub dst_nodata: Option<f64>,
+    /// 裁剪面（矢量路径）。
+    pub cutline: Option<PathBuf>,
+    /// 是否裁剪到裁剪面范围。
+    pub crop_to_cutline: bool,
+    /// 内存限制 (MB)，0=默认。
+    pub warp_memory_mb: usize,
+    /// 多线程 warp pass 数（0=ALL_CPUS）。
+    pub multi: bool,
+}
+
+impl Default for GdalWarpOptions {
+    fn default() -> Self {
+        Self {
+            driver: OutputDriver::Cog,
+            target_epsg: None,
+            resolution: None,
+            resampling: ResamplingMethod::Bilinear,
+            compression: "DEFLATE".into(),
+            compress_level: 6,
+            dst_nodata: None,
+            cutline: None,
+            crop_to_cutline: true,
+            warp_memory_mb: 0,
+            multi: true,
+        }
+    }
+}
+
+/// `gdal_translate` 完整选项。
+#[derive(Debug, Clone)]
+pub struct GdalTranslateOptions {
+    /// 输出格式驱动（默认 COG）。
+    pub driver: OutputDriver,
+    /// 输出数据类型。None=保持输入类型。
+    pub output_type: Option<DataType>,
+    /// 波段选择（1-indexed）。None=输出全部波段。
+    pub bands: Option<Vec<u16>>,
+    /// 缩放参数 `(src_min, src_max, dst_min, dst_max)`。
+    pub scale: Option<(f64, f64, f64, f64)>,
+    /// 压缩算法（默认 DEFLATE）。
+    pub compression: String,
+    /// 压缩级别 (1–9)。
+    pub compress_level: u8,
+    /// 构建内部概览。
+    pub overviews: bool,
+    /// 块大小
+    pub tile_size: u16,
+}
+
+impl Default for GdalTranslateOptions {
+    fn default() -> Self {
+        Self {
+            driver: OutputDriver::Cog,
+            output_type: None,
+            bands: None,
+            scale: None,
+            compression: "DEFLATE".into(),
+            compress_level: 6,
+            overviews: true,
+            tile_size: 256,
+        }
+    }
+}
+
 /// Raster operation utilities via GDAL CLI.
 pub struct RasterOps;
 
@@ -319,6 +460,154 @@ impl RasterOps {
                     .unwrap_or(0.0),
             ],
         })
+    }
+
+    /// 通用 `gdal_translate` 封装 — 支持格式转换、波段选择、缩放、数据类型。
+    pub async fn gdal_translate(
+        input: impl AsRef<Path>,
+        output: impl AsRef<Path>,
+        opts: GdalTranslateOptions,
+    ) -> GeoResult<PathBuf> {
+        let input = input.as_ref();
+        let output = output.as_ref();
+
+        if !input.exists() {
+            return Err(GeoError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Input raster not found: {}", input.display()),
+            )));
+        }
+
+        let mut args: Vec<String> = Vec::new();
+
+        // 输出格式
+        args.push("-of".into());
+        args.push(opts.driver.as_driver().to_string());
+
+        // 输出数据类型
+        if let Some(dt) = &opts.output_type {
+            args.push("-ot".into());
+            args.push(format!("{:?}", dt));
+        }
+
+        // 波段选择
+        if let Some(bands) = &opts.bands {
+            for &b in bands {
+                args.push("-b".into());
+                args.push(b.to_string());
+            }
+        }
+
+        // 缩放
+        if let Some((smin, smax, dmin, dmax)) = opts.scale {
+            args.push("-scale".into());
+            args.extend_from_slice(&[
+                smin.to_string(),
+                smax.to_string(),
+                dmin.to_string(),
+                dmax.to_string(),
+            ]);
+        }
+
+        // 压缩
+        args.push("-co".into());
+        args.push(format!("COMPRESS={}", opts.compression));
+        args.push("-co".into());
+        args.push(format!("LEVEL={}", opts.compress_level));
+
+        // 概览
+        if opts.overviews {
+            args.push("-co".into());
+            args.push("OVERVIEWS=AUTO".into());
+        }
+
+        args.push(input.to_string_lossy().to_string());
+        args.push(output.to_string_lossy().to_string());
+
+        Self::run_gdal("gdal_translate", &args).await?;
+
+        tracing::info!("gdal_translate: {}", output.display());
+        Ok(output.to_path_buf())
+    }
+
+    /// 通用 `gdalwarp` 封装 — 支持重投影、重采样、裁剪、NoData。
+    pub async fn gdalwarp(
+        input: impl AsRef<Path>,
+        output: impl AsRef<Path>,
+        opts: GdalWarpOptions,
+    ) -> GeoResult<PathBuf> {
+        let input = input.as_ref();
+        let output = output.as_ref();
+
+        if !input.exists() {
+            return Err(GeoError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Input raster not found: {}", input.display()),
+            )));
+        }
+
+        let mut args: Vec<String> = Vec::new();
+
+        // 输出格式
+        args.push("-of".into());
+        args.push(opts.driver.as_driver().to_string());
+
+        // 目标 CRS
+        if let Some(epsg) = opts.target_epsg {
+            args.push("-t_srs".into());
+            args.push(format!("EPSG:{epsg}"));
+        }
+
+        // 分辨率
+        if let Some((rx, ry)) = opts.resolution {
+            args.push("-tr".into());
+            args.push(rx.to_string());
+            args.push(ry.to_string());
+        }
+
+        // 重采样
+        args.push("-r".into());
+        args.push(opts.resampling.as_arg().to_string());
+
+        // 压缩
+        args.push("-co".into());
+        args.push(format!("COMPRESS={}", opts.compression));
+        args.push("-co".into());
+        args.push(format!("LEVEL={}", opts.compress_level));
+
+        // NoData
+        if let Some(nd) = opts.dst_nodata {
+            args.push("-dstnodata".into());
+            args.push(nd.to_string());
+        }
+
+        // 裁剪面
+        if let Some(cut) = &opts.cutline {
+            args.push("-cutline".into());
+            args.push(cut.to_string_lossy().to_string());
+            if opts.crop_to_cutline {
+                args.push("-crop_to_cutline".into());
+            }
+        }
+
+        // 内存限制
+        if opts.warp_memory_mb > 0 {
+            args.push("-wm".into());
+            args.push(opts.warp_memory_mb.to_string());
+        }
+
+        // 多线程
+        if opts.multi {
+            args.push("-multi".into());
+        }
+
+        args.push(input.to_string_lossy().to_string());
+        args.push(output.to_string_lossy().to_string());
+
+        Self::run_gdal("gdalwarp", &args).await?;
+
+        tracing::info!("gdalwarp: {}", output.display());
+        Ok(output.to_path_buf())
     }
 
     /// Run a GDAL command with its arguments, returning Ok if it succeeded.

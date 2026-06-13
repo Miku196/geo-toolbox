@@ -52,7 +52,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         input_schema: serde_json::json!({"type":"object","properties":{"geojson":{"type":"string"},"distance_m":{"type":"number"}},"required":["geojson","distance_m"]}),
     }, |args| -> ToolResult {
         let p = parse_polygon(args["geojson"].as_str().unwrap_or("{}"))?;
-        Ok(polygon_to_json(&crate::buffer(&p, args["distance_m"].as_f64().unwrap_or(0.0))))
+        Ok(multipolygon_to_json(&crate::buffer(&p, args["distance_m"].as_f64().unwrap_or(0.0), crate::BufferMode::ConvexHull { quadrant_segments: 8 })))
     });
     registry.register_tool_sync("vector", ToolDef {
         name: "vector_intersect".into(), description: "Compute intersection of two Polygons".into(),

@@ -13,6 +13,9 @@
 pub mod band;
 pub mod grid;
 pub mod ndvi;
+/// 地形分析算子：坡度（度/百分比）、坡向（Horn 1981 算法）。
+pub mod terrain;
 
 pub use grid::RasterBand;
 pub use ndvi::{compute_ndvi, ndvi_difference, NdviResult};
+pub use terrain::{compute_aspect, compute_slope_degrees, compute_slope_percent, SlopeResult, AspectResult};
