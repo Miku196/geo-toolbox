@@ -1,17 +1,8 @@
 //! Tool registration — IoT.
-use geo_core::plugin::PluginCategory;
-use geo_registry::registry::ToolDef;
-use geo_registry::PluginRegistry;
+use geo_registry::{register_plugin, PluginRegistry};
 pub fn register_tools(registry: &mut PluginRegistry) {
-    registry.register(geo_core::plugin::PluginMeta {
-        name: "iot".into(),
-        version: "0.1.0".into(),
-        description: "IoT sensor adapter: validate + parse messages".into(),
-        category: PluginCategory::Adapter,
-        healthy: true,
-        extra: serde_json::json!({"endpoint":"mqtt://localhost:1883"}),
-    });
-    registry.register_tool_async("iot", ToolDef { name: "iot_ingest_message".into(), description: "Parse and validate an IoT sensor JSON message".into(), input_schema: serde_json::json!({"type":"object","properties":{"message":{"type":"string"}},"required":["message"]}) }, |args| Box::pin(async move {
+    register_plugin!(registry, "iot", "IoT sensor adapter: validate + parse messages", PluginCategory::Adapter, [
+        async "iot_ingest_message" => "Parse and validate an IoT sensor JSON message" ; serde_json::json!({"type":"object","properties":{"message":{"type":"string"}},"required":["message"]}) => |args| Box::pin(async move {
         let v: serde_json::Value = serde_json::from_str(args["message"].as_str().unwrap_or("{}")).map_err(|e| geo_core::GeoError::invalid_input("message",e.to_string()))?;
         let (lat,lng,val,st) = (v["lat"].as_f64(), v["lng"].as_f64(), v["value"].as_f64(), v["sensor_type"].as_str().unwrap_or(""));
         Ok(match (lat,lng,val,st) {
@@ -21,5 +12,5 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             }
             _ => serde_json::json!({"valid":false,"reason":"invalid coords or missing fields"}),
         })
-    }));
+    })]);
 }

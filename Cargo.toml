@@ -6,6 +6,7 @@ members = [
     "crates/geo-cli",
     "crates/geo-wasm",
     "crates/geo-server",
+    "crates/geo-wiring",
     "core/geo-parquet",
     "core/geo-ogc",
 

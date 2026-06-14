@@ -7,6 +7,7 @@ use geo_core::errors::{self, GeoError, GeoResult};
 use sqlx::postgres::PgPool;
 use sqlx::Row;
 
+
 /// Exports PostGIS query results to GeoJSON files.
 pub struct GeoJsonExporter {
     pool: PgPool,

@@ -1,22 +1,10 @@
 //! Tool registration — Zonal statistics.
 use geo_core::plugin::PluginCategory;
-use geo_registry::registry::{ToolDef, ToolResult};
-use geo_registry::PluginRegistry;
-
-/// Register stats tools into the PluginRegistry.
+use geo_registry::registry::ToolResult;
+use geo_registry::{register_plugin, PluginRegistry};
 pub fn register_tools(registry: &mut PluginRegistry) {
-    registry.register(geo_core::plugin::PluginMeta {
-        name: "stats".into(),
-        version: env!("CARGO_PKG_VERSION").into(),
-        description: "Zonal statistics: compute raster stats within polygon zones".into(),
-        category: PluginCategory::Process,
-        healthy: true,
-        extra: serde_json::json!({}),
-    });
-    registry.register_tool_sync("stats", ToolDef {
-        name: "zonal_stats".into(), description: "Compute zonal statistics for raster data within bboxes".into(),
-        input_schema: serde_json::json!({"type":"object","properties":{"zones":{"type":"array"},"raster_data":{"type":"array","items":{"type":"number"}},"raster_cols":{"type":"integer"},"raster_min_x":{"type":"number"},"raster_min_y":{"type":"number"},"raster_max_x":{"type":"number"},"raster_max_y":{"type":"number"},"nodata":{"type":"number"}},"required":["zones","raster_data","raster_cols"]}),
-    }, |args| -> ToolResult {
+    register_plugin!(registry, "stats", "Zonal statistics: compute raster stats within polygon zones", PluginCategory::Process, [
+        sync "zonal_stats" => "Compute zonal statistics for raster data within bboxes" ; serde_json::json!({"type":"object","properties":{"zones":{"type":"array"},"raster_data":{"type":"array","items":{"type":"number"}},"raster_cols":{"type":"integer"},"raster_min_x":{"type":"number"},"raster_min_y":{"type":"number"},"raster_max_x":{"type":"number"},"raster_max_y":{"type":"number"},"nodata":{"type":"number"}},"required":["zones","raster_data","raster_cols"]}) => |args| -> ToolResult {
         let empty = vec![];
         let zones_json = args["zones"].as_array().unwrap_or(&empty);
         let data: Vec<f64> = args["raster_data"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect();
@@ -32,5 +20,5 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             results.push(serde_json::json!({"zone":zn,"pixel_count":zr.pixel_count,"mean":zr.mean,"min":zr.min,"max":zr.max,"sum":zr.sum}));
         }
         Ok(serde_json::json!(results))
-    });
+    }]);
 }

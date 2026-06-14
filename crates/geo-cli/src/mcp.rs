@@ -27,6 +27,8 @@ const MAX_CONCURRENT: usize = 8;
 /// Maximum total connection duration.
 const CONNECTION_TIMEOUT_SECS: u64 = 3600;
 
+// ── Entry point ──
+
 /// Run the MCP server loop over stdio.
 pub async fn serve(registry: PluginRegistry) -> Result<(), Box<dyn std::error::Error>> {
     let registry = Arc::new(registry);
@@ -54,11 +56,9 @@ pub async fn serve(registry: PluginRegistry) -> Result<(), Box<dyn std::error::E
 
             let method = request["method"].as_str().unwrap_or("");
             let id = request["id"].clone();
-
             tracing::debug!("→ {method}");
 
             let response = match method {
-                // ── Mandatory handshake ──
                 "initialize" => {
                     let protocol_version = request["params"]["protocolVersion"]
                         .as_str()
@@ -69,10 +69,7 @@ pub async fn serve(registry: PluginRegistry) -> Result<(), Box<dyn std::error::E
                         "result": {
                             "protocolVersion": protocol_version,
                             "capabilities": { "tools": {} },
-                            "serverInfo": {
-                                "name": SERVER_INFO,
-                                "version": SERVER_VERSION
-                            }
+                            "serverInfo": { "name": SERVER_INFO, "version": SERVER_VERSION }
                         }
                     })
                 }
@@ -80,79 +77,27 @@ pub async fn serve(registry: PluginRegistry) -> Result<(), Box<dyn std::error::E
                 "notifications/initialized" => {
                     handshake_done = true;
                     tracing::info!("MCP handshake complete");
-                    continue; // No response for notifications
+                    continue;
                 }
 
-                // ── Tools: list ──
                 "tools/list" if handshake_done => {
                     let mut tools_json = registry.generate_mcp_tools();
                     tools_json["id"] = id;
                     tools_json
                 }
 
-                // ── Tools: call ──
                 "tools/call" if handshake_done => {
-                    let current = active_requests.fetch_add(1, Ordering::Relaxed);
-                    if current >= MAX_CONCURRENT {
-                        active_requests.fetch_sub(1, Ordering::Relaxed);
-                        json!({
-                            "jsonrpc": "2.0",
-                            "id": id,
-                            "error": {
-                                "code": -32001,
-                                "message": format!(
-                                    "Too many concurrent requests ({current}/{MAX_CONCURRENT})"
-                                )
-                            }
-                        })
-                    } else {
-                        let tool_name =
-                            request["params"]["name"].as_str().unwrap_or("").to_string();
-                        let args = request["params"]["arguments"].clone();
-                        let reg = Arc::clone(&registry);
-
-                        let result = timeout(
-                            Duration::from_secs(TOOL_TIMEOUT_SECS),
-                            dispatch_tool(reg, &tool_name, args),
-                        )
-                        .await;
-
-                        active_requests.fetch_sub(1, Ordering::Relaxed);
-
-                        match result {
-                            Ok(resp) => resp,
-                            Err(_) => json!({
-                                "jsonrpc": "2.0",
-                                "id": id,
-                                "error": {
-                                    "code": -32000,
-                                    "message": format!(
-                                        "Tool call timed out after {TOOL_TIMEOUT_SECS}s"
-                                    )
-                                }
-                            }),
-                        }
-                    }
+                    handle_tools_call(&registry, &active_requests, &request, &id).await
                 }
 
-                // ── Reject calls before handshake ──
                 _ if !handshake_done && method != "initialize" => json!({
-                    "jsonrpc": "2.0",
-                    "id": id,
-                    "error": {
-                        "code": -32002,
-                        "message": "Not initialized. Send 'initialize' first."
-                    }
+                    "jsonrpc": "2.0", "id": id,
+                    "error": { "code": -32002, "message": "Not initialized. Send 'initialize' first." }
                 }),
 
-                // ── Unknown method ──
                 _ => json!({
-                    "jsonrpc": "2.0",
-                    "id": id,
-                    "error": {
-                        "code": -32601,
-                        "message": format!("Method not found: {method}")
-                    }
+                    "jsonrpc": "2.0", "id": id,
+                    "error": { "code": -32601, "message": format!("Method not found: {method}") }
                 }),
             };
 
@@ -180,22 +125,66 @@ pub async fn serve(registry: PluginRegistry) -> Result<(), Box<dyn std::error::E
     }
 }
 
+// ── Handler: tools/call ──
+
+/// Handle a tools/call request with concurrency limiting and timeout.
+async fn handle_tools_call(
+    registry: &Arc<PluginRegistry>,
+    active_requests: &Arc<AtomicUsize>,
+    request: &Value,
+    id: &Value,
+) -> Value {
+    let current = active_requests.fetch_add(1, Ordering::Relaxed);
+    if current >= MAX_CONCURRENT {
+        active_requests.fetch_sub(1, Ordering::Relaxed);
+        return json!({
+            "jsonrpc": "2.0",
+            "id": id,
+            "error": {
+                "code": -32001,
+                "message": format!("Too many concurrent requests ({current}/{MAX_CONCURRENT})")
+            }
+        });
+    }
+
+    let tool_name = request["params"]["name"].as_str().unwrap_or("").to_string();
+    let args = request["params"]["arguments"].clone();
+    let reg = Arc::clone(registry);
+
+    let result = timeout(
+        Duration::from_secs(TOOL_TIMEOUT_SECS),
+        dispatch_tool(reg, &tool_name, args),
+    )
+    .await;
+
+    active_requests.fetch_sub(1, Ordering::Relaxed);
+
+    match result {
+        Ok(resp) => resp,
+        Err(_) => json!({
+            "jsonrpc": "2.0",
+            "id": id,
+            "error": {
+                "code": -32000,
+                "message": format!("Tool call timed out after {TOOL_TIMEOUT_SECS}s")
+            }
+        }),
+    }
+}
+
 /// Dispatch a single tool call through the registry, wrapping result in MCP JSON-RPC format.
 async fn dispatch_tool(registry: Arc<PluginRegistry>, tool_name: &str, args: Value) -> Value {
     match registry.dispatch(tool_name, args).await {
-        Ok(result) => {
-            // result 是 handler 返回的 Value，直接作为 content text
-            json!({
-                "jsonrpc": "2.0",
-                "result": {
-                    "content": [{
-                        "type": "text",
-                        "text": serde_json::to_string_pretty(&result)
-                            .unwrap_or_else(|e| e.to_string())
-                    }]
-                }
-            })
-        }
+        Ok(result) => json!({
+            "jsonrpc": "2.0",
+            "result": {
+                "content": [{
+                    "type": "text",
+                    "text": serde_json::to_string_pretty(&result)
+                        .unwrap_or_else(|e| e.to_string())
+                }]
+            }
+        }),
         Err(e) => json!({
             "jsonrpc": "2.0",
             "result": {
@@ -205,6 +194,8 @@ async fn dispatch_tool(registry: Arc<PluginRegistry>, tool_name: &str, args: Val
         }),
     }
 }
+
+// ── Tests ──
 
 #[cfg(test)]
 mod tests {

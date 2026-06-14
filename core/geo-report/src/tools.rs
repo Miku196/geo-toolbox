@@ -3,16 +3,14 @@ use geo_core::plugin::PluginCategory;
 use geo_registry::registry::{ToolDef, ToolResult};
 use geo_registry::PluginRegistry;
 use std::path::PathBuf;
-
 pub fn register_tools(registry: &mut PluginRegistry) {
+    // Register plugin manually (for non-trivial metadata or if we need control)
     registry.register(geo_core::plugin::PluginMeta {
-        name: "report".into(),
-        version: env!("CARGO_PKG_VERSION").into(),
+        name: "report".into(), version: env!("CARGO_PKG_VERSION").into(),
         description: "Markdown/HTML report generation".into(),
-        category: PluginCategory::Output,
-        healthy: true,
-        extra: serde_json::json!({}),
+        category: PluginCategory::Output, healthy: true, extra: serde_json::json!({}),
     });
+    // Tool 1: report_carbon
     registry.register_tool_sync("report", ToolDef {
         name: "report_carbon".into(), description: "Generate a carbon accounting report (Markdown)".into(),
         input_schema: serde_json::json!({"type":"object","properties":{"title":{"type":"string"},"aoi_name":{"type":"string"},"year":{"type":"integer"},"source":{"type":"string","default":"IPCC_2019"},"total_tco2e":{"type":"number"},"breakdown":{"type":"array"}},"required":["title","aoi_name","year","total_tco2e"]}),
@@ -33,25 +31,15 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         };
         Ok(serde_json::json!({"markdown":gen.carbon_report(&data)?}))
     });
-
-    // ── 通用模板渲染：加载插件 templates/ 目录中的 .tera 模板 ──
+    // Tool 2: report_render
     registry.register_tool_sync("report", ToolDef {
         name: "report_render".into(),
         description: "Render a Tera template from a plugin's templates/ directory with JSON data".into(),
-        input_schema: serde_json::json!({
-            "type": "object",
-            "properties": {
-                "template_dir": {"type": "string", "description": "Path to plugin templates/ directory (e.g. plugins/geo-plugin-ecology/templates)"},
-                "template_name": {"type": "string", "description": "Template filename (e.g. restoration-report.md.tera)"},
-                "data": {"type": "object", "description": "JSON context data for the template"}
-            },
-            "required": ["template_dir", "template_name", "data"]
-        }),
+        input_schema: serde_json::json!({"type":"object","properties":{"template_dir":{"type":"string"},"template_name":{"type":"string"},"data":{"type":"object"}},"required":["template_dir","template_name","data"]}),
     }, |args| -> ToolResult {
         let template_dir = PathBuf::from(args["template_dir"].as_str().unwrap_or(""));
         let template_name = args["template_name"].as_str().unwrap_or("").to_string();
         let data = args["data"].clone();
-
         let mut engine = crate::ReportEngine::new()?;
         engine.register_templates("plugin", &template_dir)?;
         let output = engine.render(&template_name, &data)?;

@@ -4,6 +4,7 @@ use geo_core::errors::{self, GeoError, GeoResult};
 use rust_xlsxwriter::*;
 use sqlx::postgres::PgPool;
 use sqlx::{Column, Row};
+
 use std::collections::HashMap;
 
 pub struct ExcelDashboard {

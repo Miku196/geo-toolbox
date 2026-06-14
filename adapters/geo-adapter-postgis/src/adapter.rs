@@ -6,8 +6,8 @@
 use crate::PostgisStore;
 use geo_core::errors::{GeoError, GeoResult};
 use geo_core::plugin::GeoFeature;
-use geo_core::plugin::{ExternalAdapter, Plugin, PluginCategory};
 use sqlx::Column;
+use geo_core::plugin::{ExternalAdapter, Plugin, PluginCategory};
 
 /// PostGIS 适配器。
 ///

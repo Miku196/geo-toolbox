@@ -5,7 +5,7 @@
 
 use clap::{Parser, Subcommand};
 use geo_core::plugin::PluginCategory;
-use geo_registry::PluginRegistry;
+use geo_wiring::PluginRegistry;
 
 mod commands;
 mod mcp;
@@ -377,52 +377,7 @@ async fn dispatch_cli(
 
 fn build_registry() -> PluginRegistry {
     let mut reg = PluginRegistry::new();
-
-    // ── Core: CRS + Ingest + Spatial ops ──
-    geo_io::tools::register_tools(&mut reg);
-    geo_carbon_math::tools::register_tools(&mut reg);
-    geo_tile::tools::register_tools(&mut reg);
-    geo_temporal::tools::register_tools(&mut reg);
-    geo_vector::tools::register_tools(&mut reg);
-    geo_index::tools::register_tools(&mut reg);
-    geo_stats::tools::register_tools(&mut reg);
-    geo_report::tools::register_tools(&mut reg);
-
-    // ── Plugins ──
-    geo_plugin_carbon::tools::register_tools(&mut reg);
-    geo_plugin_ecology::tools::register_tools(&mut reg);
-    geo_plugin_energy::tools::register_tools(&mut reg);
-    geo_plugin_forestry::tools::register_tools(&mut reg);
-    geo_plugin_coastal::tools::register_tools(&mut reg);
-    geo_plugin_survey::tools::register_tools(&mut reg);
-    geo_plugin_hydro::tools::register_tools(&mut reg);
-    geo_plugin_geohazard::tools::register_tools(&mut reg);
-    geo_plugin_agri::tools::register_tools(&mut reg);
-    geo_plugin_urban::tools::register_tools(&mut reg);
-
-    // ── Adapters: lightweight (always-on) ──
-    geo_adapter_duckdb::tools::register_tools(&mut reg);
-    geo_adapter_stac::tools::register_tools(&mut reg);
-    geo_adapter_osm::tools::register_tools(&mut reg);
-
-    // ── Adapters: feature-gated ──
-    #[cfg(feature = "postgis")]
-    if let Err(e) = geo_adapter_postgis::tools::register_tools(&mut reg) {
-        tracing::warn!("PostGIS tool registration failed: {e}");
-    }
-    #[cfg(feature = "gee")]
-    {
-        geo_adapter_gee::tools::register_tools(&mut reg);
-    }
-    #[cfg(feature = "qgis")]
-    geo_adapter_qgis::tools::register_tools(&mut reg);
-    #[cfg(feature = "cad")]
-    geo_adapter_cad::tools::register_tools(&mut reg);
-    #[cfg(feature = "gdal")]
-    geo_adapter_cli::tools::register_tools(&mut reg);
-    #[cfg(feature = "iot")]
-    geo_adapter_iot::tools::register_tools(&mut reg);
-
+    geo_wiring::populate_defaults(&mut reg);
     reg
 }
 

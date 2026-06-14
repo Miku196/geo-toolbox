@@ -1,23 +1,10 @@
 //! Tool registration — Carbon math engine.
 use geo_core::plugin::PluginCategory;
-use geo_registry::registry::{ToolDef, ToolResult};
-use geo_registry::PluginRegistry;
-
-/// Register carbon-math tools into the PluginRegistry.
+use geo_registry::registry::ToolResult;
+use geo_registry::{register_plugin, PluginRegistry};
 pub fn register_tools(registry: &mut PluginRegistry) {
-    registry.register(geo_core::plugin::PluginMeta {
-        name: "carbon-math".into(),
-        version: env!("CARGO_PKG_VERSION").into(),
-        description: "Pure-Rust IPCC Tier 1 carbon accounting engine".into(),
-        category: PluginCategory::Carbon,
-        healthy: true,
-        extra: serde_json::json!({}),
-    });
-    registry.register_tool_sync("carbon-math", ToolDef {
-        name: "carbon_calculate_raw".into(),
-        description: "Calculate carbon emissions from GeoJSON features + CSV factors".into(),
-        input_schema: serde_json::json!({"type":"object","properties":{"geojson":{"type":"string"},"csv":{"type":"string"},"year":{"type":"integer"}},"required":["geojson","csv","year"]}),
-    }, |args| -> ToolResult {
+    register_plugin!(registry, "carbon-math", "Pure-Rust IPCC Tier 1 carbon accounting engine", PluginCategory::Carbon, [
+        sync "carbon_calculate_raw" => "Calculate carbon emissions from GeoJSON features + CSV factors" ; serde_json::json!({"type":"object","properties":{"geojson":{"type":"string"},"csv":{"type":"string"},"year":{"type":"integer"}},"required":["geojson","csv","year"]}) => |args| -> ToolResult {
         let geojson = args["geojson"].as_str().unwrap_or("");
         let csv = args["csv"].as_str().unwrap_or("");
         let year = args["year"].as_u64().unwrap_or(2025) as u16;
@@ -28,5 +15,5 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             .filter_map(|f| { let s = serde_json::to_string(f).ok()?; crate::GeoFeature::from_feature_json(&s).ok() }).collect();
         let report = engine.calculate(&features, &factors, year).map_err(|e| geo_core::GeoError::Validation(e))?;
         Ok(serde_json::to_value(report).map_err(geo_core::GeoError::Serde)?)
-    });
+    }]);
 }

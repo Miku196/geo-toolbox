@@ -1,27 +1,20 @@
 [package]
-name = "geo-cli"
+name = "geo-wiring"
 version.workspace = true
-description = "CLI entry point and MCP server for the geo-toolbox geospatial pipeline"
 edition.workspace = true
 license.workspace = true
-
-[[bin]]
-name = "geo-toolbox"
-path = "src/main.rs"
+description = "Shared registry wiring for geo-cli and geo-server — registers all plugins and adapters"
 
 [dependencies]
-geo-core = { path = "../../core/geo-core" }
 geo-registry = { path = "../../core/geo-registry" }
-geo-wiring = { path = "../geo-wiring" }
 geo-io = { path = "../../core/geo-io" }
-geo-raster = { path = "../../core/geo-raster" }
-geo-report = { path = "../../core/geo-report" }
 geo-carbon-math = { path = "../../core/geo-carbon-math" }
 geo-tile = { path = "../../core/geo-tile" }
 geo-temporal = { path = "../../core/geo-temporal" }
 geo-vector = { path = "../../core/geo-vector" }
 geo-index = { path = "../../core/geo-index" }
 geo-stats = { path = "../../core/geo-stats" }
+geo-report = { path = "../../core/geo-report" }
 geo-plugin-carbon = { path = "../../plugins/geo-plugin-carbon" }
 geo-plugin-ecology = { path = "../../plugins/geo-plugin-ecology" }
 geo-plugin-energy = { path = "../../plugins/geo-plugin-energy" }
@@ -35,33 +28,19 @@ geo-plugin-urban = { path = "../../plugins/geo-plugin-urban" }
 geo-adapter-duckdb = { path = "../../adapters/geo-adapter-duckdb" }
 geo-adapter-stac = { path = "../../adapters/geo-adapter-stac" }
 geo-adapter-osm = { path = "../../adapters/geo-adapter-osm" }
-
-# Adapters — all optional, enable via feature flags
 geo-adapter-postgis = { path = "../../adapters/geo-adapter-postgis", optional = true }
-geo-adapter-cad = { path = "../../adapters/geo-adapter-cad", optional = true }
-geo-adapter-iot = { path = "../../adapters/geo-adapter-iot", optional = true }
 geo-adapter-gee = { path = "../../adapters/geo-adapter-gee", optional = true }
-geo-adapter-cli = { path = "../../adapters/geo-adapter-cli", optional = true }
 geo-adapter-qgis = { path = "../../adapters/geo-adapter-qgis", optional = true }
-
-clap.workspace = true
-sqlx = { workspace = true, optional = true }
-uuid.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-tokio.workspace = true
+geo-adapter-cad = { path = "../../adapters/geo-adapter-cad", optional = true }
+geo-adapter-cli = { path = "../../adapters/geo-adapter-cli", optional = true }
+geo-adapter-iot = { path = "../../adapters/geo-adapter-iot", optional = true }
 tracing.workspace = true
-tracing-subscriber.workspace = true
-chrono = { version = "0.4", features = ["serde"] }
-futures.workspace = true
 
 [features]
-default = ["postgis", "cad", "gee", "qgis", "gdal"]
-postgis = ["geo-adapter-postgis", "geo-wiring/postgis", "sqlx"]
-cad = ["geo-adapter-cad", "geo-wiring/cad"]
-iot = ["geo-adapter-iot", "geo-wiring/iot"]
-gee = ["geo-adapter-gee", "geo-wiring/gee"]
-qgis = ["geo-adapter-qgis", "geo-wiring/qgis"]
-gdal = ["geo-adapter-cli", "geo-wiring/gdal"]
-mqtt = ["iot"]
-minimal = []
+default = []
+postgis = ["geo-adapter-postgis"]
+gee = ["geo-adapter-gee"]
+qgis = ["geo-adapter-qgis"]
+cad = ["geo-adapter-cad"]
+gdal = ["geo-adapter-cli"]
+iot = ["geo-adapter-iot"]

@@ -5,6 +5,7 @@
 
 #![allow(missing_docs)]
 
+pub mod macros;
 pub mod registry;
 
 pub use registry::PluginRegistry;

@@ -16,7 +16,7 @@ use object_store::aws::AmazonS3Builder;
 use object_store::gcp::GoogleCloudStorageBuilder;
 use object_store::path::Path as ObjectPath;
 use object_store::ObjectStore;
-use std::sync::Arc;
+
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -245,7 +245,7 @@ impl ObjectStoreClient {
 }
 
 // object_store 0.11 uses Stream for list
-use futures::StreamExt;
+
 
 #[cfg(test)]
 mod tests {
