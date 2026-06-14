@@ -79,11 +79,7 @@ fn default_format() -> String {
     "markdown".into()
 }
 
-impl Default for EcologyConfig {
-    fn default() -> Self {
-        toml::from_str(include_str!("../rules.toml")).expect("Default ecology rules.toml is valid")
-    }
-}
+geo_core::default_from_rules!(EcologyConfig, "ecology");
 
 impl Default for NdviThresholds {
     fn default() -> Self {

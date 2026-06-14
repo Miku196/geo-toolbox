@@ -66,6 +66,25 @@ pub fn band_div(a: &RasterBand, b: &RasterBand, out_name: &str) -> GeoResult<Ras
     Ok(out)
 }
 
+/// 两波段逐像素相乘。
+pub fn band_mul(a: &RasterBand, b: &RasterBand, out_name: &str) -> GeoResult<RasterBand> {
+    check_same_size(a, b)?;
+    let mut out = a.clone();
+    out.name = out_name.to_string();
+    for i in 0..out.data.len() {
+        if a.data[i] != a.nodata
+            && !a.data[i].is_nan()
+            && b.data[i] != b.nodata
+            && !b.data[i].is_nan()
+        {
+            out.data[i] = a.data[i] * b.data[i];
+        } else {
+            out.data[i] = out.nodata;
+        }
+    }
+    Ok(out)
+}
+
 /// 阈值二值化：value ≥ threshold → 1.0，否则 → 0.0。
 pub fn band_threshold(band: &RasterBand, threshold: f64, out_name: &str) -> RasterBand {
     let mut out = band.clone();
@@ -122,6 +141,15 @@ mod tests {
         let result = band_div(&a, &b, "ratio").unwrap();
         assert_eq!(result.get(0, 0), -999.0); // 0/0 → nodata
         assert_eq!(result.get(0, 1), -999.0); // nodata in b → nodata
+    }
+
+    #[test]
+    fn test_band_mul() {
+        let a = make_band("a", vec![2.0, 3.0]);
+        let b = make_band("b", vec![4.0, 5.0]);
+        let result = band_mul(&a, &b, "prod").unwrap();
+        assert_eq!(result.get(0, 0), 8.0);
+        assert_eq!(result.get(0, 1), 15.0);
     }
 
     #[test]

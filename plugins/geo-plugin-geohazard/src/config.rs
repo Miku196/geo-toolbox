@@ -198,12 +198,7 @@ impl Default for DebrisFlowParams {
     }
 }
 
-impl Default for GeohazardConfig {
-    fn default() -> Self {
-        toml::from_str(include_str!("../rules.toml"))
-            .expect("Default geohazard rules.toml is valid")
-    }
-}
+geo_core::default_from_rules!(GeohazardConfig, "geohazard");
 
 impl LandslideWeights {
     /// 检查权重之和是否合理（应接近 1.0）。

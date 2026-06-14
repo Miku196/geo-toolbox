@@ -276,11 +276,7 @@ impl Default for IrrigationParams {
     }
 }
 
-impl Default for AgriConfig {
-    fn default() -> Self {
-        toml::from_str(include_str!("../rules.toml")).expect("Default agri rules.toml is valid")
-    }
-}
+geo_core::default_from_rules!(AgriConfig, "agri");
 
 #[cfg(test)]
 mod tests {

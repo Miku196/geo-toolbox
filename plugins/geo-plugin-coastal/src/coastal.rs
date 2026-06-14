@@ -121,6 +121,51 @@ impl CoastalPlugin {
             summary: summary.to_string(),
         })
     }
+
+    /// Bruun Rule 海岸侵蚀预测。
+    ///
+    /// R = S * L / (B + h*) 其中：
+    /// - S = 海平面上升量 (m)
+    /// - L = 海岸剖面长度 (m, 从沙丘到闭合深度)
+    /// - B = 沙丘/崖高度 (m)
+    /// - h* = 闭合深度 (m, 约 2× 有效波高)
+    ///
+    /// 返回海岸线后退距离 (m)。
+    pub fn bruun_erosion(
+        &self,
+        sea_level_rise_m: f64,
+        profile_length_m: f64,
+        dune_height_m: f64,
+        closure_depth_m: f64,
+    ) -> f64 {
+        let denom = dune_height_m + closure_depth_m;
+        if denom < 0.1 { return 0.0; }
+        sea_level_rise_m * profile_length_m / denom
+    }
+
+    /// Bathtub 静态淹没模型。
+    ///
+    /// 给定 DEM 和海平面上升高度，计算淹没面积和体积。
+    pub fn bathtub_inundation(
+        &self,
+        dem: &[f64],
+        rows: usize,
+        cols: usize,
+        cell_size_m: f64,
+        sea_level_rise_m: f64,
+    ) -> (f64, f64) {
+        let cell_area = cell_size_m * cell_size_m;
+        let mut area = 0.0;
+        let mut volume = 0.0;
+        for &z in dem {
+            if z.is_finite() && z < sea_level_rise_m {
+                let depth = sea_level_rise_m - z;
+                area += cell_area;
+                volume += depth * cell_area;
+            }
+        }
+        (area, volume)
+    }
 }
 
 #[cfg(test)]
@@ -128,6 +173,25 @@ mod tests {
     use super::*;
     fn band(d: Vec<f64>) -> RasterBand {
         RasterBand::new("t", d.len(), 1, d, -999.0)
+    }
+
+    #[test]
+    #[test]
+    fn test_bruun_erosion() {
+        let p = CoastalPlugin::new();
+        // R = S * L / (B + h*) = 1.0 * 1000 / (10 + 5) = 66.7m
+        let erosion = p.bruun_erosion(1.0, 1000.0, 10.0, 5.0);
+        assert!((erosion - 66.67).abs() < 1.0);
+    }
+
+    #[test]
+    fn test_bathtub_inundation() {
+        let p = CoastalPlugin::new();
+        let dem = vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
+        let (area, volume) = p.bathtub_inundation(&dem, 2, 3, 10.0, 1.5);
+        // Cells with z < 1.5: 0.0 and 1.0 => 2 cells * 100m² = 200m²
+        assert!(area > 0.0);
+        assert!(volume > 0.0);
     }
 
     #[test]

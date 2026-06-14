@@ -73,6 +73,45 @@ impl BBox {
     pub fn contains(&self, x: f64, y: f64) -> bool {
         x >= self.min_x && x <= self.max_x && y >= self.min_y && y <= self.max_y
     }
+
+    /// Center X coordinate.
+    pub fn center_x(&self) -> f64 {
+        (self.min_x + self.max_x) / 2.0
+    }
+
+    /// Center Y coordinate.
+    pub fn center_y(&self) -> f64 {
+        (self.min_y + self.max_y) / 2.0
+    }
+
+    /// Check intersection with another BBox.
+    pub fn intersects(&self, other: &BBox) -> bool {
+        self.min_x <= other.max_x
+            && self.max_x >= other.min_x
+            && self.min_y <= other.max_y
+            && self.max_y >= other.min_y
+    }
+
+    /// Compute the union of two BBoxes.
+    pub fn union(&self, other: &BBox) -> BBox {
+        BBox {
+            min_x: self.min_x.min(other.min_x),
+            min_y: self.min_y.min(other.min_y),
+            max_x: self.max_x.max(other.max_x),
+            max_y: self.max_y.max(other.max_y),
+        }
+    }
+}
+
+impl Default for BBox {
+    fn default() -> Self {
+        BBox {
+            min_x: 0.0,
+            min_y: 0.0,
+            max_x: 0.0,
+            max_y: 0.0,
+        }
+    }
 }
 
 /// Validate a single (lon, lat) coordinate pair.

@@ -241,6 +241,101 @@ impl HydroPlugin {
         0.05 + 0.9 * impervious_ratio.min(1.0)
     }
 
+    /// Strahler 河网分级。
+    ///
+    /// 基于 D8 流向的递归 Strahler 分级算法。
+    pub fn strahler_order(
+        &self,
+        dem: &[f64],
+        rows: usize,
+        cols: usize,
+        cell_size_m: f64,
+    ) -> Vec<u32> {
+        let n = rows * cols;
+        if dem.len() < n { return vec![0; n]; }
+
+        // D8 flow direction (same as flow_accumulation)
+        let d8_dr: [isize; 8] = [-1, 0, 1, 1, 1, 0, -1, -1];
+        let d8_dc: [isize; 8] = [1, 1, 1, 0, -1, -1, -1, 0];
+        let d8_diag: [f64; 8] = [1.414, 1.0, 1.414, 1.0, 1.414, 1.0, 1.414, 1.0];
+        let threshold = self.config.catchment.slope_threshold;
+
+        let mut flow_dir: Vec<Option<usize>> = vec![None; n];
+        for r in 0..rows {
+            for c in 0..cols {
+                let cur = r * cols + c;
+                let mut max_slope = threshold;
+                let mut best = None;
+                for d in 0..8 {
+                    let nr = r as isize + d8_dr[d];
+                    let nc = c as isize + d8_dc[d];
+                    if nr < 0 || nr >= rows as isize || nc < 0 || nc >= cols as isize { continue; }
+                    let nb = (nr as usize) * cols + (nc as usize);
+                    let diff = dem[cur] - dem[nb];
+                    let slope = diff / (cell_size_m * d8_diag[d]);
+                    if slope > max_slope { max_slope = slope; best = Some(nb); }
+                }
+                flow_dir[cur] = best;
+            }
+        }
+
+        let mut order: Vec<u32> = vec![1; n];
+        let mut elev_order: Vec<usize> = (0..n).collect();
+        elev_order.sort_by(|&a, &b| dem[b].partial_cmp(&dem[a]).unwrap_or(std::cmp::Ordering::Equal));
+
+        for &cell in &elev_order {
+            if let Some(down) = flow_dir[cell] {
+                let o = order[cell];
+                if o > order[down] {
+                    order[down] = o;
+                } else if o == order[down] {
+                    order[down] = o + 1;
+                }
+            }
+        }
+        order
+    }
+
+    /// SCS 单位线 (NRCS Unit Hydrograph)。
+    ///
+    /// 根据 SCS 三角单位线法计算给定有效降雨的流量过程线。
+    /// 返回 (time_hours, discharge_m3s) 对。
+    pub fn scs_unit_hydrograph(
+        &self,
+        catchment_area_ha: f64,
+        time_of_concentration_h: f64,
+        effective_rainfall_mm: f64,
+    ) -> Vec<(f64, f64)> {
+        let area_km2 = catchment_area_ha / 100.0;
+        let tc = time_of_concentration_h.max(0.1);
+        // SCS: lag time = 0.6 * tc, time to peak = tc/2 + lag/2
+        let t_lag = 0.6 * tc;
+        let t_peak = t_lag + 0.5; // hours
+        let t_base = 1.67 * t_peak; // recession time
+        let total_t = t_peak + t_base;
+
+        // Peak discharge (SCS formula): qp = 0.208 * A * Q / tp  (m³/s)
+        let qp = 0.208 * area_km2 * effective_rainfall_mm / t_peak;
+        let qp = qp.min(100000.0);
+
+        let steps = 40usize;
+        let dt = total_t / steps as f64;
+        let mut hydrograph = Vec::with_capacity(steps);
+
+        for i in 0..=steps {
+            let t = i as f64 * dt;
+            let q = if t <= t_peak {
+                qp * t / t_peak
+            } else if t <= total_t {
+                qp * (total_t - t) / t_base
+            } else {
+                0.0
+            };
+            hydrograph.push((t, q));
+        }
+        hydrograph
+    }
+
     // ── 综合评估 ──
     pub fn assess(
         &self,
@@ -333,5 +428,26 @@ mod tests {
         let dem = vec![10.0, 10.0, 10.0, 10.0, 2.0, 10.0, 10.0, 10.0, 10.0];
         let a = p.assess(&dem, 3, 3, 10.0, 0.5, 50.0);
         assert!(a.flow.is_some());
+    }
+
+    #[test]
+    fn test_strahler_order() {
+        let p = default_plugin();
+        let dem = vec![10.0, 10.0, 10.0, 10.0, 5.0, 10.0, 10.0, 10.0, 10.0];
+        let order = p.strahler_order(&dem, 3, 3, 10.0);
+        assert_eq!(order.len(), 9);
+        // Center cell (sink) should have highest order
+        assert!(order[4] >= 1);
+    }
+
+    #[test]
+    fn test_scs_unit_hydrograph() {
+        let p = default_plugin();
+        let ug = p.scs_unit_hydrograph(100.0, 2.0, 50.0);
+        assert!(!ug.is_empty());
+        // Peak should be at ~1.7h
+        assert!((ug[ug.len() / 2].0 - 1.7).abs() < 1.0);
+        // Peak discharge should be positive
+        assert!(ug[ug.len() / 3].1 > 0.0);
     }
 }

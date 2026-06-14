@@ -213,11 +213,89 @@ impl EnergyPlugin {
             summary: summary.to_string(),
         })
     }
+
+    /// Weibull 风速分布拟合。
+    ///
+    /// 风能密度 WPD = 0.5 * ρ * c³ * Γ(1 + 3/k)，ρ=1.225 kg/m³。
+    /// 返回 (k, c, mean_ws, WPD_W_m2)。
+    pub fn weibull_fit(wind_speeds: &[f64]) -> (f64, f64, f64, f64) {
+        let n = wind_speeds.len();
+        if n < 3 {
+            return (2.0, 5.0, 5.0, 0.0);
+        }
+
+        let mean = wind_speeds.iter().sum::<f64>() / n as f64;
+        let variance = wind_speeds.iter().map(|&v| (v - mean).powi(2)).sum::<f64>() / n as f64;
+        let stddev = variance.sqrt();
+
+        // Method of Moments: k ≈ (σ / v_mean)^(-1.086), c = v_mean / Γ(1 + 1/k)
+        let k = (stddev / mean.max(0.1)).powf(-1.086).clamp(1.0, 10.0);
+        // Gamma function approximation: Γ(1 + 1/k)
+        let g1 = gamma_approx(1.0 + 1.0 / k);
+        let c = mean / g1.max(0.001);
+
+        // Wind power density: WPD = 0.5 * ρ * c³ * Γ(1 + 3/k)
+        let rho = 1.225;
+        let g3 = gamma_approx(1.0 + 3.0 / k);
+        let wpd = 0.5 * rho * c.powi(3) * g3;
+
+        (k, c, mean, wpd)
+    }
+}
+
+/// Stirling-based Gamma function approximation.
+fn gamma_approx(x: f64) -> f64 {
+    if x <= 0.0 { return 1.0; }
+    // Stirling: Γ(x) ≈ sqrt(2π/x) * (x/e)^x
+    let n = x;
+    let mut g = 1.0;
+    let mut t = n;
+    // Use the recurrence Γ(x+1) = x * Γ(x) with Lanczos-like log
+    if n < 1.0 {
+        g = std::f64::consts::PI / ((std::f64::consts::PI * n).sin() * gamma_approx(1.0 - n));
+        return g;
+    }
+    // Simple Stirling
+    if n > 10.0 {
+        g = (2.0 * std::f64::consts::PI / n).sqrt() * (n / std::f64::consts::E).powf(n);
+    } else {
+        // Compute via recurrence + Lanczos for [1, 10]
+        let p = [676.5203681218851, -1259.1392167224028, 771.3234287776531,
+                  -176.6150291621406, 12.507343278686905, -0.13857109526572012,
+                  9.984369578019572e-6, 1.5056327351493116e-7];
+        let mut z = n - 1.0;
+        let mut x_l = 0.99999999999980993;
+        for (i, &pi) in p.iter().enumerate() {
+            x_l += pi / (z + i as f64 + 1.0);
+        }
+        let t = z + p.len() as f64 - 0.5;
+        g = (2.0 * std::f64::consts::PI).sqrt() * t.powf(z + 0.5) * (-t).exp() * x_l;
+    }
+    g.max(1e-10)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_weibull_fit() {
+        let winds = vec![3.0, 4.0, 5.0, 6.0, 7.0, 5.5, 4.5, 3.5, 8.0, 6.5];
+        let (k, c, mean, wpd) = EnergyPlugin::weibull_fit(&winds);
+        assert!(k >= 1.0 && k <= 10.0, "k={k} out of range");
+        assert!(c > 0.0);
+        assert!((mean - 5.3).abs() < 1.0, "mean={mean}");
+        assert!(wpd > 0.0, "Wind power density should be positive");
+    }
+
+    #[test]
+    fn test_gamma_approx() {
+        // Γ(5) = 24
+        let g = gamma_approx(5.0);
+        assert!((g - 24.0).abs() < 1.0, "Γ(5) ≈ 24, got {g}");
+        // Γ(1) = 1
+        assert!((gamma_approx(1.0) - 1.0).abs() < 0.1);
+    }
     use geo_raster::RasterBand;
 
     fn make_band(data: Vec<f64>) -> RasterBand {

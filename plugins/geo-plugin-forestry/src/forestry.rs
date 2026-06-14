@@ -901,6 +901,16 @@ mod tests {
     }
 
     #[test]
+    fn test_predict_biomass() {
+        let bio = GrowthModel::predict_biomass(30.0, 800.0, 0.2, 0.05, 0.7, 1.5);
+        assert!(bio > 0.0, "Biomass prediction should be positive");
+        assert!(bio < 1000.0, "Biomass prediction should be reasonable");
+        // Zero SDI → near zero biomass
+        let bio0 = GrowthModel::predict_biomass(30.0, 0.0, 0.2, 0.05, 0.7, 1.5);
+        assert!(bio0 < 0.01);
+    }
+
+    #[test]
     fn test_model_ranking() {
         let (ages, heights) = china_fir_data();
         let report = validate_all_growth_models(&ages, &heights);

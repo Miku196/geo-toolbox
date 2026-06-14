@@ -16,5 +16,8 @@ pub mod ops;
 pub mod stats;
 pub mod tools;
 
-pub use ops::{buffer, intersect, union_all, BufferMode, MAX_BUFFER_VERTICES};
+pub use ops::{
+    buffer, intersect, kernel_density, line_density, simplify, simplify_line,
+    union_all, BufferMode, MAX_BUFFER_VERTICES,
+};
 pub use stats::{centroid, feature_area};

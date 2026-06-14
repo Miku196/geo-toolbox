@@ -24,4 +24,7 @@ pub mod trend;
 
 pub use decompose::{seasonal_decompose, DecomposeResult};
 pub use raster_ts::{RasterTimeSeries, TimeStep};
-pub use trend::{linear_trend, mann_kendall, TrendResult};
+pub use trend::{
+    bfast_simple, linear_trend, mann_kendall, normal_cdf, pettitt_test,
+    seasonal_mann_kendall, sen_slope, PettittResult, TrendResult,
+};

@@ -551,4 +551,10 @@ mod tests {
         assert_eq!(result.classes.len(), 1);
         assert_eq!(result.classes[0].landcover_class, "forest");
     }
+
+    #[test]
+    fn test_config_default() {
+        // Verify default rules.toml is valid and loads correctly
+        let _config: EcologyConfig = Default::default();
+    }
 }

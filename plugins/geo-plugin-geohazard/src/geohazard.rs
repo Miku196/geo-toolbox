@@ -332,6 +332,70 @@ impl GeohazardPlugin {
         }
         Ok(slide_area_m2 * average_depth_m * density)
     }
+
+    /// 无限边坡安全系数 (Factor of Safety, FS)。
+    ///
+    /// FS = (c + (γ - m*γ_w) * z * cos²β * tanφ) / (γ * z * sinβ * cosβ)
+    ///
+    /// FS > 1: 稳定, FS = 1: 临界, FS < 1: 不稳定。
+    pub fn factor_of_safety(
+        &self,
+        slope_deg: f64,      // 坡度 (°)
+        soil_depth_m: f64,   // 土层厚度 (m)
+        cohesion_kpa: f64,   // 粘聚力 (kPa)
+        friction_deg: f64,   // 内摩擦角 (°)
+        soil_density_kn_m3: f64, // 土体重度 (kN/m³) — 默认 20
+        water_table_ratio: f64,  // 地下水位/土层厚度 (0~1)
+    ) -> f64 {
+        let beta = slope_deg.to_radians();
+        let phi = friction_deg.to_radians();
+        let gamma = soil_density_kn_m3.max(1.0);
+        let gamma_w = 9.81; // 水的重度
+        let m = water_table_ratio.clamp(0.0, 1.0);
+
+        let sin_b = beta.sin();
+        let cos_b = beta.cos();
+        let tan_phi = phi.tan();
+
+        let normal_stress = gamma * soil_depth_m * cos_b.powi(2);
+        let shear_stress = gamma * soil_depth_m * sin_b * cos_b;
+        let pore_pressure = m * gamma_w * soil_depth_m * cos_b.powi(2);
+
+        if shear_stress < 1e-10 {
+            return 99.0; // 近乎平坦，非常稳定
+        }
+
+        (cohesion_kpa + (normal_stress - pore_pressure) * tan_phi) / shear_stress
+    }
+
+    /// Newmark 永久位移（地震滑坡）。
+    ///
+    /// 简化的 Newmark 滑动块模型：临界加速度 ac = (FS - 1) * g * sin(β)
+    /// 永久位移 D_N ≈ 取决于 PGA/ac 比值的经验公式。
+    ///
+    /// 返回位移 (cm)。
+    pub fn newmark_displacement(
+        &self,
+        slope_deg: f64,
+        factor_of_safety: f64,
+        pga_g: f64,  // 峰值地面加速度 (g)
+    ) -> f64 {
+        if factor_of_safety >= 99.0 || slope_deg < 0.1 {
+            return 0.0;
+        }
+        let beta = slope_deg.to_radians();
+        let ac = (factor_of_safety - 1.0).max(0.0) * 9.81 * beta.sin(); // critical accel (m/s²)
+        let pga = pga_g * 9.81;
+
+        if ac < 1e-6 || pga <= ac {
+            return 0.0;
+        }
+
+        // Jibson (2007) 简化经验公式: log D_N = 0.215 + log[(1 - ac/PGA)^2.341 * (ac/PGA)^-1.438]
+        let ratio = ac / pga;
+        let log_dn = 0.215 + ((1.0 - ratio).powf(2.341) * ratio.powf(-1.438)).ln();
+        (10.0_f64.powf(log_dn) * 100.0).min(1000.0) // cm, cap at 10m
+    }
 }
 
 #[cfg(test)]

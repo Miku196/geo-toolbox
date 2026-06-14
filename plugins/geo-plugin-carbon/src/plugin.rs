@@ -93,6 +93,59 @@ impl CarbonPlugin {
         report.methodology = Some(format!("IPCC Tier 1 — {}", source));
         Ok(report)
     }
+
+    /// Monte Carlo uncertainty analysis (\(\pm\)20% factor perturbation, N simulations).
+    pub fn monte_carlo_uncertainty(
+        &self,
+        features: &[GeoFeature],
+        year: u16,
+        simulations: usize,
+    ) -> GeoResult<UncertaintyReport> {
+        let defaults = &self.config.carbon;
+        let source = &defaults.source;
+        let all_classes = [
+            ("forest", defaults.forest), ("grassland", defaults.grassland),
+            ("wetland", defaults.wetland), ("cropland", defaults.cropland),
+            ("built_up", defaults.built_up), ("water", defaults.water), ("bare", defaults.bare),
+        ];
+        let mut totals: Vec<f64> = Vec::with_capacity(simulations);
+        let mut seed = year as u64;
+
+        for _ in 0..simulations {
+            let factors: Vec<EmissionFactor> = all_classes
+                .iter()
+                .map(|(class, value)| {
+                    seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                    let noise = ((seed as f64 / u64::MAX as f64) - 0.5) * 0.4; // ±20%
+                    let perturbed = value * (1.0 + noise);
+                    EmissionFactor::new(*class, perturbed, source.as_str())
+                })
+                .collect();
+            if let Ok(report) = self.engine.calculate(features, &factors, year) {
+                totals.push(report.total_emission_tco2e);
+            }
+        }
+        if totals.is_empty() {
+            return Ok(UncertaintyReport { mean: 0.0, median: 0.0, p5: 0.0, p95: 0.0, stddev: 0.0, cv: 0.0, simulations: 0 });
+        }
+        totals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let n = totals.len();
+        let mean = totals.iter().sum::<f64>() / n as f64;
+        let median = totals[n / 2];
+        let p5 = totals[(0.05 * n as f64) as usize];
+        let p95 = totals[(0.95 * n as f64) as usize];
+        let variance = totals.iter().map(|&v| (v - mean).powi(2)).sum::<f64>() / n as f64;
+        let stddev = variance.sqrt();
+        let cv = if mean.abs() > 1e-10 { (stddev / mean.abs()) * 100.0 } else { 0.0 };
+        Ok(UncertaintyReport { mean, median, p5, p95, stddev, cv, simulations: n })
+    }
+}
+
+/// Monte Carlo uncertainty result.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct UncertaintyReport {
+    pub mean: f64, pub median: f64, pub p5: f64, pub p95: f64,
+    pub stddev: f64, pub cv: f64, pub simulations: usize,
 }
 
 #[cfg(test)]
@@ -130,5 +183,22 @@ mod tests {
         // 森林碳汇为负值
         assert!(report.total_emission_tco2e < 0.0);
         assert!(report.is_net_sink());
+    }
+
+    #[test]
+    fn test_monte_carlo_uncertainty() {
+        let config: CarbonConfig = toml::from_str(include_str!("../rules.toml")).unwrap();
+        let plugin = CarbonPlugin::load(config);
+        let features = vec![
+            GeoFeature::new("forest", r#"{"type":"Polygon","coordinates":[[[104.0,30.5],[104.1,30.5],[104.1,30.6],[104.0,30.6],[104.0,30.5]]]}"#).unwrap(),
+        ];
+        let report = plugin.monte_carlo_uncertainty(&features, 2025, 100).unwrap();
+        assert_eq!(report.simulations, 100);
+        // Mean should be negative (carbon sink)
+        assert!(report.mean < 0.0, "Expected negative mean (sink), got {}", report.mean);
+        // CV should be > 0
+        assert!(report.cv > 0.0);
+        // p5 < p95
+        assert!(report.p5 <= report.p95);
     }
 }

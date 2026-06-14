@@ -352,6 +352,97 @@ pub struct PluginMeta {
     pub extra: serde_json::Value,
 }
 
+
+
+/// Lightweight plugin header for `rules.toml` `[plugin]` section.
+///
+/// Each plugin's `rules.toml` starts with:
+/// ```toml
+/// [plugin]
+/// name = "ecology"
+/// version = "0.1.0"
+/// description = "Ecological restoration assessment"
+/// ```
+///
+/// Previously each plugin defined its own identical 3-field struct.
+/// Using this shared type eliminates 9 duplicate definitions.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PluginHeader {
+    pub name: String,
+    pub version: String,
+    pub description: String,
+}
+
+
+// ── PluginConfig trait (Phase 2b architecture unification) ─────────────────
+
+/// Trait for plugin configuration structs that can be loaded from `rules.toml`.
+///
+/// Each plugin defines a `Config` struct that derives `Deserialize` + `Default`,
+/// then implements this trait. The `default()` impl typically reads from the
+/// plugin's own `rules.toml` via `include_str!("../rules.toml")`.
+pub trait PluginConfig: Default + for<'a> serde::Deserialize<'a> {
+    /// Validate configuration values (e.g. weight sum to 1.0, thresholds in range).
+    fn validate(&self) -> GeoResult<()> {
+        Ok(())
+    }
+}
+
+/// Register plugin tools using a declarative macro.
+///
+/// Each plugin that registers MCP tools currently has a ~100-200 line
+/// `register_tools` function with repetitive boilerplate. This macro
+/// reduces that to a compact declaration.
+///
+/// # Example
+/// ```ignore
+/// register_plugin!(registry, {
+///     "hydro_runoff" => |args: serde_json::Value| -> GeoResult<serde_json::Value> { ... },
+///     "hydro_inundation" => |args: serde_json::Value| -> GeoResult<serde_json::Value> { ... },
+/// });
+/// ```
+#[macro_export]
+macro_rules! register_plugin {
+    ($registry:expr, { $( $name:literal => $handler:expr ),* $(,)? }) => {
+        $( $crate::register_plugin!(@tool $registry, $name, $handler); )*
+    };
+    (@tool $registry:expr, $name:literal, $handler:expr) => {
+        $registry.register_tool(
+            $name,
+            $name,
+            std::sync::Arc::new(move |args: serde_json::Value| -> $crate::errors::GeoResult<serde_json::Value> {
+                let handler: fn(serde_json::Value) -> $crate::errors::GeoResult<serde_json::Value> = $handler;
+                handler(args)
+            }),
+        );
+    };
+}
+
+/// Auto-generate `Default` for a config struct by loading from `rules.toml`.
+///
+/// Replaces the repetitive pattern:
+/// ```ignore
+/// impl Default for FooConfig {
+///     fn default() -> Self {
+///         toml::from_str(include_str!("../rules.toml")).expect("Default foo rules.toml is valid")
+///     }
+/// }
+/// ```
+///
+/// Usage: `default_from_rules!(EcologyConfig, "ecology");`
+#[macro_export]
+macro_rules! default_from_rules {
+    ($type:ty, $name:literal) => {
+        impl Default for $type {
+            fn default() -> Self {
+                ::toml::from_str(include_str!("../rules.toml"))
+                    .unwrap_or_else(|e| panic!("Default {} rules.toml is valid: {e}", $name))
+            }
+        }
+    };
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -203,6 +203,320 @@ pub fn compute_aspect(
     }
 }
 
+/// 地形位置指数 (Topographic Position Index)。
+///
+/// TPI = z_center - mean(neighbors)，正值=山脊/山顶，负值=山谷。
+///
+/// # 参数
+/// - `dem`: DEM 高程值，行优先
+/// - `rows`, `cols`: DEM 尺寸
+/// - `radius`: 分析窗口半径（像元数），1 表示 3×3
+/// - `nodata`: NoData 值
+pub fn compute_tpi(
+    dem: &[f64],
+    rows: usize,
+    cols: usize,
+    radius: usize,
+    nodata: Option<f64>,
+) -> Vec<f64> {
+    let nd = nodata.unwrap_or(f64::NAN);
+    let n = rows * cols;
+    let mut tpi = vec![f64::NAN; n];
+
+    for r in radius..rows - radius {
+        for c in radius..cols - radius {
+            let idx = r * cols + c;
+            let center = dem[idx];
+
+            // skip nodata center
+            if center.is_nan() || (!nd.is_nan() && (center - nd).abs() < 1e-10) {
+                continue;
+            }
+
+            let mut sum = 0.0;
+            let mut count = 0usize;
+            for dr in -(radius as isize)..=radius as isize {
+                for dc in -(radius as isize)..=radius as isize {
+                    if dr == 0 && dc == 0 {
+                        continue;
+                    }
+                    let nr = (r as isize + dr) as usize;
+                    let nc = (c as isize + dc) as usize;
+                    let v = dem[nr * cols + nc];
+                    if v.is_nan() || (!nd.is_nan() && (v - nd).abs() < 1e-10) {
+                        continue;
+                    }
+                    sum += v;
+                    count += 1;
+                }
+            }
+            if count > 0 {
+                tpi[idx] = center - sum / count as f64;
+            }
+        }
+    }
+    tpi
+}
+
+/// 地形粗糙度指数 (Terrain Ruggedness Index)。
+///
+/// TRI = sqrt(Σ (z_center - z_neighbor)²)，Riley et al. (1999)。
+///
+/// # 参数
+/// - `dem`: DEM 高程值，行优先
+/// - `rows`, `cols`: DEM 尺寸
+/// - `nodata`: NoData 值
+pub fn compute_tri(
+    dem: &[f64],
+    rows: usize,
+    cols: usize,
+    nodata: Option<f64>,
+) -> Vec<f64> {
+    let nd = nodata.unwrap_or(f64::NAN);
+    let n = rows * cols;
+    let mut tri = vec![f64::NAN; n];
+
+    for r in 1..rows - 1 {
+        for c in 1..cols - 1 {
+            let idx = r * cols + c;
+            let center = dem[idx];
+
+            if center.is_nan() || (!nd.is_nan() && (center - nd).abs() < 1e-10) {
+                continue;
+            }
+
+            let mut ssq = 0.0;
+            let mut count = 0usize;
+            for dr in -1i32..=1 {
+                for dc in -1i32..=1 {
+                    if dr == 0 && dc == 0 {
+                        continue;
+                    }
+                    let nr = (r as i32 + dr) as usize;
+                    let nc = (c as i32 + dc) as usize;
+                    let v = dem[nr * cols + nc];
+                    if v.is_nan() || (!nd.is_nan() && (v - nd).abs() < 1e-10) {
+                        continue;
+                    }
+                    ssq += (center - v).powi(2);
+                    count += 1;
+                }
+            }
+            if count > 0 {
+                tri[idx] = ssq.sqrt();
+            }
+        }
+    }
+    tri
+}
+
+/// 山体阴影 (Hillshade)。
+///
+/// 使用 Horn 法计算坡度/坡向，结合太阳方位角/高度角生成 0~255 灰度阴影。
+///
+/// # 参数
+/// - `dem`: DEM 高程值，行优先
+/// - `rows`, `cols`: DEM 尺寸
+/// - `cell_size_m`: 像元分辨率（米）
+/// - `azimuth_deg`: 太阳方位角（度，0=正北，顺时针）
+/// - `altitude_deg`: 太阳高度角（度，0=地平线，90=天顶）
+/// - `nodata`: NoData 值
+pub fn compute_hillshade(
+    dem: &[f64],
+    rows: usize,
+    cols: usize,
+    cell_size_m: f64,
+    azimuth_deg: f64,
+    altitude_deg: f64,
+    nodata: Option<f64>,
+) -> Vec<f64> {
+    let nd = nodata.unwrap_or(f64::NAN);
+    let n = rows * cols;
+    let mut hillshade = vec![f64::NAN; n];
+
+    let zenith_rad = (90.0 - altitude_deg).to_radians();
+    let azimuth_rad = azimuth_deg.to_radians();
+    let sin_zenith = zenith_rad.sin();
+    let cos_zenith = zenith_rad.cos();
+
+    for r in 1..rows - 1 {
+        for c in 1..cols - 1 {
+            let idx = r * cols + c;
+
+            let z = [
+                dem[(r - 1) * cols + c - 1],
+                dem[(r - 1) * cols + c],
+                dem[(r - 1) * cols + c + 1],
+                dem[r * cols + c - 1],
+                dem[r * cols + c + 1],
+                dem[(r + 1) * cols + c - 1],
+                dem[(r + 1) * cols + c],
+                dem[(r + 1) * cols + c + 1],
+            ];
+
+            if z.iter().any(|&v| v.is_nan() || (!nd.is_nan() && (v - nd).abs() < 1e-10)) {
+                continue;
+            }
+
+            let dz_dx = ((z[7] + 2.0 * z[4] + z[2]) - (z[0] + 2.0 * z[3] + z[5])) / (8.0 * cell_size_m);
+            let dz_dy = ((z[5] + 2.0 * z[6] + z[7]) - (z[0] + 2.0 * z[1] + z[2])) / (8.0 * cell_size_m);
+
+            let slope_rad = (dz_dx * dz_dx + dz_dy * dz_dy).sqrt().atan();
+
+            // 坡向：从正北顺时针
+            let mut aspect_rad = (-dz_dy).atan2(dz_dx);
+            // 转换为从正北顺时针的方位角
+            aspect_rad = std::f64::consts::FRAC_PI_2 - aspect_rad;
+            if aspect_rad < 0.0 {
+                aspect_rad += 2.0 * std::f64::consts::PI;
+            }
+
+            let hs = 255.0 * (
+                cos_zenith * slope_rad.cos()
+                + sin_zenith * slope_rad.sin() * (azimuth_rad - aspect_rad).cos()
+            );
+            hillshade[idx] = hs.max(0.0);
+        }
+    }
+    hillshade
+}
+
+/// 双线性插值重采样。
+///
+/// 将源栅格重采样到目标尺寸。
+///
+/// # 参数
+/// - `src`: 源数据（行优先）
+/// - `src_rows`, `src_cols`: 源尺寸
+/// - `dst_rows`, `dst_cols`: 目标尺寸
+/// - `nodata`: 源 NoData 值
+pub fn resample_bilinear(
+    src: &[f64],
+    src_rows: usize,
+    src_cols: usize,
+    dst_rows: usize,
+    dst_cols: usize,
+    nodata: Option<f64>,
+) -> Vec<f64> {
+    let nd = nodata.unwrap_or(f64::NAN);
+    let mut dst = vec![f64::NAN; dst_rows * dst_cols];
+    let scale_r = src_rows as f64 / dst_rows as f64;
+    let scale_c = src_cols as f64 / dst_cols as f64;
+
+    for dr in 0..dst_rows {
+        for dc in 0..dst_cols {
+            // 源坐标（浮点）
+            let sr = (dr as f64 + 0.5) * scale_r - 0.5;
+            let sc = (dc as f64 + 0.5) * scale_c - 0.5;
+
+            let r0 = sr.floor() as isize;
+            let c0 = sc.floor() as isize;
+            let r1 = r0 + 1;
+            let c1 = c0 + 1;
+
+            if r0 < 0 || c0 < 0 || r1 >= src_rows as isize || c1 >= src_cols as isize {
+                continue;
+            }
+
+            let fr = sr - r0 as f64;
+            let fc = sc - c0 as f64;
+
+            let (r0u, c0u, r1u, c1u) = (r0 as usize, c0 as usize, r1 as usize, c1 as usize);
+            let v00 = src[r0u * src_cols + c0u];
+            let v10 = src[r0u * src_cols + c1u];
+            let v01 = src[r1u * src_cols + c0u];
+            let v11 = src[r1u * src_cols + c1u];
+
+            // 检查 NoData
+            let values = [v00, v10, v01, v11];
+            if values.iter().any(|&v| v.is_nan() || (!nd.is_nan() && (v - nd).abs() < 1e-10)) {
+                continue;
+            }
+
+            let top = v00 + (v10 - v00) * fc;
+            let bot = v01 + (v11 - v01) * fc;
+            dst[dr * dst_cols + dc] = top + (bot - top) * fr;
+        }
+    }
+    dst
+}
+
+/// Zonal Statistics 结果。
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ZonalStats {
+    /// 每个 zone 的统计值（顺序与输入 zone geometries 对应）。
+    pub zones: Vec<ZoneStats>,
+}
+
+/// 单 zone 统计。
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ZoneStats {
+    /// 像元数。
+    pub count: usize,
+    /// 最小值。
+    pub min: Option<f64>,
+    /// 最大值。
+    pub max: Option<f64>,
+    /// 均值。
+    pub mean: Option<f64>,
+    /// 标准差。
+    pub stddev: Option<f64>,
+    /// 总和。
+    pub sum: Option<f64>,
+}
+
+/// 按 zone mask 做分区统计。
+///
+/// `zones` 长度为 `rows * cols`，每个像元 ∈ {0..num_zones}，
+/// 值为 `zone_id` 表示该像元属于该 zone，0 通常表示背景/忽略。
+pub fn zonal_stats(
+    values: &[f64],
+    zones: &[u32],
+    num_zones: usize,
+    _nodata: Option<f64>,
+) -> ZonalStats {
+    let mut zone_data: Vec<Vec<f64>> = vec![Vec::new(); num_zones];
+
+    for i in 0..values.len().min(zones.len()) {
+        let z = zones[i] as usize;
+        if z > 0 && z <= num_zones && values[i].is_finite() {
+            zone_data[z - 1].push(values[i]);
+        }
+    }
+
+    let zones_stats = zone_data
+        .into_iter()
+        .map(|vals| {
+            let count = vals.len();
+            if count == 0 {
+                return ZoneStats {
+                    count: 0,
+                    min: None,
+                    max: None,
+                    mean: None,
+                    stddev: None,
+                    sum: None,
+                };
+            }
+            let sum: f64 = vals.iter().sum();
+            let mean = sum / count as f64;
+            let min = vals.iter().cloned().fold(f64::INFINITY, f64::min);
+            let max = vals.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            let variance = vals.iter().map(|&v| (v - mean).powi(2)).sum::<f64>() / count as f64;
+            ZoneStats {
+                count,
+                min: if min.is_finite() { Some(min) } else { None },
+                max: if max.is_finite() { Some(max) } else { None },
+                mean: Some(mean),
+                stddev: Some(variance.sqrt()),
+                sum: Some(sum),
+            }
+        })
+        .collect();
+
+    ZonalStats { zones: zones_stats }
+}
+
 /// 将坡向角度映射为 8 方向字符串。
 fn classify_aspect(degrees: f64) -> String {
     match degrees {
@@ -300,5 +614,85 @@ mod tests {
         let result = compute_slope_degrees(&dem, rows, cols, 10.0, Some(-999.0));
         assert!(result.mean_degrees.is_none());
         assert!(result.slope_degrees.iter().all(|v| v.is_nan()));
+    }
+
+    #[test]
+    fn test_tpi() {
+        let (dem, rows, cols) = test_dem();
+        let tpi = compute_tpi(&dem, rows, cols, 1, None);
+        // 中心 (2,2) = 30，邻居均值 ≈ 15，TPI ≈ +15 (山脊)
+        let center = tpi[2 * cols + 2];
+        assert!(center > 10.0, "Center TPI should be positive (ridge): got {center}");
+        // 边缘应为 NaN
+        assert!(tpi[0].is_nan());
+    }
+
+    #[test]
+    fn test_tri() {
+        let (dem, rows, cols) = test_dem();
+        let tri = compute_tri(&dem, rows, cols, None);
+        // 山坡处应有粗糙度
+        let slope_tri = tri[1 * cols + 1];
+        assert!(slope_tri > 0.0, "Slope TRI should be > 0: got {slope_tri}");
+        // 边缘 NaN
+        assert!(tri[0].is_nan());
+    }
+
+    #[test]
+    fn test_hillshade() {
+        let (dem, rows, cols) = test_dem();
+        let hs = compute_hillshade(&dem, rows, cols, 10.0, 315.0, 45.0, None);
+        let center = hs[2 * cols + 2];
+        // 平坦峰顶（坡度为0），hillshade = 255 * cos(zenith)
+        assert!(!center.is_nan());
+        assert!(center >= 0.0 && center <= 255.0, "Hillshade range: {center}");
+        // 山坡应有阴影变化
+        let slope_hs = hs[1 * cols + 1];
+        assert!(!slope_hs.is_nan());
+    }
+
+    #[test]
+    fn test_resample_bilinear() {
+        let src = vec![
+            1.0, 2.0, 3.0, 4.0,
+            5.0, 6.0, 7.0, 8.0,
+            9.0, 10.0, 11.0, 12.0,
+            13.0, 14.0, 15.0, 16.0,
+        ];
+        // 4x4 → 2x2 下采样
+        let dst = resample_bilinear(&src, 4, 4, 2, 2, None);
+        assert_eq!(dst.len(), 4);
+        // (0,0) 应在 1..6 之间
+        assert!(dst[0] > 1.0 && dst[0] < 7.0);
+        // (1,1) 应在 11..16 之间
+        assert!(dst[3] > 10.0 && dst[3] < 17.0);
+    }
+
+    #[test]
+    fn test_zonal_stats() {
+        let values = vec![
+            1.0, 2.0, 3.0,
+            4.0, 5.0, 6.0,
+            7.0, 8.0, 9.0,
+        ];
+        // zone 1: first row (1,2,3), zone 2: rest, 0 = background
+        let zones = vec![
+            1u32, 1, 1,
+            2, 2, 2,
+            2, 2, 2,
+        ];
+        let result = zonal_stats(&values, &zones, 2, None);
+        assert_eq!(result.zones.len(), 2);
+        // Zone 1: [1,2,3] → mean=2, min=1, max=3, sum=6
+        assert_eq!(result.zones[0].count, 3);
+        assert_eq!(result.zones[0].mean, Some(2.0));
+        assert_eq!(result.zones[0].min, Some(1.0));
+        assert_eq!(result.zones[0].max, Some(3.0));
+        assert_eq!(result.zones[0].sum, Some(6.0));
+        // Zone 2: [4,5,6,7,8,9] → mean=6.5
+        assert_eq!(result.zones[1].count, 6);
+        assert_eq!(result.zones[1].mean, Some(6.5));
+        assert_eq!(result.zones[1].min, Some(4.0));
+        assert_eq!(result.zones[1].max, Some(9.0));
     }
 }
