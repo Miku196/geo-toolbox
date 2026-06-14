@@ -1,7 +1,7 @@
 # geo-toolbox Wiki
 
 > 从零到一：安装、开发、部署全流程指南。
-> 最后更新：2026-06-13
+> 最后更新：2026-06-14
 
 ---
 
@@ -240,7 +240,7 @@ geo-toolbox/
 │   ├── geo-index/                 # GeoHash 空间索引
 │   ├── geo-parquet/               # GeoParquet 云原生格式
 │   ├── geo-ogc/                   # WMS/WFS/WPS 标准
-│   └── geo-registry/              # 插件注册调度中心
+│   └── geo-registry/              # 插件注册调度中心 + register_plugin! 宏
 │
 ├── plugins/                       # 专业领域插件（10 crates）
 │   ├── geo-plugin-carbon/         # 碳核算插件
@@ -249,25 +249,26 @@ geo-toolbox/
 │   ├── geo-plugin-urban/          # 城乡规划
 │   ├── geo-plugin-hydro/          # 水文分析
 │   ├── geo-plugin-geohazard/      # 地质灾害
-│   └── geo-plugin-agri/           # 农业
+│   ├── geo-plugin-agri/           # 农业
 │   ├── geo-plugin-energy/         # 新能源选址
 │   ├── geo-plugin-forestry/       # 林业碳汇
-│   ├── geo-plugin-coastal/        # 海岸带
+│   └── geo-plugin-coastal/        # 海岸带
 │
-├── adapters/                      # 外部适配器（10 crates）
+├── adapters/                      # 外部适配器（9 crates）
 │   ├── geo-adapter-duckdb/        # SQLite 嵌入式
 │   ├── geo-adapter-stac/          # STAC 数据发现
 │   ├── geo-adapter-osm/           # OpenStreetMap
 │   ├── geo-adapter-postgis/       # PostgreSQL + PostGIS
 │   ├── geo-adapter-gee/           # Google Earth Engine
-│   ├── geo-adapter-qgis/          # QGIS 桥接
+│   ├── geo-adapter-qgis/          # QGIS 桥接 (Subprocess + REST 双后端)
 │   ├── geo-adapter-cad/           # CAD 格式
 │   ├── geo-adapter-cli/           # GDAL/DVC 子进程
-│   ├── geo-adapter-mcp/           # MCP 协议（AI Agent）
 │   └── geo-adapter-iot/           # MQTT 传感器
 │
 ├── crates/                        # 入口
 │   ├── geo-cli/                   # CLI + MCP Server
+│   ├── geo-server/                # HTTP API + WMS
+│   ├── geo-wiring/                # 注册表接线 (de-dup)
 │   └── geo-wasm/                  # WASM + NPM 包
 │
 ├── examples/                      # 示例
@@ -1086,7 +1087,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### 6.2 QGIS 集成
 
-#### 方式 A：qgis_process 子进程
+QGIS 适配器统一 `QgisAdapter`，通过环境变量 `QGIS_BACKEND` 自动选择后端：
+
+| 后端 | 模式 | 触发 | 说明 |
+|------|------|------|------|
+| `Subprocess` | `qgis_process` CLI (默认) | `QGIS_BACKEND` 未设置或非 `rest` | 批处理，无需额外 daemon |
+| `REST` | PyQGIS REST 服务 | `QGIS_BACKEND=rest` | 交互式，长运行 QGIS 实例 |
+
+```rust
+use geo_adapter_qgis::adapter::QgisAdapter;
+
+// 自动检测（读 QGIS_BACKEND 环境变量）
+let adapter = QgisAdapter::from_env();
+
+// 或显式指定
+let adapter = QgisAdapter::new_subprocess(Default::default());
+let adapter = QgisAdapter::new_rest("http://localhost:9100");
+```
+
+#### 方式 A：qgis_process 子进程 (默认)
 
 ```rust
 use geo_adapter_qgis::process_runner::{BatchQgisRunner, QgisProcessConfig};
@@ -1112,7 +1131,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-#### 方式 B：PyQGIS REST 服务
+#### 方式 B：PyQGIS REST 服务 (`QGIS_BACKEND=rest`)
 
 **启动服务端**（在 QGIS Python 控制台或独立脚本）：
 
@@ -2277,7 +2296,7 @@ geo-toolbox 实施了以下安全措施：
 
 ---
 
-## 11. HTTP API Server（`crates/geo-server`）
+## 11. HTTP API Server + WMS（`crates/geo-server`）
 
 ### 11.1 启动
 
@@ -2293,6 +2312,7 @@ cargo run -p geo-server --release
 | `/health` | GET | 健康检查 |
 | `/api/tools` | GET | 列出所有工具 |
 | `/api/call/{tool}` | POST | 调用工具，body 为 JSON 参数 |
+| `/wms` | GET/POST | OGC WMS 1.3.0 (GetCapabilities/GetMap/GetFeatureInfo) |
 
 ### 11.3 使用示例
 
@@ -2304,6 +2324,12 @@ curl -X POST http://localhost:9378/api/call/crs_transform \
 # 碳核算
 curl -X POST http://localhost:9378/api/call/carbon_calculate_raw \
   -d '{"geojson":"...","csv":"source,category,factor_value\nIPCC_2019,forest,-5.0","year":2025}'
+
+# OGC WMS GetCapabilities
+curl "http://localhost:9378/wms?service=WMS&request=GetCapabilities"
+
+# WMS GetMap (PNG)
+curl "http://localhost:9378/wms?service=WMS&request=GetMap&layers=nlcd&crs=EPSG:4326&bbox=-180,-90,180,90&width=800&height=400&format=image/png"
 
 # 列出所有可用工具
 curl http://localhost:9378/api/tools

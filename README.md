@@ -69,7 +69,9 @@
 
 核心设计原则：依赖方向严格单向、WASM 数据不出网、Rust 做胶水 Python 做重活、每 crate 独立可测、Feature flags 控制依赖。
 
-> 💡 **2026-06 v0.3 更新**：Phase 1 核心算子深度化完成 — `geo-raster` 新增 TPI/TRI/Hillshade/双线性重采样/分区统计，`geo-temporal` 新增季节性 MK/Pettitt 突变/BFAST/Sen's Slope，`geo-vector` 新增 Douglas-Peucker 简化/KDE/线密度，`geo-index` 新增 STR R-tree/Quadtree + BBox 扩展。Phase 2 插件深度化 — 碳核算 Monte Carlo 不确定性、水文 Strahler 分级+SCS 单位线、地灾 FS 安全系数+Newmark 位移、海岸 Bruun Rule+bathtub 淹没、能源 Weibull 风能评估。去重 3× `default_from_rules!` 宏 + `PluginConfig` trait + `register_plugin!` 宏 + 9 个高风险函数补测。详见 [WIKI](WIKI.md)。
+> 💡 **2026-06 v0.4 更新**：架构治理 — `register_plugin!` 宏定义 + 26 tools.rs 迁移 (代码量 -60%)；`geo-wiring` crate 抽离 Registry 接线逻辑（消除 CLI/Server 双份重复）；QGIS 适配器统一双后端 (`QgisBackend::Subprocess | Rest`)；geo-server WMS `/wms` 端点 (GetMap/GetFeatureInfo)；geo-server 依赖瘦身 (22→3)；MCP `serve()` 拆分为 3 函数。详见 [WIKI](WIKI.md)。
+>
+> > 💡 **2026-06 v0.3 更新**：Phase 1 核心算子深度化完成 — `geo-raster` 新增 TPI/TRI/Hillshade/双线性重采样/分区统计，`geo-temporal` 新增季节性 MK/Pettitt 突变/BFAST/Sen's Slope，`geo-vector` 新增 Douglas-Peucker 简化/KDE/线密度，`geo-index` 新增 STR R-tree/Quadtree + BBox 扩展。Phase 2 插件深度化 — 碳核算 Monte Carlo 不确定性、水文 Strahler 分级+SCS 单位线、地灾 FS 安全系数+Newmark 位移、海岸 Bruun Rule+bathtub 淹没、能源 Weibull 风能评估。去重 3× `default_from_rules!` 宏 + `PluginConfig` trait + `register_plugin!` 宏 + 9 个高风险函数补测。详见 [WIKI](WIKI.md)。
 
 > 💡 **2026-06 v0.2 更新**：PostGIS 适配器 `push`/`pull`/`execute` 全部实现（参数化 INSERT + ST_GeomFromGeoJSON/ST_AsGeoJSON）；`CarbonEngine` 集成测试全覆盖（GeoJSON+CSV→Report 端到端）；`geo-report` 新增模板体系（`_partials/` + `_layouts/` Tera 宏组件）；Core 层新增 `validate_sql_identifier()` 防止表名注入。详见 [WIKI 完整指南](WIKI.md)。
 
@@ -81,7 +83,7 @@
 
 ## 🤖 MCP 工具一览（44 tools）
 
-geo-toolbox 内置 MCP Server，所有工具可直接被 AI Agent 调用。全功能编译（`cargo build --release`）后可用以下全部工具：
+geo-toolbox 内置 MCP Server + HTTP API + WMS，所有工具可直接被 AI Agent 调用。全功能编译（`cargo build --release`）后可用以下全部工具：
 
 ### 空间计算（Core）
 | 工具 | 说明 | 来源 |
@@ -289,7 +291,7 @@ cargo test --workspace
 | `geo-report` | 报告模板 | `ReportEngine`, `ReportGenerator`, Tera 过滤器 |
 | `geo-parquet` | GeoParquet | `GeoParquetReader`, `GeoParquetWriter`, `SpatialFilter` |
 | `geo-ogc` | OGC 服务 | `WmsService`, `WfsService`, `WpsService` |
-| `geo-registry` | 插件注册 | `PluginRegistry`, `ToolDef`, `generate_mcp_tools()` |
+| `geo-registry` | 插件注册 | `PluginRegistry`, `ToolDef`, `register_plugin!` 宏, `generate_mcp_tools()` |
 
 ### Layer 2: Plugins — 专业领域插件（7 crates）
 
@@ -853,7 +855,7 @@ python -m http.server 8899
 
 ## 🌐 HTTP API Server (`crates/geo-server`)
 
-REST 接口，复用全部 48 个 MCP 工具。
+REST 接口，复用全部 48 个 MCP 工具，并暴露 OGC WMS 1.3.0 端点。
 
 ```bash
 cargo run -p geo-server --release
@@ -865,6 +867,12 @@ curl http://localhost:9378/api/tools
 curl -X POST http://localhost:9378/api/call/crs_transform \
   -H "Content-Type: application/json" \
   -d '{"from_epsg":4326,"to_epsg":3857,"x":104.06,"y":30.57}'
+
+# OGC WMS GetCapabilities
+curl "http://localhost:9378/wms?service=WMS&request=GetCapabilities"
+
+# WMS GetMap (PNG)
+curl "http://localhost:9378/wms?service=WMS&request=GetMap&layers=nlcd&crs=EPSG:4326&bbox=-180,-90,180,90&width=800&height=400&format=image/png"
 
 # 健康检查
 curl http://localhost:9378/health
@@ -1272,6 +1280,8 @@ geo-toolbox/
 │   └── geo-adapter-{postgis,gee,qgis,cad,cli,iot}/
 ├── crates/                  # 入口（2 crates）
 │   ├── geo-cli/             # CLI + MCP
+│   ├── geo-server/          # HTTP API + WMS
+│   ├── geo-wiring/          # 注册表接线 (de-dup)
 │   └── geo-wasm/            # WASM + NPM
 ├── examples/                # 成都碳核算 + 中国风险评估
 ├── demo.html                # 浏览器 DEMO
