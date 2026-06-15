@@ -4,7 +4,9 @@ use geo_core::errors::{GeoError, GeoResult};
 use geo_core::plugin::PluginMeta;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+#[cfg(feature = "tokio")]
 use std::future::Future;
+#[cfg(feature = "tokio")]
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -19,7 +21,8 @@ pub struct ToolDef {
 /// 工具执行结果。
 pub type ToolResult = GeoResult<serde_json::Value>;
 
-/// 异步工具处理器：接收 args JSON，返回结果 JSON。
+/// 异步工具处理器。仅在 `tokio` feature 启用时可用。
+#[cfg(feature = "tokio")]
 pub type AsyncHandler = Arc<
     dyn Fn(serde_json::Value) -> Pin<Box<dyn Future<Output = ToolResult> + Send>> + Send + Sync,
 >;
@@ -39,6 +42,7 @@ pub struct PluginRegistry {
     /// 插件名 → 工具列表映射。
     plugin_tools: HashMap<String, Vec<String>>,
     /// 工具名 → 异步处理器。
+    #[cfg(feature = "tokio")]
     async_handlers: HashMap<String, AsyncHandler>,
     /// 工具名 → 同步处理器。
     sync_handlers: HashMap<String, SyncHandler>,
@@ -51,6 +55,7 @@ impl PluginRegistry {
             plugins: Vec::new(),
             tools: Vec::new(),
             plugin_tools: HashMap::new(),
+            #[cfg(feature = "tokio")]
             async_handlers: HashMap::new(),
             sync_handlers: HashMap::new(),
         }
@@ -84,6 +89,7 @@ impl PluginRegistry {
     }
 
     /// 注册一个工具并绑定异步处理器。
+    #[cfg(feature = "tokio")]
     pub fn register_tool_async(
         &mut self,
         plugin_name: &str,
@@ -111,6 +117,7 @@ impl PluginRegistry {
         if let Some(handler) = self.sync_handlers.get(tool_name) {
             return handler(args);
         }
+        #[cfg(feature = "tokio")]
         if self.async_handlers.contains_key(tool_name) {
             return Err(GeoError::Other(format!(
                 "Tool '{tool_name}' is async; use dispatch()"
@@ -119,9 +126,8 @@ impl PluginRegistry {
         Err(GeoError::Other(format!("Unknown tool: {tool_name}")))
     }
 
-    /// 分发执行一个工具调用。
-    ///
-    /// 优先匹配异步 handler，其次同步 handler，都没有则返回错误。
+    /// 分发执行一个工具调用。仅 tokio feature 启用时可用。
+    #[cfg(feature = "tokio")]
     pub async fn dispatch(&self, tool_name: &str, args: serde_json::Value) -> ToolResult {
         // 异步 handler 优先
         if let Some(handler) = self.async_handlers.get(tool_name) {
@@ -225,6 +231,7 @@ mod tests {
         assert_eq!(tools[0]["name"], "carbon_calculate");
     }
 
+#[cfg(feature = "tokio")]
     #[tokio::test]
     async fn test_dispatch_sync_handler() {
         let mut reg = PluginRegistry::new();
@@ -256,6 +263,7 @@ mod tests {
         assert_eq!(result["greeting"], "Hello, test!");
     }
 
+#[cfg(feature = "tokio")]
     #[tokio::test]
     async fn test_dispatch_unknown_tool() {
         let reg = PluginRegistry::new();
@@ -263,6 +271,7 @@ mod tests {
         assert!(result.is_err());
     }
 
+#[cfg(feature = "tokio")]
     #[tokio::test]
     async fn test_dispatch_async_handler() {
         let mut reg = PluginRegistry::new();

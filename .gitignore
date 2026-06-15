@@ -36,3 +36,9 @@ DEVPLAN.md
 .tokensave
 .pi/
 ROADMAP.md
+/ccheck*
+/ctest*
+/test-output*
+/*tmp*
+/check-geo*
+/*tmp*

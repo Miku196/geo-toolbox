@@ -1,0 +1,258 @@
+{
+    "type": "FeatureCollection",
+    "name": "德兴铜矿生态修复评估区",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "德兴铜矿主矿区",
+                "class": "bare:open_pit",
+                "description": "铜厂露天采场"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [117.56, 29.05],
+                    [117.62, 29.05],
+                    [117.62, 29.02],
+                    [117.56, 29.02],
+                    [117.56, 29.05]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "富家坞采区",
+                "class": "bare:open_pit",
+                "description": "富家坞露天采场"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [117.52, 29.00],
+                    [117.56, 29.00],
+                    [117.56, 28.97],
+                    [117.52, 28.97],
+                    [117.52, 29.00]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "祝家露天采场",
+                "class": "bare:open_pit",
+                "description": "祝家排土场"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [117.54, 28.99],
+                    [117.575, 28.99],
+                    [117.575, 28.96],
+                    [117.54, 28.96],
+                    [117.54, 28.99]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "4号尾矿库",
+                "class": "bare:tailings",
+                "description": "四号尾矿库"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [117.63, 29.02],
+                    [117.665, 29.02],
+                    [117.665, 28.99],
+                    [117.63, 28.99],
+                    [117.63, 29.02]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "西源排土场",
+                "class": "bare:waste_dump",
+                "description": "西源排土场"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [117.53, 29.04],
+                    [117.56, 29.04],
+                    [117.56, 29.01],
+                    [117.53, 29.01],
+                    [117.53, 29.04]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "祝家排土场",
+                "class": "bare:waste_dump",
+                "description": "祝家排土场"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [117.56, 29.00],
+                    [117.59, 29.00],
+                    [117.59, 28.97],
+                    [117.56, 28.97],
+                    [117.56, 29.00]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "生态修复示范区",
+                "class": "forest:restored_mixed_forest",
+                "description": "生态修复试验区"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [117.50, 29.06],
+                    [117.54, 29.06],
+                    [117.54, 29.03],
+                    [117.50, 29.03],
+                    [117.50, 29.06]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "湿地修复区",
+                "class": "wetland:restored_wetland",
+                "description": "人工湿地修复区"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [117.64, 29.04],
+                    [117.68, 29.04],
+                    [117.68, 29.01],
+                    [117.64, 29.01],
+                    [117.64, 29.04]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "灌草修复区",
+                "class": "grassland:restored_shrub_grass",
+                "description": "灌草混交修复区"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [117.50, 29.02],
+                    [117.53, 29.02],
+                    [117.53, 28.99],
+                    [117.50, 28.99],
+                    [117.50, 29.02]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "选矿厂",
+                "class": "built_up:processing_plant",
+                "description": "选矿厂及工业用地"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [117.57, 29.035],
+                    [117.585, 29.035],
+                    [117.585, 29.015],
+                    [117.57, 29.015],
+                    [117.57, 29.035]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "稻田区",
+                "class": "cropland:paddy_field",
+                "description": "周边农田"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [117.49, 29.08],
+                    [117.53, 29.08],
+                    [117.53, 29.05],
+                    [117.49, 29.05],
+                    [117.49, 29.08]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "周边常绿阔叶林",
+                "class": "forest:evergreen_broadleaf",
+                "description": "德兴周边自然林"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [117.49, 29.10],
+                    [117.69, 29.10],
+                    [117.69, 29.08],
+                    [117.49, 29.08],
+                    [117.49, 29.10]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "南部常绿阔叶林",
+                "class": "forest:evergreen_broadleaf",
+                "description": "德兴南部自然林"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [117.49, 28.95],
+                    [117.69, 28.95],
+                    [117.69, 28.97],
+                    [117.49, 28.97],
+                    [117.49, 28.95]
+                ]]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "试验样地",
+                "class": "grassland:test_plot",
+                "description": "生态修复试验样地"
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [117.59, 29.06],
+                    [117.61, 29.06],
+                    [117.61, 29.04],
+                    [117.59, 29.04],
+                    [117.59, 29.06]
+                ]]
+            }
+        }
+    ]
+}

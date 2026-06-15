@@ -5,6 +5,7 @@
 #![allow(missing_docs)]
 
 pub mod config;
+pub mod gauss;
 pub mod survey;
 pub mod tools;
 pub mod trait_impl;

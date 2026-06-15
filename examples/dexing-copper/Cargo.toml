@@ -1,18 +1,22 @@
 [package]
-name = "dexing-copper-report"
-version = "0.1.0"
-edition = "2021"
-description = "德兴铜矿生态修复评估报告生成示例"
+name = "dexing-copper"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "德兴铜矿生态修复效果评估 — Sentinel-2 NDVI + 碳汇 + DXF"
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
 geo-raster = { path = "../../core/geo-raster" }
-geo-carbon-math = { path = "../../core/geo-carbon-math" }
-geo-plugin-ecology = { path = "../../plugins/geo-plugin-ecology" }
-geo-report = { path = "../../core/geo-report" }
-serde_json = "1"
-toml = "0.8"
-fastrand = "2"
-tera = "1"
-chrono = "0.4"
-pulldown-cmark = "0.12"
+geo-adapter-stac = { path = "../../adapters/geo-adapter-stac" }
+
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+reqwest = { version = "0.12", features = ["stream"] }
+tiff = "0.9"
+flate2 = "1.0"
+url = "2"

@@ -9,5 +9,9 @@ description = "插件注册与调度中心 — 统一管理所有 plugin 和 ada
 geo-core = { path = "../geo-core" }
 serde.workspace = true
 serde_json.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, optional = true }
 tracing.workspace = true
+
+[features]
+default = []
+tokio-runtime = ["tokio"]
