@@ -11,7 +11,7 @@
 [![Rust](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-300+-pass-green.svg)]()
-[![MCP Tools](https://img.shields.io/badge/mcp-48%20tools-blue.svg)]()
+[![MCP Tools](https://img.shields.io/badge/mcp-55%20tools-blue.svg)]()
 [![CI](https://img.shields.io/badge/CI-passing-green.svg)]()
 
 ---
@@ -69,6 +69,8 @@
 
 核心设计原则：依赖方向严格单向、WASM 数据不出网、Rust 做胶水 Python 做重活、每 crate 独立可测、Feature flags 控制依赖。
 
+> 💡 **2026-06 v0.6 更新**：土壤侵蚀+水文模型 — RUSLE 通用土壤流失方程 (A=R·K·LS·C·P, 5因子完整计算) + SCS-CN 径流曲线数法 (26种土地利用CN查表, AMC干旱/正常/湿润修正) + InVEST 碳存储(4碳库)+水源涵养(Budyko产水量) + 7个新CLI工具 + 35个新测试。详见 [WIKI](WIKI.md)。
+>
 > 💡 **2026-06 v0.5 更新**：碳核算方法学升级 — 5 碳库模型 (AGB/BGB/Deadwood/Litter/SOC) + 3 场景 (造林/森林经营/毁林) + IPCC Tier 1 生物量扩展方程/SOC 过渡方程；VCS/CCB 方法学映射 (VM0010-VM0046, 9 种) + 项目信用缓冲池 + CCB 共认证；CLI Unix 管道模式 `geo pipeline read | buffer | simplify | reproject | write` 支持 CSV/GeoJSON 流式处理。详见 [WIKI](WIKI.md)。
 >
 > 💡 **2026-06 v0.4 更新**：架构治理 — `register_plugin!` 宏定义 + 26 tools.rs 迁移 (代码量 -60%)；`geo-wiring` crate 抽离 Registry 接线逻辑（消除 CLI/Server 双份重复）；QGIS 适配器统一双后端 (`QgisBackend::Subprocess | Rest`)；geo-server WMS `/wms` 端点 (GetMap/GetFeatureInfo)；geo-server 依赖瘦身 (22→3)；MCP `serve()` 拆分为 3 函数。详见 [WIKI](WIKI.md)。
@@ -83,7 +85,7 @@
 
 ---
 
-## 🤖 MCP 工具一览（44 tools）
+## 🤖 MCP 工具一览（55 tools）
 
 geo-toolbox 内置 MCP Server + HTTP API + WMS，所有工具可直接被 AI Agent 调用。全功能编译（`cargo build --release`）后可用以下全部工具：
 
@@ -127,6 +129,9 @@ geo-toolbox 内置 MCP Server + HTTP API + WMS，所有工具可直接被 AI Age
 | 工具 | 说明 |
 |------|------|
 | `ecology_assess` | 生态修复评估（NDVI+碳汇） |
+| `ecology_ndvi_change` | 两期NDVI变化检测 |
+| `ecology_rusle` | RUSLE 土壤流失方程 (A=RKLSCP) | 🆕 |
+| `ecology_rusle_assessment` | RUSLE 完整评估+侵蚀分级 | 🆕 |
 | `energy_solar_suitability` | 光伏选址适宜性 |
 | `energy_wind` | Weibull 风能密度评估 | 🆕 |
 | `forestry_carbon_stock` | 林业碳储量变化 |
@@ -141,6 +146,9 @@ geo-toolbox 内置 MCP Server + HTTP API + WMS，所有工具可直接被 AI Age
 | `hydro_runoff` | 径流系数 |
 | `hydro_strahler` | Strahler 河网分级 | 🆕 |
 | `hydro_scs_uh` | SCS 单位线 (NRCS) | 🆕 |
+| `hydro_scs_cn` | SCS-CN 径流曲线数 (26种CN查表) | 🆕 |
+| `hydro_invest_carbon` | InVEST 碳存储 (4碳库) | 🆕 |
+| `hydro_invest_water` | InVEST 水源涵养 (Budyko) | 🆕 |
 | `geohazard_landslide` | 滑坡敏感性指数 |
 | `geohazard_fs` | 无限边坡安全系数 (FS) | 🆕 |
 | `geohazard_newmark` | Newmark 地震永久位移 | 🆕 |
@@ -303,10 +311,10 @@ cargo test --workspace
 | 插件 | 核心计算 | 输入 | 输出 |
 |------|---------|------|------|
 | `geo-plugin-carbon` | 排放 = 面积 × 因子 | GeoJSON + 碳密度 CSV | 碳核算报告 |
-| `geo-plugin-ecology` | NDVI 变化检测 + 碳汇 | 多期遥感 + AOI | 生态修复评估报告 |
+| `geo-plugin-ecology` | NDVI 变化检测 + 碳汇 + **RUSLE 土壤侵蚀** | 多期遥感 + AOI | 生态修复评估报告 |
 | `geo-plugin-survey` | 控制网平差、土方量 | 测量原始数据 | 测绘成果表 |
 | `geo-plugin-urban` | 用地分类、容积率、密度 | 规划图 | 规划指标表 |
-| `geo-plugin-hydro` | 流域提取、汇流、淹没 | DEM + 降雨 | 水文报告 |
+| `geo-plugin-hydro` | 流域提取 + **SCS-CN 径流** + **InVEST 碳+水** | DEM + 降雨 | 水文报告 |
 | `geo-plugin-geohazard` | 滑坡敏感性 | 地质图 + DEM | 风险等级图 |
 | `geo-plugin-agri` | 作物估产、土壤评级 | 农田 + 遥感 | 产量报告 |
 | `geo-plugin-energy` | 光伏/风电选址 | DEM + 辐射/风速 | 适宜性等级 |
@@ -857,7 +865,7 @@ python -m http.server 8899
 
 ## 🌐 HTTP API Server (`crates/geo-server`)
 
-REST 接口，复用全部 48 个 MCP 工具，并暴露 OGC WMS 1.3.0 端点。
+REST 接口，复用全部 55 个 MCP 工具，并暴露 OGC WMS 1.3.0 端点。
 
 ```bash
 cargo run -p geo-server --release

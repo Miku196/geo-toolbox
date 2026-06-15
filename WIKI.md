@@ -1,9 +1,9 @@
 # geo-toolbox Wiki
 
 > 从零到一：安装、开发、部署全流程指南。
-> 最后更新：2026-06-15
+> 最后更新：2026-06-16
 
-> 💡 **2026-06 v0.5 更新**：碳核算方法学升级 — 5 碳库模型 (AGB/BGB/Deadwood/Litter/SOC) + 3 场景 (造林/森林经营/毁林/IFM/Deforestation) + IPCC Tier 1 生物量扩展方程/SOC 过渡方程；VCS/CCB 方法学映射 (VM0010-VM0046, 9 种) + 项目信用缓冲池 + CCB 共认证；CLI Unix 管道模式 `geo pipeline read | buffer | simplify | reproject | write` 支持 CSV/GeoJSON 流式处理。
+> 💡 **2026-06 v0.6 更新**：RUSLE 通用土壤流失方程 (A=R·K·LS·C·P) + SCS-CN 径流曲线数 (26种土地利用CN查表) + InVEST 碳存储(4碳库)+水源涵养(Budyko曲线) + 7个新CLI工具 + 35个新测试。详见 [核心功能使用](#4-核心功能使用)。
 
 ---
 
@@ -33,6 +33,9 @@
   - [4.11 海岸带监测](#411-海岸带监测)
   - [4.12 OSM 数据拉取](#412-osm-数据拉取)
   - [4.13 CLI 管道模式](#413-cli-管道模式)
+  - [4.14 RUSLE 土壤流失方程](#414-rusle-土壤流失方程)
+  - [4.15 SCS-CN 径流曲线数](#415-scs-cn-径流曲线数)
+  - [4.16 InVEST 碳存储与水源涵养](#416-invest-碳存储与水源涵养)
 - [5. 插件开发](#5-插件开发)
   - [5.1 创建插件骨架](#51-创建插件骨架)
   - [5.2 编写配置](#52-编写配置)
@@ -788,6 +791,187 @@ go pipeline read aoi.geojson \
 | `write <file>` | stdout → 文件 (GeoJSON/CSV) |
 | `area` | 面积统计 → JSON |
 | `filter key=X value=Y` | 按属性过滤 |
+
+---
+
+## 4.14 RUSLE 土壤流失方程
+
+**文件**: `plugins/geo-plugin-ecology/src/rusle.rs`
+
+修正通用土壤流失方程（Revised Universal Soil Loss Equation）：
+
+`A = R × K × LS × C × P`
+
+| 因子 | 含义 | 单位 |
+|------|------|------|
+| R | 降雨侵蚀力 | MJ·mm/ha·h·yr |
+| K | 土壤可蚀性 | t·ha·h/ha·MJ·mm |
+| LS | 坡长-坡度 | 无量纲 |
+| C | 覆盖管理 | 0-1 |
+| P | 水土保持措施 | 0-1 |
+| A | 年均土壤流失量 | t/ha/yr |
+
+### 侵蚀等级
+
+| 等级 | 流失量 (t/ha/yr) |
+|------|-----------------|
+| 微度 | < 5 |
+| 轻度 | 5 - 10 |
+| 中度 | 10 - 20 |
+| 强烈 | 20 - 50 |
+| 极强烈 | > 50 |
+
+### 核心 API
+
+```rust
+use geo_plugin_ecology::rusle::*;
+
+// R 因子 — 月降雨数据
+let monthly = vec![
+    &[50,60,100,150,200,250,200,180,120,80,60,40][..],
+    &[45,55,95,140,190,240,210,170,110,75,55,38][..],
+];
+let r_factor = compute_r_factor(&monthly);
+
+// R 因子简化 — 年降雨量
+let r = compute_r_factor_simple(1000.0); // 约 3265
+
+// K 因子 — 土壤质地
+let k = compute_k_factor(20.0, 65.0, 15.0, 7.0, 2.0, 2, 3);
+
+// LS 因子 — 从 DEM
+let dem = vec![100.0; 9];
+let ls = compute_ls_from_dem(&dem, 30.0, 3, 3);
+
+// C 因子 — 从 NDVI
+let ndvi = vec![0.3, 0.5, 0.7, 0.0];
+let c = compute_c_factor_from_ndvi(&ndvi);
+
+// P 因子 — 措施类型
+let p = compute_p_factor(&[5.0, 10.0, 15.0], PracticeType::Terracing);
+
+// 完整评估
+let result = assess_soil_loss(
+    &dem, None, 30.0, 3, 3,
+    4000.0,  // R factor
+    None,     // K factor (default 0.032)
+    &ndvi,
+    PracticeType::Contouring,
+);
+println!("平均流失: {:.1} t/ha/yr", result.soil_loss_mean);
+println!("侵蚀等级分布: {:?}", result.class_distribution);
+```
+
+---
+
+## 4.15 SCS-CN 径流曲线数
+
+**文件**: `plugins/geo-plugin-hydro/src/scs_cn.rs`
+
+NRCS 径流曲线数法（SCS-CN）：
+
+`Q = (P - Ia)² / (P - Ia + S)`
+
+其中 `S = 25400/CN - 254`，`Ia = 0.2 × S`。
+
+### 水文土壤分组
+
+| 分组 | 入渗率 | 典型土壤 |
+|------|--------|---------|
+| A | 高 | 砂土、砾石 |
+| B | 中等 | 粉砂壤土 |
+| C | 慢 | 粘壤土 |
+| D | 低 | 粘土 |
+
+### CN 查表（部分）
+
+| 土地利用 | A | B | C | D |
+|---------|----|----|----|----|
+| 森林 | 30 | 55 | 70 | 77 |
+| 草地 | 39 | 61 | 74 | 80 |
+| 耕地 | 67 | 78 | 85 | 89 |
+| 城市 | 89 | 92 | 94 | 95 |
+| 水体 | 100 | 100 | 100 | 100 |
+| 裸地 | 77 | 86 | 91 | 94 |
+
+共 26 种土地利用类型。
+
+### 核心 API
+
+```rust
+use geo_plugin_hydro::scs_cn::*;
+
+// CN 查表
+let cn = get_cn_ii("forest_good", SoilGroup::B); // 55
+
+// AMC 修正（干旱）
+let dry_cn = adjust_cn_for_amc(cn, AMC::Dry);
+
+// 计算径流
+let runoff = compute_runoff(100.0, 70.0, 0.2); // 降雨100mm, CN70
+// → Q ≈ 32.7 mm
+
+// 完整评估
+let landuse: Vec<&str> = vec!["forest_good", "cropland", "urban", "water"];
+let soil = vec![SoilGroup::A, SoilGroup::B, SoilGroup::C, SoilGroup::D];
+let result = assess_runoff(&landuse, &soil, 100.0, AMC::Normal, 4, 30.0, 0.2);
+println!("CN 均值: {:.1}", result.cn_mean);
+println!("径流深: {:.1} mm", result.runoff_mm);
+```
+
+---
+
+## 4.16 InVEST 碳存储与水源涵养
+
+**文件**: `plugins/geo-plugin-hydro/src/invest.rs`
+
+基于 Natural Capital Project InVEST 3.x 模型。
+
+### 碳存储
+
+4 碳库模型：`C_total = C_above + C_below + C_soil + C_dead`
+
+| 碳库 | 说明 |
+|------|------|
+| 地上生物量 | 活植被地上部分 (Mg C/ha) |
+| 地下生物量 | 根系 (Mg C/ha) |
+| 土壤有机碳 | 矿质土有机碳 (Mg C/ha) |
+| 枯落物 | 凋落物+粗木质残体 (Mg C/ha) |
+
+内置 20 种生态系统碳密度默认值（常绿阔叶林 244, 草地 78, 湿地 222 Mg C/ha 等）。
+
+### 水源涵养
+
+Budyko 蒸散发曲线：
+
+`AET/P = 1 + PET/P - (1 + (PET/P)^ω)^(1/ω)`
+
+`ω = Z × AWC/P + 1.25`
+
+产水量：`Y = (1 - AET/P) × P`
+
+### 核心 API
+
+```rust
+use geo_plugin_hydro::invest::*;
+
+// 碳存储评估
+let landuse: Vec<&str> = vec!["forest", "forest", "cropland", "water"];
+let carbon = assess_carbon_storage(&landuse, 30.0, None);
+println!("总碳储量: {:.0} Mg C", carbon.total_carbon_mg);
+println!("碳密度: {:.1} Mg C/ha", carbon.carbon_density_mg_per_ha);
+
+// 产水量评估
+let p = vec![1000.0, 800.0, 600.0, 400.0];
+let pet = vec![500.0, 400.0, 300.0, 200.0];
+let awc = vec![100.0; 4];
+let water = assess_water_yield(&p, &pet, &awc, 5.0, 30.0);
+println!("产水量: {:.1} mm/yr", water.water_yield_mm);
+println!("总产水量: {:.0} m³/yr", water.total_water_yield_m3);
+
+// 综合评估
+let invest = assess_invest(&landuse, &p, &pet, &awc, 5.0, 30.0);
+```
 
 ---
 
