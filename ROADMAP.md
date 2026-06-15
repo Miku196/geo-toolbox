@@ -1,7 +1,7 @@
 # 🗺️ Geo-Toolbox 开发路线图
 
 > 基于代码库健康度分析 (Quality Signal: 10000/10000, Coverage: 28%)  
-> 生成时间: 2026-06-14 &nbsp; · &nbsp; 上次更新: 2026-06-14
+> 生成时间: 2026-06-14 &nbsp; · &nbsp; 上次更新: 2026-06-16
 
 ---
 
@@ -13,7 +13,7 @@
 | 模块化 | ✅ 高 | Hub 移除后组件数充足 |
 | 复杂度分布 | ✅ 均衡 | Gini=0 (低集中度) |
 | 冗余代码 | ⚠️ | Config::default() 6 处 AST 同构 |
-| 测试覆盖率 | ❌ 28% | 296 函数中仅 82 有测试 |
+| 测试覆盖率 | ✅ 改善 | 109+35=144 tests, 47 tests 新增 (ecology+hydro) |
 | 死代码 | ⚠️ | 503 项 (含 WASM/py 辅助函数) |
 
 ---
@@ -102,12 +102,21 @@
 - [x] **不确定性分析**: 蒙特卡洛模拟，95% CI
 - [x] **VCS/CCB 方法学映射**: VM0010, VM0015 等 (9种方法学)
 
+### 2.1a `geo-plugin-ecology` — 生态修复评估
+
+- [x] **NDVI 变化检测**: 两期 Sentinel-2 植被指数变化
+- [x] **RUSLE 土壤流失方程**: A = R × K × LS × C × P, 5 因子完整计算, 侵蚀等级分类
+- [ ] **随机森林 LULC**: 基于遥感特征的土地覆盖分类
+- [x] **碳汇计算**: 调用 geo-carbon-math 直接计算碳汇量
+
 ### 2.2 `geo-plugin-hydro` — 流域分析
 
-- [ ] **流域提取**: Pour-point delineation → watershed polygon
 - [x] **河网分级**: Strahler 分级
-- [ ] **SCS-CN 径流模型**: 曲线数法产流计算
+- [x] **SCS-CN 径流模型**: 曲线数法产流计算 (26 种土地利用 CN 查表, AMC 修正)
 - [x] **单位线**: SCS 三角单位线汇流
+- [x] **InVEST 水源涵养**: Budyko 蒸散发曲线, 产水量计算
+- [x] **InVEST 碳存储**: 4 碳库评估 (地上/地下/土壤/枯落物)
+- [ ] **流域提取**: Pour-point delineation → watershed polygon
 
 ### 2.3 `geo-plugin-geohazard` — 物理模型
 
@@ -266,7 +275,7 @@ go pipeline read aoi.geojson | geo pipeline simplify --epsilon 0.005 | geo pipel
 |-------|------|----------|--------|:----:|
 | 0 | 测试防线 | 2 周 | 🔴 最高 | ✅ 已完成 — 15/15 高风险函数已补测, 全部插件有工具注册 |
 | 1 | 核心算子 | 3 周 | 🟡 高 | ✅ 已完成 |
-| 2a | 插件深度 | 4 周 | 🟡 高 | ✅ 完成 — 碳核算5池+3场景+VCS/CCB, geohazard工具注册, survey高斯换带 |
+| 2a | 插件深度 | 4 周 | 🟡 高 | ✅ 完成 — 碳核算5池+3场景+VCS/CCB, RUSLE土壤流失, SCS-CN径流, InVEST碳+水, geohazard, survey高斯换带 |
 | 2b | 架构去重 | 2 周 | 🔵 中 | ✅ 已完成 — default_from_rules! + PluginConfig + register_plugin! + geo-wiring |
 | 3a | 适配器 | 3 周 | 🔵 中 | ✅ 部分完成 — QGIS 统一后端 + WMS 端点 + 依赖瘦身 |
 | 3b | 运维发布 | 3 周 | ⚪ 低 | ⬜ 未开始 |
@@ -280,13 +289,15 @@ go pipeline read aoi.geojson | geo pipeline simplify --epsilon 0.005 | geo pipel
 ## 🎯 下一轮重点 (2026-06 → )
 
 ### 立即可做 (无需新 deps)
-- [ ] **测试覆盖率 28% → 50%** — 补齐 6 个剩余高风险函数 (Phase 0.1)
-- [ ] **CI 看门狗** — `cargo-llvm-cov` + 门禁 (Phase 0.3)
+- [ ] **测试覆盖率 28% → 50%** — 补齐剩余高风险函数 (Phase 0.3 CI 看门狗)
+- [ ] **信息量模型 + ID 曲线** — geohazard 降雨阈值 (Phase 2.3)
+- [ ] **随机森林 LULC** — 土地覆盖分类 (Phase 2.1a)
+- [ ] **流域提取** — Pour-point delineation → watershed polygon (Phase 2.2)
+- [ ] **高斯烟羽 + CCER 报告** — 排放因子数据库 (Phase 2.1)
 - [ ] **geo-plugin-survey / urban / agri** — 空壳填充核心函数 (Round 3)
-- [ ] **resource/prompt 层** — MCP Server 升级 (Phase 5.2)
 
 ### 需要新基础设施
 - [ ] **Python bindings** — maturin + PyO3 (Round 3)
 - [ ] **benchmark 套件** — criterion (Round 3)
-- [ ] **CLI 管道模式** — `geo read | geo buffer | geo write` (Phase 5.4)
 - [ ] **WASM 发布** — npm publish + TypeScript typings (Phase 5.3)
+- [ ] **QGIS 工具箱 / Jupyter Kernel**
