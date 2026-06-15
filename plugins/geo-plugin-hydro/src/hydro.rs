@@ -252,7 +252,9 @@ impl HydroPlugin {
         cell_size_m: f64,
     ) -> Vec<u32> {
         let n = rows * cols;
-        if dem.len() < n { return vec![0; n]; }
+        if dem.len() < n {
+            return vec![0; n];
+        }
 
         // D8 flow direction (same as flow_accumulation)
         let d8_dr: [isize; 8] = [-1, 0, 1, 1, 1, 0, -1, -1];
@@ -269,11 +271,16 @@ impl HydroPlugin {
                 for d in 0..8 {
                     let nr = r as isize + d8_dr[d];
                     let nc = c as isize + d8_dc[d];
-                    if nr < 0 || nr >= rows as isize || nc < 0 || nc >= cols as isize { continue; }
+                    if nr < 0 || nr >= rows as isize || nc < 0 || nc >= cols as isize {
+                        continue;
+                    }
                     let nb = (nr as usize) * cols + (nc as usize);
                     let diff = dem[cur] - dem[nb];
                     let slope = diff / (cell_size_m * d8_diag[d]);
-                    if slope > max_slope { max_slope = slope; best = Some(nb); }
+                    if slope > max_slope {
+                        max_slope = slope;
+                        best = Some(nb);
+                    }
                 }
                 flow_dir[cur] = best;
             }
@@ -281,7 +288,11 @@ impl HydroPlugin {
 
         let mut order: Vec<u32> = vec![1; n];
         let mut elev_order: Vec<usize> = (0..n).collect();
-        elev_order.sort_by(|&a, &b| dem[b].partial_cmp(&dem[a]).unwrap_or(std::cmp::Ordering::Equal));
+        elev_order.sort_by(|&a, &b| {
+            dem[b]
+                .partial_cmp(&dem[a])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         for &cell in &elev_order {
             if let Some(down) = flow_dir[cell] {
