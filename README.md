@@ -69,6 +69,8 @@
 
 核心设计原则：依赖方向严格单向、WASM 数据不出网、Rust 做胶水 Python 做重活、每 crate 独立可测、Feature flags 控制依赖。
 
+> 💡 **2026-06 v0.5 更新**：碳核算方法学升级 — 5 碳库模型 (AGB/BGB/Deadwood/Litter/SOC) + 3 场景 (造林/森林经营/毁林) + IPCC Tier 1 生物量扩展方程/SOC 过渡方程；VCS/CCB 方法学映射 (VM0010-VM0046, 9 种) + 项目信用缓冲池 + CCB 共认证；CLI Unix 管道模式 `geo pipeline read | buffer | simplify | reproject | write` 支持 CSV/GeoJSON 流式处理。详见 [WIKI](WIKI.md)。
+>
 > 💡 **2026-06 v0.4 更新**：架构治理 — `register_plugin!` 宏定义 + 26 tools.rs 迁移 (代码量 -60%)；`geo-wiring` crate 抽离 Registry 接线逻辑（消除 CLI/Server 双份重复）；QGIS 适配器统一双后端 (`QgisBackend::Subprocess | Rest`)；geo-server WMS `/wms` 端点 (GetMap/GetFeatureInfo)；geo-server 依赖瘦身 (22→3)；MCP `serve()` 拆分为 3 函数。详见 [WIKI](WIKI.md)。
 >
 > > 💡 **2026-06 v0.3 更新**：Phase 1 核心算子深度化完成 — `geo-raster` 新增 TPI/TRI/Hillshade/双线性重采样/分区统计，`geo-temporal` 新增季节性 MK/Pettitt 突变/BFAST/Sen's Slope，`geo-vector` 新增 Douglas-Peucker 简化/KDE/线密度，`geo-index` 新增 STR R-tree/Quadtree + BBox 扩展。Phase 2 插件深度化 — 碳核算 Monte Carlo 不确定性、水文 Strahler 分级+SCS 单位线、地灾 FS 安全系数+Newmark 位移、海岸 Bruun Rule+bathtub 淹没、能源 Weibull 风能评估。去重 3× `default_from_rules!` 宏 + `PluginConfig` trait + `register_plugin!` 宏 + 9 个高风险函数补测。详见 [WIKI](WIKI.md)。
@@ -1014,6 +1016,36 @@ geo-toolbox process qgis batch \
 ```bash
 geo-toolbox carbon emission-factor register factors.csv
 geo-toolbox carbon emission-factor calculate --aoi <uuid> --year 2025 --source IPCC_2019
+```
+
+### Unix 管道模式 (v0.5 新增)
+
+管道模式支持 Unix 风格的流水线处理 — 通过 stdin/stdout 串联 GeoJSON FeatureCollection：
+
+```bash
+# CSV → GeoJSON → 缓冲区 → 写文件
+go pipeline read data.csv --format csv \
+  | geo pipeline buffer --distance 500 \
+  | geo pipeline write output.geojson
+
+# GeoJSON → 按属性过滤 → 算面积
+go pipeline read city.geojson \
+  | geo pipeline filter key=class value=park \
+  | geo pipeline area
+
+# 重投影(需--features proj-crs) → 抽稀
+go pipeline read aoi.geojson \
+  | geo pipeline reproject --from-epsg 4326 --to-epsg 3857 \
+  | geo pipeline simplify --epsilon 0.005
+
+# 管道命令一览
+go pipeline read <file>          # stdin/文件 → GeoJSON stdout
+go pipeline buffer --distance N  # 缓冲区
+go pipeline simplify --epsilon N # Douglas-Peucker 抽稀
+go pipeline reproject --from-epsg N --to-epsg M  # CRS 重投影
+go pipeline write <file>         # stdin → 文件 (GeoJSON/CSV)
+go pipeline area                 # 面积统计
+go pipeline filter key=X value=Y # 按属性过滤
 ```
 
 ### 成果导出

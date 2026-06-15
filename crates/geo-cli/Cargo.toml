@@ -11,7 +11,7 @@ path = "src/main.rs"
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
-geo-registry = { path = "../../core/geo-registry" }
+geo-registry = { path = "../../core/geo-registry", features = ["tokio-runtime"] }
 geo-wiring = { path = "../geo-wiring" }
 geo-io = { path = "../../core/geo-io" }
 geo-raster = { path = "../../core/geo-raster" }
@@ -45,6 +45,10 @@ geo-adapter-cli = { path = "../../adapters/geo-adapter-cli", optional = true }
 geo-adapter-qgis = { path = "../../adapters/geo-adapter-qgis", optional = true }
 
 clap.workspace = true
+geo.workspace = true
+geojson.workspace = true
+proj = { workspace = true, optional = true }
+csv.workspace = true
 sqlx = { workspace = true, optional = true }
 uuid.workspace = true
 serde.workspace = true
@@ -56,7 +60,7 @@ chrono = { version = "0.4", features = ["serde"] }
 futures.workspace = true
 
 [features]
-default = ["postgis", "cad", "gee", "qgis", "gdal"]
+default = ["postgis", "cad", "gee", "qgis", "gdal", "proj-crs"]
 postgis = ["geo-adapter-postgis", "geo-wiring/postgis", "sqlx"]
 cad = ["geo-adapter-cad", "geo-wiring/cad"]
 iot = ["geo-adapter-iot", "geo-wiring/iot"]
@@ -65,3 +69,4 @@ qgis = ["geo-adapter-qgis", "geo-wiring/qgis"]
 gdal = ["geo-adapter-cli", "geo-wiring/gdal"]
 mqtt = ["iot"]
 minimal = []
+proj-crs = ["proj"]

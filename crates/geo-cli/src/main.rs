@@ -61,9 +61,57 @@ enum Commands {
         #[command(subcommand)]
         action: PluginsAction,
     },
+    /// Pipeline mode: Unix pipe geospatial processing (read→buffer→simplify→reproject→write)
+    Pipeline {
+        #[command(subcommand)]
+        action: PipelineAction,
+    },
 }
 
 // ── Subcommand enums ──────────────────────────────────────────────────────
+
+/// Pipeline subcommands for Unix pipe geospatial processing.
+#[derive(Subcommand, Debug, Clone)]
+pub enum PipelineAction {
+    /// Read geospatial data (file or stdin) and output GeoJSON
+    Read {
+        input: Option<String>,
+        #[arg(long, default_value = "geojson")]
+        format: String,
+    },
+    /// Buffer all geometries by a distance
+    Buffer {
+        #[arg(long, default_value = "100")]
+        distance: f64,
+        #[arg(long)]
+        units: Option<String>,
+    },
+    /// Simplify geometries using Douglas-Peucker
+    Simplify {
+        #[arg(long, default_value = "0.01")]
+        epsilon: f64,
+    },
+    /// Reproject geometries between CRS
+    Reproject {
+        #[arg(long)]
+        from_epsg: u16,
+        #[arg(long)]
+        to_epsg: u16,
+    },
+    /// Write GeoJSON from stdin to a file
+    Write {
+        output: String,
+        #[arg(long, default_value = "geojson")]
+        format: String,
+    },
+    /// Compute area of all geometries
+    Area,
+    /// Filter features by property value
+    Filter {
+        key: String,
+        value: String,
+    },
+}
 
 #[derive(Subcommand)]
 enum PluginsAction {
@@ -360,6 +408,7 @@ async fn dispatch_cli(
         Commands::Crs { action } => commands::crs::handle(registry, action),
         Commands::Ingest { action } => commands::ingest::handle(registry, action).await,
         Commands::Plugins { action } => handle_plugins(registry, action),
+        Commands::Pipeline { action } => commands::pipeline::handle(registry, action),
 
         #[cfg(feature = "postgis")]
         Commands::Store(action) => commands::store::handle(registry, action).await,

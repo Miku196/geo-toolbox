@@ -373,6 +373,50 @@ impl CarbonEngine {
     /// Supports fuel combustion, electricity, and material processing.
     /// Uses fuel combustion parameters (NCV × CC × Ox × 44/12) when available,
     /// otherwise falls back to factor_value.
+    /// Compute 5-pool carbon stock for a given land parcel.
+    ///
+    /// Uses the IPCC Tier 1 5-pool model to estimate carbon stock
+    /// in AGB, BGB, Deadwood, Litter, and SOC.
+    pub fn calculate_pool_stock(
+        &self,
+        area_ha: f64,
+        stem_volume_m3_ha: f64,
+        biomass: &crate::pools::BiomassParams,
+        soc: &crate::pools::SocParams,
+    ) -> crate::pools::MultiPoolStock {
+        crate::pools::MultiPoolStock::compute_all(
+            area_ha,
+            stem_volume_m3_ha,
+            biomass,
+            soc,
+            "IPCC_2019",
+        )
+    }
+
+    /// Compute carbon stock change for a land-use scenario.
+    ///
+    /// Applies the 5-pool model to compute the carbon flux
+    /// between baseline and project land states.
+    pub fn calculate_scenario(
+        &self,
+        input: &crate::scenarios::ScenarioInput,
+    ) -> crate::scenarios::ScenarioResult {
+        crate::scenarios::compute_scenario(input)
+    }
+
+    /// Map a carbon scenario to the best VCS methodology.
+    pub fn match_vcs_methodology(
+        &self,
+        scenario: crate::scenarios::CarbonScenario,
+    ) -> Option<crate::vcs::VcsProjectSummary> {
+        crate::vcs::VcsProjectSummary::new(scenario)
+    }
+
+    /// Calculate emissions from generic activity records (industrial).
+    ///
+    /// Supports fuel combustion, electricity, and material processing.
+    /// Uses fuel combustion parameters (NCV × CC × Ox × 44/12) when available,
+    /// otherwise falls back to factor_value.
     pub fn calculate_activities(
         &self,
         activities: &[ActivityRecord],

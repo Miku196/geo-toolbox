@@ -1,7 +1,9 @@
 # geo-toolbox Wiki
 
 > 从零到一：安装、开发、部署全流程指南。
-> 最后更新：2026-06-14
+> 最后更新：2026-06-15
+
+> 💡 **2026-06 v0.5 更新**：碳核算方法学升级 — 5 碳库模型 (AGB/BGB/Deadwood/Litter/SOC) + 3 场景 (造林/森林经营/毁林/IFM/Deforestation) + IPCC Tier 1 生物量扩展方程/SOC 过渡方程；VCS/CCB 方法学映射 (VM0010-VM0046, 9 种) + 项目信用缓冲池 + CCB 共认证；CLI Unix 管道模式 `geo pipeline read | buffer | simplify | reproject | write` 支持 CSV/GeoJSON 流式处理。
 
 ---
 
@@ -17,6 +19,9 @@
 - [4. 核心功能使用](#4-核心功能使用)
   - [4.1 CRS 坐标变换](#41-crs-坐标变换)
   - [4.2 碳核算](#42-碳核算)
+    - [4.2.1 5碳库模型](#421-5碳库模型)
+    - [4.2.2 碳场景计算](#422-碳场景计算)
+    - [4.2.2 VCS/CCB 方法学](#423-vcsccb-方法学)
   - [4.3 NDVI 计算](#43-ndvi-计算)
   - [4.4 GeoJSON IO](#44-geojson-io)
   - [4.5 瓦片索引（MVT/PMTiles）](#45-瓦片索引-mvtpmtiles)
@@ -27,6 +32,7 @@
   - [4.10 林业碳汇](#410-林业碳汇)
   - [4.11 海岸带监测](#411-海岸带监测)
   - [4.12 OSM 数据拉取](#412-osm-数据拉取)
+  - [4.13 CLI 管道模式](#413-cli-管道模式)
 - [5. 插件开发](#5-插件开发)
   - [5.1 创建插件骨架](#51-创建插件骨架)
   - [5.2 编写配置](#52-编写配置)
@@ -359,6 +365,66 @@ fn main() {
 }
 ```
 
+```
+
+#### 4.2.1 5 碳库模型
+
+IPCC 2006/2019 全五池 (AGB/BGB/Deadwood/Litter/SOC) 估算土地碳储量：
+
+```rust
+use geo_carbon_math::{CarbonEngine, BiomassParams, SocParams, EcoZone};
+
+let engine = CarbonEngine::new();
+
+// 10 公顷温带阔叶林碳储量
+let stock = engine.calculate_pool_stock(
+    10.0, 200.0,  // 面积 ha, 蓄积量 m³/ha
+    &BiomassParams::temperate_broadleaf(),
+    &SocParams::native_forest(70.0),
+);
+
+println!("总碳储量: {:.1} tCO₂e", stock.total_tco2e);
+for pool in &stock.pools {
+    println!("  {}: {:.1} tCO₂e/ha", pool.pool.label(), pool.tco2e_per_ha);
+}
+```
+
+公式: AGB = V×WD×BEF×CF×44/12; BGB = AGB×R; SOC = SOC_ref×FLU×FMG×FI×44/12
+
+六生态区预设: TropicalMoist, TropicalDry, TemperateConiferous, TemperateBroadleaf, Boreal, SubtropicalHumid
+
+#### 4.2.2 碳场景
+
+造林/IFM/毁林场景，含时间动态：
+
+```rust
+use geo_carbon_math::{CarbonScenario, LandState, EcoZone, ScenarioInput, CarbonEngine};
+
+let engine = CarbonEngine::new();
+let input = ScenarioInput::new(
+    CarbonScenario::Afforestation, 100.0,
+    LandState::non_forest("grassland"),
+    LandState { landcover_class: "forest".into(), stem_volume_m3_ha: 150.0,
+        ecozone: EcoZone::TemperateBroadleaf, ..Default::default() },
+).with_methodology("IPCC Tier 1 — A/R");
+
+let result = engine.calculate_scenario(&input);
+println!("年碳汇: {:.1} tCO₂e/yr", result.annual_sequestration());
+```
+
+#### 4.2.3 VCS/CCB 方法学
+
+9 种 VCS 方法学自动匹配 + 缓冲池/计入期/CCB 共认证：
+
+```rust
+use geo_carbon_math::{CarbonScenario, CarbonEngine};
+let engine = CarbonEngine::new();
+let s = engine.match_vcs_methodology(CarbonScenario::Afforestation).unwrap();
+// → VM0015, buffer 20%, 40yr crediting, CCB ✅
+```
+
+支持: VM0010(IFM), VM0015(A/R), VM0007(REDD+), VM0006, VM0009, VM0032, VM0037, VM0042, VM0046
+
 ### 4.3 NDVI 计算
 
 ```rust
@@ -689,6 +755,39 @@ let client = OsmClient::new();
 let elements = client.query_bbox(104.0,30.0,105.0,31.0, OsmFeature::Highway).await?;
 let fc = OsmClient::to_geojson(&elements);
 ```
+
+### 4.13 CLI 管道模式
+
+Unix 流水线风格的地理空间处理：通过 stdin/stdout 串联 GeoJSON FeatureCollection。
+
+```bash
+# CSV → GeoJSON → 缓冲区 → 写文件
+go pipeline read data.csv --format csv \
+  | geo pipeline buffer --distance 500 \
+  | geo pipeline write output.geojson
+
+# GeoJSON → 按属性过滤 → 算面积
+go pipeline read city.geojson \
+  | geo pipeline filter key=class value=park \
+  | geo pipeline area
+
+# 重投影(需--features proj-crs) → 抽稀
+go pipeline read aoi.geojson \
+  | geo pipeline reproject --from-epsg 4326 --to-epsg 3857 \
+  | geo pipeline simplify --epsilon 0.005
+```
+
+管道子命令一览：
+
+| 命令 | 说明 |
+|------|------|
+| `read [file]` | 读 GeoJSON/CSV → stdout |
+| `buffer --distance N` | 缓冲区 |
+| `simplify --epsilon N` | Douglas-Peucker 抽稀 |
+| `reproject --from-epsg N --to-epsg M` | CRS 重投影 (需 `proj-crs` feature) |
+| `write <file>` | stdout → 文件 (GeoJSON/CSV) |
+| `area` | 面积统计 → JSON |
+| `filter key=X value=Y` | 按属性过滤 |
 
 ---
 

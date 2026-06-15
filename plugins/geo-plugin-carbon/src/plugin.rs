@@ -70,6 +70,65 @@ impl CarbonPlugin {
         Ok(report)
     }
 
+    /// Run a 5-pool carbon scenario (A/R, IFM, Deforestation).
+    pub fn calculate_scenario(
+        &self,
+        scenario: geo_carbon_math::CarbonScenario,
+        area_ha: f64,
+        before_class: &str,
+        before_stem_volume: f64,
+        after_class: &str,
+        after_stem_volume: f64,
+        ecozone: geo_carbon_math::EcoZone,
+        time_horizon_years: f64,
+    ) -> GeoResult<geo_carbon_math::ScenarioResult> {
+        let before = geo_carbon_math::LandState {
+            landcover_class: before_class.to_string(),
+            stem_volume_m3_ha: before_stem_volume,
+            ecozone,
+            biomass_params: None,
+            soc_params: None,
+            years_since_transition: 0.0,
+        };
+        let after = geo_carbon_math::LandState {
+            landcover_class: after_class.to_string(),
+            stem_volume_m3_ha: after_stem_volume,
+            ecozone,
+            biomass_params: None,
+            soc_params: None,
+            years_since_transition: 0.0,
+        };
+        let input = geo_carbon_math::ScenarioInput {
+            scenario,
+            area_ha,
+            before,
+            after,
+            time_horizon_years,
+            methodology: String::new(),
+        };
+        Ok(self.engine.calculate_scenario(&input))
+    }
+
+    /// Compute 5-pool carbon stock for a given stand.
+    pub fn calculate_pool_stock(
+        &self,
+        area_ha: f64,
+        stem_volume_m3_ha: f64,
+        biomass: &geo_carbon_math::BiomassParams,
+        soc: &geo_carbon_math::SocParams,
+    ) -> geo_carbon_math::MultiPoolStock {
+        self.engine
+            .calculate_pool_stock(area_ha, stem_volume_m3_ha, biomass, soc)
+    }
+
+    /// Match scenario to best VCS methodology.
+    pub fn match_vcs(
+        &self,
+        scenario: geo_carbon_math::CarbonScenario,
+    ) -> Option<geo_carbon_math::VcsProjectSummary> {
+        self.engine.match_vcs_methodology(scenario)
+    }
+
     /// 使用外部提供的 features 和 factors 计算。
     pub fn calculate(&self, features: &[GeoFeature], year: u16) -> Result<CarbonReport, String> {
         let defaults = &self.config.carbon;
