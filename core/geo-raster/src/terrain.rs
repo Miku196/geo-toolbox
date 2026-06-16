@@ -72,14 +72,18 @@ pub fn compute_slope_degrees(
             ];
 
             // 跳过含 NoData 的窗口
-            if z.iter().any(|&v| v.is_nan() || (!nd.is_nan() && (v - nd).abs() < 1e-10)) {
+            if z.iter()
+                .any(|&v| v.is_nan() || (!nd.is_nan() && (v - nd).abs() < 1e-10))
+            {
                 continue;
             }
 
             // Horn 方法: dz/dx = ((z7 + 2*z5 + z3) - (z1 + 2*z4 + z6)) / (8 * cell_size)
             // 但标准 arcgis 做法略有不同。我们用标准 Horn:
-            let dz_dx = ((z[7] + 2.0 * z[4] + z[2]) - (z[0] + 2.0 * z[3] + z[5])) / (8.0 * cell_size_m);
-            let dz_dy = ((z[5] + 2.0 * z[6] + z[7]) - (z[0] + 2.0 * z[1] + z[2])) / (8.0 * cell_size_m);
+            let dz_dx =
+                ((z[7] + 2.0 * z[4] + z[2]) - (z[0] + 2.0 * z[3] + z[5])) / (8.0 * cell_size_m);
+            let dz_dy =
+                ((z[5] + 2.0 * z[6] + z[7]) - (z[0] + 2.0 * z[1] + z[2])) / (8.0 * cell_size_m);
 
             let rise_run = (dz_dx * dz_dx + dz_dy * dz_dy).sqrt();
             let deg = rise_run.atan().to_degrees();
@@ -95,7 +99,11 @@ pub fn compute_slope_degrees(
         Some(valid.iter().sum::<f64>() / valid.len() as f64)
     };
     let max_degrees = valid.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-    let max_degrees = if valid.is_empty() { None } else { Some(max_degrees) };
+    let max_degrees = if valid.is_empty() {
+        None
+    } else {
+        Some(max_degrees)
+    };
 
     SlopeResult {
         rows,
@@ -150,12 +158,16 @@ pub fn compute_aspect(
                 dem[(r + 1) * cols + c + 1],
             ];
 
-            if z.iter().any(|&v| v.is_nan() || (!nd.is_nan() && (v - nd).abs() < 1e-10)) {
+            if z.iter()
+                .any(|&v| v.is_nan() || (!nd.is_nan() && (v - nd).abs() < 1e-10))
+            {
                 continue;
             }
 
-            let dz_dx = ((z[7] + 2.0 * z[4] + z[2]) - (z[0] + 2.0 * z[3] + z[5])) / (8.0 * cell_size_m);
-            let dz_dy = ((z[5] + 2.0 * z[6] + z[7]) - (z[0] + 2.0 * z[1] + z[2])) / (8.0 * cell_size_m);
+            let dz_dx =
+                ((z[7] + 2.0 * z[4] + z[2]) - (z[0] + 2.0 * z[3] + z[5])) / (8.0 * cell_size_m);
+            let dz_dy =
+                ((z[5] + 2.0 * z[6] + z[7]) - (z[0] + 2.0 * z[1] + z[2])) / (8.0 * cell_size_m);
 
             // 平坦区域
             if dz_dx.abs() < 1e-10 && dz_dy.abs() < 1e-10 {
@@ -179,17 +191,19 @@ pub fn compute_aspect(
         }
     }
 
-    let valid: Vec<f64> = aspect_deg.iter().cloned().filter(|&v| !v.is_nan() && v >= 0.0).collect();
+    let valid: Vec<f64> = aspect_deg
+        .iter()
+        .cloned()
+        .filter(|&v| !v.is_nan() && v >= 0.0)
+        .collect();
     let mean_aspect = if valid.is_empty() {
         None
     } else {
         // 使用向量平均计算圆形均值
-        let (sum_sin, sum_cos) = valid
-            .iter()
-            .fold((0.0, 0.0), |(s, c), &a| {
-                let rad = a.to_radians();
-                (s + rad.sin(), c + rad.cos())
-            });
+        let (sum_sin, sum_cos) = valid.iter().fold((0.0, 0.0), |(s, c), &a| {
+            let rad = a.to_radians();
+            (s + rad.sin(), c + rad.cos())
+        });
         let mean = sum_sin.atan2(sum_cos).to_degrees();
         Some(if mean < 0.0 { mean + 360.0 } else { mean })
     };
@@ -266,12 +280,7 @@ pub fn compute_tpi(
 /// - `dem`: DEM 高程值，行优先
 /// - `rows`, `cols`: DEM 尺寸
 /// - `nodata`: NoData 值
-pub fn compute_tri(
-    dem: &[f64],
-    rows: usize,
-    cols: usize,
-    nodata: Option<f64>,
-) -> Vec<f64> {
+pub fn compute_tri(dem: &[f64], rows: usize, cols: usize, nodata: Option<f64>) -> Vec<f64> {
     let nd = nodata.unwrap_or(f64::NAN);
     let n = rows * cols;
     let mut tri = vec![f64::NAN; n];
@@ -354,12 +363,16 @@ pub fn compute_hillshade(
                 dem[(r + 1) * cols + c + 1],
             ];
 
-            if z.iter().any(|&v| v.is_nan() || (!nd.is_nan() && (v - nd).abs() < 1e-10)) {
+            if z.iter()
+                .any(|&v| v.is_nan() || (!nd.is_nan() && (v - nd).abs() < 1e-10))
+            {
                 continue;
             }
 
-            let dz_dx = ((z[7] + 2.0 * z[4] + z[2]) - (z[0] + 2.0 * z[3] + z[5])) / (8.0 * cell_size_m);
-            let dz_dy = ((z[5] + 2.0 * z[6] + z[7]) - (z[0] + 2.0 * z[1] + z[2])) / (8.0 * cell_size_m);
+            let dz_dx =
+                ((z[7] + 2.0 * z[4] + z[2]) - (z[0] + 2.0 * z[3] + z[5])) / (8.0 * cell_size_m);
+            let dz_dy =
+                ((z[5] + 2.0 * z[6] + z[7]) - (z[0] + 2.0 * z[1] + z[2])) / (8.0 * cell_size_m);
 
             let slope_rad = (dz_dx * dz_dx + dz_dy * dz_dy).sqrt().atan();
 
@@ -371,10 +384,9 @@ pub fn compute_hillshade(
                 aspect_rad += 2.0 * std::f64::consts::PI;
             }
 
-            let hs = 255.0 * (
-                cos_zenith * slope_rad.cos()
-                + sin_zenith * slope_rad.sin() * (azimuth_rad - aspect_rad).cos()
-            );
+            let hs = 255.0
+                * (cos_zenith * slope_rad.cos()
+                    + sin_zenith * slope_rad.sin() * (azimuth_rad - aspect_rad).cos());
             hillshade[idx] = hs.max(0.0);
         }
     }
@@ -429,7 +441,10 @@ pub fn resample_bilinear(
 
             // 检查 NoData
             let values = [v00, v10, v01, v11];
-            if values.iter().any(|&v| v.is_nan() || (!nd.is_nan() && (v - nd).abs() < 1e-10)) {
+            if values
+                .iter()
+                .any(|&v| v.is_nan() || (!nd.is_nan() && (v - nd).abs() < 1e-10))
+            {
                 continue;
             }
 
@@ -541,11 +556,8 @@ mod tests {
         let rows = 5;
         let cols = 5;
         let dem = vec![
-            10.0, 10.0, 10.0, 10.0, 10.0,
-            10.0, 15.0, 20.0, 15.0, 10.0,
-            10.0, 20.0, 30.0, 20.0, 10.0,
-            10.0, 15.0, 20.0, 15.0, 10.0,
-            10.0, 10.0, 10.0, 10.0, 10.0,
+            10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 15.0, 20.0, 15.0, 10.0, 10.0, 20.0, 30.0, 20.0,
+            10.0, 10.0, 15.0, 20.0, 15.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0,
         ];
         (dem, rows, cols)
     }
@@ -556,8 +568,16 @@ mod tests {
         let result = compute_slope_degrees(&dem, rows, cols, 10.0, None);
         // 检查山坡像素 (1,1) — 非对称位置应有坡度
         let slope_at = result.slope_degrees[1 * cols + 1];
-        assert!(!slope_at.is_nan(), "Slope pixel should have a value: {:?}", result);
-        assert!(slope_at > 0.0, "Slope at (1,1) should be > 0, got {}", slope_at);
+        assert!(
+            !slope_at.is_nan(),
+            "Slope pixel should have a value: {:?}",
+            result
+        );
+        assert!(
+            slope_at > 0.0,
+            "Slope at (1,1) should be > 0, got {}",
+            slope_at
+        );
         // 边界像素应为 NaN
         assert!(result.slope_degrees[0].is_nan(), "Edge should be NaN");
         assert!(result.slope_degrees[4].is_nan(), "Edge should be NaN");
@@ -570,7 +590,10 @@ mod tests {
         let (dem, rows, cols) = test_dem();
         let result = compute_slope_percent(&dem, rows, cols, 10.0, None);
         // 同样检查 (1,1) 像素的百分比坡度
-        assert!(result.slope_percent[1 * cols + 1] > 1.0, "Percent slope should be > 1%");
+        assert!(
+            result.slope_percent[1 * cols + 1] > 1.0,
+            "Percent slope should be > 1%"
+        );
     }
 
     #[test]
@@ -579,7 +602,11 @@ mod tests {
         let result = compute_aspect(&dem, rows, cols, 10.0, None);
         let center = result.aspect_degrees[2 * cols + 2];
         // 中心对称山体，坡向应为平坦（-1）
-        assert!((center + 1.0).abs() < 1e-6, "Symmetric peak should be flat: got {}", center);
+        assert!(
+            (center + 1.0).abs() < 1e-6,
+            "Symmetric peak should be flat: got {}",
+            center
+        );
         // 山坡像素 (1,1) 应有非平坦坡向
         let slope_aspect = result.aspect_degrees[1 * cols + 1];
         assert!(!slope_aspect.is_nan());
@@ -606,9 +633,7 @@ mod tests {
         let rows = 3;
         let cols = 3;
         let dem = vec![
-            -999.0, -999.0, -999.0,
-            -999.0, 100.0,  -999.0,
-            -999.0, -999.0, -999.0,
+            -999.0, -999.0, -999.0, -999.0, 100.0, -999.0, -999.0, -999.0, -999.0,
         ];
         // 全部 NoData，所有结果应为 NaN
         let result = compute_slope_degrees(&dem, rows, cols, 10.0, Some(-999.0));
@@ -622,7 +647,10 @@ mod tests {
         let tpi = compute_tpi(&dem, rows, cols, 1, None);
         // 中心 (2,2) = 30，邻居均值 ≈ 15，TPI ≈ +15 (山脊)
         let center = tpi[2 * cols + 2];
-        assert!(center > 10.0, "Center TPI should be positive (ridge): got {center}");
+        assert!(
+            center > 10.0,
+            "Center TPI should be positive (ridge): got {center}"
+        );
         // 边缘应为 NaN
         assert!(tpi[0].is_nan());
     }
@@ -645,7 +673,10 @@ mod tests {
         let center = hs[2 * cols + 2];
         // 平坦峰顶（坡度为0），hillshade = 255 * cos(zenith)
         assert!(!center.is_nan());
-        assert!(center >= 0.0 && center <= 255.0, "Hillshade range: {center}");
+        assert!(
+            center >= 0.0 && center <= 255.0,
+            "Hillshade range: {center}"
+        );
         // 山坡应有阴影变化
         let slope_hs = hs[1 * cols + 1];
         assert!(!slope_hs.is_nan());
@@ -654,10 +685,7 @@ mod tests {
     #[test]
     fn test_resample_bilinear() {
         let src = vec![
-            1.0, 2.0, 3.0, 4.0,
-            5.0, 6.0, 7.0, 8.0,
-            9.0, 10.0, 11.0, 12.0,
-            13.0, 14.0, 15.0, 16.0,
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
         ];
         // 4x4 → 2x2 下采样
         let dst = resample_bilinear(&src, 4, 4, 2, 2, None);
@@ -670,17 +698,9 @@ mod tests {
 
     #[test]
     fn test_zonal_stats() {
-        let values = vec![
-            1.0, 2.0, 3.0,
-            4.0, 5.0, 6.0,
-            7.0, 8.0, 9.0,
-        ];
+        let values = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
         // zone 1: first row (1,2,3), zone 2: rest, 0 = background
-        let zones = vec![
-            1u32, 1, 1,
-            2, 2, 2,
-            2, 2, 2,
-        ];
+        let zones = vec![1u32, 1, 1, 2, 2, 2, 2, 2, 2];
         let result = zonal_stats(&values, &zones, 2, None);
         assert_eq!(result.zones.len(), 2);
         // Zone 1: [1,2,3] → mean=2, min=1, max=3, sum=6

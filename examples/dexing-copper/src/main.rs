@@ -11,7 +11,6 @@
 //! 数据源: ESA Copernicus Sentinel-2 MSI (10m)
 //! STAC: Microsoft Planetary Computer
 
-
 use geo_adapter_stac::StacClient;
 use geo_core::errors::{GeoError, GeoResult};
 use geo_raster::grid::RasterBand;
@@ -79,7 +78,9 @@ async fn search_sentinel2_scenes(
 // ── 真实 Sentinel-2 波段下载 + GeoTIFF 读取 ─────────────
 
 /// 从 STAC item 提取 B04 (Red) 和 B08 (NIR) 的 HTTPS 下载 URL。
-fn extract_band_hrefs(item: &geo_adapter_stac::StacItem) -> (Option<String>, Option<String>, Option<String>) {
+fn extract_band_hrefs(
+    item: &geo_adapter_stac::StacItem,
+) -> (Option<String>, Option<String>, Option<String>) {
     let assets = match &item.assets {
         Some(a) => a,
         None => return (None, None, None),
@@ -109,13 +110,17 @@ async fn download_band_cog(url: &str, path: &std::path::Path, label: &str) -> Ge
         // gdal_translate -projwin ulx uly lrx lry 来裁剪
         let result = tokio::process::Command::new(gdal_path)
             .args([
-                "-of", "GTiff",
-                "-co", "COMPRESS=LZW",
-                "-projwin", &format!("{}", MIN_LON),
-                            &format!("{}", MAX_LAT),
-                            &format!("{}", MAX_LON),
-                            &format!("{}", MIN_LAT),
-                "-projwin_srs", "EPSG:4326",
+                "-of",
+                "GTiff",
+                "-co",
+                "COMPRESS=LZW",
+                "-projwin",
+                &format!("{}", MIN_LON),
+                &format!("{}", MAX_LAT),
+                &format!("{}", MAX_LON),
+                &format!("{}", MIN_LAT),
+                "-projwin_srs",
+                "EPSG:4326",
                 &vsi_url,
                 &path.to_string_lossy(),
             ])
@@ -184,19 +189,27 @@ fn read_geotiff_to_band(path: &std::path::Path, band_name: &str) -> GeoResult<Ra
     let tmp_path = path.with_extension("tmp.tif");
     let gdal = std::path::Path::new(GDAL_TRANSLATE);
     if !gdal.exists() {
-        return Err(GeoError::Other("No TIFF decoder available (tiff crate failed, gdal_translate not found)".into()));
+        return Err(GeoError::Other(
+            "No TIFF decoder available (tiff crate failed, gdal_translate not found)".into(),
+        ));
     }
 
     let result = std::process::Command::new(gdal)
         .args([
-            "-of", "GTiff",
-            "-co", "COMPRESS=NONE",
-            "-ot", "Float32",
+            "-of",
+            "GTiff",
+            "-co",
+            "COMPRESS=NONE",
+            "-ot",
+            "Float32",
             &path.to_string_lossy(),
             &tmp_path.to_string_lossy(),
         ])
         .output()
-        .map_err(|e| GeoError::ExternalProcess { command: "gdal_translate".into(), message: e.to_string() })?;
+        .map_err(|e| GeoError::ExternalProcess {
+            command: "gdal_translate".into(),
+            message: e.to_string(),
+        })?;
 
     if !result.status.success() {
         return Err(GeoError::Other("gdal_translate conversion failed".into()));
@@ -249,19 +262,20 @@ fn read_tiff_crate(path: &std::path::Path, band_name: &str) -> GeoResult<RasterB
             }
             out
         }
-        Ok(tiff::decoder::DecodingResult::U8(data)) => {
-            data.iter().take(n_total).map(|v| *v as f64 / 255.0).collect()
-        }
+        Ok(tiff::decoder::DecodingResult::U8(data)) => data
+            .iter()
+            .take(n_total)
+            .map(|v| *v as f64 / 255.0)
+            .collect(),
         Ok(tiff::decoder::DecodingResult::F32(data)) => {
             // Float32, 直接使用
             data.iter().take(n_total).map(|v| *v as f64).collect()
         }
-        Ok(tiff::decoder::DecodingResult::F64(data)) => {
-            data.to_vec()
-        }
+        Ok(tiff::decoder::DecodingResult::F64(data)) => data.to_vec(),
         other => {
             return Err(GeoError::Other(format!(
-                "Unsupported TIFF format: {:?}", other.map(|_| ())
+                "Unsupported TIFF format: {:?}",
+                other.map(|_| ())
             )));
         }
     };
@@ -296,9 +310,8 @@ async fn sign_pc_asset_url(href: &str) -> Result<String, String> {
     }
 
     // SAS 签名 API: /sas/v1/token/{account}/{container}
-    let sign_url = format!(
-        "https://planetarycomputer.microsoft.com/api/sas/v1/token/{account}/{container}"
-    );
+    let sign_url =
+        format!("https://planetarycomputer.microsoft.com/api/sas/v1/token/{account}/{container}");
 
     let resp = reqwest::get(&sign_url)
         .await
@@ -352,7 +365,9 @@ async fn download_with_scl(
 
         let full = pc_client.get_item("sentinel-2-l2a", &scene.id).await.ok()?;
         let (b4_h, b8_h, scl_h) = extract_band_hrefs(&full);
-        if b4_h.is_none() || b8_h.is_none() || scl_h.is_none() { continue; }
+        if b4_h.is_none() || b8_h.is_none() || scl_h.is_none() {
+            continue;
+        }
 
         let b4_s = sign_pc_asset_url(&b4_h?).await.ok()?;
         let b8_s = sign_pc_asset_url(&b8_h?).await.ok()?;
@@ -365,13 +380,21 @@ async fn download_with_scl(
         let b8_p = dir.join(format!("{id_s}_B08.tif"));
         let scl_p = dir.join(format!("{id_s}_SCL.tif"));
 
-        download_band_cog(&b4_s, &b4_p, &format!("B04 {year}")).await.ok()?;
-        download_band_cog(&b8_s, &b8_p, &format!("B08 {year}")).await.ok()?;
-        download_band_cog(&scl_s, &scl_p, &format!("SCL {year}")).await.ok()?;
+        download_band_cog(&b4_s, &b4_p, &format!("B04 {year}"))
+            .await
+            .ok()?;
+        download_band_cog(&b8_s, &b8_p, &format!("B08 {year}"))
+            .await
+            .ok()?;
+        download_band_cog(&scl_s, &scl_p, &format!("SCL {year}"))
+            .await
+            .ok()?;
 
         let mut red = read_geotiff_to_band(&b4_p, "B04").ok()?;
         let mut nir = read_geotiff_to_band(&b8_p, "B08").ok()?;
-        let scl_data = read_geotiff_to_band(&scl_p, "SCL").map(|b| b.data).unwrap_or_default();
+        let scl_data = read_geotiff_to_band(&scl_p, "SCL")
+            .map(|b| b.data)
+            .unwrap_or_default();
 
         let mut masked = 0usize;
         let total = red.data.len();
@@ -384,14 +407,19 @@ async fn download_with_scl(
             }
         }
         if masked > 0 {
-            println!("    SCL掩膜: {masked}/{total} ({:.1}%)", masked as f64 / total as f64 * 100.0);
+            println!(
+                "    SCL掩膜: {masked}/{total} ({:.1}%)",
+                masked as f64 / total as f64 * 100.0
+            );
         }
 
         all_red.push(red);
         all_nir.push(nir);
     }
 
-    if all_red.is_empty() { return None; }
+    if all_red.is_empty() {
+        return None;
+    }
 
     if all_red.len() == 1 {
         let (r, c) = (all_red[0].rows, all_red[0].cols);
@@ -408,12 +436,17 @@ async fn download_with_scl(
     let composite = |bands: &[RasterBand]| -> RasterBand {
         let mut data = Vec::with_capacity(rows * cols);
         for i in 0..rows * cols {
-            let mut vals: Vec<f64> = bands.iter()
+            let mut vals: Vec<f64> = bands
+                .iter()
                 .map(|b| b.data[i])
                 .filter(|v| *v != nd && !v.is_nan())
                 .collect();
             vals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-            data.push(if vals.is_empty() { nd } else { vals[vals.len() / 2] });
+            data.push(if vals.is_empty() {
+                nd
+            } else {
+                vals[vals.len() / 2]
+            });
         }
         RasterBand::new("composite", rows, cols, data, nd)
     };
@@ -441,7 +474,9 @@ fn generate_simulated_bands(
 
     // Simple PRNG
     fn prng(seed: &mut u64) -> f64 {
-        *seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        *seed = seed
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let x = (*seed >> 32) as f64 / u32::MAX as f64;
         x
     }
@@ -474,28 +509,18 @@ fn generate_simulated_bands(
             let nir_mine = 0.10 + prng(&mut s) * 0.10;
 
             // 混合
-            let red = (red_nat * natural_weight + red_mine * mine_weight) * restored_factor_red + noise;
-            let nir = (nir_nat * natural_weight + nir_mine * mine_weight) * restored_factor_nir + noise * 2.0;
+            let red =
+                (red_nat * natural_weight + red_mine * mine_weight) * restored_factor_red + noise;
+            let nir = (nir_nat * natural_weight + nir_mine * mine_weight) * restored_factor_nir
+                + noise * 2.0;
 
             red_data.push(red.clamp(0.01, 0.45));
             nir_data.push(nir.clamp(0.02, 0.85));
         }
     }
 
-    let red_band = RasterBand::new(
-        format!("B4_RED"),
-        rows,
-        cols,
-        red_data,
-        -999.0,
-    );
-    let nir_band = RasterBand::new(
-        format!("B8_NIR"),
-        rows,
-        cols,
-        nir_data,
-        -999.0,
-    );
+    let red_band = RasterBand::new(format!("B4_RED"), rows, cols, red_data, -999.0);
+    let nir_band = RasterBand::new(format!("B8_NIR"), rows, cols, nir_data, -999.0);
 
     (red_band, nir_band)
 }
@@ -515,9 +540,17 @@ fn classify_pixel(ndvi: f64, ndvi_diff: f64) -> &'static str {
     } else if ndvi < 0.05 {
         "bare:open_pit"
     } else if ndvi < 0.2 {
-        if ndvi_diff > 0.08 { "bare:tailings_recovering" } else { "bare:tailings" }
+        if ndvi_diff > 0.08 {
+            "bare:tailings_recovering"
+        } else {
+            "bare:tailings"
+        }
     } else if ndvi < 0.35 {
-        if ndvi_diff > 0.1 { "grassland:restored_shrub_grass" } else { "grassland:natural" }
+        if ndvi_diff > 0.1 {
+            "grassland:restored_shrub_grass"
+        } else {
+            "grassland:natural"
+        }
     } else if ndvi < 0.55 {
         "forest:restored_mixed_forest"
     } else {
@@ -600,7 +633,9 @@ fn export_restoration_dxf(
             // 8邻域
             for dr in [-1i32, 0, 1].iter() {
                 for dc in [-1i32, 0, 1].iter() {
-                    if *dr == 0 && *dc == 0 { continue; }
+                    if *dr == 0 && *dc == 0 {
+                        continue;
+                    }
                     let nr = r as i32 + dr;
                     let nc = c as i32 + dc;
                     if nr >= 0 && nr < rows as i32 && nc >= 0 && nc < cols as i32 {
@@ -620,13 +655,16 @@ fn export_restoration_dxf(
         }
 
         // 提取边界 → 排序 → 生成多边形环
-        let region_set: std::collections::HashSet<(usize, usize)> = region.iter().copied().collect();
+        let region_set: std::collections::HashSet<(usize, usize)> =
+            region.iter().copied().collect();
         let boundary: Vec<(usize, usize)> = region
             .iter()
             .filter(|(r, c)| {
                 for dr in [-1i32, 0, 1].iter() {
                     for dc in [-1i32, 0, 1].iter() {
-                        if *dr == 0 && *dc == 0 { continue; }
+                        if *dr == 0 && *dc == 0 {
+                            continue;
+                        }
                         let nr = *r as i32 + dr;
                         let nc = *c as i32 + dc;
                         if !region_set.contains(&(nr as usize, nc as usize)) {
@@ -683,14 +721,20 @@ fn export_restoration_dxf(
         writeln!(f, "0\nENDSEC")?;
         writeln!(f, "0\nSECTION\n2\nTABLES")?;
         writeln!(f, "0\nTABLE\n2\nLAYER\n70\n1")?;
-        writeln!(f, "0\nLAYER\n2\nRESTORATION_ZONES\n70\n0\n62\n3\n6\nCONTINUOUS")?;
+        writeln!(
+            f,
+            "0\nLAYER\n2\nRESTORATION_ZONES\n70\n0\n62\n3\n6\nCONTINUOUS"
+        )?;
         writeln!(f, "0\nENDTAB\n0\nENDSEC")?;
         writeln!(f, "0\nSECTION\n2\nENTITIES")?;
 
         for ring in polygons {
             writeln!(f, "0\nPOLYLINE\n8\nRESTORATION_ZONES\n66\n1\n70\n9")?;
             for (x, y) in ring {
-                writeln!(f, "0\nVERTEX\n8\nRESTORATION_ZONES\n10\n{x:.6}\n20\n{y:.6}\n30\n0.0\n70\n32")?;
+                writeln!(
+                    f,
+                    "0\nVERTEX\n8\nRESTORATION_ZONES\n10\n{x:.6}\n20\n{y:.6}\n30\n0.0\n70\n32"
+                )?;
             }
             writeln!(f, "0\nSEQEND\n8\nRESTORATION_ZONES")?;
         }
@@ -699,8 +743,7 @@ fn export_restoration_dxf(
         Ok(polygons.len())
     }
 
-    let count = write_dxf(&polygons, output_path)
-        .map_err(|e| GeoError::Io(e))?;
+    let count = write_dxf(&polygons, output_path).map_err(|e| GeoError::Io(e))?;
 
     println!("  ✓ DXF: {output_path} ({count} 个修复区多边形)");
     Ok(count)
@@ -760,7 +803,11 @@ fn generate_report(
     grade: &RestorationGrade,
 ) -> String {
     let now = chrono::Utc::now().format("%Y-%m-%d %H:%M").to_string();
-    let ndvi_trend = if stats_2025.mean - stats_2020.mean > 0.0 { "↑ 正向恢复" } else { "↓ 退化" };
+    let ndvi_trend = if stats_2025.mean - stats_2020.mean > 0.0 {
+        "↑ 正向恢复"
+    } else {
+        "↓ 退化"
+    };
     let improved_r = grade.improved_ratio;
     let veg_score = (improved_r / 0.30).min(1.0) * 100.0;
     let carbon_score = if grade.carbon_change < 0.0 {
@@ -770,7 +817,8 @@ fn generate_report(
     };
     let total_score = veg_score * 0.40 + carbon_score * 0.30 + veg_score * 0.30;
 
-    format!(r##"# {aoi}
+    format!(
+        r##"# {aoi}
 ## 矿山环境保护与生态修复评估报告
 
 ---
@@ -929,7 +977,11 @@ fn generate_report(
         ndvi2025_pixels = stats_2025.valid_pixels,
         ndvi_mean_change = stats_2025.mean - stats_2020.mean,
         improved_ratio = grade.improved_ratio * 100.0,
-        improved_mark = if grade.improved_ratio >= 0.30 { "✅ 达标" } else { "⚠ 未达标 (<30%)" },
+        improved_mark = if grade.improved_ratio >= 0.30 {
+            "✅ 达标"
+        } else {
+            "⚠ 未达标 (<30%)"
+        },
         degraded_ratio = 0.0f64,
         degraded_mark = "✅ 可控",
         stable_ratio = 100.0 - grade.improved_ratio * 100.0,
@@ -948,13 +1000,21 @@ fn generate_report(
         carbon_score = carbon_score,
         veg_score2 = veg_score,
         total_score = total_score,
-        veg_status = if grade.improved_ratio >= 0.30 { "✅ 达标" } else { "⚠ 需整改" },
+        veg_status = if grade.improved_ratio >= 0.30 {
+            "✅ 达标"
+        } else {
+            "⚠ 需整改"
+        },
         veg_suggestion = if grade.improved_ratio >= 0.30 {
             "持续抚育管理"
         } else {
             "补植适生树种, 扩大修复面积, 加强管护"
         },
-        carbon_status = if grade.carbon_change < 0.0 { "✅ 达标" } else { "⚠ 需关注" },
+        carbon_status = if grade.carbon_change < 0.0 {
+            "✅ 达标"
+        } else {
+            "⚠ 需关注"
+        },
         carbon_suggestion = if grade.carbon_change < 0.0 {
             "持续林分结构优化, 提升碳汇潜力"
         } else {
@@ -1006,7 +1066,6 @@ fn compute_ndvi_stats(ndvi: &RasterBand) -> NdviStatsSimple {
 // ── 主流程 ────────────────────────────────────────────────
 
 #[tokio::main]
-
 
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
@@ -1084,10 +1143,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stats_2020 = compute_ndvi_stats(&ndvi_result_2020.ndvi);
     let stats_2025 = compute_ndvi_stats(&ndvi_result_2025.ndvi);
 
-    println!("  2020: 平均 NDVI = {:.3}, 健康 = {:.1}%, 退化 = {:.1}%",
-        stats_2020.mean, stats_2020.healthy_ratio * 100.0, stats_2020.degraded_ratio * 100.0);
-    println!("  2025: 平均 NDVI = {:.3}, 健康 = {:.1}%, 退化 = {:.1}%",
-        stats_2025.mean, stats_2025.healthy_ratio * 100.0, stats_2025.degraded_ratio * 100.0);
+    println!(
+        "  2020: 平均 NDVI = {:.3}, 健康 = {:.1}%, 退化 = {:.1}%",
+        stats_2020.mean,
+        stats_2020.healthy_ratio * 100.0,
+        stats_2020.degraded_ratio * 100.0
+    );
+    println!(
+        "  2025: 平均 NDVI = {:.3}, 健康 = {:.1}%, 退化 = {:.1}%",
+        stats_2025.mean,
+        stats_2025.healthy_ratio * 100.0,
+        stats_2025.degraded_ratio * 100.0
+    );
     println!("  变化: {:.3}", stats_2025.mean - stats_2020.mean);
 
     // 4. NDVI 差值分析
@@ -1111,12 +1178,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         (0, 0, 0)
     };
 
-    let improved_ratio = if n_valid > 0 { improved as f64 / n_valid as f64 } else { 0.0 };
-    let degraded_ratio = if n_valid > 0 { degraded as f64 / n_valid as f64 } else { 0.0 };
-    let stable_ratio = if n_valid > 0 { stable as f64 / n_valid as f64 } else { 0.0 };
+    let improved_ratio = if n_valid > 0 {
+        improved as f64 / n_valid as f64
+    } else {
+        0.0
+    };
+    let degraded_ratio = if n_valid > 0 {
+        degraded as f64 / n_valid as f64
+    } else {
+        0.0
+    };
+    let stable_ratio = if n_valid > 0 {
+        stable as f64 / n_valid as f64
+    } else {
+        0.0
+    };
 
-    println!("  改善: {:.1}% | 退化: {:.1}% | 稳定: {:.1}%",
-        improved_ratio * 100.0, degraded_ratio * 100.0, stable_ratio * 100.0);
+    println!(
+        "  改善: {:.1}% | 退化: {:.1}% | 稳定: {:.1}%",
+        improved_ratio * 100.0,
+        degraded_ratio * 100.0,
+        stable_ratio * 100.0
+    );
 
     // 5. 碳汇估算
     println!("\n[5/6] 碳汇估算...");
@@ -1155,7 +1238,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ndvi_diff.rows,
         ndvi_diff.cols,
         &dxf_path.to_string_lossy(),
-    ).ok();
+    )
+    .ok();
 
     // 9. 导出 JSON
     let result = serde_json::json!({
@@ -1204,7 +1288,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ── 汇总 ──
     println!("\n══════════════════════════════════════════════════");
     println!("  评估完成!");
-    println!("  STAC 搜索: 2020年 {} 景 | 2025年 {} 景", scenes_2020.len(), scenes_2025.len());
+    println!(
+        "  STAC 搜索: 2020年 {} 景 | 2025年 {} 景",
+        scenes_2020.len(),
+        scenes_2025.len()
+    );
     println!("  NDVI 变化: {:+.3}", stats_2025.mean - stats_2020.mean);
     println!("  碳汇变化: {:+.1} tCO₂/yr", carbon_2025 - carbon_2020);
     println!("  综合评级: {} ({:.1}/100)", grade.grade, grade.score);

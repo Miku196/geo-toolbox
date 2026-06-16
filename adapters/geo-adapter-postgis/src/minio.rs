@@ -246,7 +246,6 @@ impl ObjectStoreClient {
 
 // object_store 0.11 uses Stream for list
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

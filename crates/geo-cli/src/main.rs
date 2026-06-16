@@ -107,10 +107,7 @@ pub enum PipelineAction {
     /// Compute area of all geometries
     Area,
     /// Filter features by property value
-    Filter {
-        key: String,
-        value: String,
-    },
+    Filter { key: String, value: String },
 }
 
 #[derive(Subcommand)]

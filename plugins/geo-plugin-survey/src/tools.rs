@@ -75,4 +75,3 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         Ok(serde_json::json!({"zone_6deg": z.zone6, "cm_6deg": z.central_meridian_6_deg, "zone_3deg": z.zone3, "cm_3deg": z.central_meridian_3_deg}))
     }]);
 }
-

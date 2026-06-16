@@ -54,5 +54,31 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             let loss = crate::rusle::compute_soil_loss(&r, &k, &ls, &c, &p, cells);
             Ok(serde_json::json!({"soil_loss_grid": loss, "mean_loss": if cells > 0 { loss.iter().sum::<f64>() / cells as f64 } else { 0.0 }}))
         },
+        sync "ecology_rf_lulc" => "Random Forest LULC classification (NDVI, NDWI, NDBI → land cover class)" ; serde_json::json!({"type":"object","properties":{"features":{"type":"array","items":{"type":"array","items":{"type":"number"}}},"num_trees":{"type":"integer","default":10},"max_depth":{"type":"integer","default":5}},"required":["features"]}) => |args| -> ToolResult {
+            let num_trees = args["num_trees"].as_u64().unwrap_or(10) as usize;
+            let max_depth = args["max_depth"].as_u64().unwrap_or(5) as usize;
+            let features: Vec<Vec<f64>> = args["features"]
+                .as_array()
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_array().map(|a| a.iter().filter_map(|x| x.as_f64()).collect()))
+                        .collect()
+                })
+                .unwrap_or_default();
+            if features.is_empty() {
+                return Ok(serde_json::json!({"error": "empty features"}));
+            }
+            let (train_samples, train_labels) = crate::lulc::default_training_data(100);
+            let model = crate::lulc::RandomForest::train(&train_samples, &train_labels, num_trees, max_depth);
+            let results = model.predict_batch(&features);
+            let predictions: Vec<serde_json::Value> = results.iter().map(|(class, probs)| {
+                serde_json::json!({
+                    "class_id": class,
+                    "class_name": crate::lulc::LulcClass::from_usize(*class).to_string(),
+                    "probabilities": probs,
+                })
+            }).collect();
+            Ok(serde_json::json!({"predictions": predictions}))
+        },
     ]);
 }

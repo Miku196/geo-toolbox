@@ -17,7 +17,10 @@ use std::io::{self, Read, Write};
 use crate::PipelineAction;
 
 /// Execute a pipeline action: read stdin, process, write stdout.
-pub fn handle(registry: &PluginRegistry, action: PipelineAction) -> Result<(), Box<dyn std::error::Error>> {
+pub fn handle(
+    registry: &PluginRegistry,
+    action: PipelineAction,
+) -> Result<(), Box<dyn std::error::Error>> {
     match action {
         PipelineAction::Read { input, format } => handle_read(input, format),
         PipelineAction::Buffer { distance, units } => handle_buffer(distance, units),
@@ -97,7 +100,8 @@ fn parse_fc(input: &str, format: &str) -> Result<FeatureCollection, String> {
 
 fn fc_to_geojson(fc: &FeatureCollection) -> String {
     let gj = GeoJson::FeatureCollection(fc.clone());
-    serde_json::to_string(&gj).unwrap_or_else(|_| r#"{"type":"FeatureCollection","features":[]}"#.into())
+    serde_json::to_string(&gj)
+        .unwrap_or_else(|_| r#"{"type":"FeatureCollection","features":[]}"#.into())
 }
 
 fn csv_to_fc(csv_text: &str) -> Result<FeatureCollection, String> {
@@ -117,7 +121,10 @@ fn csv_to_fc(csv_text: &str) -> Result<FeatureCollection, String> {
     let (lat_idx, lon_idx) = match (lat_idx, lon_idx) {
         (Some(li), Some(lo)) => (li, lo),
         _ => {
-            return Err("CSV must have latitude/longitude columns (lat/lon, latitude/longitude, or x/y)".into());
+            return Err(
+                "CSV must have latitude/longitude columns (lat/lon, latitude/longitude, or x/y)"
+                    .into(),
+            );
         }
     };
 
@@ -244,7 +251,9 @@ fn simplify_geometry(geom: &geojson::Geometry, epsilon: f64) -> geojson::Geometr
 fn handle_reproject(from_epsg: u16, to_epsg: u16) -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(not(feature = "proj-crs"))]
     {
-        return Err("reproject requires 'proj-crs' feature (compiled with --features proj-crs)".into());
+        return Err(
+            "reproject requires 'proj-crs' feature (compiled with --features proj-crs)".into(),
+        );
     }
     #[cfg(feature = "proj-crs")]
     {
@@ -284,7 +293,9 @@ fn reproject_geometry(
                 t: f64::NAN,
                 z: f64::NAN,
             };
-            let out = transform.convert(c).map_err(|e| format!("Transform error: {e}"))?;
+            let out = transform
+                .convert(c)
+                .map_err(|e| format!("Transform error: {e}"))?;
             geojson::Value::Point(vec![out.x, out.y])
         }
         geojson::Value::MultiPoint(points) => {
@@ -613,7 +624,11 @@ mod tests {
         match simplified.value {
             geojson::Value::LineString(ref pts) => {
                 // Should have far fewer points than 100
-                assert!(pts.len() < 20, "Expected simplified line, got {} pts", pts.len());
+                assert!(
+                    pts.len() < 20,
+                    "Expected simplified line, got {} pts",
+                    pts.len()
+                );
             }
             _ => panic!("Expected LineString"),
         }

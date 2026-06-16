@@ -24,6 +24,7 @@
 
 pub mod config;
 pub mod ecology;
+pub mod lulc;
 pub mod rusle;
 pub mod tools;
 

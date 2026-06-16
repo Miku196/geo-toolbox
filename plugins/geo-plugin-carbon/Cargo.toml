@@ -8,6 +8,7 @@ edition.workspace = true
 geo-core = { path = "../../core/geo-core" }
 geo-registry = { path = "../../core/geo-registry" }
 geo-carbon-math = { path = "../../core/geo-carbon-math" }
+geo-emission-factors = { path = "../../core/geo-emission-factors" }
 toml.workspace = true
 serde.workspace = true
 serde_json.workspace = true

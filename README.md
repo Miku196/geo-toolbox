@@ -69,6 +69,8 @@
 
 核心设计原则：依赖方向严格单向、WASM 数据不出网、Rust 做胶水 Python 做重活、每 crate 独立可测、Feature flags 控制依赖。
 
+> 💡 **2026-06 v0.7 更新**：Phase 2 插件深度化补全 — 排放因子数据库 (geo-emission-factors crate, IPCC Tier 1 + 中国省级参数) + 碳插件 EF 集成 + 风暴潮 (Holland 风场, 2D 网格+1D 剖面) + 蓝碳 (红树林/盐沼/海草, IPCC Tier 1) + 地热 (Fourier 热传导, Carnot 效率, LCOE) + 输电走廊 (Dijkstra LCP 8-neighbor) + 高斯烟羽 (Gaussian Plume) + CCER 报告 + 随机森林 LULC + 降雨 ID 阈值 + 流域提取。详见 [ROADMAP](ROADMAP.md)。
+>
 > 💡 **2026-06 v0.6 更新**：土壤侵蚀+水文模型 — RUSLE 通用土壤流失方程 (A=R·K·LS·C·P, 5因子完整计算) + SCS-CN 径流曲线数法 (26种土地利用CN查表, AMC干旱/正常/湿润修正) + InVEST 碳存储(4碳库)+水源涵养(Budyko产水量) + 7个新CLI工具 + 35个新测试。详见 [WIKI](WIKI.md)。
 >
 > 💡 **2026-06 v0.5 更新**：碳核算方法学升级 — 5 碳库模型 (AGB/BGB/Deadwood/Litter/SOC) + 3 场景 (造林/森林经营/毁林) + IPCC Tier 1 生物量扩展方程/SOC 过渡方程；VCS/CCB 方法学映射 (VM0010-VM0046, 9 种) + 项目信用缓冲池 + CCB 共认证；CLI Unix 管道模式 `geo pipeline read | buffer | simplify | reproject | write` 支持 CSV/GeoJSON 流式处理。详见 [WIKI](WIKI.md)。

@@ -340,10 +340,10 @@ impl GeohazardPlugin {
     /// FS > 1: 稳定, FS = 1: 临界, FS < 1: 不稳定。
     pub fn factor_of_safety(
         &self,
-        slope_deg: f64,      // 坡度 (°)
-        soil_depth_m: f64,   // 土层厚度 (m)
-        cohesion_kpa: f64,   // 粘聚力 (kPa)
-        friction_deg: f64,   // 内摩擦角 (°)
+        slope_deg: f64,          // 坡度 (°)
+        soil_depth_m: f64,       // 土层厚度 (m)
+        cohesion_kpa: f64,       // 粘聚力 (kPa)
+        friction_deg: f64,       // 内摩擦角 (°)
         soil_density_kn_m3: f64, // 土体重度 (kN/m³) — 默认 20
         water_table_ratio: f64,  // 地下水位/土层厚度 (0~1)
     ) -> f64 {
@@ -378,7 +378,7 @@ impl GeohazardPlugin {
         &self,
         slope_deg: f64,
         factor_of_safety: f64,
-        pga_g: f64,  // 峰值地面加速度 (g)
+        pga_g: f64, // 峰值地面加速度 (g)
     ) -> f64 {
         if factor_of_safety >= 99.0 || slope_deg < 0.1 {
             return 0.0;

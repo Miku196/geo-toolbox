@@ -12,10 +12,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::pools::{
-    compute_deadwood_decay, compute_litter_turnover, compute_soc_tco2e_ha,
-    compute_soc_transition,
-    BiomassParams, CarbonPool, MultiPoolChange,
-    MultiPoolStock, PoolChange, PoolStock, SocParams,
+    compute_deadwood_decay, compute_litter_turnover, compute_soc_tco2e_ha, compute_soc_transition,
+    BiomassParams, CarbonPool, MultiPoolChange, MultiPoolStock, PoolChange, PoolStock, SocParams,
 };
 
 // ── Scenario Enum ─────────────────────────────────────────────
@@ -296,9 +294,17 @@ pub fn compute_scenario(input: &ScenarioInput) -> ScenarioResult {
     let after_biomass = input.after.ecozone.biomass_params();
     let after_soc = SocParams::native_forest(input.after.ecozone.soc_ref_tc_ha());
 
-    let biomass_before = input.before.biomass_params.as_ref().unwrap_or(&before_biomass);
+    let biomass_before = input
+        .before
+        .biomass_params
+        .as_ref()
+        .unwrap_or(&before_biomass);
     let soc_before = input.before.soc_params.as_ref().unwrap_or(&before_soc);
-    let biomass_after = input.after.biomass_params.as_ref().unwrap_or(&after_biomass);
+    let biomass_after = input
+        .after
+        .biomass_params
+        .as_ref()
+        .unwrap_or(&after_biomass);
     let soc_after = input.after.soc_params.as_ref().unwrap_or(&after_soc);
 
     // Compute before stock
@@ -310,7 +316,9 @@ pub fn compute_scenario(input: &ScenarioInput) -> ScenarioResult {
         match input.scenario {
             CarbonScenario::Afforestation => "IPCC Tier 1 — A/R (2006 GL Vol.4 Ch.2.4)".to_string(),
             CarbonScenario::IFM => "IPCC Tier 1 — IFM (2006 GL Vol.4 Ch.2.3)".to_string(),
-            CarbonScenario::Deforestation => "IPCC Tier 1 — Deforestation (2006 GL Vol.4 Ch.2.5)".to_string(),
+            CarbonScenario::Deforestation => {
+                "IPCC Tier 1 — Deforestation (2006 GL Vol.4 Ch.2.5)".to_string()
+            }
         }
     } else {
         input.methodology.clone()
@@ -323,44 +331,40 @@ pub fn compute_scenario(input: &ScenarioInput) -> ScenarioResult {
         let after_stock = find_pool_value(&stock_after, pool);
 
         // For SOC: apply transition dynamics over the time horizon
-        let (effective_before, effective_after) = if pool == CarbonPool::SOC && input.time_horizon_years > 0.0 {
-            // SOC transition to new equilibrium
-            let target = after_stock;
-            let k = 1.0 / input.after.ecozone.soc_transition_years();
-            let soc_after_transitioned = compute_soc_transition(
-                before_stock,
-                target,
-                k,
-                input.time_horizon_years,
-            );
-            (before_stock, soc_after_transitioned)
-        } else if pool == CarbonPool::Deadwood && input.time_horizon_years > 0.0 {
-            // When AGB changes, deadwood input changes too
-            let _agb_before = find_pool_value(&stock_before, CarbonPool::AGB);
-            let agb_after = find_pool_value(&stock_after, CarbonPool::AGB);
-            let dw_input_after = agb_after * biomass_after.deadwood_ratio * biomass_after.deadwood_decay_rate;
+        let (effective_before, effective_after) =
+            if pool == CarbonPool::SOC && input.time_horizon_years > 0.0 {
+                // SOC transition to new equilibrium
+                let target = after_stock;
+                let k = 1.0 / input.after.ecozone.soc_transition_years();
+                let soc_after_transitioned =
+                    compute_soc_transition(before_stock, target, k, input.time_horizon_years);
+                (before_stock, soc_after_transitioned)
+            } else if pool == CarbonPool::Deadwood && input.time_horizon_years > 0.0 {
+                // When AGB changes, deadwood input changes too
+                let _agb_before = find_pool_value(&stock_before, CarbonPool::AGB);
+                let agb_after = find_pool_value(&stock_after, CarbonPool::AGB);
+                let dw_input_after =
+                    agb_after * biomass_after.deadwood_ratio * biomass_after.deadwood_decay_rate;
 
-            let dw_after_decayed = compute_deadwood_decay(
-                before_stock,
-                dw_input_after,
-                biomass_after.deadwood_decay_rate,
-                input.time_horizon_years,
-            );
-            (before_stock, dw_after_decayed)
-        }
-        else if pool == CarbonPool::Litter && input.time_horizon_years > 0.0 {
-            let agb_after = find_pool_value(&stock_after, CarbonPool::AGB);
-            let lt_after_turnover = compute_litter_turnover(
-                before_stock,
-                agb_after,
-                biomass_after.litter_turnover,
-                input.time_horizon_years,
-            );
-            (before_stock, lt_after_turnover)
-        }
-        else {
-            (before_stock, after_stock)
-        };
+                let dw_after_decayed = compute_deadwood_decay(
+                    before_stock,
+                    dw_input_after,
+                    biomass_after.deadwood_decay_rate,
+                    input.time_horizon_years,
+                );
+                (before_stock, dw_after_decayed)
+            } else if pool == CarbonPool::Litter && input.time_horizon_years > 0.0 {
+                let agb_after = find_pool_value(&stock_after, CarbonPool::AGB);
+                let lt_after_turnover = compute_litter_turnover(
+                    before_stock,
+                    agb_after,
+                    biomass_after.litter_turnover,
+                    input.time_horizon_years,
+                );
+                (before_stock, lt_after_turnover)
+            } else {
+                (before_stock, after_stock)
+            };
 
         let delta_per_ha = effective_before - effective_after;
         let delta_total = delta_per_ha * input.area_ha;
@@ -378,8 +382,18 @@ pub fn compute_scenario(input: &ScenarioInput) -> ScenarioResult {
 
     change.finalize();
 
-    let stock_before_total = stock_before.pools.iter().map(|p| p.tco2e_per_ha).sum::<f64>() * input.area_ha;
-    let stock_after_total = stock_after.pools.iter().map(|p| p.tco2e_per_ha).sum::<f64>() * input.area_ha;
+    let stock_before_total = stock_before
+        .pools
+        .iter()
+        .map(|p| p.tco2e_per_ha)
+        .sum::<f64>()
+        * input.area_ha;
+    let stock_after_total = stock_after
+        .pools
+        .iter()
+        .map(|p| p.tco2e_per_ha)
+        .sum::<f64>()
+        * input.area_ha;
 
     let annual = if input.time_horizon_years > 0.0 {
         change.total_delta_tco2e / input.time_horizon_years
@@ -395,9 +409,11 @@ pub fn compute_scenario(input: &ScenarioInput) -> ScenarioResult {
         stock_before_tco2e: crate::pools::round2(stock_before_total),
         stock_after_tco2e: crate::pools::round2(stock_after_total),
         annual_delta_tco2e: crate::pools::round2(annual),
-        annual_delta_tco2e_per_ha: crate::pools::round2(
-            if input.area_ha > 0.0 { annual / input.area_ha } else { 0.0 }
-        ),
+        annual_delta_tco2e_per_ha: crate::pools::round2(if input.area_ha > 0.0 {
+            annual / input.area_ha
+        } else {
+            0.0
+        }),
         baseline_label: input.before.landcover_class.clone(),
         project_label: input.after.landcover_class.clone(),
         methodology,
@@ -405,11 +421,7 @@ pub fn compute_scenario(input: &ScenarioInput) -> ScenarioResult {
 }
 
 /// Compute multi-pool stock for a land state.
-fn compute_stock(
-    state: &LandState,
-    biomass: &BiomassParams,
-    soc: &SocParams,
-) -> MultiPoolStock {
+fn compute_stock(state: &LandState, biomass: &BiomassParams, soc: &SocParams) -> MultiPoolStock {
     let source = match state.ecozone {
         EcoZone::TropicalMoist => "IPCC_Tropical",
         EcoZone::TropicalDry => "IPCC_Tropical_Dry",
@@ -422,12 +434,37 @@ fn compute_stock(
     if state.stem_volume_m3_ha <= 0.0 {
         // Non-forest: AGB=0, BGB=0, deadwood=residual, litter=minimal
         let mut stock = MultiPoolStock::new(1.0); // per-hectare
-        stock.add_pool(PoolStock::new(CarbonPool::AGB, 0.0, CarbonPool::AGB.default_uncertainty_pct(), source));
-        stock.add_pool(PoolStock::new(CarbonPool::BGB, 0.0, CarbonPool::BGB.default_uncertainty_pct(), source));
-        stock.add_pool(PoolStock::new(CarbonPool::Deadwood, 0.0, CarbonPool::Deadwood.default_uncertainty_pct(), source));
-        stock.add_pool(PoolStock::new(CarbonPool::Litter, 0.0, CarbonPool::Litter.default_uncertainty_pct(), source));
+        stock.add_pool(PoolStock::new(
+            CarbonPool::AGB,
+            0.0,
+            CarbonPool::AGB.default_uncertainty_pct(),
+            source,
+        ));
+        stock.add_pool(PoolStock::new(
+            CarbonPool::BGB,
+            0.0,
+            CarbonPool::BGB.default_uncertainty_pct(),
+            source,
+        ));
+        stock.add_pool(PoolStock::new(
+            CarbonPool::Deadwood,
+            0.0,
+            CarbonPool::Deadwood.default_uncertainty_pct(),
+            source,
+        ));
+        stock.add_pool(PoolStock::new(
+            CarbonPool::Litter,
+            0.0,
+            CarbonPool::Litter.default_uncertainty_pct(),
+            source,
+        ));
         let soc_val = compute_soc_tco2e_ha(soc.soc_ref_tc_ha, soc.flu, soc.fmg, soc.fi);
-        stock.add_pool(PoolStock::new(CarbonPool::SOC, soc_val, CarbonPool::SOC.default_uncertainty_pct(), source));
+        stock.add_pool(PoolStock::new(
+            CarbonPool::SOC,
+            soc_val,
+            CarbonPool::SOC.default_uncertainty_pct(),
+            source,
+        ));
         stock.finalize();
         stock
     } else {
@@ -436,7 +473,12 @@ fn compute_stock(
 }
 
 fn find_pool_value(stock: &MultiPoolStock, pool: CarbonPool) -> f64 {
-    stock.pools.iter().find(|p| p.pool == pool).map(|p| p.tco2e_per_ha).unwrap_or(0.0)
+    stock
+        .pools
+        .iter()
+        .find(|p| p.pool == pool)
+        .map(|p| p.tco2e_per_ha)
+        .unwrap_or(0.0)
 }
 
 // ── Tests ─────────────────────────────────────────────────────
@@ -508,11 +550,16 @@ mod tests {
     fn test_ifm_has_positive_agb_change() {
         let result = compute_scenario(&ifm_input());
         // IFM: increased stocking → AGB growth
-        let agb_change = result.pool_change.pool_changes
+        let agb_change = result
+            .pool_change
+            .pool_changes
             .iter()
             .find(|c| c.pool == CarbonPool::AGB)
             .unwrap();
-        assert!(agb_change.delta_tco2e_ha < 0.0, "IFM should increase AGB stock (negative delta = sequestration)");
+        assert!(
+            agb_change.delta_tco2e_ha < 0.0,
+            "IFM should increase AGB stock (negative delta = sequestration)"
+        );
     }
 
     #[test]
@@ -520,13 +567,18 @@ mod tests {
         let state = LandState::non_forest("bare");
         assert_eq!(state.stem_volume_m3_ha, 0.0);
         let stock = MultiPoolStock::compute_all(
-            1.0, 0.0,
+            1.0,
+            0.0,
             &BiomassParams::default(),
             &SocParams::default(),
             "test",
         );
         // With 0 stem volume, AGB pool should be 0
-        let agb = stock.pools.iter().find(|p| p.pool == CarbonPool::AGB).unwrap();
+        let agb = stock
+            .pools
+            .iter()
+            .find(|p| p.pool == CarbonPool::AGB)
+            .unwrap();
         assert!((agb.tco2e_per_ha - 0.0).abs() < 0.01);
     }
 
@@ -536,7 +588,9 @@ mod tests {
         input.time_horizon_years = 30.0;
         let result = compute_scenario(&input);
         assert!((result.time_horizon_years - 30.0).abs() < 0.01);
-        assert!((result.annual_delta_tco2e - result.pool_change.total_delta_tco2e / 30.0).abs() < 1.0);
+        assert!(
+            (result.annual_delta_tco2e - result.pool_change.total_delta_tco2e / 30.0).abs() < 1.0
+        );
     }
 
     #[test]
@@ -545,13 +599,18 @@ mod tests {
         assert!(tropical.bef > 1.0);
 
         let boreal = EcoZone::Boreal.biomass_params();
-        assert!(boreal.deadwood_decay_rate < tropical.deadwood_decay_rate,
-            "Boreal decay rate should be slower than tropical");
+        assert!(
+            boreal.deadwood_decay_rate < tropical.deadwood_decay_rate,
+            "Boreal decay rate should be slower than tropical"
+        );
     }
 
     #[test]
     fn test_carbon_scenario_labels() {
-        assert_eq!(CarbonScenario::Afforestation.label(), "Afforestation/Reforestation");
+        assert_eq!(
+            CarbonScenario::Afforestation.label(),
+            "Afforestation/Reforestation"
+        );
         assert_eq!(CarbonScenario::IFM.label(), "Improved Forest Management");
         assert_eq!(CarbonScenario::Deforestation.label(), "Deforestation");
     }

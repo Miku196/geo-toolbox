@@ -237,9 +237,9 @@ impl SocParams {
     pub fn afforestation_cropland(soc_ref: f64) -> Self {
         Self {
             soc_ref_tc_ha: soc_ref,
-            flu: 1.0,        // forest land use
-            fmg: 1.0,        // native species
-            fi: 1.0,         // medium input
+            flu: 1.0, // forest land use
+            fmg: 1.0, // native species
+            fi: 1.0,  // medium input
         }
     }
 
@@ -247,9 +247,9 @@ impl SocParams {
     pub fn deforestation_cropland(soc_ref: f64) -> Self {
         Self {
             soc_ref_tc_ha: soc_ref,
-            flu: 0.80,       // cropland
-            fmg: 0.95,       // reduced tillage
-            fi: 0.92,        // low input
+            flu: 0.80, // cropland
+            fmg: 0.95, // reduced tillage
+            fi: 0.92,  // low input
         }
     }
 
@@ -362,7 +362,12 @@ pub fn compute_deadwood_tco2e_ha(agb_tco2e_ha: f64, deadwood_ratio: f64) -> f64 
 /// Where:
 /// - k = decay rate constant (fraction/yr)
 /// - C_input = annual deadwood input
-pub fn compute_deadwood_decay(previous_tco2e_ha: f64, annual_input_tco2e_ha: f64, decay_rate: f64, years: f64) -> f64 {
+pub fn compute_deadwood_decay(
+    previous_tco2e_ha: f64,
+    annual_input_tco2e_ha: f64,
+    decay_rate: f64,
+    years: f64,
+) -> f64 {
     let k = decay_rate;
     let decay_factor = (-k * years).exp();
     previous_tco2e_ha * decay_factor + annual_input_tco2e_ha * (1.0 - decay_factor) / k
@@ -418,7 +423,8 @@ pub fn compute_soc_transition(
     transition_rate: f64,
     years: f64,
 ) -> f64 {
-    soc_target_tco2e_ha - (soc_target_tco2e_ha - soc_initial_tco2e_ha) * (-transition_rate * years).exp()
+    soc_target_tco2e_ha
+        - (soc_target_tco2e_ha - soc_initial_tco2e_ha) * (-transition_rate * years).exp()
 }
 
 // ── Utility ───────────────────────────────────────────────────
@@ -488,24 +494,54 @@ impl MultiPoolStock {
         let mut stock = Self::new(area_ha);
 
         // 1. AGB
-        let agb = compute_agb_tco2e_ha(stem_volume_m3_ha, biomass.wood_density, biomass.bef, biomass.carbon_fraction);
-        stock.add_pool(PoolStock::new(CarbonPool::AGB, agb, CarbonPool::AGB.default_uncertainty_pct(), source));
+        let agb = compute_agb_tco2e_ha(
+            stem_volume_m3_ha,
+            biomass.wood_density,
+            biomass.bef,
+            biomass.carbon_fraction,
+        );
+        stock.add_pool(PoolStock::new(
+            CarbonPool::AGB,
+            agb,
+            CarbonPool::AGB.default_uncertainty_pct(),
+            source,
+        ));
 
         // 2. BGB
         let bgb = compute_bgb_tco2e_ha(agb, biomass.root_shoot_ratio);
-        stock.add_pool(PoolStock::new(CarbonPool::BGB, bgb, CarbonPool::BGB.default_uncertainty_pct(), source));
+        stock.add_pool(PoolStock::new(
+            CarbonPool::BGB,
+            bgb,
+            CarbonPool::BGB.default_uncertainty_pct(),
+            source,
+        ));
 
         // 3. Deadwood
         let dw = compute_deadwood_tco2e_ha(agb, biomass.deadwood_ratio);
-        stock.add_pool(PoolStock::new(CarbonPool::Deadwood, dw, CarbonPool::Deadwood.default_uncertainty_pct(), source));
+        stock.add_pool(PoolStock::new(
+            CarbonPool::Deadwood,
+            dw,
+            CarbonPool::Deadwood.default_uncertainty_pct(),
+            source,
+        ));
 
         // 4. Litter
         let lt = compute_litter_tco2e_ha(agb, biomass.litter_ratio);
-        stock.add_pool(PoolStock::new(CarbonPool::Litter, lt, CarbonPool::Litter.default_uncertainty_pct(), source));
+        stock.add_pool(PoolStock::new(
+            CarbonPool::Litter,
+            lt,
+            CarbonPool::Litter.default_uncertainty_pct(),
+            source,
+        ));
 
         // 5. SOC
         let soc_val = compute_soc_tco2e_ha(soc.soc_ref_tc_ha, soc.flu, soc.fmg, soc.fi);
-        stock.add_pool(PoolStock::new(CarbonPool::SOC, soc_val, CarbonPool::SOC.default_uncertainty_pct(), source));
+        stock.add_pool(PoolStock::new(
+            CarbonPool::SOC,
+            soc_val,
+            CarbonPool::SOC.default_uncertainty_pct(),
+            source,
+        ));
 
         stock.finalize();
         stock
@@ -636,8 +672,8 @@ mod tests {
     #[test]
     fn test_multi_pool_stock_compute_all() {
         let stock = MultiPoolStock::compute_all(
-            10.0,           // 10 hectares
-            200.0,          // 200 m³/ha stem volume
+            10.0,  // 10 hectares
+            200.0, // 200 m³/ha stem volume
             &BiomassParams::default(),
             &SocParams::default(),
             "IPCC_2019",
@@ -645,11 +681,19 @@ mod tests {
 
         assert_eq!(stock.pools.len(), 5);
         // AGB should be largest component
-        let agb = stock.pools.iter().find(|p| p.pool == CarbonPool::AGB).unwrap();
+        let agb = stock
+            .pools
+            .iter()
+            .find(|p| p.pool == CarbonPool::AGB)
+            .unwrap();
         assert!(agb.tco2e_per_ha > 0.0);
 
         // BGB should be smaller than AGB
-        let bgb = stock.pools.iter().find(|p| p.pool == CarbonPool::BGB).unwrap();
+        let bgb = stock
+            .pools
+            .iter()
+            .find(|p| p.pool == CarbonPool::BGB)
+            .unwrap();
         assert!(bgb.tco2e_per_ha < agb.tco2e_per_ha);
 
         // Total scales by area (total_tco2e is computed before per_ha is rounded)

@@ -245,7 +245,9 @@ impl EnergyPlugin {
 
 /// Stirling-based Gamma function approximation.
 fn gamma_approx(x: f64) -> f64 {
-    if x <= 0.0 { return 1.0; }
+    if x <= 0.0 {
+        return 1.0;
+    }
     // Stirling: Γ(x) ≈ sqrt(2π/x) * (x/e)^x
     let n = x;
     let mut g = 1.0;
@@ -260,9 +262,16 @@ fn gamma_approx(x: f64) -> f64 {
         g = (2.0 * std::f64::consts::PI / n).sqrt() * (n / std::f64::consts::E).powf(n);
     } else {
         // Compute via recurrence + Lanczos for [1, 10]
-        let p = [676.5203681218851, -1259.1392167224028, 771.3234287776531,
-                  -176.6150291621406, 12.507343278686905, -0.13857109526572012,
-                  9.984369578019572e-6, 1.5056327351493116e-7];
+        let p = [
+            676.5203681218851,
+            -1259.1392167224028,
+            771.3234287776531,
+            -176.6150291621406,
+            12.507343278686905,
+            -0.13857109526572012,
+            9.984369578019572e-6,
+            1.5056327351493116e-7,
+        ];
         let mut z = n - 1.0;
         let mut x_l = 0.99999999999980993;
         for (i, &pi) in p.iter().enumerate() {

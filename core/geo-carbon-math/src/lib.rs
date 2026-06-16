@@ -46,10 +46,9 @@ pub use factor::{
 };
 pub use feature::{compute_area_ha, GeoFeature};
 pub use pools::{
-    compute_agb_tco2e_ha, compute_bgb_tco2e_ha, compute_deadwood_decay,
-    compute_deadwood_tco2e_ha, compute_litter_tco2e_ha, compute_litter_turnover,
-    compute_soc_tc_ha, compute_soc_tco2e_ha, compute_soc_transition,
-    tc_to_tco2e, tco2e_to_tc, BiomassParams, CarbonPool, MultiPoolChange,
+    compute_agb_tco2e_ha, compute_bgb_tco2e_ha, compute_deadwood_decay, compute_deadwood_tco2e_ha,
+    compute_litter_tco2e_ha, compute_litter_turnover, compute_soc_tc_ha, compute_soc_tco2e_ha,
+    compute_soc_transition, tc_to_tco2e, tco2e_to_tc, BiomassParams, CarbonPool, MultiPoolChange,
     MultiPoolStock, PoolChange, PoolStock, SocParams,
 };
 pub use report::{
@@ -59,6 +58,6 @@ pub use scenarios::{
     compute_scenario, CarbonScenario, EcoZone, LandState, ScenarioInput, ScenarioResult,
 };
 pub use vcs::{
-    default_methodology, match_methodologies, CcbBenefit, CcbCertification,
-    MethodologyConfig, VcsMethodology, VcsProjectSummary,
+    default_methodology, match_methodologies, CcbBenefit, CcbCertification, MethodologyConfig,
+    VcsMethodology, VcsProjectSummary,
 };

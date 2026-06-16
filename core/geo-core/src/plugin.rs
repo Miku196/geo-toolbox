@@ -352,8 +352,6 @@ pub struct PluginMeta {
     pub extra: serde_json::Value,
 }
 
-
-
 /// Lightweight plugin header for `rules.toml` `[plugin]` section.
 ///
 /// Each plugin's `rules.toml` starts with:
@@ -372,7 +370,6 @@ pub struct PluginHeader {
     pub version: String,
     pub description: String,
 }
-
 
 // ── PluginConfig trait (Phase 2b architecture unification) ─────────────────
 
@@ -441,7 +438,6 @@ macro_rules! default_from_rules {
         }
     };
 }
-
 
 #[cfg(test)]
 mod tests {

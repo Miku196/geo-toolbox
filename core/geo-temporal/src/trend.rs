@@ -199,8 +199,13 @@ pub fn pettitt_test(values: &[f64]) -> PettittResult {
     let n = values.len();
     if n < 3 {
         return PettittResult {
-            breakpoint: 0, u_stat: 0.0, p_value: 1.0,
-            significant: false, mean_before: 0.0, mean_after: 0.0, change: 0.0,
+            breakpoint: 0,
+            u_stat: 0.0,
+            p_value: 1.0,
+            significant: false,
+            mean_before: 0.0,
+            mean_after: 0.0,
+            change: 0.0,
         };
     }
     let mut max_u = 0.0f64;
@@ -213,21 +218,40 @@ pub fn pettitt_test(values: &[f64]) -> PettittResult {
             }
         }
         let u_abs = u.abs();
-        if u_abs > max_u { max_u = u_abs; bp = t; }
+        if u_abs > max_u {
+            max_u = u_abs;
+            bp = t;
+        }
     }
-    let p = (2.0 * (-6.0 * max_u * max_u / ((n as f64).powi(3) + (n as f64).powi(2))).exp()).min(1.0);
-    let mean_before = if bp > 0 { values[..bp].iter().sum::<f64>() / bp as f64 } else { 0.0 };
-    let mean_after = if bp < n { values[bp..].iter().sum::<f64>() / (n - bp) as f64 } else { 0.0 };
+    let p =
+        (2.0 * (-6.0 * max_u * max_u / ((n as f64).powi(3) + (n as f64).powi(2))).exp()).min(1.0);
+    let mean_before = if bp > 0 {
+        values[..bp].iter().sum::<f64>() / bp as f64
+    } else {
+        0.0
+    };
+    let mean_after = if bp < n {
+        values[bp..].iter().sum::<f64>() / (n - bp) as f64
+    } else {
+        0.0
+    };
     PettittResult {
-        breakpoint: bp, u_stat: max_u, p_value: p,
-        significant: p < 0.05, mean_before, mean_after, change: mean_after - mean_before,
+        breakpoint: bp,
+        u_stat: max_u,
+        p_value: p,
+        significant: p < 0.05,
+        mean_before,
+        mean_after,
+        change: mean_after - mean_before,
     }
 }
 
 /// Theil-Sen 斜率估计（独立函数，两点斜率中位数）。
 pub fn sen_slope(values: &[f64]) -> f64 {
     let n = values.len();
-    if n < 2 { return 0.0; }
+    if n < 2 {
+        return 0.0;
+    }
     let mut slopes = Vec::with_capacity(n * (n - 1) / 2);
     for i in 0..n {
         for j in (i + 1)..n {
@@ -235,7 +259,11 @@ pub fn sen_slope(values: &[f64]) -> f64 {
         }
     }
     slopes.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    if slopes.is_empty() { 0.0 } else { slopes[slopes.len() / 2] }
+    if slopes.is_empty() {
+        0.0
+    } else {
+        slopes[slopes.len() / 2]
+    }
 }
 
 /// 季节性 Mann-Kendall：对每个季节分别做 MK 后汇总 S 统计量。
@@ -243,8 +271,13 @@ pub fn seasonal_mann_kendall(values: &[f64], season_len: usize) -> TrendResult {
     let n = values.len();
     if n < season_len * 2 || season_len == 0 {
         return TrendResult {
-            tau: 0.0, p_value: 1.0, significant: false,
-            sen_slope: 0.0, ols_slope: 0.0, ols_intercept: 0.0, r_squared: 0.0,
+            tau: 0.0,
+            p_value: 1.0,
+            significant: false,
+            sen_slope: 0.0,
+            ols_slope: 0.0,
+            ols_intercept: 0.0,
+            r_squared: 0.0,
         };
     }
     let num_seasons = season_len.min(n);
@@ -254,14 +287,23 @@ pub fn seasonal_mann_kendall(values: &[f64], season_len: usize) -> TrendResult {
     for season in 0..num_seasons {
         let mut vals: Vec<f64> = Vec::new();
         let mut k = season;
-        while k < n { vals.push(values[k]); k += season_len; }
+        while k < n {
+            vals.push(values[k]);
+            k += season_len;
+        }
         let m = vals.len();
-        if m < 2 { continue; }
+        if m < 2 {
+            continue;
+        }
         let mut s = 0i64;
         for i in 0..m {
             for j in (i + 1)..m {
                 let d = vals[j] - vals[i];
-                if d > 0.0 { s += 1; } else if d < 0.0 { s -= 1; }
+                if d > 0.0 {
+                    s += 1;
+                } else if d < 0.0 {
+                    s -= 1;
+                }
             }
         }
         let mut var_s = (m * (m - 1) * (2 * m + 5)) as f64 / 18.0;
@@ -270,16 +312,29 @@ pub fn seasonal_mann_kendall(values: &[f64], season_len: usize) -> TrendResult {
         let mut i = 0;
         while i < m {
             let mut j = i + 1;
-            while j < m && (sorted[j] - sorted[i]).abs() < 1e-10 { j += 1; }
+            while j < m && (sorted[j] - sorted[i]).abs() < 1e-10 {
+                j += 1;
+            }
             let t = (j - i) as f64;
-            if t > 1.0 { var_s -= t * (t - 1.0) * (2.0 * t + 5.0) / 18.0; }
+            if t > 1.0 {
+                var_s -= t * (t - 1.0) * (2.0 * t + 5.0) / 18.0;
+            }
             i = j;
         }
-        total_s += s; total_var_s += var_s; total_m += m;
+        total_s += s;
+        total_var_s += var_s;
+        total_m += m;
     }
     if total_m < 2 {
-        return TrendResult { tau: 0.0, p_value: 1.0, significant: false,
-            sen_slope: 0.0, ols_slope: 0.0, ols_intercept: 0.0, r_squared: 0.0 };
+        return TrendResult {
+            tau: 0.0,
+            p_value: 1.0,
+            significant: false,
+            sen_slope: 0.0,
+            ols_slope: 0.0,
+            ols_intercept: 0.0,
+            r_squared: 0.0,
+        };
     }
     let tau = if total_m < 2 {
         0.0
@@ -289,48 +344,90 @@ pub fn seasonal_mann_kendall(values: &[f64], season_len: usize) -> TrendResult {
             .map(|season| {
                 let mut k = season;
                 let mut count = 0usize;
-                while k < n { count += 1; k += season_len; }
+                while k < n {
+                    count += 1;
+                    k += season_len;
+                }
                 let m = count;
-                if m >= 2 { (m * (m - 1) / 2) as f64 } else { 0.0 }
+                if m >= 2 {
+                    (m * (m - 1) / 2) as f64
+                } else {
+                    0.0
+                }
             })
             .sum();
-        if max_s > 0.0 { total_s as f64 / max_s } else { 0.0 }
+        if max_s > 0.0 {
+            total_s as f64 / max_s
+        } else {
+            0.0
+        }
     };
-    let z = if total_s > 0 { (total_s as f64 - 1.0) / total_var_s.sqrt() }
-            else if total_s < 0 { (total_s as f64 + 1.0) / total_var_s.sqrt() }
-            else { 0.0 };
+    let z = if total_s > 0 {
+        (total_s as f64 - 1.0) / total_var_s.sqrt()
+    } else if total_s < 0 {
+        (total_s as f64 + 1.0) / total_var_s.sqrt()
+    } else {
+        0.0
+    };
     let p = 2.0 * (1.0 - normal_cdf(z.abs()));
     let slope = sen_slope(values);
     let ols = linear_trend(values);
-    TrendResult { tau, p_value: p, significant: p < 0.05, sen_slope: slope,
-        ols_slope: ols.ols_slope, ols_intercept: ols.ols_intercept, r_squared: ols.r_squared }
+    TrendResult {
+        tau,
+        p_value: p,
+        significant: p < 0.05,
+        sen_slope: slope,
+        ols_slope: ols.ols_slope,
+        ols_intercept: ols.ols_intercept,
+        r_squared: ols.r_squared,
+    }
 }
 
 /// 简化 BFAST：去季节 → Pettitt 分段检测 → 递归断点。
 pub fn bfast_simple(values: &[f64], season_len: usize, max_breaks: usize) -> Vec<usize> {
     let n = values.len();
-    if n < 6 { return vec![]; }
+    if n < 6 {
+        return vec![];
+    }
     let deseasoned: Vec<f64> = if season_len > 0 && n >= season_len * 2 {
         let half = season_len / 2;
         let mut ds = vec![f64::NAN; n];
         for i in 0..n {
             let start = i.saturating_sub(half);
             let end = (i + half + 1).min(n);
-            let window: Vec<f64> = values[start..end].iter().filter(|v| v.is_finite()).cloned().collect();
-            if window.len() >= season_len / 2 { ds[i] = window.iter().sum::<f64>() / window.len() as f64; }
+            let window: Vec<f64> = values[start..end]
+                .iter()
+                .filter(|v| v.is_finite())
+                .cloned()
+                .collect();
+            if window.len() >= season_len / 2 {
+                ds[i] = window.iter().sum::<f64>() / window.len() as f64;
+            }
         }
         for i in 0..n {
             if ds[i].is_nan() {
-                if i > 0 && ds[i - 1].is_finite() { ds[i] = ds[i - 1]; }
-                else { for j in (i + 1)..n { if ds[j].is_finite() { ds[i] = ds[j]; break; } } }
+                if i > 0 && ds[i - 1].is_finite() {
+                    ds[i] = ds[i - 1];
+                } else {
+                    for j in (i + 1)..n {
+                        if ds[j].is_finite() {
+                            ds[i] = ds[j];
+                            break;
+                        }
+                    }
+                }
             }
         }
         ds
-    } else { values.to_vec() };
+    } else {
+        values.to_vec()
+    };
 
     let mut breaks: Vec<usize> = Vec::new();
     fn detect(data: &[f64], max_b: usize, breaks: &mut Vec<usize>, offset: usize) {
-        if breaks.len() >= max_b || data.len() < 6 { return; }
+        if breaks.len() >= max_b || data.len() < 6 {
+            return;
+        }
         let r = pettitt_test(data);
         if r.significant && r.breakpoint > 1 && r.breakpoint < data.len() - 1 {
             let bp = offset + r.breakpoint;
@@ -427,11 +524,20 @@ mod tests {
     fn test_bfast_simple() {
         // 前 10 年恒定，后 10 年上升
         let mut vals = vec![0.5; 10];
-        for i in 0..10 { vals.push(0.5 + i as f64 * 0.1); }
+        for i in 0..10 {
+            vals.push(0.5 + i as f64 * 0.1);
+        }
         let breaks = bfast_simple(&vals, 0, 3);
-        assert!(!breaks.is_empty(), "Should detect at least one break: {:?}", breaks);
+        assert!(
+            !breaks.is_empty(),
+            "Should detect at least one break: {:?}",
+            breaks
+        );
         // 断点应在 10 附近
-        assert!(breaks.contains(&10) || breaks.iter().any(|&b| (b as isize - 10isize).abs() <= 1),
-            "Break should be near 10, got {:?}", breaks);
+        assert!(
+            breaks.contains(&10) || breaks.iter().any(|&b| (b as isize - 10isize).abs() <= 1),
+            "Break should be near 10, got {:?}",
+            breaks
+        );
     }
 }

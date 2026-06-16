@@ -5,11 +5,14 @@
 use crate::config::CarbonConfig;
 use geo_carbon_math::{CarbonEngine, CarbonReport, EmissionFactor, GeoFeature};
 use geo_core::errors::{GeoError, GeoResult};
+use geo_emission_factors::EfDatabase;
 
 /// 碳核算插件。
 pub struct CarbonPlugin {
     config: CarbonConfig,
     engine: CarbonEngine,
+    /// 排放因子数据库（可选，优先于配置中的硬编码值）。
+    ef_db: Option<EfDatabase>,
 }
 
 impl CarbonPlugin {
@@ -18,6 +21,60 @@ impl CarbonPlugin {
         Self {
             config,
             engine: CarbonEngine::new(),
+            ef_db: None,
+        }
+    }
+
+    /// 设置排放因子数据库。
+    pub fn with_ef_db(mut self, ef_db: EfDatabase) -> Self {
+        self.ef_db = Some(ef_db);
+        self
+    }
+
+    /// 构建排放因子列表（优先使用 EF DB，回退到配置中的硬编码值）。
+    fn build_factors(&self, area_ha: f64) -> (Vec<EmissionFactor>, String) {
+        let defaults = &self.config.carbon;
+        let source = &defaults.source;
+        let all_classes: [&str; 7] = [
+            "forest",
+            "grassland",
+            "wetland",
+            "cropland",
+            "built_up",
+            "water",
+            "bare",
+        ];
+
+        if let Some(ref ef_db) = self.ef_db {
+            // Tier 2/3: lookup from database
+            let factors: Vec<EmissionFactor> = all_classes
+                .iter()
+                .map(|class| {
+                    ef_db
+                        .simple_land_use(class, area_ha)
+                        .unwrap_or_else(|| EmissionFactor::new(*class, 0.0, "ef-db"))
+                })
+                .collect();
+            (factors, "IPCC Tier 2 — geo-emission-factors".into())
+        } else {
+            // Tier 1: use config values
+            let factors: Vec<EmissionFactor> = all_classes
+                .iter()
+                .map(|class| {
+                    let value = match *class {
+                        "forest" => defaults.forest,
+                        "grassland" => defaults.grassland,
+                        "wetland" => defaults.wetland,
+                        "cropland" => defaults.cropland,
+                        "built_up" => defaults.built_up,
+                        "water" => defaults.water,
+                        "bare" => defaults.bare,
+                        _ => 0.0,
+                    };
+                    EmissionFactor::new(*class, value, source.as_str())
+                })
+                .collect();
+            (factors, format!("IPCC Tier 1 — {}", source))
         }
     }
 
@@ -34,31 +91,20 @@ impl CarbonPlugin {
             .ok_or_else(|| GeoError::invalid_input("aoi_geojson", "missing 'features' array"))?;
 
         let mut features = Vec::with_capacity(features_json.len());
+        let mut total_area_ha = 0.0;
         for f in features_json {
             let feat_str = serde_json::to_string(f).map_err(GeoError::Serde)?;
             match GeoFeature::from_feature_json(&feat_str) {
-                Ok(gf) => features.push(gf),
-                Err(_) => continue, // skip unparseable features
+                Ok(gf) => {
+                    total_area_ha += gf.area_ha();
+                    features.push(gf);
+                }
+                Err(_) => continue,
             }
         }
 
-        // 2. 从配置构建 EmissionFactor 列表
-        let defaults = &self.config.carbon;
-        let source = &defaults.source;
-        let all_classes = [
-            ("forest", defaults.forest),
-            ("grassland", defaults.grassland),
-            ("wetland", defaults.wetland),
-            ("cropland", defaults.cropland),
-            ("built_up", defaults.built_up),
-            ("water", defaults.water),
-            ("bare", defaults.bare),
-        ];
-
-        let factors: Vec<EmissionFactor> = all_classes
-            .iter()
-            .map(|(class, value)| EmissionFactor::new(*class, *value, source.as_str()))
-            .collect();
+        // 2. 获取排放因子（EF DB 或配置）
+        let (factors, methodology) = self.build_factors(total_area_ha);
 
         // 3. 计算
         let mut report = self
@@ -66,7 +112,7 @@ impl CarbonPlugin {
             .calculate(&features, &factors, year)
             .map_err(GeoError::Validation)?;
 
-        report.methodology = Some(format!("IPCC Tier 1 — {}", source));
+        report.methodology = Some(methodology);
         Ok(report)
     }
 
@@ -131,53 +177,36 @@ impl CarbonPlugin {
 
     /// 使用外部提供的 features 和 factors 计算。
     pub fn calculate(&self, features: &[GeoFeature], year: u16) -> Result<CarbonReport, String> {
-        let defaults = &self.config.carbon;
-        let source = &defaults.source;
-        let all_classes = [
-            ("forest", defaults.forest),
-            ("grassland", defaults.grassland),
-            ("wetland", defaults.wetland),
-            ("cropland", defaults.cropland),
-            ("built_up", defaults.built_up),
-            ("water", defaults.water),
-            ("bare", defaults.bare),
-        ];
-
-        let factors: Vec<EmissionFactor> = all_classes
-            .iter()
-            .map(|(class, value)| EmissionFactor::new(*class, *value, source.as_str()))
-            .collect();
+        let area_ha: f64 = features.iter().map(|f| f.area_ha()).sum();
+        let (factors, methodology) = self.build_factors(area_ha);
 
         let mut report = self.engine.calculate(features, &factors, year)?;
-        report.methodology = Some(format!("IPCC Tier 1 — {}", source));
+        report.methodology = Some(methodology);
         Ok(report)
     }
 
-    /// Monte Carlo uncertainty analysis (\(\pm\)20% factor perturbation, N simulations).
+    /// Monte Carlo uncertainty analysis (±20% factor perturbation, N simulations).
     pub fn monte_carlo_uncertainty(
         &self,
         features: &[GeoFeature],
         year: u16,
         simulations: usize,
     ) -> GeoResult<UncertaintyReport> {
-        let defaults = &self.config.carbon;
-        let source = &defaults.source;
-        let all_classes = [
-            ("forest", defaults.forest), ("grassland", defaults.grassland),
-            ("wetland", defaults.wetland), ("cropland", defaults.cropland),
-            ("built_up", defaults.built_up), ("water", defaults.water), ("bare", defaults.bare),
-        ];
+        let area_ha: f64 = features.iter().map(|f| f.area_ha()).sum();
+        let (base_factors, _methodology) = self.build_factors(area_ha);
         let mut totals: Vec<f64> = Vec::with_capacity(simulations);
         let mut seed = year as u64;
 
         for _ in 0..simulations {
-            let factors: Vec<EmissionFactor> = all_classes
+            let factors: Vec<EmissionFactor> = base_factors
                 .iter()
-                .map(|(class, value)| {
-                    seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
-                    let noise = ((seed as f64 / u64::MAX as f64) - 0.5) * 0.4; // ±20%
-                    let perturbed = value * (1.0 + noise);
-                    EmissionFactor::new(*class, perturbed, source.as_str())
+                .map(|ef| {
+                    seed = seed
+                        .wrapping_mul(6364136223846793005)
+                        .wrapping_add(1442695040888963407);
+                    let noise = ((seed as f64 / u64::MAX as f64) - 0.5) * 0.4;
+                    let perturbed = ef.factor_value * (1.0 + noise);
+                    EmissionFactor::new(&ef.category, perturbed, &ef.source)
                 })
                 .collect();
             if let Ok(report) = self.engine.calculate(features, &factors, year) {
@@ -185,7 +214,15 @@ impl CarbonPlugin {
             }
         }
         if totals.is_empty() {
-            return Ok(UncertaintyReport { mean: 0.0, median: 0.0, p5: 0.0, p95: 0.0, stddev: 0.0, cv: 0.0, simulations: 0 });
+            return Ok(UncertaintyReport {
+                mean: 0.0,
+                median: 0.0,
+                p5: 0.0,
+                p95: 0.0,
+                stddev: 0.0,
+                cv: 0.0,
+                simulations: 0,
+            });
         }
         totals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let n = totals.len();
@@ -195,16 +232,33 @@ impl CarbonPlugin {
         let p95 = totals[(0.95 * n as f64) as usize];
         let variance = totals.iter().map(|&v| (v - mean).powi(2)).sum::<f64>() / n as f64;
         let stddev = variance.sqrt();
-        let cv = if mean.abs() > 1e-10 { (stddev / mean.abs()) * 100.0 } else { 0.0 };
-        Ok(UncertaintyReport { mean, median, p5, p95, stddev, cv, simulations: n })
+        let cv = if mean.abs() > 1e-10 {
+            (stddev / mean.abs()) * 100.0
+        } else {
+            0.0
+        };
+        Ok(UncertaintyReport {
+            mean,
+            median,
+            p5,
+            p95,
+            stddev,
+            cv,
+            simulations: n,
+        })
     }
 }
 
 /// Monte Carlo uncertainty result.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct UncertaintyReport {
-    pub mean: f64, pub median: f64, pub p5: f64, pub p95: f64,
-    pub stddev: f64, pub cv: f64, pub simulations: usize,
+    pub mean: f64,
+    pub median: f64,
+    pub p5: f64,
+    pub p95: f64,
+    pub stddev: f64,
+    pub cv: f64,
+    pub simulations: usize,
 }
 
 #[cfg(test)]
@@ -251,10 +305,16 @@ mod tests {
         let features = vec![
             GeoFeature::new("forest", r#"{"type":"Polygon","coordinates":[[[104.0,30.5],[104.1,30.5],[104.1,30.6],[104.0,30.6],[104.0,30.5]]]}"#).unwrap(),
         ];
-        let report = plugin.monte_carlo_uncertainty(&features, 2025, 100).unwrap();
+        let report = plugin
+            .monte_carlo_uncertainty(&features, 2025, 100)
+            .unwrap();
         assert_eq!(report.simulations, 100);
         // Mean should be negative (carbon sink)
-        assert!(report.mean < 0.0, "Expected negative mean (sink), got {}", report.mean);
+        assert!(
+            report.mean < 0.0,
+            "Expected negative mean (sink), got {}",
+            report.mean
+        );
         // CV should be > 0
         assert!(report.cv > 0.0);
         // p5 < p95

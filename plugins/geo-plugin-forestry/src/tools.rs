@@ -1,8 +1,8 @@
 //! Tool registration — Forestry plugin.
 use geo_core::plugin::PluginCategory;
+use geo_registry::register_plugin;
 use geo_registry::registry::ToolResult;
 use geo_registry::PluginRegistry;
-use geo_registry::register_plugin;
 pub fn register_tools(registry: &mut PluginRegistry) {
     register_plugin!(registry, "forestry", "Forest carbon stock assessment (IPCC biomass)", PluginCategory::Carbon, [
         sync "forestry_carbon_stock" => "Assess forest carbon stock change between two periods" ; serde_json::json!({"type":"object","properties":{"aoi_name":{"type":"string"},"aoi_geojson":{"type":"string"},"red_old":{"type":"array","items":{"type":"number"}},"nir_old":{"type":"array","items":{"type":"number"}},"red_new":{"type":"array","items":{"type":"number"}},"nir_new":{"type":"array","items":{"type":"number"}},"cols":{"type":"integer"},"rows":{"type":"integer"},"year_old":{"type":"integer"},"year_new":{"type":"integer"},"baseline_area_ha":{"type":"number"},"baseline_volume_m3_ha":{"type":"number"},"nodata":{"type":"number"}},"required":["aoi_name","red_old","nir_old","red_new","nir_new","cols","rows","year_old","year_new"]}) => |args| -> ToolResult {

@@ -9,7 +9,7 @@
 //! Set `QGIS_PROCESS_PATH=/path/to/qgis_process` to override subprocess binary.
 
 use geo_core::errors::{GeoError, GeoResult};
-use geo_core::plugin::{ExternalAdapter, Plugin, PluginCategory, GeoFeature};
+use geo_core::plugin::{ExternalAdapter, GeoFeature, Plugin, PluginCategory};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -84,12 +84,7 @@ impl QgisAdapter {
     // ── Processing operations ──
 
     /// Buffer a vector layer.
-    pub async fn buffer(
-        &self,
-        input: &Path,
-        distance: f64,
-        output: &Path,
-    ) -> GeoResult<PathBuf> {
+    pub async fn buffer(&self, input: &Path, distance: f64, output: &Path) -> GeoResult<PathBuf> {
         match &self.backend {
             QgisBackend::Subprocess { runner } => runner.buffer(input, distance, output).await,
             QgisBackend::Rest { client } => {
@@ -113,7 +108,9 @@ impl QgisAdapter {
         output: &Path,
     ) -> GeoResult<PathBuf> {
         match &self.backend {
-            QgisBackend::Subprocess { runner } => runner.reproject(input, target_epsg, output).await,
+            QgisBackend::Subprocess { runner } => {
+                runner.reproject(input, target_epsg, output).await
+            }
             QgisBackend::Rest { client } => {
                 let result = client
                     .reproject(input.to_str().unwrap_or("input"), target_epsg)
@@ -124,12 +121,7 @@ impl QgisAdapter {
     }
 
     /// Clip a vector layer by an overlay polygon.
-    pub async fn clip(
-        &self,
-        input: &Path,
-        overlay: &Path,
-        output: &Path,
-    ) -> GeoResult<PathBuf> {
+    pub async fn clip(&self, input: &Path, overlay: &Path, output: &Path) -> GeoResult<PathBuf> {
         match &self.backend {
             QgisBackend::Subprocess { runner } => runner.clip(input, overlay, output).await,
             QgisBackend::Rest { client } => {
@@ -198,12 +190,7 @@ impl QgisAdapter {
     }
 
     /// Union two vector layers.
-    pub async fn union(
-        &self,
-        input: &Path,
-        overlay: &Path,
-        output: &Path,
-    ) -> GeoResult<PathBuf> {
+    pub async fn union(&self, input: &Path, overlay: &Path, output: &Path) -> GeoResult<PathBuf> {
         match &self.backend {
             QgisBackend::Subprocess { runner } => runner.union(input, overlay, output).await,
             QgisBackend::Rest { client } => {
@@ -284,9 +271,7 @@ impl QgisAdapter {
         initial_input: &Path,
     ) -> GeoResult<PathBuf> {
         match &self.backend {
-            QgisBackend::Subprocess { runner } => {
-                runner.run_pipeline(tools, initial_input).await
-            }
+            QgisBackend::Subprocess { runner } => runner.run_pipeline(tools, initial_input).await,
             QgisBackend::Rest { client } => {
                 // REST: submit the whole pipeline as a batch job
                 let steps: Vec<crate::grpc_client::QgisToolStep> = tools
@@ -318,12 +303,10 @@ impl QgisAdapter {
                     output_format: "gpkg".into(),
                 };
                 let job_id = client.submit(&job).await?;
-                let result = client
-                    .wait_for_job(&job_id, Duration::from_secs(2))
-                    .await?;
-                let path = result
-                    .output_path
-                    .ok_or_else(|| GeoError::Other("Pipeline completed but no output path".into()))?;
+                let result = client.wait_for_job(&job_id, Duration::from_secs(2)).await?;
+                let path = result.output_path.ok_or_else(|| {
+                    GeoError::Other("Pipeline completed but no output path".into())
+                })?;
                 Ok(PathBuf::from(path))
             }
         }
@@ -422,7 +405,8 @@ impl ExternalAdapter for QgisAdapter {
 
     async fn pull(&self, _query: &str) -> GeoResult<Vec<GeoFeature>> {
         Err(GeoError::Other(
-            "QGIS adapter does not support pull — use geo-adapter-postgis for database reads".into(),
+            "QGIS adapter does not support pull — use geo-adapter-postgis for database reads"
+                .into(),
         ))
     }
 
@@ -460,9 +444,7 @@ impl ExternalAdapter for QgisAdapter {
                 let result = self.intersect(input, overlay, output).await?;
                 Ok(serde_json::json!({"output": result.to_string_lossy()}))
             }
-            _ => Err(GeoError::Other(format!(
-                "Unknown QGIS command: {command}"
-            ))),
+            _ => Err(GeoError::Other(format!("Unknown QGIS command: {command}"))),
         }
     }
 }

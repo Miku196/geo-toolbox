@@ -438,7 +438,11 @@ pub struct ModelValidationReport {
 
 impl ModelFit {
     /// 计算 R² 和 RMSE。
-    fn compute_goodness(observed: &[f64], predicted: &[f64], n_params: usize) -> (f64, f64, f64, f64) {
+    fn compute_goodness(
+        observed: &[f64],
+        predicted: &[f64],
+        n_params: usize,
+    ) -> (f64, f64, f64, f64) {
         let n = observed.len() as f64;
         if n < 1.0 {
             return (0.0, f64::INFINITY, f64::INFINITY, f64::INFINITY);
@@ -484,11 +488,7 @@ pub struct GrowthRecord {
 /// 1. 粗搜：a ∈ [5, 40], b ∈ [0.005, 0.2], c ∈ [0.1, 3.0]
 /// 2. 细搜：在粗搜最佳点附近 ±30%
 /// 3. 返回 RMSE 最小的参数组合
-pub fn calibrate_growth_model(
-    model: GrowthModel,
-    ages: &[f64],
-    heights: &[f64],
-) -> ModelFit {
+pub fn calibrate_growth_model(model: GrowthModel, ages: &[f64], heights: &[f64]) -> ModelFit {
     // 网格搜索范围
     let a_range = (5.0, 40.0);
     let b_range = (0.005, 0.2);
@@ -547,10 +547,12 @@ pub fn calibrate_growth_model(
             + (refinement_ranges[0].1 - refinement_ranges[0].0) * ai as f64 / (a_steps - 1) as f64;
         for bi in 0..b_steps {
             let b = refinement_ranges[1].0
-                + (refinement_ranges[1].1 - refinement_ranges[1].0) * bi as f64 / (b_steps - 1) as f64;
+                + (refinement_ranges[1].1 - refinement_ranges[1].0) * bi as f64
+                    / (b_steps - 1) as f64;
             for ci in 0..c_steps {
                 let c = refinement_ranges[2].0
-                    + (refinement_ranges[2].1 - refinement_ranges[2].0) * ci as f64 / (c_steps - 1) as f64;
+                    + (refinement_ranges[2].1 - refinement_ranges[2].0) * ci as f64
+                        / (c_steps - 1) as f64;
                 iterations += 1;
 
                 let predicted: Vec<f64> = ages
@@ -628,10 +630,7 @@ fn find_interpolated_height(age: f64, ages: &[f64], heights: &[f64]) -> f64 {
 }
 
 /// 对所有 6 种生长模型进行校准和验证，返回对比报告。
-pub fn validate_all_growth_models(
-    ages: &[f64],
-    heights: &[f64],
-) -> ModelValidationReport {
+pub fn validate_all_growth_models(ages: &[f64], heights: &[f64]) -> ModelValidationReport {
     let models = [
         GrowthModel::Richards,
         GrowthModel::Logistic,
@@ -647,7 +646,11 @@ pub fn validate_all_growth_models(
         .collect();
 
     // 按 R² 降序排名
-    fits.sort_by(|a, b| b.r_squared.partial_cmp(&a.r_squared).unwrap_or(std::cmp::Ordering::Equal));
+    fits.sort_by(|a, b| {
+        b.r_squared
+            .partial_cmp(&a.r_squared)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     let ranking: Vec<GrowthModel> = fits.iter().map(|f| f.model).collect();
     let best_r2 = fits.first().map(|f| f.r_squared).unwrap_or(0.0);
     let best_rmse = fits.iter().map(|f| f.rmse).fold(f64::INFINITY, f64::min);
@@ -799,7 +802,11 @@ mod tests {
         let fit = calibrate_growth_model(GrowthModel::Richards, &ages, &heights);
 
         assert!(fit.converged, "Richards model should converge");
-        assert!(fit.r_squared > 0.80, "R²={} should be > 0.80", fit.r_squared);
+        assert!(
+            fit.r_squared > 0.80,
+            "R²={} should be > 0.80",
+            fit.r_squared
+        );
         assert!(fit.rmse < 3.0, "RMSE={} should be < 3.0m", fit.rmse);
         assert!(fit.params[0] > 0.0, "Asymptote a should be positive");
         assert!(fit.params[1] > 0.0, "Rate b should be positive");
@@ -865,7 +872,9 @@ mod tests {
             assert!(
                 (h80 - h40).abs() < 3.0,
                 "{:?}: growth after 40yr should be small: h40={}, h80={}",
-                model, h40, h80
+                model,
+                h40,
+                h80
             );
         }
     }
@@ -875,15 +884,13 @@ mod tests {
         // 验证拟合优度统计量计算正确
         let observed = vec![5.0, 10.0, 15.0, 20.0];
         let predicted = vec![5.0, 10.0, 15.0, 20.0];
-        let (r2, rmse, _aic, _bic) =
-            ModelFit::compute_goodness(&observed, &predicted, 3);
+        let (r2, rmse, _aic, _bic) = ModelFit::compute_goodness(&observed, &predicted, 3);
         assert!((r2 - 1.0).abs() < 1e-10, "Perfect fit: R² should be 1.0");
         assert!(rmse < 1e-10, "Perfect fit: RMSE should be 0");
 
         // 部分偏差
         let predicted2 = vec![4.0, 12.0, 14.0, 22.0];
-        let (r2b, rmse_b, _aicb, _bicb) =
-            ModelFit::compute_goodness(&observed, &predicted2, 3);
+        let (r2b, rmse_b, _aicb, _bicb) = ModelFit::compute_goodness(&observed, &predicted2, 3);
         assert!(r2b < 1.0, "Imperfect fit: R² < 1.0");
         assert!(rmse_b > 0.0, "Imperfect fit: RMSE > 0");
     }
@@ -917,14 +924,23 @@ mod tests {
 
         // Richardson 和 Gompertz 通常对杉木表现最好
         let top3 = &report.ranking[..3];
-        assert!(top3.iter().any(|m| matches!(m, GrowthModel::Richards | GrowthModel::Gompertz | GrowthModel::Weibull)),
-            "Top 3 should include Richards, Gompertz or Weibull for fir data");
+        assert!(
+            top3.iter().any(|m| matches!(
+                m,
+                GrowthModel::Richards | GrowthModel::Gompertz | GrowthModel::Weibull
+            )),
+            "Top 3 should include Richards, Gompertz or Weibull for fir data"
+        );
 
         // 最佳拟合应有最高 R²
         let best = &report.fits[0];
         for f in &report.fits[1..] {
-            assert!(best.r_squared >= f.r_squared - 1e-10,
-                "Best model should have highest R²: {} vs {}", best.r_squared, f.r_squared);
+            assert!(
+                best.r_squared >= f.r_squared - 1e-10,
+                "Best model should have highest R²: {} vs {}",
+                best.r_squared,
+                f.r_squared
+            );
         }
     }
 }

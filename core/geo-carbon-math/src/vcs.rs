@@ -126,11 +126,7 @@ impl VcsMethodology {
                 CarbonPool::Litter,
                 CarbonPool::SOC,
             ],
-            VcsMethodology::VM0042 => &[
-                CarbonPool::AGB,
-                CarbonPool::BGB,
-                CarbonPool::SOC,
-            ],
+            VcsMethodology::VM0042 => &[CarbonPool::AGB, CarbonPool::BGB, CarbonPool::SOC],
             VcsMethodology::VM0046 => &[
                 CarbonPool::AGB,
                 CarbonPool::BGB,
@@ -146,15 +142,15 @@ impl VcsMethodology {
     /// to cover potential reversals.
     pub fn buffer_withhold_pct(&self) -> f64 {
         match self {
-            VcsMethodology::VM0010 => 15.0,       // IFM: 10-20%
-            VcsMethodology::VM0015 => 20.0,       // A/R: 10-30%
-            VcsMethodology::VM0007 => 15.0,       // REDD+: 10-20%
-            VcsMethodology::VM0006 => 18.0,       // Mosaic REDD+
-            VcsMethodology::VM0009 => 20.0,       // AEC
-            VcsMethodology::VM0032 => 20.0,       // SALM
-            VcsMethodology::VM0037 => 25.0,       // Peatland
-            VcsMethodology::VM0042 => 15.0,       // IALM
-            VcsMethodology::VM0046 => 12.0,       // Avoided DF
+            VcsMethodology::VM0010 => 15.0, // IFM: 10-20%
+            VcsMethodology::VM0015 => 20.0, // A/R: 10-30%
+            VcsMethodology::VM0007 => 15.0, // REDD+: 10-20%
+            VcsMethodology::VM0006 => 18.0, // Mosaic REDD+
+            VcsMethodology::VM0009 => 20.0, // AEC
+            VcsMethodology::VM0032 => 20.0, // SALM
+            VcsMethodology::VM0037 => 25.0, // Peatland
+            VcsMethodology::VM0042 => 15.0, // IALM
+            VcsMethodology::VM0046 => 12.0, // Avoided DF
         }
     }
 
@@ -218,14 +214,12 @@ impl VcsMethodology {
     pub fn default_soc_params(&self) -> SocParams {
         match self {
             VcsMethodology::VM0010 | VcsMethodology::VM0015 => SocParams::default(),
-            VcsMethodology::VM0007 | VcsMethodology::VM0006 | VcsMethodology::VM0046 => {
-                SocParams {
-                    soc_ref_tc_ha: 60.0,
-                    flu: 1.0,
-                    fmg: 1.0,
-                    fi: 1.0,
-                }
-            }
+            VcsMethodology::VM0007 | VcsMethodology::VM0006 | VcsMethodology::VM0046 => SocParams {
+                soc_ref_tc_ha: 60.0,
+                flu: 1.0,
+                fmg: 1.0,
+                fi: 1.0,
+            },
             VcsMethodology::VM0009 => SocParams {
                 soc_ref_tc_ha: 70.0,
                 flu: 1.0,
@@ -298,7 +292,10 @@ pub struct MethodologyConfig {
 
 impl MethodologyConfig {
     /// Create a default configuration for a given methodology and scenario.
-    pub fn for_methodology(method: VcsMethodology, scenario: CarbonScenario) -> Result<Self, String> {
+    pub fn for_methodology(
+        method: VcsMethodology,
+        scenario: CarbonScenario,
+    ) -> Result<Self, String> {
         if !method.applicable_scenarios().contains(&scenario) {
             return Err(format!(
                 "Methodology {} does not support scenario {:?}",
@@ -537,9 +534,11 @@ mod tests {
 
     #[test]
     fn test_methodology_config_creation() {
-        let config =
-            MethodologyConfig::for_methodology(VcsMethodology::VM0015, CarbonScenario::Afforestation)
-                .unwrap();
+        let config = MethodologyConfig::for_methodology(
+            VcsMethodology::VM0015,
+            CarbonScenario::Afforestation,
+        )
+        .unwrap();
         assert_eq!(config.required_pools.len(), 5);
         assert!(config.ccb_enabled);
         assert_eq!(config.crediting_period_years, 40);
@@ -547,8 +546,10 @@ mod tests {
 
     #[test]
     fn test_methodology_config_wrong_scenario() {
-        let result =
-            MethodologyConfig::for_methodology(VcsMethodology::VM0010, CarbonScenario::Afforestation);
+        let result = MethodologyConfig::for_methodology(
+            VcsMethodology::VM0010,
+            CarbonScenario::Afforestation,
+        );
         assert!(result.is_err());
     }
 
@@ -584,7 +585,10 @@ mod tests {
 
     #[test]
     fn test_ccb_benefit_labels() {
-        assert_eq!(CcbBenefit::Biodiversity.label(), "Biodiversity Conservation");
+        assert_eq!(
+            CcbBenefit::Biodiversity.label(),
+            "Biodiversity Conservation"
+        );
         assert_eq!(CcbBenefit::WaterSoil.label(), "Water & Soil Conservation");
     }
 }

@@ -11,7 +11,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use geo_ogc::wms::{GetMapParams, WmsLayer, WmsRequest, WmsService, WmsResponse};
+use geo_ogc::wms::{GetMapParams, WmsLayer, WmsRequest, WmsResponse, WmsService};
 use geo_wiring::PluginRegistry;
 use serde::Deserialize;
 use std::sync::Arc;
@@ -79,16 +79,8 @@ impl WmsQuery {
         match req_type {
             "GetCapabilities" => Ok(WmsRequest::GetCapabilities),
             "GetMap" => {
-                let layers = self
-                    .layers
-                    .as_deref()
-                    .map(parse_csv)
-                    .unwrap_or_default();
-                let styles = self
-                    .styles
-                    .as_deref()
-                    .map(parse_csv)
-                    .unwrap_or_default();
+                let layers = self.layers.as_deref().map(parse_csv).unwrap_or_default();
+                let styles = self.styles.as_deref().map(parse_csv).unwrap_or_default();
                 let crs = self.crs.ok_or("missing crs")?;
                 let bbox_str = self.bbox.ok_or("missing bbox")?;
                 let bbox = parse_bbox(&bbox_str).ok_or("invalid bbox")?;
@@ -108,46 +100,36 @@ impl WmsQuery {
                     bgcolor: self.bgcolor,
                 }))
             }
-            "GetFeatureInfo" => {
-                Ok(WmsRequest::GetFeatureInfo(
-                    geo_ogc::wms::GetFeatureInfoParams {
-                        map_params: GetMapParams {
-                            layers: self
-                                .layers
-                                .as_deref()
-                                .map(parse_csv)
-                                .unwrap_or_default(),
-                            styles: self
-                                .styles
-                                .as_deref()
-                                .map(parse_csv)
-                                .unwrap_or_default(),
-                            crs: self.crs.ok_or("missing crs")?,
-                            bbox: self
-                                .bbox
-                                .as_deref()
-                                .and_then(parse_bbox)
-                                .ok_or("missing bbox")?,
-                            width: self.width.unwrap_or(256),
-                            height: self.height.unwrap_or(256),
-                            format: self.format.unwrap_or_else(|| "image/png".into()),
-                            transparent: self.transparent.unwrap_or(false),
-                            bgcolor: self.bgcolor,
-                        },
-                        i: self.i.ok_or("missing i")?,
-                        j: self.j.ok_or("missing j")?,
-                        query_layers: self
-                            .query_layers
+            "GetFeatureInfo" => Ok(WmsRequest::GetFeatureInfo(
+                geo_ogc::wms::GetFeatureInfoParams {
+                    map_params: GetMapParams {
+                        layers: self.layers.as_deref().map(parse_csv).unwrap_or_default(),
+                        styles: self.styles.as_deref().map(parse_csv).unwrap_or_default(),
+                        crs: self.crs.ok_or("missing crs")?,
+                        bbox: self
+                            .bbox
                             .as_deref()
-                            .map(parse_csv)
-                            .unwrap_or_default(),
-                        info_format: self
-                            .info_format
-                            .unwrap_or_else(|| "application/json".into()),
-                        feature_count: self.feature_count.unwrap_or(1),
+                            .and_then(parse_bbox)
+                            .ok_or("missing bbox")?,
+                        width: self.width.unwrap_or(256),
+                        height: self.height.unwrap_or(256),
+                        format: self.format.unwrap_or_else(|| "image/png".into()),
+                        transparent: self.transparent.unwrap_or(false),
+                        bgcolor: self.bgcolor,
                     },
-                ))
-            }
+                    i: self.i.ok_or("missing i")?,
+                    j: self.j.ok_or("missing j")?,
+                    query_layers: self
+                        .query_layers
+                        .as_deref()
+                        .map(parse_csv)
+                        .unwrap_or_default(),
+                    info_format: self
+                        .info_format
+                        .unwrap_or_else(|| "application/json".into()),
+                    feature_count: self.feature_count.unwrap_or(1),
+                },
+            )),
             _ => Err(format!("unknown WMS request type: {req_type}")),
         }
     }
@@ -208,9 +190,7 @@ async fn main() {
         .route("/wms", get(wms_handler))
         .with_state((state, wms));
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:9378")
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:9378").await.unwrap();
     tracing::info!("geo-server listening on http://0.0.0.0:9378");
     axum::serve(listener, app).await.unwrap();
 }
@@ -254,7 +234,9 @@ async fn wms_handler(
                 xml,
             )
                 .into_response()),
-            WmsResponse::Image { data, mime_type, .. } => Ok((
+            WmsResponse::Image {
+                data, mime_type, ..
+            } => Ok((
                 StatusCode::OK,
                 [(axum::http::header::CONTENT_TYPE, mime_type.as_str())],
                 String::from_utf8_lossy(&data).to_string(),

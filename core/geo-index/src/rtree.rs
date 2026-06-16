@@ -50,8 +50,17 @@ impl RTree {
         let n = indices.len();
         if n <= self.max_entries {
             let children: Vec<usize> = indices.to_vec();
-            let bbox = union_of(&children.iter().map(|&i| &self.data_bboxes[i]).collect::<Vec<_>>());
-            self.nodes.push(RtNode { bbox, children, is_leaf: true });
+            let bbox = union_of(
+                &children
+                    .iter()
+                    .map(|&i| &self.data_bboxes[i])
+                    .collect::<Vec<_>>(),
+            );
+            self.nodes.push(RtNode {
+                bbox,
+                children,
+                is_leaf: true,
+            });
             return self.nodes.len() - 1;
         }
 
@@ -70,8 +79,17 @@ impl RTree {
             child_idxs.push(self.build_level(&chunk_indices));
         }
 
-        let bbox = union_of(&child_idxs.iter().map(|&i| &self.nodes[i].bbox).collect::<Vec<_>>());
-        self.nodes.push(RtNode { bbox, children: child_idxs, is_leaf: false });
+        let bbox = union_of(
+            &child_idxs
+                .iter()
+                .map(|&i| &self.nodes[i].bbox)
+                .collect::<Vec<_>>(),
+        );
+        self.nodes.push(RtNode {
+            bbox,
+            children: child_idxs,
+            is_leaf: false,
+        });
         self.nodes.len() - 1
     }
 
@@ -100,21 +118,34 @@ impl RTree {
     }
 
     pub fn query_bboxes(&self, query_bbox: &BBox) -> Vec<BBox> {
-        self.query(query_bbox).iter().map(|&i| self.data_bboxes[i]).collect()
+        self.query(query_bbox)
+            .iter()
+            .map(|&i| self.data_bboxes[i])
+            .collect()
     }
 
-    pub fn len(&self) -> usize { self.data_bboxes.len() }
-    pub fn is_empty(&self) -> bool { self.data_bboxes.is_empty() }
+    pub fn len(&self) -> usize {
+        self.data_bboxes.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.data_bboxes.is_empty()
+    }
 }
 
 impl Default for RTree {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 fn union_of(bboxes: &[&BBox]) -> BBox {
-    if bboxes.is_empty() { return BBox::default(); }
+    if bboxes.is_empty() {
+        return BBox::default();
+    }
     let mut u = *bboxes[0];
-    for b in &bboxes[1..] { u = u.union(b); }
+    for b in &bboxes[1..] {
+        u = u.union(b);
+    }
     u
 }
 
@@ -150,8 +181,10 @@ mod tests {
         for i in 0..10 {
             for j in 0..10 {
                 bboxes.push(BBox::new(
-                    i as f64 * 10.0, j as f64 * 10.0,
-                    i as f64 * 10.0 + 10.0, j as f64 * 10.0 + 10.0,
+                    i as f64 * 10.0,
+                    j as f64 * 10.0,
+                    i as f64 * 10.0 + 10.0,
+                    j as f64 * 10.0 + 10.0,
                 ));
             }
         }

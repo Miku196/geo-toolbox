@@ -7,7 +7,7 @@ fn default_plugin() -> HydroPlugin {
     HydroPlugin::new(crate::trait_impl::make_default_config())
 }
 pub fn register_tools(registry: &mut PluginRegistry) {
-    register_plugin!(registry, "hydro", "Hydrology: flow accumulation, runoff, inundation", PluginCategory::Process, [
+    register_plugin!(registry, "hydro", "Hydrology: flow accumulation, runoff, inundation, watershed", PluginCategory::Process, [
         sync "hydro_inundation" => "Inundation area from catchment area and rainfall" ; serde_json::json!({"type":"object","properties":{"catchment_area_ha":{"type":"number"},"rainfall_mm":{"type":"number"}},"required":["catchment_area_ha","rainfall_mm"]}) => |args| -> ToolResult {
         let p = default_plugin();
         Ok(serde_json::json!({"inundation_area_m2": p.estimate_inundation_area(args["catchment_area_ha"].as_f64().unwrap_or(0.0), args["rainfall_mm"].as_f64().unwrap_or(0.0))}))
@@ -71,6 +71,22 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             let cellsize_m = args["cellsize_m"].as_f64().unwrap_or(30.0);
             let result = crate::invest::assess_water_yield(&precip, &pet, &awc, z, cellsize_m);
             Ok(serde_json::to_value(&result).map_err(|e| geo_core::errors::GeoError::Serde(e))?)
+        },
+        sync "hydro_watershed" => "Watershed extraction from D8 flow direction grid" ; serde_json::json!({"type":"object","properties":{"flow_dir":{"type":"array","items":{"type":"integer"}},"nrows":{"type":"integer"},"ncols":{"type":"integer"},"pour_row":{"type":"integer"},"pour_col":{"type":"integer"},"cell_size_m":{"type":"number","default":10},"xmin":{"type":"number","default":0},"ymax":{"type":"number","default":0}},"required":["flow_dir","nrows","ncols","pour_row","pour_col"]}) => |args| -> ToolResult {
+            let flow_dir: Vec<Option<usize>> = args["flow_dir"].as_array().map(|a| a.iter().map(|v| {
+                let d = v.as_i64().unwrap_or(-1);
+                if d >= 0 && d < 8 { Some(d as usize) } else { None }
+            }).collect()).unwrap_or_default();
+            let nrows = args["nrows"].as_u64().unwrap_or(0) as usize;
+            let ncols = args["ncols"].as_u64().unwrap_or(0) as usize;
+            let pour_row = args["pour_row"].as_u64().unwrap_or(0) as usize;
+            let pour_col = args["pour_col"].as_u64().unwrap_or(0) as usize;
+            let cell_size_m = args["cell_size_m"].as_f64().unwrap_or(10.0);
+            let xmin = args["xmin"].as_f64().unwrap_or(0.0);
+            let ymax = args["ymax"].as_f64().unwrap_or(0.0);
+            let result = crate::watershed::extract_watershed(&flow_dir, nrows, ncols, pour_row, pour_col, cell_size_m);
+            let geojson = crate::watershed::watershed_to_geojson(&result.cells, ncols, cell_size_m, xmin, ymax);
+            Ok(serde_json::json!({"num_cells": result.num_cells, "area_ha": result.area_ha, "geojson": geojson}))
         },
     ]);
 }

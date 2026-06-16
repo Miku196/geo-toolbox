@@ -1,0 +1,14 @@
+[package]
+name = "geo-emission-factors"
+description = "IPCC Tier 1-3 emission factor database with China provincial parameters"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+geo-carbon-math = { path = "../geo-carbon-math" }
+geo-core = { path = "../geo-core" }
+
+[dev-dependencies]
+toml.workspace = true

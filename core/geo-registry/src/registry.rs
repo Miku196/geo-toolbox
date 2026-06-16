@@ -231,7 +231,7 @@ mod tests {
         assert_eq!(tools[0]["name"], "carbon_calculate");
     }
 
-#[cfg(feature = "tokio")]
+    #[cfg(feature = "tokio")]
     #[tokio::test]
     async fn test_dispatch_sync_handler() {
         let mut reg = PluginRegistry::new();
@@ -263,7 +263,7 @@ mod tests {
         assert_eq!(result["greeting"], "Hello, test!");
     }
 
-#[cfg(feature = "tokio")]
+    #[cfg(feature = "tokio")]
     #[tokio::test]
     async fn test_dispatch_unknown_tool() {
         let reg = PluginRegistry::new();
@@ -271,7 +271,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-#[cfg(feature = "tokio")]
+    #[cfg(feature = "tokio")]
     #[tokio::test]
     async fn test_dispatch_async_handler() {
         let mut reg = PluginRegistry::new();

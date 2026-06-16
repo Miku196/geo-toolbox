@@ -139,7 +139,9 @@ impl CoastalPlugin {
         closure_depth_m: f64,
     ) -> f64 {
         let denom = dune_height_m + closure_depth_m;
-        if denom < 0.1 { return 0.0; }
+        if denom < 0.1 {
+            return 0.0;
+        }
         sea_level_rise_m * profile_length_m / denom
     }
 

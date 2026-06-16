@@ -160,7 +160,11 @@ fn meridian_arc(B: f64, ell: Ellipsoid) -> f64 {
     let a8 = (315.0 / 16384.0 * e8) / 8.0;
 
     let m = ell.a() * (1.0 - e2);
-    m * (a0 * B + a2 * (2.0 * B).sin() + a4 * (4.0 * B).sin() + a6 * (6.0 * B).sin() + a8 * (8.0 * B).sin())
+    m * (a0 * B
+        + a2 * (2.0 * B).sin()
+        + a4 * (4.0 * B).sin()
+        + a6 * (6.0 * B).sin()
+        + a8 * (8.0 * B).sin())
 }
 
 /// Compute footpoint latitude (latitude where meridian arc length equals given X).
@@ -181,14 +185,21 @@ fn footpoint_latitude(X: f64, ell: Ellipsoid) -> f64 {
         let e6 = e4 * e2;
         let e8 = e6 * e2;
 
-        let a0 = 1.0 + 3.0 / 4.0 * e2 + 45.0 / 64.0 * e4 + 175.0 / 256.0 * e6 + 11025.0 / 16384.0 * e8;
-        let a2 = -(3.0 / 4.0 * e2 + 15.0 / 16.0 * e4 + 525.0 / 512.0 * e6 + 2205.0 / 2048.0 * e8) / 2.0;
+        let a0 =
+            1.0 + 3.0 / 4.0 * e2 + 45.0 / 64.0 * e4 + 175.0 / 256.0 * e6 + 11025.0 / 16384.0 * e8;
+        let a2 =
+            -(3.0 / 4.0 * e2 + 15.0 / 16.0 * e4 + 525.0 / 512.0 * e6 + 2205.0 / 2048.0 * e8) / 2.0;
         let a4 = (15.0 / 64.0 * e4 + 105.0 / 256.0 * e6 + 2205.0 / 4096.0 * e8) / 4.0;
         let a6 = -(35.0 / 512.0 * e6 + 315.0 / 2048.0 * e8) / 6.0;
         let a8 = (315.0 / 16384.0 * e8) / 8.0;
 
-        let df = ell.a() * (1.0 - e2)
-            * (a0 + 2.0 * a2 * (2.0 * B).cos() + 4.0 * a4 * (4.0 * B).cos() + 6.0 * a6 * (6.0 * B).cos() + 8.0 * a8 * (8.0 * B).cos());
+        let df = ell.a()
+            * (1.0 - e2)
+            * (a0
+                + 2.0 * a2 * (2.0 * B).cos()
+                + 4.0 * a4 * (4.0 * B).cos()
+                + 6.0 * a6 * (6.0 * B).cos()
+                + 8.0 * a8 * (8.0 * B).cos());
 
         if df.abs() < 1e-15 {
             break;
@@ -247,14 +258,16 @@ pub fn gauss_forward(B: f64, L: f64, L0: f64, ell: Ellipsoid) -> (f64, f64) {
     // X = north-south
     let x_term1 = N / 2.0 * t * cosB * cosB * l2;
     let x_term2 = N / 24.0 * t * (5.0 - t2 + 9.0 * n2 + 4.0 * n4) * cosB.powi(4) * l4;
-    let x_term3 = N / 720.0 * t * (61.0 - 58.0 * t2 + t4 + 270.0 * n2 - 330.0 * t2 * n2) * cosB.powi(6) * l6;
+    let x_term3 =
+        N / 720.0 * t * (61.0 - 58.0 * t2 + t4 + 270.0 * n2 - 330.0 * t2 * n2) * cosB.powi(6) * l6;
 
     let X = X0 + x_term1 + x_term2 + x_term3;
 
     // Y = east-west (with 500km false easting)
     let y_term1 = N * cosB * l;
     let y_term2 = N / 6.0 * (1.0 - t2 + n2) * cosB.powi(3) * l3;
-    let y_term3 = N / 120.0 * (5.0 - 18.0 * t2 + t4 + 14.0 * n2 - 58.0 * t2 * n2) * cosB.powi(5) * l5;
+    let y_term3 =
+        N / 120.0 * (5.0 - 18.0 * t2 + t4 + 14.0 * n2 - 58.0 * t2 * n2) * cosB.powi(5) * l5;
 
     let Y = 500_000.0 + y_term1 + y_term2 + y_term3;
 
@@ -310,7 +323,8 @@ pub fn gauss_inverse(X: f64, Y: f64, L0: f64, ell: Ellipsoid) -> (f64, f64) {
 
     // B = Bf - ... series
     let b_term1 = tf / (2.0 * MfNf) * y2;
-    let b_term2 = tf / (24.0 * Mf * Nf3) * (5.0 + 3.0 * tf2 + nf2 - 9.0 * nf2 * tf2 - 4.0 * nf4) * y4;
+    let b_term2 =
+        tf / (24.0 * Mf * Nf3) * (5.0 + 3.0 * tf2 + nf2 - 9.0 * nf2 * tf2 - 4.0 * nf4) * y4;
     let b_term3 = tf / (720.0 * Mf * Nf5) * (61.0 + 90.0 * tf2 + 45.0 * tf4) * y5 * y;
 
     let B = Bf - b_term1 + b_term2 - b_term3;
@@ -318,7 +332,9 @@ pub fn gauss_inverse(X: f64, Y: f64, L0: f64, ell: Ellipsoid) -> (f64, f64) {
     // L = L0 + ... series
     let l_term1 = 1.0 / (Nf * cosBf) * y;
     let l_term2 = 1.0 / (6.0 * Nf3 * cosBf) * (1.0 + 2.0 * tf2 + nf2) * y3;
-    let l_term3 = 1.0 / (120.0 * Nf5 * cosBf) * (5.0 + 28.0 * tf2 + 24.0 * tf4 + 6.0 * nf2 + 8.0 * nf2 * tf2) * y5;
+    let l_term3 = 1.0 / (120.0 * Nf5 * cosBf)
+        * (5.0 + 28.0 * tf2 + 24.0 * tf4 + 6.0 * nf2 + 8.0 * nf2 * tf2)
+        * y5;
 
     let L = L0 + l_term1 - l_term2 + l_term3;
 
@@ -342,8 +358,10 @@ pub fn gauss_inverse(X: f64, Y: f64, L0: f64, ell: Ellipsoid) -> (f64, f64) {
 ///
 /// Returns `(X', Y')` in target zone coordinates.
 pub fn zone_transform(
-    X: f64, Y: f64,
-    from_zone: u16, to_zone: u16,
+    X: f64,
+    Y: f64,
+    from_zone: u16,
+    to_zone: u16,
     is_3degree: bool,
     ell: Ellipsoid,
 ) -> (f64, f64) {
@@ -356,8 +374,10 @@ pub fn zone_transform(
 
 /// Coordinate zone transformation using source and target central meridians directly.
 pub fn zone_transform_by_meridians(
-    X: f64, Y: f64,
-    L0_from_deg: f64, L0_to_deg: f64,
+    X: f64,
+    Y: f64,
+    L0_from_deg: f64,
+    L0_to_deg: f64,
     ell: Ellipsoid,
 ) -> (f64, f64) {
     let (B, L) = gauss_inverse(X, Y, L0_from_deg.to_radians(), ell);
@@ -433,7 +453,11 @@ mod tests {
         let (X, Y) = gauss_forward(B, L, L0, Ellipsoid::CGCS2000);
 
         // Chengdu: roughly 3383km north, ~355km east (after 500km false easting)
-        assert!((X - 3_383_000.0).abs() < 10_000.0, "X={}, expected ~3383000", X);
+        assert!(
+            (X - 3_383_000.0).abs() < 10_000.0,
+            "X={}, expected ~3383000",
+            X
+        );
         assert!((Y - 500_000.0).abs() < 1_000_000.0, "Y={}", Y);
 
         // Roundtrip test
@@ -475,8 +499,16 @@ mod tests {
         let (X36, Y36) = zone_transform(X35, Y35, 35, 36, true, Ellipsoid::CGCS2000);
         // Verify by computing forward directly in zone 36
         let (X36_direct, Y36_direct) = gauss_forward(B, L, L0_36, Ellipsoid::CGCS2000);
-        assert!((X36 - X36_direct).abs() < 1.0, "X diff: {}", (X36 - X36_direct).abs());
-        assert!((Y36 - Y36_direct).abs() < 1.0, "Y diff: {}", (Y36 - Y36_direct).abs());
+        assert!(
+            (X36 - X36_direct).abs() < 1.0,
+            "X diff: {}",
+            (X36 - X36_direct).abs()
+        );
+        assert!(
+            (Y36 - Y36_direct).abs() < 1.0,
+            "Y diff: {}",
+            (Y36 - Y36_direct).abs()
+        );
     }
 
     #[test]
@@ -526,11 +558,19 @@ mod tests {
 
         // At 45°, arc should be ~4,986,000 m
         let arc45 = meridian_arc(45.0_f64.to_radians(), Ellipsoid::CGCS2000);
-        assert!((arc45 - 4_986_000.0).abs() < 10_000.0, "arc at 45°={}", arc45);
+        assert!(
+            (arc45 - 4_986_000.0).abs() < 10_000.0,
+            "arc at 45°={}",
+            arc45
+        );
 
         // At 90°, arc should be ~quarter meridian ~10,001,966 m
         let arc90 = meridian_arc(90.0_f64.to_radians(), Ellipsoid::CGCS2000);
-        assert!((arc90 - 10_001_966.0).abs() < 10_000.0, "arc at pole={}", arc90);
+        assert!(
+            (arc90 - 10_001_966.0).abs() < 10_000.0,
+            "arc at pole={}",
+            arc90
+        );
     }
 
     #[test]
@@ -538,23 +578,54 @@ mod tests {
         let B0 = 30.0_f64.to_radians();
         let arc = meridian_arc(B0, Ellipsoid::CGCS2000);
         let Bf = footpoint_latitude(arc, Ellipsoid::CGCS2000);
-        assert!((Bf - B0).abs() < 1e-10, "footpoint diff: {}", (Bf - B0).abs());
+        assert!(
+            (Bf - B0).abs() < 1e-10,
+            "footpoint diff: {}",
+            (Bf - B0).abs()
+        );
     }
 
     #[test]
     fn test_all_ellipsoids() {
         let test_cases = [
-            (30.0_f64.to_radians(), 104.0_f64.to_radians(), 105.0_f64.to_radians()),
-            (39.9_f64.to_radians(), 116.4_f64.to_radians(), 117.0_f64.to_radians()),
-            (22.5_f64.to_radians(), 113.5_f64.to_radians(), 114.0_f64.to_radians()),
+            (
+                30.0_f64.to_radians(),
+                104.0_f64.to_radians(),
+                105.0_f64.to_radians(),
+            ),
+            (
+                39.9_f64.to_radians(),
+                116.4_f64.to_radians(),
+                117.0_f64.to_radians(),
+            ),
+            (
+                22.5_f64.to_radians(),
+                113.5_f64.to_radians(),
+                114.0_f64.to_radians(),
+            ),
         ];
 
-        for ell in [Ellipsoid::CGCS2000, Ellipsoid::Xian80, Ellipsoid::Beijing54, Ellipsoid::WGS84] {
+        for ell in [
+            Ellipsoid::CGCS2000,
+            Ellipsoid::Xian80,
+            Ellipsoid::Beijing54,
+            Ellipsoid::WGS84,
+        ] {
             for &(B, L, L0) in &test_cases {
                 let (X, Y) = gauss_forward(B, L, L0, ell);
                 let (B2, L2) = gauss_inverse(X, Y, L0, ell);
-                assert!((B2 - B).abs() < 1e-8, "{}: B diff {}", ell.label(), (B2-B).abs());
-                assert!((L2 - L).abs() < 1e-8, "{}: L diff {}", ell.label(), (L2-L).abs());
+                assert!(
+                    (B2 - B).abs() < 1e-8,
+                    "{}: B diff {}",
+                    ell.label(),
+                    (B2 - B).abs()
+                );
+                assert!(
+                    (L2 - L).abs() < 1e-8,
+                    "{}: L diff {}",
+                    ell.label(),
+                    (L2 - L).abs()
+                );
             }
         }
     }

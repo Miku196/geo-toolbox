@@ -6,9 +6,12 @@ use std::path::PathBuf;
 pub fn register_tools(registry: &mut PluginRegistry) {
     // Register plugin manually (for non-trivial metadata or if we need control)
     registry.register(geo_core::plugin::PluginMeta {
-        name: "report".into(), version: env!("CARGO_PKG_VERSION").into(),
+        name: "report".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
         description: "Markdown/HTML report generation".into(),
-        category: PluginCategory::Output, healthy: true, extra: serde_json::json!({}),
+        category: PluginCategory::Output,
+        healthy: true,
+        extra: serde_json::json!({}),
     });
     // Tool 1: report_carbon
     registry.register_tool_sync("report", ToolDef {

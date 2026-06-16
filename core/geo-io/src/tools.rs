@@ -1,7 +1,7 @@
 //! Tool registration — CRS + Ingest tools (mixed sync/async).
 use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;
-use geo_registry::{register_plugin, register_sync_tools, register_async_tools, PluginRegistry};
+use geo_registry::{register_async_tools, register_plugin, register_sync_tools, PluginRegistry};
 pub fn register_tools(registry: &mut PluginRegistry) {
     register_plugin!(registry, "crs", "CRS coordinate reference system registry", PluginCategory::Process, [
         sync "crs_list" => "List all registered coordinate reference systems" ; serde_json::json!({"type":"object","properties":{"category":{"type":"string"}},"required":[]}) => |args| -> ToolResult {
@@ -21,8 +21,12 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         Ok(serde_json::json!({"from_epsg":from,"to_epsg":to,"input":[x,y],"output":[ox,oy],"message":msg}))
     }]);
     registry.register(geo_core::plugin::PluginMeta {
-        name: "ingest".into(), version: "0.1.0".into(), description: "Data ingestion (CamoFox, NMEA)".into(),
-        category: PluginCategory::Ingest, healthy: true, extra: serde_json::json!({}),
+        name: "ingest".into(),
+        version: "0.1.0".into(),
+        description: "Data ingestion (CamoFox, NMEA)".into(),
+        category: PluginCategory::Ingest,
+        healthy: true,
+        extra: serde_json::json!({}),
     });
     register_sync_tools!(registry, "ingest", [
         "validate_coord" => "Validate a coordinate pair (longitude, latitude)" ; serde_json::json!({"type":"object","properties":{"lon":{"type":"number"},"lat":{"type":"number"}},"required":["lon","lat"]}) => |args| -> ToolResult {

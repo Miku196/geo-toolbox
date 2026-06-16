@@ -6,17 +6,36 @@ use geo_types::{LineString, Polygon};
 
 fn parse_polygon(geojson: &str) -> Result<Polygon<f64>, geo_core::GeoError> {
     let v: serde_json::Value = serde_json::from_str(geojson).map_err(geo_core::GeoError::Serde)?;
-    let ring = v["coordinates"].as_array().and_then(|r| r[0].as_array()).ok_or_else(|| geo_core::GeoError::invalid_input("geojson", "expected Polygon"))?;
-    let pts: Vec<_> = ring.iter().filter_map(|c| Some(geo_types::Coord{x:c[0].as_f64()?,y:c[1].as_f64()?})).collect();
+    let ring = v["coordinates"]
+        .as_array()
+        .and_then(|r| r[0].as_array())
+        .ok_or_else(|| geo_core::GeoError::invalid_input("geojson", "expected Polygon"))?;
+    let pts: Vec<_> = ring
+        .iter()
+        .filter_map(|c| {
+            Some(geo_types::Coord {
+                x: c[0].as_f64()?,
+                y: c[1].as_f64()?,
+            })
+        })
+        .collect();
     Ok(Polygon::new(LineString::from(pts), vec![]))
 }
 fn polygon_to_json(poly: &Polygon<f64>) -> serde_json::Value {
-    let c: Vec<Vec<f64>> = poly.exterior().points().map(|p| vec![p.x(), p.y()]).collect();
+    let c: Vec<Vec<f64>> = poly
+        .exterior()
+        .points()
+        .map(|p| vec![p.x(), p.y()])
+        .collect();
     serde_json::json!({"type":"Polygon","coordinates":[c]})
 }
 fn multipolygon_to_json(mp: &geo_types::MultiPolygon<f64>) -> serde_json::Value {
     let polys: Vec<serde_json::Value> = mp.iter().map(|p| polygon_to_json(p)).collect();
-    if polys.len() == 1 { polys.into_iter().next().unwrap() } else { serde_json::json!({"type":"MultiPolygon","coordinates":polys}) }
+    if polys.len() == 1 {
+        polys.into_iter().next().unwrap()
+    } else {
+        serde_json::json!({"type":"MultiPolygon","coordinates":polys})
+    }
 }
 
 pub fn register_tools(registry: &mut PluginRegistry) {

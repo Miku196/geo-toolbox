@@ -22,11 +22,7 @@ pub const MAX_BUFFER_VERTICES: usize = 500_000;
 /// - `poly`: 输入多边形
 /// - `distance`: 缓冲距离（正=外扩，负=内缩，0=原样返回）
 /// - `mode`: 缓冲区模式选择
-pub fn buffer(
-    poly: &Polygon<f64>,
-    distance: f64,
-    mode: BufferMode,
-) -> MultiPolygon<f64> {
+pub fn buffer(poly: &Polygon<f64>, distance: f64, mode: BufferMode) -> MultiPolygon<f64> {
     let n = poly.exterior().0.len();
     if n < 3 || n > MAX_BUFFER_VERTICES {
         return MultiPolygon::new(vec![poly.clone()]);
@@ -71,11 +67,26 @@ fn bbox_buffer_outer(poly: &Polygon<f64>, dist: f64) -> MultiPolygon<f64> {
     let max = bbox.max();
     MultiPolygon::new(vec![Polygon::new(
         LineString::new(vec![
-            Coord { x: min.x - dist, y: min.y - dist },
-            Coord { x: max.x + dist, y: min.y - dist },
-            Coord { x: max.x + dist, y: max.y + dist },
-            Coord { x: min.x - dist, y: max.y + dist },
-            Coord { x: min.x - dist, y: min.y - dist },
+            Coord {
+                x: min.x - dist,
+                y: min.y - dist,
+            },
+            Coord {
+                x: max.x + dist,
+                y: min.y - dist,
+            },
+            Coord {
+                x: max.x + dist,
+                y: max.y + dist,
+            },
+            Coord {
+                x: min.x - dist,
+                y: max.y + dist,
+            },
+            Coord {
+                x: min.x - dist,
+                y: min.y - dist,
+            },
         ]),
         vec![],
     )])
@@ -97,11 +108,26 @@ fn bbox_buffer_inner(poly: &Polygon<f64>, dist: f64) -> MultiPolygon<f64> {
     }
     MultiPolygon::new(vec![Polygon::new(
         LineString::new(vec![
-            Coord { x: cx - hw, y: cy - hh },
-            Coord { x: cx + hw, y: cy - hh },
-            Coord { x: cx + hw, y: cy + hh },
-            Coord { x: cx - hw, y: cy + hh },
-            Coord { x: cx - hw, y: cy - hh },
+            Coord {
+                x: cx - hw,
+                y: cy - hh,
+            },
+            Coord {
+                x: cx + hw,
+                y: cy - hh,
+            },
+            Coord {
+                x: cx + hw,
+                y: cy + hh,
+            },
+            Coord {
+                x: cx - hw,
+                y: cy + hh,
+            },
+            Coord {
+                x: cx - hw,
+                y: cy - hh,
+            },
         ]),
         vec![],
     )])
@@ -116,11 +142,14 @@ fn convexhull_buffer_outer(poly: &Polygon<f64>, dist: f64, segments: usize) -> M
         return MultiPolygon::new(vec![poly.clone()]);
     }
 
-    let total_len: f64 = coords.windows(2).map(|w| {
-        let dx = w[1].x - w[0].x;
-        let dy = w[1].y - w[0].y;
-        (dx * dx + dy * dy).sqrt()
-    }).sum();
+    let total_len: f64 = coords
+        .windows(2)
+        .map(|w| {
+            let dx = w[1].x - w[0].x;
+            let dy = w[1].y - w[0].y;
+            (dx * dx + dy * dy).sqrt()
+        })
+        .sum();
     let step = (total_len / (coords.len() as f64 * segments as f64)).max(dist / 4.0);
 
     let mut offset_points: Vec<Coord<f64>> = Vec::new();
@@ -128,7 +157,9 @@ fn convexhull_buffer_outer(poly: &Polygon<f64>, dist: f64, segments: usize) -> M
         let dx = w[1].x - w[0].x;
         let dy = w[1].y - w[0].y;
         let len = (dx * dx + dy * dy).sqrt();
-        if len < 1e-12 { continue; }
+        if len < 1e-12 {
+            continue;
+        }
         let nx = dy / len;
         let ny = -dx / len;
         let n_steps = (len / step).ceil() as usize;
@@ -164,7 +195,11 @@ fn precise_buffer_outer(poly: &Polygon<f64>, dist: f64, segments: usize) -> Mult
 
     // 预计算每条边的外法线方向
     #[derive(Clone, Copy)]
-    struct EdgeNormal { nx: f64, ny: f64, len: f64 }
+    struct EdgeNormal {
+        nx: f64,
+        ny: f64,
+        len: f64,
+    }
     let mut edge_normals: Vec<EdgeNormal> = Vec::with_capacity(n);
     for i in 0..n {
         let j = (i + 1) % n;
@@ -172,7 +207,11 @@ fn precise_buffer_outer(poly: &Polygon<f64>, dist: f64, segments: usize) -> Mult
         let dy = coords[j].y - coords[i].y;
         let len = (dx * dx + dy * dy).sqrt();
         if len < 1e-12 {
-            edge_normals.push(EdgeNormal { nx: 0.0, ny: 0.0, len: 0.0 });
+            edge_normals.push(EdgeNormal {
+                nx: 0.0,
+                ny: 0.0,
+                len: 0.0,
+            });
         } else {
             edge_normals.push(EdgeNormal {
                 nx: dy / len,
@@ -189,13 +228,21 @@ fn precise_buffer_outer(poly: &Polygon<f64>, dist: f64, segments: usize) -> Mult
     for i in 0..n {
         let j = (i + 1) % n;
         let nv = &edge_normals[i];
-        if nv.len < 1e-12 { continue; }
+        if nv.len < 1e-12 {
+            continue;
+        }
 
         let ib = coords[i];
         let jb = coords[j];
 
-        let i_off = Coord { x: ib.x + nv.nx * dist, y: ib.y + nv.ny * dist };
-        let j_off = Coord { x: jb.x + nv.nx * dist, y: jb.y + nv.ny * dist };
+        let i_off = Coord {
+            x: ib.x + nv.nx * dist,
+            y: ib.y + nv.ny * dist,
+        };
+        let j_off = Coord {
+            x: jb.x + nv.nx * dist,
+            y: jb.y + nv.ny * dist,
+        };
 
         parts.push(Polygon::new(
             LineString::new(vec![ib, i_off, j_off, jb, ib]),
@@ -211,7 +258,9 @@ fn precise_buffer_outer(poly: &Polygon<f64>, dist: f64, segments: usize) -> Mult
 
         let n1 = &edge_normals[prev];
         let n2 = &edge_normals[curr];
-        if n1.len < 1e-12 || n2.len < 1e-12 { continue; }
+        if n1.len < 1e-12 || n2.len < 1e-12 {
+            continue;
+        }
 
         // 判断凹凸：上一段结束点的偏移 vs 当前段起点的偏移
         // 前一相邻点、当前点、后一相邻点的转角符号
@@ -246,8 +295,12 @@ fn precise_buffer_outer(poly: &Polygon<f64>, dist: f64, segments: usize) -> Mult
 
         // 确定圆弧扫过方向（取最短弧）
         let mut sweep = angle2 - angle1;
-        while sweep < -std::f64::consts::PI { sweep += std::f64::consts::TAU; }
-        while sweep > std::f64::consts::PI { sweep -= std::f64::consts::TAU; }
+        while sweep < -std::f64::consts::PI {
+            sweep += std::f64::consts::TAU;
+        }
+        while sweep > std::f64::consts::PI {
+            sweep -= std::f64::consts::TAU;
+        }
 
         let arc_steps = ((sweep.abs() / step_angle).ceil() as usize).max(2);
         let arc_step = sweep / arc_steps as f64;
@@ -396,7 +449,8 @@ pub fn kernel_density(
                 if dist_sq > (bw * 3.0).powi(2) {
                     continue;
                 }
-                result[(r as usize) * grid_cols + c as usize] += norm * (-0.5 * dist_sq * inv_bw_sq).exp();
+                result[(r as usize) * grid_cols + c as usize] +=
+                    norm * (-0.5 * dist_sq * inv_bw_sq).exp();
             }
         }
     }
@@ -462,8 +516,14 @@ pub fn line_density(
 
 /// 计算线段与矩形裁剪后的长度（Cohen-Sutherland 裁剪简化版）。
 fn clip_line_length(
-    x1: f64, y1: f64, x2: f64, y2: f64,
-    rx_min: f64, ry_min: f64, rx_max: f64, ry_max: f64,
+    x1: f64,
+    y1: f64,
+    x2: f64,
+    y2: f64,
+    rx_min: f64,
+    ry_min: f64,
+    rx_max: f64,
+    ry_max: f64,
 ) -> f64 {
     // Liang-Barsky 线段裁剪
     let dx = x2 - x1;
@@ -577,21 +637,39 @@ mod tests {
     #[test]
     fn test_buffer_convexhull_positive() {
         let a = square(0.0, 0.0, 10.0);
-        let buf = buffer(&a, 2.0, BufferMode::ConvexHull { quadrant_segments: 16 });
+        let buf = buffer(
+            &a,
+            2.0,
+            BufferMode::ConvexHull {
+                quadrant_segments: 16,
+            },
+        );
         assert!(buf.unsigned_area() > 100.0);
     }
 
     #[test]
     fn test_buffer_zero() {
         let a = square(0.0, 0.0, 5.0);
-        let buf = buffer(&a, 0.0, BufferMode::ConvexHull { quadrant_segments: 8 });
+        let buf = buffer(
+            &a,
+            0.0,
+            BufferMode::ConvexHull {
+                quadrant_segments: 8,
+            },
+        );
         assert!((buf.unsigned_area() - a.unsigned_area()).abs() < 1e-6);
     }
 
     #[test]
     fn test_buffer_precise_square() {
         let a = square(0.0, 0.0, 10.0);
-        let buf = buffer(&a, 2.0, BufferMode::Precise { quadrant_segments: 16 });
+        let buf = buffer(
+            &a,
+            2.0,
+            BufferMode::Precise {
+                quadrant_segments: 16,
+            },
+        );
         // 精确偏移面积 = 原面积 + 4边×平行矩形 + 4角×扇形
         // ≈ 100 + 80 + 4π ≈ 192.57
         assert!(buf.unsigned_area() > 180.0, "area={}", buf.unsigned_area());
@@ -602,14 +680,27 @@ mod tests {
     fn test_buffer_precise_vs_convexhull_lshape() {
         // L 形凹多边形：凸壳会填满凹角，精确偏移不会
         let l = l_shape();
-        let precise = buffer(&l, 0.5, BufferMode::Precise { quadrant_segments: 8 });
-        let convex = buffer(&l, 0.5, BufferMode::ConvexHull { quadrant_segments: 8 });
+        let precise = buffer(
+            &l,
+            0.5,
+            BufferMode::Precise {
+                quadrant_segments: 8,
+            },
+        );
+        let convex = buffer(
+            &l,
+            0.5,
+            BufferMode::ConvexHull {
+                quadrant_segments: 8,
+            },
+        );
 
         // 凸壳面积 ≥ 精确偏移面积（凸壳会多填凹角区域）
         assert!(
             convex.unsigned_area() >= precise.unsigned_area() - 1e-6,
             "Convex hull should cover more area: convex={}, precise={}",
-            convex.unsigned_area(), precise.unsigned_area()
+            convex.unsigned_area(),
+            precise.unsigned_area()
         );
     }
 
@@ -617,7 +708,13 @@ mod tests {
     fn test_buffer_precise_preserves_concavity() {
         // 精确偏移的 L 形外扩应在凹角处延伸而不是填满
         let l = l_shape();
-        let buf = buffer(&l, 0.5, BufferMode::Precise { quadrant_segments: 8 });
+        let buf = buffer(
+            &l,
+            0.5,
+            BufferMode::Precise {
+                quadrant_segments: 8,
+            },
+        );
 
         // 检查结果非空
         assert!(!buf.0.is_empty());
@@ -643,25 +740,21 @@ mod tests {
 
     #[test]
     fn test_kernel_density() {
-        let points = vec![
-            (5.0, 5.0),
-            (5.5, 5.5),
-            (4.5, 4.5),
-        ];
+        let points = vec![(5.0, 5.0), (5.5, 5.5), (4.5, 4.5)];
         let result = kernel_density(&points, 10, 10, (0.0, 0.0, 10.0, 10.0), 1.0);
         assert_eq!(result.len(), 100);
         // 中心附近应有较高密度
         let center = result[5 * 10 + 5]; // grid cell (5,5)
         let corner = result[0];
-        assert!(center > corner, "Center density {center} should exceed corner {corner}");
+        assert!(
+            center > corner,
+            "Center density {center} should exceed corner {corner}"
+        );
     }
 
     #[test]
     fn test_line_density() {
-        let lines = vec![
-            (0.0, 0.0, 10.0, 10.0),
-            (0.0, 10.0, 10.0, 0.0),
-        ];
+        let lines = vec![(0.0, 0.0, 10.0, 10.0), (0.0, 10.0, 10.0, 0.0)];
         let result = line_density(&lines, 10, 10, (0.0, 0.0, 10.0, 10.0));
         assert_eq!(result.len(), 100);
         // 交叉点附近应有更高密度

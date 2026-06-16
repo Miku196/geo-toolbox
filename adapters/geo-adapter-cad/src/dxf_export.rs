@@ -8,7 +8,6 @@ use geo_core::errors::{self, GeoError, GeoResult};
 use sqlx::postgres::PgPool;
 use sqlx::Row;
 
-
 pub struct DxfExporter {
     pool: PgPool,
 }

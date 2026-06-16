@@ -1755,6 +1755,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "geo-emission-factors"
+version = "0.1.0"
+dependencies = [
+ "geo-carbon-math",
+ "geo-core",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
 name = "geo-index"
 version = "0.1.0"
 dependencies = [
@@ -1828,6 +1839,7 @@ version = "0.1.0"
 dependencies = [
  "geo-carbon-math",
  "geo-core",
+ "geo-emission-factors",
  "geo-registry",
  "serde",
  "serde_json",

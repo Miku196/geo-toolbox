@@ -1,4 +1,6 @@
 //! Tool registration — Carbon plugin.
+use crate::ccer::{CcerMethodology, CcerReport};
+use crate::plume::{GaussianPlume, StabilityClass};
 use crate::{CarbonConfig, CarbonPlugin as Cp};
 use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;
@@ -43,5 +45,26 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             Some(s) => Ok(serde_json::to_value(s).map_err(geo_core::GeoError::Serde)?),
             None => Ok(serde_json::json!({"error": "no methodology found"}))
         }
+    },
+        sync "gaussian_plume" => "Gaussian plume dispersion model" ; serde_json::json!({"type":"object","properties":{"emission_rate_g_s":{"type":"number"},"wind_speed_m_s":{"type":"number"},"stability":{"type":"string","default":"D"},"source_height_m":{"type":"number"},"distance_m":{"type":"number"}},"required":["emission_rate_g_s","wind_speed_m_s","source_height_m","distance_m"]}) => |args| -> ToolResult {
+        let stab = match args["stability"].as_str().unwrap_or("D") {
+            "A" => StabilityClass::A, "B" => StabilityClass::B, "C" => StabilityClass::C,
+            "E" => StabilityClass::E, "F" => StabilityClass::F, _ => StabilityClass::D,
+        };
+        let plume = GaussianPlume::new(args["emission_rate_g_s"].as_f64().unwrap_or(0.0), args["wind_speed_m_s"].as_f64().unwrap_or(0.0), stab, args["source_height_m"].as_f64().unwrap_or(0.0));
+        let c = plume.downwind_concentration_mg_m3(args["distance_m"].as_f64().unwrap_or(0.0));
+        let c_g = c / 1000.0;
+        Ok(serde_json::json!({"concentration_g_m3": c_g, "concentration_mg_m3": c, "distance_m": args["distance_m"].as_f64().unwrap_or(0.0), "stability": stab.as_str()}))
+    },
+        sync "ccer_report" => "CCER project design document report" ; serde_json::json!({"type":"object","properties":{"project_name":{"type":"string"},"methodology":{"type":"string","default":"afforestation"},"baseline_tco2e":{"type":"number"},"project_tco2e":{"type":"number"},"leakage_tco2e":{"type":"number","default":0}},"required":["project_name","baseline_tco2e","project_tco2e"]}) => |args| -> ToolResult {
+        let method = match args["methodology"].as_str().unwrap_or("afforestation") {
+            "forest_mgmt" => CcerMethodology::ForestMgmtMr,
+            "renewable" => CcerMethodology::RenewableMr,
+            "industrial_eff" => CcerMethodology::IndustrialEffMr,
+            "waste_recovery" => CcerMethodology::WasteRecoveryMr,
+            _ => CcerMethodology::AfforestationMr,
+        };
+        let report = CcerReport::new(args["project_name"].as_str().unwrap_or(""), &method, args["baseline_tco2e"].as_f64().unwrap_or(0.0), args["project_tco2e"].as_f64().unwrap_or(0.0)).with_leakage(args["leakage_tco2e"].as_f64().unwrap_or(0.0));
+        Ok(report.summary_json())
     }]);
 }

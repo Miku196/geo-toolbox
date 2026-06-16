@@ -78,10 +78,18 @@ impl Quadtree {
 
         for &i in indices {
             let b = &self.data_bboxes[i];
-            if b.intersects(&nw) { nw_items.push(i); }
-            if b.intersects(&ne) { ne_items.push(i); }
-            if b.intersects(&sw) { sw_items.push(i); }
-            if b.intersects(&se) { se_items.push(i); }
+            if b.intersects(&nw) {
+                nw_items.push(i);
+            }
+            if b.intersects(&ne) {
+                ne_items.push(i);
+            }
+            if b.intersects(&sw) {
+                sw_items.push(i);
+            }
+            if b.intersects(&se) {
+                se_items.push(i);
+            }
         }
 
         let mut children: Vec<Box<QNode>> = Vec::new();

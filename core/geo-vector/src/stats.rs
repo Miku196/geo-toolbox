@@ -1,8 +1,8 @@
 //! 矢量统计：面积、质心、长度、密度。
 
-use geo_types::{MultiPolygon, Point, Polygon};
 use geo::algorithm::Area;
 use geo::algorithm::Centroid;
+use geo_types::{MultiPolygon, Point, Polygon};
 
 /// 计算多边形质心。
 pub fn centroid(poly: &Polygon<f64>) -> Option<Point<f64>> {

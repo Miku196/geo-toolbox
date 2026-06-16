@@ -7,6 +7,8 @@ pub mod raster;
 pub mod tools;
 pub mod vector;
 pub use gcs_bridge::GcsBridge;
-pub use raster::{RasterOps, OutputDriver, ResamplingMethod, DataType,
-    GdalWarpOptions, GdalTranslateOptions, CogOptions, RasterInfo, RasterFormat};
+pub use raster::{
+    CogOptions, DataType, GdalTranslateOptions, GdalWarpOptions, OutputDriver, RasterFormat,
+    RasterInfo, RasterOps, ResamplingMethod,
+};
 pub use vector::VectorOps;
