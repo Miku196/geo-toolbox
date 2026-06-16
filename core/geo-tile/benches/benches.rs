@@ -5,7 +5,9 @@
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-use geo_tile::{latlon_to_tile, tile_bounds, tile_to_latlon, MvtEncoder, MvtFeature, MvtLayer, MvtValue};
+use geo_tile::{
+    latlon_to_tile, tile_bounds, tile_to_latlon, MvtEncoder, MvtFeature, MvtLayer, MvtValue,
+};
 
 fn bench_latlon_to_tile(c: &mut Criterion) {
     c.bench_function("latlon_to_tile", |b| {

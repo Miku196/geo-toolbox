@@ -983,7 +983,11 @@ mod tests {
             FuelType::OtherFuel,
         ] {
             let ox = fuel.default_oxidation_rate();
-            assert!(ox > 0.0 && ox <= 1.0, "Ox rate {ox} out of range for {:?}", fuel);
+            assert!(
+                ox > 0.0 && ox <= 1.0,
+                "Ox rate {ox} out of range for {:?}",
+                fuel
+            );
         }
     }
 

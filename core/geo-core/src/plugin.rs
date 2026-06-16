@@ -366,8 +366,11 @@ pub struct PluginMeta {
 /// Using this shared type eliminates 9 duplicate definitions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginHeader {
+    /// Human-readable plugin name, e.g. "Carbon Accounting"
     pub name: String,
+    /// Semantic version of the plugin
     pub version: String,
+    /// Short description of what the plugin provides
     pub description: String,
 }
 

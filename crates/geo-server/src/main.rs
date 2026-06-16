@@ -12,7 +12,9 @@ use axum::{
     Json, Router,
 };
 use geo_ogc::wms::{GetMapParams, WmsLayer, WmsRequest, WmsResponse, WmsService};
-use geo_ogc::wmts::{WmtsGetTileParams, WmtsLayer as WmtsDef, WmtsRequest, WmtsResponse, WmtsService};
+use geo_ogc::wmts::{
+    WmtsGetTileParams, WmtsLayer as WmtsDef, WmtsRequest, WmtsResponse, WmtsService,
+};
 use geo_wiring::PluginRegistry;
 use serde::Deserialize;
 use std::sync::Arc;
@@ -313,9 +315,12 @@ async fn wmts_handler(
 ) -> Result<axum::response::Response, (StatusCode, String)> {
     use axum::response::IntoResponse;
 
-    let request = query
-        .into_wmts_request()
-        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid WMTS request: {e}")))?;
+    let request = query.into_wmts_request().map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            format!("Invalid WMTS request: {e}"),
+        )
+    })?;
 
     match wmts.handle(&request) {
         Ok(response) => match response {

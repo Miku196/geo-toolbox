@@ -186,7 +186,11 @@ impl WmtsService {
         }
 
         // Validate tile matrix set
-        if !self.tile_matrix_sets.iter().any(|t| t.identifier == params.tile_matrix_set) {
+        if !self
+            .tile_matrix_sets
+            .iter()
+            .any(|t| t.identifier == params.tile_matrix_set)
+        {
             return Err(OgcError::new(
                 ServiceType::WMTS,
                 "1.0.0",
@@ -208,7 +212,10 @@ impl WmtsService {
         params: &WmtsGetFeatureInfoParams,
     ) -> Result<WmtsResponse, OgcError> {
         // Validate layer is queryable
-        let layer = self.layers.iter().find(|l| l.name == params.tile_params.layer);
+        let layer = self
+            .layers
+            .iter()
+            .find(|l| l.name == params.tile_params.layer);
         match layer {
             Some(_l) => {}
             None => {
@@ -330,17 +337,20 @@ impl WmtsService {
             r#"      <Style isDefault="true">
         <ows:Title>Default</ows:Title>
         <ows:Identifier>default</ows:Identifier>
-      </Style>"#.into()
+      </Style>"#
+                .into()
         } else {
             layer
                 .styles
                 .iter()
-                .map(|s| format!(
-                    r#"      <Style isDefault="false">
+                .map(|s| {
+                    format!(
+                        r#"      <Style isDefault="false">
         <ows:Title>{s}</ows:Title>
         <ows:Identifier>{s}</ows:Identifier>
       </Style>"#
-                ))
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join("\n")
         };
@@ -355,7 +365,11 @@ impl WmtsService {
         let resource_url = if let Some(url) = &layer.resource_url {
             format!(
                 r#"    <ResourceURL format="{fmt}" resourceType="tile" template="{url}"/>"#,
-                fmt = layer.formats.first().map(|s| s.as_str()).unwrap_or("image/png"),
+                fmt = layer
+                    .formats
+                    .first()
+                    .map(|s| s.as_str())
+                    .unwrap_or("image/png"),
                 url = url,
             )
         } else {
@@ -519,7 +533,10 @@ mod tests {
             tile_matrix_sets: vec!["EPSG:4326".into(), "EPSG:3857".into()],
             formats: vec!["image/png".into()],
             styles: vec!["default".into()],
-            resource_url: Some("https://example.com/tiles/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.png".into()),
+            resource_url: Some(
+                "https://example.com/tiles/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.png"
+                    .into(),
+            ),
         });
         svc.add_tile_matrix_set(global_geodetic_tile_matrix_set());
         svc.add_tile_matrix_set(global_mercator_tile_matrix_set());

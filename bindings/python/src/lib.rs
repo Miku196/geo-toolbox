@@ -45,9 +45,9 @@ fn tile_url(source: &str, x: u32, y: u32, zoom: u8) -> PyResult<String> {
         "gaode" => TileSource::Gaode,
         "tianditu" => TileSource::TianDiTu,
         _ => {
-            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                format!("Unknown tile source: {source} (try: osm, gaode, tianditu)"),
-            ))
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "Unknown tile source: {source} (try: osm, gaode, tianditu)"
+            )))
         }
     };
     Ok(geo_tile::tile_url(src, x, y, zoom))
@@ -56,9 +56,7 @@ fn tile_url(source: &str, x: u32, y: u32, zoom: u8) -> PyResult<String> {
 // ── Helper: extract a GeoJSON Feature dict into serde_json::Value ──
 fn dict_to_value(py: Python<'_>, item: &Bound<'_, PyAny>) -> PyResult<Value> {
     let json_module = py.import("json")?;
-    let json_str: String = json_module
-        .call_method1("dumps", (item,))?
-        .extract()?;
+    let json_str: String = json_module.call_method1("dumps", (item,))?.extract()?;
     serde_json::from_str(&json_str)
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))
 }
@@ -139,9 +137,7 @@ impl MvtEncoder {
                 let feature = self
                     .inner
                     .feature_from_geojson(f, layer.tile_x, layer.tile_y, layer.zoom)
-                    .map_err(|e| {
-                        PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string())
-                    })?;
+                    .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
                 layer_features.push(feature);
             }
             mvt_layers.push(MvtLayer {

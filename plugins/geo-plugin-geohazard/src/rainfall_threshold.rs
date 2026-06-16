@@ -95,11 +95,7 @@ impl IdCurve {
     /// 判断观测降雨是否超过滑坡阈值。
     ///
     /// 若 I_obs > I_threshold(D) 则返回 true（滑坡风险升高中）。
-    pub fn is_landslide_trigger(
-        &self,
-        observed_intensity_mmh: f64,
-        duration_hours: f64,
-    ) -> bool {
+    pub fn is_landslide_trigger(&self, observed_intensity_mmh: f64, duration_hours: f64) -> bool {
         let threshold_i = self.intensity(duration_hours);
         observed_intensity_mmh > threshold_i
     }
@@ -348,7 +344,7 @@ mod tests {
         let rp = base.for_return_period(100.0, 10.0, 0.3);
         assert!(rp.alpha > base.alpha); // Return period amplifies α
         assert_eq!(rp.beta, base.beta); // β unchanged
-        // α = c × T^d = 10 × 100^0.3 ≈ 39.8
+                                        // α = c × T^d = 10 × 100^0.3 ≈ 39.8
         assert!((rp.alpha - 39.81).abs() < 1.0);
     }
 

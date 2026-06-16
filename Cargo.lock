@@ -2035,17 +2035,18 @@ dependencies = [
 name = "geo-index"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "geo-core",
  "geo-registry",
  "serde",
  "serde_json",
- "thiserror 2.0.18",
 ]
 
 [[package]]
 name = "geo-io"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "csv",
  "geo-core",
  "geo-registry",
@@ -2283,6 +2284,7 @@ dependencies = [
 name = "geo-stats"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "geo-core",
  "geo-registry",
  "serde",
@@ -2345,6 +2347,7 @@ dependencies = [
 name = "geo-vector"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "geo",
  "geo-core",
  "geo-io",

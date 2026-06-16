@@ -1348,6 +1348,25 @@ cargo clippy --workspace
 cargo fmt --all -- --check
 ```
 
+### 基准测试 (Benchmarks)
+
+8 个核心 crate 已覆盖 criterion 基准测试：
+
+| Crate | 基准内容 |
+|-------|---------|
+| `geo-core` | CRS 坐标变换多策略对比 (Proj/Helmert/Molodensky) |
+| `geo-raster` | NDVI 计算 (256/512/1024 栅格) |
+| `geo-tile` | 瓦片坐标转换 + MVT 矢量编码 |
+| `geo-carbon-math` | 碳核算 (calculate_from_geojson / pool_stock / scenario) |
+| `geo-io` | GeoJSON 解析 + NMEA/GPS 协议解析 |
+| `geo-vector` | buffer / intersect / union / simplify / density |
+| `geo-index` | GeoHash 编解码 + Quadtree / RTree 空间索引 |
+| `geo-stats` | 分区统计 (ZonalStats) |
+
+```bash
+cargo bench --workspace
+```
+
 ---
 
 ## 示例

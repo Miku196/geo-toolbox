@@ -239,6 +239,27 @@ cargo test --workspace
 # 预期：167 个测试全部通过
 ```
 
+### Benchmark 基准测试
+
+8 个 crate 已覆盖 criterion bench：
+
+```bash
+# 全部基准测试（编译为 release）
+cargo bench --workspace
+
+# 单个 crate
+cargo bench -p geo-core
+cargo bench -p geo-io
+cargo bench -p geo-vector
+cargo bench -p geo-index
+cargo bench -p geo-stats
+
+# 仅编译不运行（CI 检查用）
+cargo bench --no-run --workspace
+```
+
+覆盖范围：CRS 变换对比 · NDVI 栅格计算 · MVT 瓦片编码 · GeoJSON/NMEA 解析 · 空间运算 (buffer/intersect/union) · GeoHash/Quadtree/RTree 索引 · 碳核算 (pool_stock/scenario) · 分区统计
+
 ---
 
 ## 3. 项目结构速览
