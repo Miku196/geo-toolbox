@@ -31,6 +31,7 @@
 pub mod common;
 pub mod wfs;
 pub mod wms;
+pub mod wmts;
 pub mod wps;
 
 pub use common::{OgcError, OgcException, ServiceType};

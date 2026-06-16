@@ -12,6 +12,7 @@ use axum::{
     Json, Router,
 };
 use geo_ogc::wms::{GetMapParams, WmsLayer, WmsRequest, WmsResponse, WmsService};
+use geo_ogc::wmts::{WmtsGetTileParams, WmtsLayer as WmtsDef, WmtsRequest, WmtsResponse, WmtsService};
 use geo_wiring::PluginRegistry;
 use serde::Deserialize;
 use std::sync::Arc;
@@ -53,6 +54,27 @@ struct WmsQuery {
     #[serde(default)]
     info_format: Option<String>,
     feature_count: Option<u32>,
+}
+
+/// WMTS query parameters (KVP encoding per OGC WMTS 1.0.0).
+#[derive(Debug, Deserialize)]
+struct WmtsQuery {
+    request: Option<String>,
+    service: Option<String>,
+
+    // GetTile
+    layer: Option<String>,
+    #[serde(default)]
+    style: Option<String>,
+    format: Option<String>,
+    #[serde(rename = "TileMatrixSet")]
+    tile_matrix_set: Option<String>,
+    #[serde(rename = "TileMatrix")]
+    tile_matrix: Option<String>,
+    #[serde(rename = "TileCol")]
+    tile_col: Option<u32>,
+    #[serde(rename = "TileRow")]
+    tile_row: Option<u32>,
 }
 
 fn parse_bbox(s: &str) -> Option<geo_ogc::common::Wgs84Bbox> {
@@ -135,6 +157,32 @@ impl WmsQuery {
     }
 }
 
+impl WmtsQuery {
+    fn into_wmts_request(self) -> Result<WmtsRequest, String> {
+        let req_type = self.request.as_deref().unwrap_or("");
+        match req_type {
+            "GetCapabilities" => Ok(WmtsRequest::GetCapabilities),
+            "GetTile" => {
+                let layer = self.layer.ok_or("missing layer")?;
+                let tile_matrix_set = self.tile_matrix_set.ok_or("missing TileMatrixSet")?;
+                let tile_matrix = self.tile_matrix.ok_or("missing TileMatrix")?;
+                let tile_col = self.tile_col.ok_or("missing TileCol")?;
+                let tile_row = self.tile_row.ok_or("missing TileRow")?;
+                let format = self.format.unwrap_or_else(|| "image/png".into());
+                Ok(WmtsRequest::GetTile(WmtsGetTileParams {
+                    layer,
+                    tile_matrix_set,
+                    tile_matrix,
+                    tile_col,
+                    tile_row,
+                    format,
+                }))
+            }
+            _ => Err(format!("unknown WMTS request type: {req_type}")),
+        }
+    }
+}
+
 fn build_wms_service() -> WmsService {
     let mut svc = WmsService::new("geo-toolbox WMS", "http://localhost:9378/wms");
     svc.add_layer(WmsLayer {
@@ -174,6 +222,47 @@ fn build_wms_service() -> WmsService {
     svc
 }
 
+fn build_wmts_service() -> WmtsService {
+    let mut svc = WmtsService::new("geo-toolbox WMTS", "http://localhost:9378/wmts");
+    svc.add_layer(WmtsDef {
+        name: "sentinel-2".into(),
+        title: "Sentinel-2 NDVI".into(),
+        abstract_: Some("Sentinel-2 satellite NDVI imagery".into()),
+        keywords: vec![],
+        wgs84_bbox: Some(geo_ogc::common::Wgs84Bbox {
+            west: -180.0,
+            south: -90.0,
+            east: 180.0,
+            north: 90.0,
+        }),
+        crs: vec!["EPSG:4326".into(), "EPSG:3857".into()],
+        tile_matrix_sets: vec!["EPSG:4326".into(), "EPSG:3857".into()],
+        formats: vec!["image/png".into()],
+        styles: vec!["default".into()],
+        resource_url: Some("http://localhost:9378/wmts?request=GetTile&layer={layer}&TileMatrixSet={TileMatrixSet}&TileMatrix={TileMatrix}&TileCol={TileCol}&TileRow={TileRow}&format=image/png".into()),
+    });
+    svc.add_layer(WmtsDef {
+        name: "landcover".into(),
+        title: "Land Cover Classification".into(),
+        abstract_: Some("Land cover types from GEE classification".into()),
+        keywords: vec![],
+        wgs84_bbox: Some(geo_ogc::common::Wgs84Bbox {
+            west: 73.0,
+            south: 18.0,
+            east: 135.0,
+            north: 54.0,
+        }),
+        crs: vec!["EPSG:4326".into(), "EPSG:3857".into()],
+        tile_matrix_sets: vec!["EPSG:4326".into(), "EPSG:3857".into()],
+        formats: vec!["image/png".into()],
+        styles: vec!["default".into()],
+        resource_url: Some("http://localhost:9378/wmts?request=GetTile&layer={layer}&TileMatrixSet={TileMatrixSet}&TileMatrix={TileMatrix}&TileCol={TileCol}&TileRow={TileRow}&format=image/png".into()),
+    });
+    svc.add_tile_matrix_set(geo_ogc::wmts::global_geodetic_tile_matrix_set());
+    svc.add_tile_matrix_set(geo_ogc::wmts::global_mercator_tile_matrix_set());
+    svc
+}
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
@@ -182,13 +271,15 @@ async fn main() {
         registry: build_registry(),
     });
     let wms = Arc::new(build_wms_service());
+    let wmts = Arc::new(build_wmts_service());
 
     let app = Router::new()
         .route("/health", get(health))
         .route("/api/tools", get(list_tools))
         .route("/api/call/{tool}", post(call_tool))
         .route("/wms", get(wms_handler))
-        .with_state((state, wms));
+        .route("/wmts", get(wmts_handler))
+        .with_state((state, wms, wmts));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:9378").await.unwrap();
     tracing::info!("geo-server listening on http://0.0.0.0:9378");
@@ -200,13 +291,13 @@ async fn health() -> &'static str {
 }
 
 async fn list_tools(
-    State((state, _)): State<(Arc<AppState>, Arc<WmsService>)>,
+    State((state, _, _)): State<(Arc<AppState>, Arc<WmsService>, Arc<WmtsService>)>,
 ) -> Json<serde_json::Value> {
     Json(state.registry.generate_mcp_tools())
 }
 
 async fn call_tool(
-    State((state, _)): State<(Arc<AppState>, Arc<WmsService>)>,
+    State((state, _, _)): State<(Arc<AppState>, Arc<WmsService>, Arc<WmtsService>)>,
     Path(tool): Path<String>,
     Json(args): Json<serde_json::Value>,
 ) -> Json<serde_json::Value> {
@@ -216,8 +307,40 @@ async fn call_tool(
     }
 }
 
+async fn wmts_handler(
+    State((_, _, wmts)): State<(Arc<AppState>, Arc<WmsService>, Arc<WmtsService>)>,
+    Query(query): Query<WmtsQuery>,
+) -> Result<axum::response::Response, (StatusCode, String)> {
+    use axum::response::IntoResponse;
+
+    let request = query
+        .into_wmts_request()
+        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid WMTS request: {e}")))?;
+
+    match wmts.handle(&request) {
+        Ok(response) => match response {
+            WmtsResponse::Xml(xml) => Ok((
+                StatusCode::OK,
+                [(axum::http::header::CONTENT_TYPE, "text/xml; charset=utf-8")],
+                xml,
+            )
+                .into_response()),
+            WmtsResponse::Tile { data, mime_type } => Ok((
+                StatusCode::OK,
+                [(axum::http::header::CONTENT_TYPE, mime_type.as_str())],
+                data,
+            )
+                .into_response()),
+        },
+        Err(e) => {
+            let xml = e.to_xml();
+            Err((StatusCode::BAD_REQUEST, xml))
+        }
+    }
+}
+
 async fn wms_handler(
-    State((_, wms)): State<(Arc<AppState>, Arc<WmsService>)>,
+    State((_, wms, _)): State<(Arc<AppState>, Arc<WmsService>, Arc<WmtsService>)>,
     Query(query): Query<WmsQuery>,
 ) -> Result<axum::response::Response, (StatusCode, String)> {
     use axum::response::IntoResponse;

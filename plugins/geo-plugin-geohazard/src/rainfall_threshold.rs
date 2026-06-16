@@ -83,6 +83,77 @@ impl IdCurve {
         let d = duration_hours.max(0.01);
         self.alpha * d.powf(-self.beta)
     }
+
+    /// 计算给定历时的累计降雨量。
+    ///
+    /// R = I × D = α × D^(1-β)
+    pub fn cumulative_rainfall(&self, duration_hours: f64) -> f64 {
+        let d = duration_hours.max(0.01);
+        self.alpha * d.powf(1.0 - self.beta)
+    }
+
+    /// 判断观测降雨是否超过滑坡阈值。
+    ///
+    /// 若 I_obs > I_threshold(D) 则返回 true（滑坡风险升高中）。
+    pub fn is_landslide_trigger(
+        &self,
+        observed_intensity_mmh: f64,
+        duration_hours: f64,
+    ) -> bool {
+        let threshold_i = self.intensity(duration_hours);
+        observed_intensity_mmh > threshold_i
+    }
+
+    /// 计算返回周期 (Return Period) 的降雨强度。
+    ///
+    /// 使用 Sherman 公式: I_T = c × T^d / D^β
+    /// 其中 T = 返回周期 (年), c, d = 气候参数。
+    /// 默认参数适用于中国亚热带季风区。
+    pub fn for_return_period(&self, return_period_years: f64, c: f64, d: f64) -> IdCurve {
+        let alpha = c * return_period_years.powf(d);
+        IdCurve {
+            alpha,
+            beta: self.beta,
+        }
+    }
+
+    // ── 全球经验阈值 ─────────────────────────────────────────
+
+    /// Caine (1980) 全球滑坡降雨阈值。
+    /// I = 14.82 × D^(-0.39)
+    pub fn caine_1980() -> Self {
+        Self {
+            alpha: 14.82,
+            beta: 0.39,
+        }
+    }
+
+    /// Guzzetti et al. (2008) 全球阈值。
+    /// I = 2.20 × D^(-0.44)
+    pub fn guzzetti_2008() -> Self {
+        Self {
+            alpha: 2.20,
+            beta: 0.44,
+        }
+    }
+
+    /// 中国西南地区阈值 (基于文献综合)。
+    /// I = 32.5 × D^(-0.52)
+    pub fn china_southwest() -> Self {
+        Self {
+            alpha: 32.5,
+            beta: 0.52,
+        }
+    }
+
+    /// 中国东南沿海台风区阈值。
+    /// I = 49.0 × D^(-0.48)
+    pub fn china_southeast_typhoon() -> Self {
+        Self {
+            alpha: 49.0,
+            beta: 0.48,
+        }
+    }
 }
 
 /// 降雨等级（中国气象局标准）。
@@ -248,5 +319,69 @@ mod tests {
         for w in weights.windows(2) {
             assert!(w[0] < w[1]);
         }
+    }
+
+    #[test]
+    fn test_cumulative_rainfall() {
+        let curve = IdCurve::new(50.0, 0.5);
+        // R = α × D^(1-β) = 50 × D^0.5
+        let r1 = curve.cumulative_rainfall(1.0);
+        let r4 = curve.cumulative_rainfall(4.0);
+        assert!((r1 - 50.0).abs() < 1.0);
+        assert!((r4 - 100.0).abs() < 2.0); // 50 × 2 = 100
+    }
+
+    #[test]
+    fn test_is_landslide_trigger() {
+        let curve = IdCurve::caine_1980();
+        // At D=1h, threshold I ≈ 14.82
+        let threshold = curve.intensity(1.0);
+        assert!(!curve.is_landslide_trigger(threshold, 1.0));
+        assert!(curve.is_landslide_trigger(threshold + 1.0, 1.0));
+        assert!(!curve.is_landslide_trigger(threshold - 1.0, 1.0));
+    }
+
+    #[test]
+    fn test_return_period() {
+        let base = IdCurve::new(50.0, 0.5);
+        // c=10, d=0.3, T=100yr
+        let rp = base.for_return_period(100.0, 10.0, 0.3);
+        assert!(rp.alpha > base.alpha); // Return period amplifies α
+        assert_eq!(rp.beta, base.beta); // β unchanged
+        // α = c × T^d = 10 × 100^0.3 ≈ 39.8
+        assert!((rp.alpha - 39.81).abs() < 1.0);
+    }
+
+    #[test]
+    fn test_prebuilt_thresholds() {
+        let caine = IdCurve::caine_1980();
+        assert_eq!(caine.alpha, 14.82);
+        assert_eq!(caine.beta, 0.39);
+
+        let guzzetti = IdCurve::guzzetti_2008();
+        assert_eq!(guzzetti.alpha, 2.20);
+        assert_eq!(guzzetti.beta, 0.44);
+
+        let sw = IdCurve::china_southwest();
+        assert!(sw.intensity(1.0) > 10.0);
+
+        let se = IdCurve::china_southeast_typhoon();
+        assert!(se.intensity(1.0) > 20.0);
+    }
+
+    #[test]
+    fn test_threshold_consistency() {
+        // Higher duration → lower intensity (monotonic decreasing)
+        let curve = IdCurve::china_southwest();
+        let i1 = curve.intensity(1.0);
+        let i6 = curve.intensity(6.0);
+        let i24 = curve.intensity(24.0);
+        assert!(i1 > i6);
+        assert!(i6 > i24);
+
+        // Higher duration → higher cumulative rainfall
+        let r1 = curve.cumulative_rainfall(1.0);
+        let r24 = curve.cumulative_rainfall(24.0);
+        assert!(r24 > r1);
     }
 }

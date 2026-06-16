@@ -149,7 +149,7 @@ fn lcoe_estimate(power_mw: f64, reservoir_temp_c: f64) -> f64 {
     }
 
     // CRF: r=7%, n=25 years
-    let r = 0.07;
+    let r: f64 = 0.07;
     let n = 25.0;
     let crf = r * (1.0 + r).powf(n) / ((1.0 + r).powf(n) - 1.0);
 

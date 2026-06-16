@@ -11,3 +11,10 @@ geo-registry = { path = "../geo-registry" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+criterion = { workspace = true, features = ["html_reports"] }
+
+[[bench]]
+name = "benches"
+harness = false

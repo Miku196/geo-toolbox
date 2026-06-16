@@ -13,6 +13,8 @@ pub enum ServiceType {
     WPS,
     /// Web Coverage Service
     WCS,
+    /// Web Map Tile Service
+    WMTS,
 }
 
 impl ServiceType {
@@ -23,6 +25,7 @@ impl ServiceType {
             ServiceType::WFS => "WFS",
             ServiceType::WPS => "WPS",
             ServiceType::WCS => "WCS",
+            ServiceType::WMTS => "WMTS",
         }
     }
 }

@@ -1,0 +1,16 @@
+[package]
+name = "geo-toolbox-python"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Python bindings for geo-toolbox — tile math, MVT encoding, PMTiles"
+
+[lib]
+name = "_geo_toolbox"
+crate-type = ["cdylib"]
+
+[dependencies]
+geo-tile = { path = "../../core/geo-tile" }
+geo-core = { path = "../../core/geo-core" }
+pyo3 = { version = "0.23", features = ["extension-module"] }
+serde_json = { workspace = true }

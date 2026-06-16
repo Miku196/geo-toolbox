@@ -11,7 +11,7 @@
 [![Rust](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-300+-pass-green.svg)]()
-[![MCP Tools](https://img.shields.io/badge/mcp-55%20tools-blue.svg)]()
+[![MCP Tools](https://img.shields.io/badge/mcp-89%20tools-blue.svg)]()
 [![CI](https://img.shields.io/badge/CI-passing-green.svg)]()
 
 ---
@@ -1370,3 +1370,9 @@ cargo fmt --all -- --check && cargo clippy && cargo test
 git commit -m "feat: add something"
 git push origin feature/my-feature
 ```
+
+---
+
+> 💡 **版本进度**：v0.7 阶段 — 插件深度化补全已完成。新增排放因子数据库 (`geo-emission-factors`) + 碳插件 EF 集成 + 风暴潮 (Holland 风场) + 蓝碳 (IPCC Tier 1) + 地热 (Fourier 热传导, LCOE) + 输电走廊 (Dijkstra LCP) + 高斯烟羽 + CCER 报告 + 随机森林 LULC + 降雨 ID 阈值 + 流域提取。详见 [ROADMAP](ROADMAP.md)。
+>
+> 💡 **工具统计**：全功能编译共 89 个 MCP 工具 — Core 16 + 碳核算 9 + 生态修复 4 + 新能源 4 + 林业 1 + 海岸带 5 + 水文 9 + 地灾 3 + 测绘 8 + 农业 4 + 城乡规划 6 + 数据接入 6 + 外部桥接 16。

@@ -918,4 +918,145 @@ mod tests {
     fn test_gwp_version_default() {
         assert_eq!(GwpVersion::default(), GwpVersion::AR5);
     }
+
+    #[test]
+    fn test_fuel_type_default_ncv_all_variants() {
+        let variants = [
+            FuelType::RawCoal,
+            FuelType::CleanedCoal,
+            FuelType::Coke,
+            FuelType::CrudeOil,
+            FuelType::Gasoline,
+            FuelType::Diesel,
+            FuelType::FuelOil,
+            FuelType::LPG,
+            FuelType::NaturalGas,
+            FuelType::CokeOvenGas,
+            FuelType::BlastFurnaceGas,
+            FuelType::Biomass,
+            FuelType::OtherFuel,
+        ];
+        for fuel in &variants {
+            let ncv = fuel.default_ncv();
+            assert!(ncv > 0.0, "NCV should be positive for {:?}", fuel);
+        }
+    }
+
+    #[test]
+    fn test_fuel_type_default_carbon_content_all_variants() {
+        let variants = [
+            FuelType::RawCoal,
+            FuelType::CleanedCoal,
+            FuelType::Coke,
+            FuelType::CrudeOil,
+            FuelType::Gasoline,
+            FuelType::Diesel,
+            FuelType::FuelOil,
+            FuelType::LPG,
+            FuelType::NaturalGas,
+            FuelType::CokeOvenGas,
+            FuelType::BlastFurnaceGas,
+            FuelType::Biomass,
+            FuelType::OtherFuel,
+        ];
+        for fuel in &variants {
+            let cc = fuel.default_carbon_content();
+            assert!(cc > 0.0, "CC should be positive for {:?}", fuel);
+        }
+    }
+
+    #[test]
+    fn test_fuel_type_default_oxidation_rate() {
+        for fuel in &[
+            FuelType::RawCoal,
+            FuelType::CleanedCoal,
+            FuelType::Coke,
+            FuelType::CrudeOil,
+            FuelType::Gasoline,
+            FuelType::Diesel,
+            FuelType::FuelOil,
+            FuelType::LPG,
+            FuelType::NaturalGas,
+            FuelType::CokeOvenGas,
+            FuelType::BlastFurnaceGas,
+            FuelType::Biomass,
+            FuelType::OtherFuel,
+        ] {
+            let ox = fuel.default_oxidation_rate();
+            assert!(ox > 0.0 && ox <= 1.0, "Ox rate {ox} out of range for {:?}", fuel);
+        }
+    }
+
+    #[test]
+    fn test_fuel_type_compute_co2() {
+        // RawCoal: ncv=20.908, cc=26.37, ox=0.94
+        // CO2 = 1 × 20.908 × 26.37 × 0.94 / 1000 × (44/12) ≈ 1.900
+        let co2 = FuelType::RawCoal.compute_co2(1.0);
+        assert!((co2 - 1.90).abs() < 0.05, "Expected ~1.9 tCO2, got {co2}");
+
+        // NaturalGas: ncv=389.31, cc=15.32, ox=0.99
+        let co2_gas = FuelType::NaturalGas.compute_co2(1.0);
+        assert!(co2_gas > 0.0, "Gas CO2 should be positive");
+    }
+
+    #[test]
+    fn test_fuel_type_labels() {
+        for fuel in &[
+            FuelType::RawCoal,
+            FuelType::Diesel,
+            FuelType::NaturalGas,
+            FuelType::Biomass,
+        ] {
+            let label = fuel.label();
+            assert!(!label.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_grid_factor_china_regions() {
+        let north = GridEmissionFactor::for_china_region("cn-north", 2023);
+        assert_eq!(north.factor_tco2_per_mwh, GridEmissionFactor::CN_NORTH_2023);
+
+        let default = GridEmissionFactor::for_china_region("unknown", 2023);
+        assert_eq!(default.factor_tco2_per_mwh, GridEmissionFactor::CN_2023);
+    }
+
+    #[test]
+    fn test_load_from_csv_industrial() {
+        let csv = "category,factor_value,source,scope,activity_type,fuel_type,ncv,cc,ox\ncoal_boiler,5.0,IPCC_2006,scope1,fuel,RawCoal,20.9,26.37,0.94\n";
+        let factors = load_factors_from_csv(csv).unwrap();
+        assert_eq!(factors.len(), 1);
+        assert_eq!(factors[0].category, "coal_boiler");
+        assert_eq!(factors[0].factor_value, 5.0);
+        // fuel_type parsed
+        assert_eq!(factors[0].fuel_type, Some(FuelType::RawCoal));
+    }
+
+    #[test]
+    fn test_load_from_csv_with_region() {
+        let csv = "category,factor_value,source,region\nforest,5.0,IPCC_2019,CN-51\n";
+        let factors = load_factors_from_csv(csv).unwrap();
+        assert_eq!(factors.len(), 1);
+        assert_eq!(factors[0].region, Some("CN-51".to_string()));
+    }
+
+    #[test]
+    fn test_emission_scope_label() {
+        assert!(!EmissionScope::Scope1.label().is_empty());
+        assert!(!EmissionScope::Scope2.label().is_empty());
+        assert!(!EmissionScope::Scope3.label().is_empty());
+    }
+
+    #[test]
+    fn test_greenhouse_gas_name() {
+        for gas in &[
+            GreenhouseGas::CO2,
+            GreenhouseGas::CH4,
+            GreenhouseGas::N2O,
+            GreenhouseGas::SF6,
+        ] {
+            assert!(!gas.name().is_empty());
+            assert!(!gas.formula().is_empty());
+        }
+    }
 }

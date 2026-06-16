@@ -136,7 +136,7 @@ impl PartialEq for DijkstraNode {
 
 impl Eq for DijkstraNode {}
 
-impl Ordering for DijkstraNode {
+impl Ord for DijkstraNode {
     fn cmp(&self, other: &Self) -> Ordering {
         // BinaryHeap 是最大堆，取反实现最小堆
         other
@@ -307,7 +307,7 @@ pub fn assess_corridor(
     let max = path
         .iter()
         .map(|&idx| cost_surface[idx])
-        .fold(0.0_f64, |a, &b| if b > a { b } else { a });
+        .fold(0.0, f64::max);
 
     let area_km2 = length_km * corridor_width_m / 1000.0;
     let est_cost = length_km * cost_per_km_usd;
