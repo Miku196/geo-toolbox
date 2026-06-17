@@ -1,3 +1,4 @@
+use crate::config::GeohazardConfig;
 use crate::GeohazardPlugin;
 use geo_core::errors::{GeoError, GeoResult};
 use geo_core::plugin::{Plugin, PluginCategory, ProcessPlugin};
@@ -15,6 +16,12 @@ impl GeohazardPlugin {
 }
 
 impl Plugin for GeohazardPlugin {
+    type Config = GeohazardConfig;
+
+    fn new(config: GeohazardConfig) -> Self {
+        Self::new(config)
+    }
+
     fn name(&self) -> &str {
         "geohazard"
     }
@@ -68,6 +75,17 @@ impl ProcessPlugin for GeohazardPlugin {
                 let rainfall = params["rainfall_24h_mm"].as_f64().unwrap_or(30.0);
 
                 let result = self.debris_flow_hazard(gradient, material, rainfall);
+                Ok(serde_json::to_value(&result).map_err(|e| GeoError::Serde(e))?)
+            }
+
+            "debris_flow_runout" => {
+                let area = params["watershed_area_km2"].as_f64().unwrap_or(1.0);
+                let rainfall = params["rainfall_24h_mm"].as_f64().unwrap_or(100.0);
+                let elevation = params["elevation_drop_m"].as_f64().unwrap_or(100.0);
+                let gradient = params["channel_gradient_deg"].as_f64().unwrap_or(20.0);
+
+                let result =
+                    self.debris_flow_runout_assessment(area, rainfall, elevation, gradient)?;
                 Ok(serde_json::to_value(&result).map_err(|e| GeoError::Serde(e))?)
             }
 

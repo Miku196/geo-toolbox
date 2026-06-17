@@ -60,6 +60,23 @@ pub struct DebrisFlowResult {
     pub rainfall_score: f64,
 }
 
+/// 泥石流体积-冲出距离经验模型结果。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DebrisFlowRunout {
+    /// 估算总物质体积（m³）。
+    pub volume_m3: f64,
+    /// 预测冲出距离（m）。
+    pub runout_distance_m: f64,
+    /// 视摩擦角 / 等效摩擦系数（°）。
+    pub travel_angle_deg: f64,
+    /// 估算冲击压力（kPa）。
+    pub impact_pressure_kpa: f64,
+    /// 影响扇面积（m²）。
+    pub affected_area_m2: f64,
+    /// 风险等级。
+    pub risk_level: RiskLevel,
+}
+
 /// 风险等级：5级。
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -368,6 +385,148 @@ impl GeohazardPlugin {
         (cohesion_kpa + (normal_stress - pore_pressure) * tan_phi) / shear_stress
     }
 
+    /// 估算泥石流物质体积（经验模型）。
+    ///
+    /// V = 0.5 × 流域面积(km²) × 降雨量(mm) × 物质因子 × volume_factor
+    ///
+    /// # Arguments
+    /// * `watershed_area_km2` - 流域面积（km²）
+    /// * `rainfall_24h_mm` - 24小时降雨量（mm）
+    pub fn debris_flow_volume_empirical(
+        &self,
+        watershed_area_km2: f64,
+        rainfall_24h_mm: f64,
+    ) -> GeoResult<f64> {
+        let dp = &self.config.debris_flow;
+        if watershed_area_km2 <= 0.0 {
+            return Err(GeoError::Validation(
+                "watershed area must be positive".into(),
+            ));
+        }
+        if rainfall_24h_mm < 0.0 {
+            return Err(GeoError::Validation("rainfall cannot be negative".into()));
+        }
+        if dp.material_factor <= 0.0 {
+            return Err(GeoError::Validation(
+                "material factor must be positive".into(),
+            ));
+        }
+        let volume =
+            dp.volume_factor * 0.5 * watershed_area_km2 * rainfall_24h_mm * dp.material_factor;
+        Ok(volume)
+    }
+
+    /// 估算泥石流冲出距离（基于视摩擦角 / 等效摩擦系数）。
+    ///
+    /// Takahashi (1991): α ≈ 18 – 6·log₁₀(V / 10⁴)
+    /// L = H / tan(α)
+    ///
+    /// # Arguments
+    /// * `volume_m3` - 泥石流物质体积（m³）
+    /// * `elevation_drop_m` - 高差（m）
+    pub fn debris_flow_runout_distance(&self, volume_m3: f64, elevation_drop_m: f64) -> f64 {
+        if volume_m3 <= 0.0 || elevation_drop_m <= 0.0 {
+            return 0.0;
+        }
+        let dp = &self.config.debris_flow;
+        let travel_angle_deg = (18.0 - 6.0 * (volume_m3 / 10000.0).log10())
+            .max(dp.min_travel_angle_deg)
+            .min(40.0);
+        let travel_angle_rad = travel_angle_deg.to_radians();
+        let runout = elevation_drop_m / travel_angle_rad.tan();
+        if runout.is_finite() {
+            runout
+        } else {
+            0.0
+        }
+    }
+
+    /// 估算泥石流冲击压力（kPa）。
+    ///
+    /// v ≈ √(2·g·H·sinθ)  流速（m/s）
+    /// P = 0.5·ρ·v²       动压（Pa → kPa）
+    ///
+    /// # Arguments
+    /// * `elevation_drop_m` - 高差（m）
+    /// * `channel_gradient_deg` - 沟床比降（°）
+    pub fn debris_flow_impact_pressure(
+        &self,
+        elevation_drop_m: f64,
+        channel_gradient_deg: f64,
+    ) -> f64 {
+        if elevation_drop_m <= 0.0 || channel_gradient_deg <= 0.0 {
+            return 0.0;
+        }
+        let dp = &self.config.debris_flow;
+        let g = 9.81;
+        let density_kg_m3 = dp.debris_density * 1000.0; // t/m³ → kg/m³
+        let theta = channel_gradient_deg.to_radians();
+        let velocity = (2.0 * g * elevation_drop_m * theta.sin()).sqrt();
+        // dynamic pressure P = 0.5·ρ·v² (Pa) → kPa
+        0.5 * density_kg_m3 * velocity * velocity / 1000.0
+    }
+
+    /// 估算泥石流影响扇面积（m²）。
+    ///
+    /// A_fan = 20 · V^0.83  (Iverson et al. 1998)
+    ///
+    /// # Arguments
+    /// * `volume_m3` - 泥石流物质体积（m³）
+    pub fn debris_flow_affected_area(&self, volume_m3: f64) -> f64 {
+        if volume_m3 <= 0.0 {
+            return 0.0;
+        }
+        20.0 * volume_m3.powf(0.83)
+    }
+
+    /// 综合泥石流体积-冲出距离评估。
+    ///
+    /// 组合体积估算、冲出距离、冲击压力、影响扇面积。
+    ///
+    /// # Arguments
+    /// * `watershed_area_km2` - 流域面积（km²）
+    /// * `rainfall_24h_mm` - 24小时降雨量（mm）
+    /// * `elevation_drop_m` - 高差（m）
+    /// * `channel_gradient_deg` - 沟床比降（°）
+    pub fn debris_flow_runout_assessment(
+        &self,
+        watershed_area_km2: f64,
+        rainfall_24h_mm: f64,
+        elevation_drop_m: f64,
+        channel_gradient_deg: f64,
+    ) -> GeoResult<DebrisFlowRunout> {
+        let volume = self.debris_flow_volume_empirical(watershed_area_km2, rainfall_24h_mm)?;
+        let runout = self.debris_flow_runout_distance(volume, elevation_drop_m);
+        let travel_angle = if runout > 0.01 {
+            (elevation_drop_m / runout).atan().to_degrees()
+        } else {
+            0.0
+        };
+        let impact = self.debris_flow_impact_pressure(elevation_drop_m, channel_gradient_deg);
+        let area = self.debris_flow_affected_area(volume);
+
+        let risk = if runout > 1000.0 {
+            RiskLevel::VeryHigh
+        } else if runout > 500.0 {
+            RiskLevel::High
+        } else if runout > 200.0 {
+            RiskLevel::Moderate
+        } else if runout > 50.0 {
+            RiskLevel::Low
+        } else {
+            RiskLevel::VeryLow
+        };
+
+        Ok(DebrisFlowRunout {
+            volume_m3: volume,
+            runout_distance_m: runout,
+            travel_angle_deg: travel_angle,
+            impact_pressure_kpa: impact,
+            affected_area_m2: area,
+            risk_level: risk,
+        })
+    }
+
     /// Newmark 永久位移（地震滑坡）。
     ///
     /// 简化的 Newmark 滑动块模型：临界加速度 ac = (FS - 1) * g * sin(β)
@@ -541,5 +700,78 @@ mod tests {
         assert!(result.factor_scores.rainfall > 0.0);
         assert!(result.factor_scores.fault_distance > 0.0);
         assert!(result.factor_scores.vegetation > 0.0);
+    }
+
+    // ——————————— DebrisFlowRunout tests ———————————
+
+    #[test]
+    fn test_debris_flow_volume_empirical() {
+        let p = make_plugin();
+        // watershed=2 km², rainfall=100mm → V = 1.0 * 0.5 * 2.0 * 100.0 * 1.0 = 100
+        let vol = p.debris_flow_volume_empirical(2.0, 100.0).unwrap();
+        assert!((vol - 100.0).abs() < 0.01, "vol={vol} expected ~100");
+    }
+
+    #[test]
+    fn test_debris_flow_volume_empirical_invalid() {
+        let p = make_plugin();
+        assert!(p.debris_flow_volume_empirical(0.0, 100.0).is_err());
+        assert!(p.debris_flow_volume_empirical(-1.0, 100.0).is_err());
+        assert!(p.debris_flow_volume_empirical(1.0, -10.0).is_err());
+    }
+
+    #[test]
+    fn test_debris_flow_runout_distance() {
+        let p = make_plugin();
+        // V=10000 m³, H=100 m → α=18°, L=100/tan(18°)≈307.8m
+        let runout = p.debris_flow_runout_distance(10000.0, 100.0);
+        assert!(
+            runout > 300.0 && runout < 320.0,
+            "runout={runout} expected ~308m"
+        );
+        assert_eq!(p.debris_flow_runout_distance(0.0, 100.0), 0.0);
+    }
+
+    #[test]
+    fn test_debris_flow_impact_pressure() {
+        let p = make_plugin();
+        // H=50m, gradient=20° → P ~ (0.5*2000*334)/1000 ≈ 334 kPa
+        let pressure = p.debris_flow_impact_pressure(50.0, 20.0);
+        assert!(
+            pressure > 200.0 && pressure < 500.0,
+            "pressure={pressure} kPa expected ~334"
+        );
+        assert_eq!(p.debris_flow_impact_pressure(0.0, 20.0), 0.0);
+    }
+
+    #[test]
+    fn test_debris_flow_affected_area() {
+        let p = make_plugin();
+        // V=10000 m³ → A_fan=20*10000^0.83≈20*1949≈38978 m²
+        let area = p.debris_flow_affected_area(10000.0);
+        assert!(
+            area > 30000.0 && area < 50000.0,
+            "area={area} m² expected ~38978"
+        );
+        assert_eq!(p.debris_flow_affected_area(0.0), 0.0);
+    }
+
+    #[test]
+    fn test_debris_flow_runout_assessment_full() {
+        let p = make_plugin();
+        let assessment = p
+            .debris_flow_runout_assessment(3.0, 120.0, 200.0, 25.0)
+            .unwrap();
+        // V = 1.0 * 0.5 * 3.0 * 120.0 * 1.0 = 180 m³
+        assert!(
+            (assessment.volume_m3 - 180.0).abs() < 1.0,
+            "vol={}",
+            assessment.volume_m3
+        );
+        assert!(assessment.runout_distance_m > 0.0);
+        assert!(assessment.travel_angle_deg > 0.0);
+        assert!(assessment.impact_pressure_kpa > 0.0);
+        assert!(assessment.affected_area_m2 > 0.0);
+        assert!(assessment.risk_level.as_english().len() > 0);
     }
 }

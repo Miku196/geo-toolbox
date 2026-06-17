@@ -375,6 +375,12 @@ impl EcologyPlugin {
 // ── Plugin trait impl ──
 
 impl geo_core::plugin::Plugin for EcologyPlugin {
+    type Config = crate::EcologyConfig;
+
+    fn new(config: crate::EcologyConfig) -> Self {
+        Self::new(config)
+    }
+
     fn name(&self) -> &str {
         "ecology"
     }

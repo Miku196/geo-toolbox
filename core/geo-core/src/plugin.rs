@@ -33,6 +33,12 @@ use serde::{Deserialize, Serialize};
 /// New default methods should be added here instead of required methods
 /// to avoid breaking all 70+ implementors across the workspace.
 pub trait Plugin: Send + Sync {
+    /// The configuration type for this plugin (must implement [`PluginConfig`]).
+    type Config: PluginConfig;
+
+    /// Create a new plugin instance from the given configuration.
+    fn new(config: Self::Config) -> Self;
+
     /// Unique name for this plugin (e.g. `"postgis"`, `"gee-adapter"`).
     fn name(&self) -> &str;
 
@@ -44,6 +50,24 @@ pub trait Plugin: Send + Sync {
 
     /// Plugin category: `"store"`, `"ingest"`, `"process"`, `"output"`, `"carbon"`, `"adapter"`.
     fn category(&self) -> PluginCategory;
+
+    /// Build a [`PluginMeta`] from the default configuration.
+    fn make_default_config() -> Self::Config {
+        Self::Config::default()
+    }
+
+    /// Deserialize configuration from a JSON string.
+    fn config_from_string(s: &str) -> GeoResult<Self::Config> {
+        serde_json::from_str(s).map_err(|e| crate::errors::GeoError::Serde(e))
+    }
+
+    /// Create a plugin instance with default configuration.
+    fn default_plugin() -> Self
+    where
+        Self: Sized,
+    {
+        Self::new(Self::Config::default())
+    }
 
     /// Called once after registration. Use for connection pools, config loading.
     fn init(&mut self) -> GeoResult<()> {
@@ -383,6 +407,16 @@ pub struct PluginHeader {
 /// plugin's own `rules.toml` via `include_str!("../rules.toml")`.
 pub trait PluginConfig: Default + for<'a> serde::Deserialize<'a> {
     /// Validate configuration values (e.g. weight sum to 1.0, thresholds in range).
+    fn validate(&self) -> GeoResult<()> {
+        Ok(())
+    }
+}
+
+/// Empty config for plugins without configuration (e.g. [`CoastalPlugin`], CLI adapters).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct EmptyConfig;
+
+impl PluginConfig for EmptyConfig {
     fn validate(&self) -> GeoResult<()> {
         Ok(())
     }

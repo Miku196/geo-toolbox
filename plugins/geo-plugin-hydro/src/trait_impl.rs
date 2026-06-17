@@ -15,6 +15,10 @@ impl Plugin for HydroPlugin {
     fn category(&self) -> PluginCategory {
         PluginCategory::Process
     }
+    type Config = HydroConfig;
+    fn new(config: HydroConfig) -> Self {
+        Self::new(config)
+    }
 }
 
 impl ProcessPlugin for HydroPlugin {
@@ -35,8 +39,4 @@ impl ProcessPlugin for HydroPlugin {
         let a = self.assess(&dem, rows, cols, cell, imp, rain);
         Ok(serde_json::to_value(&a).map_err(|e| geo_core::errors::GeoError::Serde(e))?)
     }
-}
-
-pub fn make_default_config() -> HydroConfig {
-    toml::from_str("[plugin]\nname=\"hydro\"\nversion=\"0.2\"\ndescription=\"\"\n").unwrap()
 }

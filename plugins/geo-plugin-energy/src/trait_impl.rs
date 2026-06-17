@@ -1,7 +1,12 @@
+use crate::EnergyConfig;
 use crate::EnergyPlugin;
 use geo_core::errors::{GeoError, GeoResult};
 use geo_core::plugin::{Plugin, PluginCategory, ProcessPlugin};
 impl Plugin for EnergyPlugin {
+    type Config = EnergyConfig;
+    fn new(config: EnergyConfig) -> Self {
+        Self::new(config)
+    }
     fn name(&self) -> &str {
         "energy"
     }

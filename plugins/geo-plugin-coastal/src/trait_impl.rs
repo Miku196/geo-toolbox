@@ -1,6 +1,6 @@
 use crate::CoastalPlugin;
 use geo_core::errors::{GeoError, GeoResult};
-use geo_core::plugin::{Plugin, PluginCategory, ProcessPlugin};
+use geo_core::plugin::{EmptyConfig, Plugin, PluginCategory, ProcessPlugin};
 impl Plugin for CoastalPlugin {
     fn name(&self) -> &str {
         "coastal"
@@ -13,6 +13,10 @@ impl Plugin for CoastalPlugin {
     }
     fn category(&self) -> PluginCategory {
         PluginCategory::Process
+    }
+    type Config = EmptyConfig;
+    fn new(_config: EmptyConfig) -> Self {
+        Self
     }
 }
 impl ProcessPlugin for CoastalPlugin {

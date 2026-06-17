@@ -1,6 +1,6 @@
 //! Tool registration — Geohazard plugin.
 use crate::config::GeohazardConfig;
-use crate::geohazard::GeohazardPlugin;
+use crate::geohazard::{DebrisFlowRunout, GeohazardPlugin};
 use crate::rainfall_threshold::{IdCurve, RainfallClass};
 use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;
@@ -30,6 +30,16 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             let intensity = curve.intensity(duration_hours);
             let class = RainfallClass::classify(intensity);
             Ok(serde_json::json!({"intensity_mmh": intensity, "class": class.to_string(), "hazard_weight": class.hazard_weight()}))
+        },
+        sync "geohazard_debris_flow_runout" => "Debris flow volume-runout empirical model" ; serde_json::json!({"type":"object","properties":{"watershed_area_km2":{"type":"number","default":1.0},"rainfall_24h_mm":{"type":"number","default":100.0},"elevation_drop_m":{"type":"number","default":100.0},"channel_gradient_deg":{"type":"number","default":20.0}},"required":["watershed_area_km2","rainfall_24h_mm","elevation_drop_m","channel_gradient_deg"]}) => |args| -> ToolResult {
+            let p = default_plugin();
+            let assessment = p.debris_flow_runout_assessment(
+                args["watershed_area_km2"].as_f64().unwrap_or(1.0),
+                args["rainfall_24h_mm"].as_f64().unwrap_or(100.0),
+                args["elevation_drop_m"].as_f64().unwrap_or(100.0),
+                args["channel_gradient_deg"].as_f64().unwrap_or(20.0),
+            )?;
+            Ok(serde_json::to_value(&assessment).map_err(|e| geo_core::errors::GeoError::Serde(e))?)
         },
     ]);
 }

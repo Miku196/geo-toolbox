@@ -1,7 +1,12 @@
+use crate::ForestryConfig;
 use crate::ForestryPlugin;
 use geo_core::errors::{GeoError, GeoResult};
 use geo_core::plugin::{Plugin, PluginCategory, ProcessPlugin};
 impl Plugin for ForestryPlugin {
+    type Config = ForestryConfig;
+    fn new(config: ForestryConfig) -> Self {
+        Self::new(config)
+    }
     fn name(&self) -> &str {
         "forestry"
     }

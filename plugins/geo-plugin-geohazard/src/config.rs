@@ -100,6 +100,22 @@ pub struct DebrisFlowParams {
     /// 降雨触发阈值（mm/24h）。
     #[serde(default = "default_rainfall_trigger")]
     pub rainfall_trigger: f64,
+
+    /// 泥石流物质密度（t/m³）。
+    #[serde(default = "default_debris_density")]
+    pub debris_density: f64,
+
+    /// 物质因子，反映土体可移动性 [0.5–2.0]。
+    #[serde(default = "default_material_factor")]
+    pub material_factor: f64,
+
+    /// 体积经验系数：V = volume_factor × 0.5 × A × R × MF。
+    #[serde(default = "default_volume_factor")]
+    pub volume_factor: f64,
+
+    /// 最小视摩擦角（°），防止极端长距离冲出。
+    #[serde(default = "default_min_travel_angle")]
+    pub min_travel_angle_deg: f64,
 }
 
 // ── 权重默认值 ──
@@ -165,6 +181,19 @@ fn default_rainfall_trigger() -> f64 {
     50.0
 }
 
+fn default_debris_density() -> f64 {
+    2.0
+}
+fn default_material_factor() -> f64 {
+    1.0
+}
+fn default_volume_factor() -> f64 {
+    1.0
+}
+fn default_min_travel_angle() -> f64 {
+    5.0
+}
+
 impl Default for LandslideWeights {
     fn default() -> Self {
         Self {
@@ -194,6 +223,10 @@ impl Default for DebrisFlowParams {
             material_threshold: default_material_threshold(),
             material_max: default_material_max(),
             rainfall_trigger: default_rainfall_trigger(),
+            debris_density: default_debris_density(),
+            material_factor: default_material_factor(),
+            volume_factor: default_volume_factor(),
+            min_travel_angle_deg: default_min_travel_angle(),
         }
     }
 }

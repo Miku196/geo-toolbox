@@ -16,6 +16,10 @@ impl Plugin for UrbanPlugin {
     fn category(&self) -> PluginCategory {
         PluginCategory::Process
     }
+    type Config = UrbanConfig;
+    fn new(config: UrbanConfig) -> Self {
+        Self::new(config)
+    }
 }
 
 impl ProcessPlugin for UrbanPlugin {
@@ -41,17 +45,6 @@ impl ProcessPlugin for UrbanPlugin {
         let assessment = self.assess(tfa, bf, sa, ga, pop, imp, &ndvi, &impervious);
         Ok(serde_json::to_value(&assessment).map_err(|e| geo_core::errors::GeoError::Serde(e))?)
     }
-}
-
-pub fn config_from_string(s: &str) -> UrbanConfig {
-    toml::from_str(s).unwrap_or_else(|_| {
-        // Minimal config for tool registration
-        toml::from_str("[plugin]\nname=\"urban\"\nversion=\"0.1\"\ndescription=\"\"\n").unwrap()
-    })
-}
-
-pub fn make_default_config() -> UrbanConfig {
-    config_from_string("[plugin]\nname=\"urban\"\nversion=\"0.2\"\ndescription=\"\"\n")
 }
 
 /// Helper: parse SolarResult from JSON value (used by tools)

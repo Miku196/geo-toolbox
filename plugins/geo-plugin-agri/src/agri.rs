@@ -301,6 +301,12 @@ pub struct SoilRatingResult {
 // ── Plugin trait impls ──
 
 impl geo_core::plugin::Plugin for AgriPlugin {
+    type Config = crate::AgriConfig;
+
+    fn new(config: crate::AgriConfig) -> Self {
+        Self::new(config)
+    }
+
     fn name(&self) -> &str {
         "agri"
     }

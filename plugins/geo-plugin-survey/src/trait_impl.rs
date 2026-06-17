@@ -3,6 +3,10 @@ use geo_core::errors::GeoResult;
 use geo_core::plugin::{Plugin, PluginCategory, ProcessPlugin};
 
 impl Plugin for SurveyPlugin {
+    type Config = SurveyConfig;
+    fn new(config: SurveyConfig) -> Self {
+        Self::new(config)
+    }
     fn name(&self) -> &str {
         "survey"
     }
@@ -33,8 +37,4 @@ impl ProcessPlugin for SurveyPlugin {
         let a = self.assess(&elev, design, cols, rows);
         Ok(serde_json::to_value(&a).map_err(|e| geo_core::errors::GeoError::Serde(e))?)
     }
-}
-
-pub fn make_default_config() -> SurveyConfig {
-    toml::from_str("[plugin]\nname=\"survey\"\nversion=\"0.2\"\ndescription=\"\"\n").unwrap()
 }
