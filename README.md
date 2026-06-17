@@ -69,6 +69,8 @@
 
 核心设计原则：依赖方向严格单向、WASM 数据不出网、Rust 做胶水 Python 做重活、每 crate 独立可测、Feature flags 控制依赖。
 
+> 💡 **2026-06 v0.8 更新**：Phase 3.3 Plugin trait 统一完成 — 全部 10 插件实现 `PluginConfig` trait + `Default` 配置 + `type Config` 关联类型；DuckDB/STAC 适配器实现 Plugin trait 默认方法；tools.rs 统一使用 `Default::default()` 替代 `make_default_config()`；geo-registry 增加 `tokio-runtime` feature 支持。详见 [ROADMAP](ROADMAP.md)。
+>
 > 💡 **2026-06 v0.7 更新**：Phase 2 插件深度化补全 — 排放因子数据库 (geo-emission-factors crate, IPCC Tier 1 + 中国省级参数) + 碳插件 EF 集成 + 风暴潮 (Holland 风场, 2D 网格+1D 剖面) + 蓝碳 (红树林/盐沼/海草, IPCC Tier 1) + 地热 (Fourier 热传导, Carnot 效率, LCOE) + 输电走廊 (Dijkstra LCP 8-neighbor) + 高斯烟羽 (Gaussian Plume) + CCER 报告 + 随机森林 LULC + 降雨 ID 阈值 + 流域提取。详见 [ROADMAP](ROADMAP.md)。
 >
 > 💡 **2026-06 v0.6 更新**：土壤侵蚀+水文模型 — RUSLE 通用土壤流失方程 (A=R·K·LS·C·P, 5因子完整计算) + SCS-CN 径流曲线数法 (26种土地利用CN查表, AMC干旱/正常/湿润修正) + InVEST 碳存储(4碳库)+水源涵养(Budyko产水量) + 7个新CLI工具 + 35个新测试。详见 [WIKI](WIKI.md)。

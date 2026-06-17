@@ -1,8 +1,10 @@
 # geo-toolbox Wiki
 
 > 从零到一：安装、开发、部署全流程指南。
-> 最后更新：2026-06-16
+> 最后更新：2026-06-17
 
+> 💡 **2026-06 v0.8 更新**：Phase 3.3 Plugin trait 统一 — 全部插件实现 `PluginConfig` + `Default` 配置 + `type Config` 关联类型；DuckDB/STAC 适配器实现 Plugin trait 默认方法。
+>
 > 💡 **2026-06 v0.6 更新**：RUSLE 通用土壤流失方程 (A=R·K·LS·C·P) + SCS-CN 径流曲线数 (26种土地利用CN查表) + InVEST 碳存储(4碳库)+水源涵养(Budyko曲线) + 7个新CLI工具 + 35个新测试。详见 [核心功能使用](#4-核心功能使用)。
 
 ---
