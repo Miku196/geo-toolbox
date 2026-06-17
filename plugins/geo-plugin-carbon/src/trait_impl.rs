@@ -1,7 +1,12 @@
+use crate::config::CarbonConfig;
 use crate::CarbonPlugin as Cp;
 use geo_core::errors::{GeoError, GeoResult};
 use geo_core::plugin::{Plugin, PluginCategory, ProcessPlugin};
 impl Plugin for Cp {
+    type Config = CarbonConfig;
+    fn new(config: Self::Config) -> Self {
+        Cp::new(config)
+    }
     fn name(&self) -> &str {
         "carbon"
     }

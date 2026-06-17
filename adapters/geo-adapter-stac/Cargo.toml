@@ -7,7 +7,7 @@ description = "STAC API 适配器 — 云原生地理空间数据发现与拉取
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
-geo-registry = { path = "../../core/geo-registry" }
+geo-registry = { path = "../../core/geo-registry", features = ["tokio-runtime"] }
 reqwest = { workspace = true }
 serde.workspace = true
 serde_json.workspace = true

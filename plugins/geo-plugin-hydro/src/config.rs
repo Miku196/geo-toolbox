@@ -1,3 +1,4 @@
+use geo_core::plugin::PluginConfig;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -70,6 +71,29 @@ fn default_forest_c() -> f64 {
 fn default_slope_threshold() -> f64 {
     0.01
 }
+
+impl Default for PluginMeta {
+    fn default() -> Self {
+        Self {
+            name: "hydro".into(),
+            version: env!("CARGO_PKG_VERSION").into(),
+            description: "水文分析：D8 汇流、径流、淹没分析、集水区提取".into(),
+        }
+    }
+}
+
+impl Default for HydroConfig {
+    fn default() -> Self {
+        Self {
+            plugin: PluginMeta::default(),
+            flood: FloodParams::default(),
+            runoff: RunoffParams::default(),
+            catchment: CatchmentParams::default(),
+        }
+    }
+}
+
+impl PluginConfig for HydroConfig {}
 
 impl Default for FloodParams {
     fn default() -> Self {

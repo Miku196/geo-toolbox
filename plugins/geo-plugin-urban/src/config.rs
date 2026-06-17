@@ -1,3 +1,4 @@
+use geo_core::plugin::PluginConfig;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -148,6 +149,31 @@ fn default_min_green_per_capita_m2() -> f64 {
 }
 
 // ── Default impls ──
+impl Default for PluginMeta {
+    fn default() -> Self {
+        Self {
+            name: "urban".into(),
+            version: env!("CARGO_PKG_VERSION").into(),
+            description: "城市规划：容积率、用地分类、日照、热岛、通风廊道".into(),
+        }
+    }
+}
+
+impl Default for UrbanConfig {
+    fn default() -> Self {
+        Self {
+            plugin: PluginMeta::default(),
+            density: DensityParams::default(),
+            land_use: LandUseParams::default(),
+            solar: SolarParams::default(),
+            uhi: UhiParams::default(),
+            vegetation: VegetationParams::default(),
+        }
+    }
+}
+
+impl PluginConfig for UrbanConfig {}
+
 impl Default for DensityParams {
     fn default() -> Self {
         Self {

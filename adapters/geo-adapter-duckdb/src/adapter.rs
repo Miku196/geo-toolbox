@@ -30,6 +30,13 @@ impl DuckDbAdapter {
 }
 
 impl Plugin for DuckDbAdapter {
+    type Config = geo_core::plugin::EmptyConfig;
+    fn new(_: Self::Config) -> Self {
+        Self {
+            store: None,
+            path: None,
+        }
+    }
     fn name(&self) -> &str {
         "duckdb"
     }

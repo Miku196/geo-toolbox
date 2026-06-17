@@ -1,3 +1,4 @@
+use geo_core::plugin::PluginConfig;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -72,6 +73,29 @@ fn default_cut_factor() -> f64 {
 fn default_contour_interval() -> f64 {
     1.0
 }
+
+impl Default for PluginMeta {
+    fn default() -> Self {
+        Self {
+            name: "survey".into(),
+            version: env!("CARGO_PKG_VERSION").into(),
+            description: "测绘工程：方格网土方、断面法、TIN、控制网平差、高斯投影".into(),
+        }
+    }
+}
+
+impl Default for SurveyConfig {
+    fn default() -> Self {
+        Self {
+            plugin: PluginMeta::default(),
+            adjustment: AdjustmentParams::default(),
+            earthwork: EarthworkParams::default(),
+            contour: ContourParams::default(),
+        }
+    }
+}
+
+impl PluginConfig for SurveyConfig {}
 
 impl Default for AdjustmentParams {
     fn default() -> Self {

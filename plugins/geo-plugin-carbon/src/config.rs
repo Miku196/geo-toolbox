@@ -2,6 +2,7 @@
 //!
 //! 碳密度参数使用 `geo_carbon_math::CarbonParams`，避免与 ecology 等插件重复定义。
 
+use geo_core::plugin::PluginConfig;
 use serde::Deserialize;
 
 /// 碳核算插件的顶级配置。
@@ -34,6 +35,8 @@ impl Default for CarbonConfig {
         }
     }
 }
+
+impl PluginConfig for CarbonConfig {}
 
 #[cfg(test)]
 mod tests {

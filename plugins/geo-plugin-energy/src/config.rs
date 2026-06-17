@@ -1,5 +1,6 @@
 //! 能源插件配置。
 
+use geo_core::plugin::PluginConfig;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]

@@ -1,3 +1,4 @@
+use geo_core::plugin::PluginConfig;
 use serde::Deserialize;
 
 /// 地质灾害插件的顶级配置。
@@ -232,6 +233,8 @@ impl Default for DebrisFlowParams {
 }
 
 geo_core::default_from_rules!(GeohazardConfig, "geohazard");
+
+impl PluginConfig for GeohazardConfig {}
 
 impl LandslideWeights {
     /// 检查权重之和是否合理（应接近 1.0）。

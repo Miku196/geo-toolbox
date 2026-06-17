@@ -58,7 +58,7 @@ pub trait Plugin: Send + Sync {
 
     /// Deserialize configuration from a JSON string.
     fn config_from_string(s: &str) -> GeoResult<Self::Config> {
-        serde_json::from_str(s).map_err(|e| crate::errors::GeoError::Serde(e))
+        serde_json::from_str(s).map_err(crate::errors::GeoError::Serde)
     }
 
     /// Create a plugin instance with default configuration.

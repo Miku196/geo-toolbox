@@ -4,7 +4,7 @@ use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
 fn default_plugin() -> HydroPlugin {
-    HydroPlugin::new(crate::trait_impl::make_default_config())
+    HydroPlugin::new(Default::default())
 }
 pub fn register_tools(registry: &mut PluginRegistry) {
     register_plugin!(registry, "hydro", "Hydrology: flow accumulation, runoff, inundation, watershed", PluginCategory::Process, [

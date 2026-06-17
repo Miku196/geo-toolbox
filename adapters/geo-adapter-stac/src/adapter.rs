@@ -21,6 +21,10 @@ impl StacAdapter {
 }
 
 impl Plugin for StacAdapter {
+    type Config = geo_core::plugin::EmptyConfig;
+    fn new(_: Self::Config) -> Self {
+        StacAdapter::new("http://localhost:9090")
+    }
     fn name(&self) -> &str {
         "stac"
     }

@@ -4,7 +4,7 @@ use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
 fn default_plugin() -> SurveyPlugin {
-    SurveyPlugin::new(crate::trait_impl::make_default_config())
+    SurveyPlugin::new(Default::default())
 }
 pub fn register_tools(registry: &mut PluginRegistry) {
     register_plugin!(registry, "survey", "Surveying: grid earthwork, cross-section, TIN, control network adjustment", PluginCategory::Process, [
