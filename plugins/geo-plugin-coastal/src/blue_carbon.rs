@@ -247,7 +247,7 @@ mod tests {
     #[test]
     fn test_seagrass_default() {
         let r = assess_blue_carbon(BlueCarbonEcosystem::Seagrass, 200.0, 1.0);
-        assert!(r.total_seq_tco2e_yr > 0.0);
+        assert!(r.annual_seq_tco2e_yr > 0.0);
     }
 
     #[test]

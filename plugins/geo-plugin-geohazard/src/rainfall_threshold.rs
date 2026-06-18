@@ -233,7 +233,10 @@ mod tests {
     fn test_id_curve_fit() {
         // Generate data from I = 80 × D^(-0.4) with exact values
         let durations = vec![1.0, 2.0, 4.0, 8.0, 12.0, 24.0];
-        let intensities: Vec<f64> = durations.iter().map(|&d| 80.0 * d.powf(-0.4)).collect();
+        let intensities: Vec<f64> = durations
+            .iter()
+            .map(|&d: &f64| 80.0 * d.powf(-0.4))
+            .collect();
 
         let curve = IdCurve::fit(&intensities, &durations);
         // Fitted parameters should be close to original
@@ -342,7 +345,7 @@ mod tests {
         let base = IdCurve::new(50.0, 0.5);
         // c=10, d=0.3, T=100yr
         let rp = base.for_return_period(100.0, 10.0, 0.3);
-        assert!(rp.alpha > base.alpha); // Return period amplifies α
+        assert!(rp.alpha < base.alpha); // for_return_period(c=10,d=0.3) gives alpha ~39.8 < 50.0// Return period amplifies α
         assert_eq!(rp.beta, base.beta); // β unchanged
                                         // α = c × T^d = 10 × 100^0.3 ≈ 39.8
         assert!((rp.alpha - 39.81).abs() < 1.0);

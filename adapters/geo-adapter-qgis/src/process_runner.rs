@@ -373,6 +373,166 @@ impl BatchQgisRunner {
     }
 }
 
+/// Status of a single queued job.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JobStatus {
+    /// Unique job ID.
+    pub id: String,
+    /// Job description.
+    pub description: String,
+    /// Current state.
+    pub state: JobState,
+    /// Output file path (if completed).
+    pub output_path: Option<String>,
+    /// Error message (if failed).
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum JobState {
+    Pending,
+    Running,
+    Completed,
+    Failed,
+}
+
+/// Progress callback: (job_name, progress_pct, completed, total).
+pub type ProgressCallback = Box<dyn Fn(String, f64, usize, usize) + Send>;
+
+/// A batch job queue for QGIS processing tools.
+/// Jobs execute sequentially; progress is tracked via `progress()`.
+pub struct JobQueue {
+    runner: BatchQgisRunner,
+    jobs: std::collections::VecDeque<(QgisTool, String)>,
+    results: Vec<JobStatus>,
+    next_id: u64,
+    progress_callback: Option<ProgressCallback>,
+}
+
+impl JobQueue {
+    pub fn new(config: QgisProcessConfig) -> Self {
+        Self {
+            runner: BatchQgisRunner::new(config),
+            jobs: std::collections::VecDeque::new(),
+            results: Vec::new(),
+            next_id: 1,
+            progress_callback: None,
+        }
+    }
+
+    /// Set a progress callback that fires after each job completes.
+    /// Signature: (job_description, progress_pct, completed, total).
+    pub fn set_progress_callback(&mut self, cb: ProgressCallback) {
+        self.progress_callback = Some(cb);
+    }
+
+    pub fn submit(&mut self, tool: QgisTool, description: impl Into<String>) -> String {
+        let id = format!("job_{}", self.next_id);
+        self.next_id += 1;
+        let desc = description.into();
+        self.results.push(JobStatus {
+            id: id.clone(),
+            description: desc.clone(),
+            state: JobState::Pending,
+            output_path: None,
+            error: None,
+        });
+        self.jobs.push_back((tool, desc));
+        id
+    }
+
+    pub fn pending(&self) -> usize {
+        self.jobs.len()
+    }
+
+    pub fn total(&self) -> usize {
+        self.results.len()
+    }
+
+    pub fn completed(&self) -> usize {
+        self.results
+            .iter()
+            .filter(|r| r.state == JobState::Completed)
+            .count()
+    }
+
+    pub fn progress(&self) -> f64 {
+        let total = self.total();
+        if total == 0 {
+            return 0.0;
+        }
+        self.completed() as f64 / total as f64
+    }
+
+    pub fn progress_pct(&self) -> String {
+        format!("{:.0}%", self.progress() * 100.0)
+    }
+
+    pub fn status_all(&self) -> &[JobStatus] {
+        &self.results
+    }
+
+    pub async fn run_all(&mut self) -> Vec<JobStatus> {
+        let total = self.total();
+        while let Some((tool, desc)) = self.jobs.pop_front() {
+            let job_desc = desc.clone();
+            if let Some(i) = self
+                .results
+                .iter()
+                .position(|r| r.state == JobState::Pending)
+            {
+                self.results[i].state = JobState::Running;
+            }
+            match self.runner.run_tool(&tool).await {
+                Ok(output) => {
+                    if let Some(i) = self
+                        .results
+                        .iter()
+                        .position(|r| r.state == JobState::Running)
+                    {
+                        self.results[i].state = JobState::Completed;
+                        self.results[i].output_path = Some(output.to_string_lossy().to_string());
+                    }
+                }
+                Err(e) => {
+                    if let Some(i) = self
+                        .results
+                        .iter()
+                        .position(|r| r.state == JobState::Running)
+                    {
+                        self.results[i].state = JobState::Failed;
+                        self.results[i].error = Some(e.to_string());
+                    }
+                }
+            }
+            // Fire progress callback after each job
+            if let Some(cb) = &self.progress_callback {
+                let completed = self.completed();
+                let failed = self
+                    .results
+                    .iter()
+                    .filter(|r| r.state == JobState::Failed)
+                    .count();
+                let pct = (completed + failed) as f64 / total as f64;
+                cb(job_desc, pct, completed, total);
+            }
+        }
+        self.results.clone()
+    }
+
+    pub fn clear_pending(&mut self) {
+        self.jobs.clear();
+        self.results.retain(|r| r.state != JobState::Pending);
+    }
+
+    pub fn reset(&mut self) {
+        self.jobs.clear();
+        self.results.clear();
+        self.next_id = 1;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -417,5 +577,156 @@ mod tests {
         let params = vec![("OUTPUT".into(), "/tmp/my_result.gpkg".into())];
         let path = runner.parse_output_path("some output text", &params);
         assert_eq!(path, PathBuf::from("/tmp/my_result.gpkg"));
+    }
+
+    // ── JobQueue tests ──
+
+    #[test]
+    fn test_job_queue_submit() {
+        let mut queue = JobQueue::new(QgisProcessConfig::default());
+        let id = queue.submit(
+            QgisTool {
+                algorithm: "native:buffer".into(),
+                params: vec![
+                    ("INPUT".into(), "test.gpkg".into()),
+                    ("DISTANCE".into(), "100".into()),
+                ],
+            },
+            "Buffer test layer by 100m",
+        );
+        assert_eq!(id, "job_1");
+        assert_eq!(queue.pending(), 1);
+        assert_eq!(queue.total(), 1);
+        assert_eq!(queue.completed(), 0);
+        assert!((queue.progress() - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_job_queue_status() {
+        let mut queue = JobQueue::new(QgisProcessConfig::default());
+        queue.submit(
+            QgisTool {
+                algorithm: "native:buffer".into(),
+                params: vec![("INPUT".into(), "a.gpkg".into())],
+            },
+            "Job A",
+        );
+        queue.submit(
+            QgisTool {
+                algorithm: "native:buffer".into(),
+                params: vec![("INPUT".into(), "b.gpkg".into())],
+            },
+            "Job B",
+        );
+        assert_eq!(queue.total(), 2);
+        assert_eq!(queue.pending(), 2);
+        let status = queue.status_all();
+        assert_eq!(status.len(), 2);
+        assert!(status.iter().all(|s| s.state == JobState::Pending));
+    }
+
+    #[test]
+    fn test_job_queue_progress() {
+        let mut queue = JobQueue::new(QgisProcessConfig::default());
+        for i in 0..5 {
+            queue.submit(
+                QgisTool {
+                    algorithm: format!("tool_{}", i),
+                    params: vec![],
+                },
+                format!("Job {}", i),
+            );
+        }
+        assert_eq!(queue.pending(), 5);
+        assert_eq!(queue.progress_pct(), "0%");
+    }
+
+    #[test]
+    fn test_job_queue_clear() {
+        let mut queue = JobQueue::new(QgisProcessConfig::default());
+        queue.submit(
+            QgisTool {
+                algorithm: "native:buffer".into(),
+                params: vec![],
+            },
+            "Test",
+        );
+        assert_eq!(queue.pending(), 1);
+        queue.clear_pending();
+        assert_eq!(queue.pending(), 0);
+        assert_eq!(queue.total(), 0);
+    }
+
+    #[test]
+    fn test_job_queue_reset() {
+        let mut queue = JobQueue::new(QgisProcessConfig::default());
+        queue.submit(
+            QgisTool {
+                algorithm: "native:buffer".into(),
+                params: vec![],
+            },
+            "Test",
+        );
+        queue.reset();
+        assert_eq!(queue.total(), 0);
+        let id = queue.submit(
+            QgisTool {
+                algorithm: "native:buffer".into(),
+                params: vec![],
+            },
+            "Re-test",
+        );
+        assert_eq!(id, "job_1");
+    }
+
+    #[test]
+    fn test_progress_callback_type() {
+        let mut queue = JobQueue::new(QgisProcessConfig::default());
+        queue.submit(
+            QgisTool {
+                algorithm: "native:buffer".into(),
+                params: vec![("INPUT".into(), "a.gpkg".into())],
+            },
+            "Job A",
+        );
+        queue.submit(
+            QgisTool {
+                algorithm: "native:buffer".into(),
+                params: vec![("INPUT".into(), "b.gpkg".into())],
+            },
+            "Job B",
+        );
+        queue.submit(
+            QgisTool {
+                algorithm: "native:buffer".into(),
+                params: vec![("INPUT".into(), "c.gpkg".into())],
+            },
+            "Job C",
+        );
+
+        let _callback: ProgressCallback = Box::new(|_desc, _pct, completed, total| {
+            assert!(completed <= total);
+            assert!(!_desc.is_empty());
+        });
+        assert_eq!(queue.total(), 3);
+        assert_eq!(queue.pending(), 3);
+    }
+
+    #[test]
+    fn test_job_queue_set_callback() {
+        let mut queue = JobQueue::new(QgisProcessConfig::default());
+        let called = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let called_clone = called.clone();
+        queue.set_progress_callback(Box::new(move |_desc, _pct, _completed, _total| {
+            called_clone.store(true, std::sync::atomic::Ordering::Relaxed);
+        }));
+        assert!(queue.progress_callback.is_some());
+    }
+
+    #[test]
+    fn test_callback_type_is_callable() {
+        // Verify ProgressCallback type alias compiles correctly
+        let _cb: ProgressCallback =
+            Box::new(|_desc: String, _pct: f64, _completed: usize, _total: usize| {});
     }
 }

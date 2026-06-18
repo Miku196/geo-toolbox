@@ -68,7 +68,7 @@ pub async fn serve(registry: PluginRegistry) -> Result<(), Box<dyn std::error::E
                         "id": id,
                         "result": {
                             "protocolVersion": protocol_version,
-                            "capabilities": { "tools": {} },
+                            "capabilities": { "tools": {}, "resources": {}, "prompts": {} },
                             "serverInfo": { "name": SERVER_INFO, "version": SERVER_VERSION }
                         }
                     })
@@ -84,6 +84,76 @@ pub async fn serve(registry: PluginRegistry) -> Result<(), Box<dyn std::error::E
                     let mut tools_json = registry.generate_mcp_tools();
                     tools_json["id"] = id;
                     tools_json
+                }
+
+                "resources/list" if handshake_done => {
+                    let mut resources_json = registry.generate_mcp_resources();
+                    resources_json["id"] = id;
+                    resources_json
+                }
+
+                "resources/read" if handshake_done => {
+                    let uri = request["params"]["uri"].as_str().unwrap_or("");
+                    let content = match uri {
+                        "geo://datasets/emission-factors" => "IPCC 2019 emission factors with Chinese provincial defaults. Categories: forest, grassland, wetland, cropland, built_up, bare. tCO2e/ha/yr.",
+                        "geo://datasets/carbon-pools" => "Default carbon pool values (AGB, BGB, Deadwood, Litter, SOC) for 6 eco-zones: Tropical Moist/Dry, Temperate Coniferous/Broadleaf, Boreal, Subtropical Humid.",
+                        "geo://datasets/soil-groups" => "NRCS hydrologic soil groups: A (high infiltration, sand/gravel), B (moderate, silt loam), C (slow, clay loam), D (low, clay).",
+                        "geo://datasets/landcover-cn" => "SCS curve numbers for 26 land use types. CN values (AMC II): Forest-Good A:30 B:55 C:70 D:77, Grassland A:39 B:61 C:74 D:80, Urban A:89 B:92 C:94 D:95.",
+                        "geo://datasets/id-thresholds" => "Global rainfall I-D thresholds: Caine 1980 I=14.82*D^-0.39, Guzzetti 2008 I=2.20*D^-0.44, Hong 2016 I=12.5*D^-0.5, Ma 2015 I=52.0*D^-0.42.",
+                        "geo://datasets/coastal-carbon" => "Blue carbon IPCC Tier 1: Mangrove (AGB 8.5, BGB 4.3, Soil 49.0 Mg C/ha), Saltmarsh (AGB 2.5, BGB 3.2, Soil 41.8), Seagrass (AGB 0.5, BGB 2.2, Soil 32.0).",
+                        _ => "Resource not found. Available: geo://datasets/emission-factors, carbon-pools, soil-groups, landcover-cn, id-thresholds, coastal-carbon",
+                    };
+                    json!({
+                        "jsonrpc": "2.0", "id": id,
+                        "result": {
+                            "contents": [{
+                                "uri": uri,
+                                "mimeType": "text/plain",
+                                "text": content
+                            }]
+                        }
+                    })
+                }
+
+                "prompts/list" if handshake_done => {
+                    let mut prompts_json = registry.generate_mcp_prompts();
+                    prompts_json["id"] = id;
+                    prompts_json
+                }
+
+                "prompts/get" if handshake_done => {
+                    let name = request["params"]["name"].as_str().unwrap_or("");
+                    let (description, messages) = match name {
+                        "carbon-assessment" => (
+                            "Carbon emission/sink assessment for an area of interest",
+                            json!([{"role": "user", "content": {"type": "text", "text": "Assess carbon emissions/sinks for {{aoi_name}} in year {{year}} using {{source}} methodology. Provide breakdown by land cover type and total net emissions."}}])
+                        ),
+                        "ecological-restoration" => (
+                            "Ecological restoration assessment with NDVI change + carbon sink",
+                            json!([{"role": "user", "content": {"type": "text", "text": "Assess ecological restoration status of {{aoi_name}} by comparing NDVI between {{baseline_year}} and {{assessment_year}}. Calculate carbon sink potential and provide recommendations."}}])
+                        ),
+                        "flood-risk" => (
+                            "Flood risk assessment with SCS-CN runoff + watershed analysis",
+                            json!([{"role": "user", "content": {"type": "text", "text": "Perform flood risk assessment for {{aoi_name}} with {{rainfall_mm}}mm rainfall. Use SCS-CN method for runoff and evaluate inundation risk."}}])
+                        ),
+                        "geohazard-assessment" => (
+                            "Geohazard assessment: landslide susceptibility + FS + Newmark displacement",
+                            json!([{"role": "user", "content": {"type": "text", "text": "Perform geohazard assessment for slope of {{slope_deg}}° with cohesion {{cohesion_kpa}}kPa, friction {{friction_deg}}°. Calculate FS and Newmark displacement for PGA {{pga_g}}g."}}])
+                        ),
+                        "solar-suitability" => (
+                            "Solar energy site suitability assessment",
+                            json!([{"role": "user", "content": {"type": "text", "text": "Assess solar suitability for {{site_name}} with {{annual_radiation_kwh_m2}} kWh/m² annual radiation. Provide rating and recommendations."}}])
+                        ),
+                        "forest-carbon-stock" => (
+                            "Forest carbon stock change assessment from NDVI time series",
+                            json!([{"role": "user", "content": {"type": "text", "text": "Assess forest carbon stock change for {{forest_name}} from {{baseline_year}} to {{assessment_year}}. Use IPCC BEF method and evaluate CCER applicability."}}])
+                        ),
+                        _ => ("Prompt not found. Available: carbon-assessment, ecological-restoration, flood-risk, geohazard-assessment, solar-suitability, forest-carbon-stock", json!([])),
+                    };
+                    json!({
+                        "jsonrpc": "2.0", "id": id,
+                        "result": { "description": description, "messages": messages }
+                    })
                 }
 
                 "tools/call" if handshake_done => {
@@ -208,7 +278,7 @@ mod tests {
             "id": 1,
             "result": {
                 "protocolVersion": "2024-11-05",
-                "capabilities": {"tools": {}},
+                "capabilities": {"tools": {}, "resources": {}, "prompts": {}},
                 "serverInfo": {"name": "geo-toolbox", "version": SERVER_VERSION}
             }
         });
@@ -227,5 +297,22 @@ mod tests {
             }
         });
         assert_eq!(error["error"]["code"], -32002);
+    }
+
+    #[test]
+    fn test_mcp_resources_list() {
+        let reg = PluginRegistry::new();
+        let r = reg.generate_mcp_resources();
+        assert!(r["result"]["resources"].is_array());
+        let resources = r["result"]["resources"].as_array().unwrap();
+        assert!(resources.len() >= 6);
+    }
+
+    #[test]
+    fn test_mcp_prompts_list() {
+        let reg = PluginRegistry::new();
+        let r = reg.generate_mcp_prompts();
+        let prompts = r["result"]["prompts"].as_array().unwrap();
+        assert_eq!(prompts.len(), 6);
     }
 }

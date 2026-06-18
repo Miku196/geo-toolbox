@@ -150,6 +150,32 @@ impl PluginRegistry {
         &self.tools
     }
 
+    /// 生成 MCP resources/list 响应。
+    pub fn generate_mcp_resources(&self) -> serde_json::Value {
+        let resources: Vec<serde_json::Value> = vec![
+            serde_json::json!({"uri": "geo://datasets/emission-factors", "name": "Emission Factors (IPCC 2019)", "description": "IPCC Tier 1 emission factors with Chinese provincial parameters", "mimeType": "text/csv"}),
+            serde_json::json!({"uri": "geo://datasets/carbon-pools", "name": "Carbon Pool Defaults", "description": "Default carbon pool values per ecosystem zone (AGB/BGB/Deadwood/Litter/SOC)", "mimeType": "application/json"}),
+            serde_json::json!({"uri": "geo://datasets/soil-groups", "name": "SCS Hydrologic Soil Groups", "description": "NRCS hydrologic soil group classification (A/B/C/D)", "mimeType": "application/json"}),
+            serde_json::json!({"uri": "geo://datasets/landcover-cn", "name": "SCS-CN Land Cover Table", "description": "Curve numbers for 26 land use types per soil group", "mimeType": "application/json"}),
+            serde_json::json!({"uri": "geo://datasets/id-thresholds", "name": "Rainfall ID Thresholds", "description": "Global rainfall intensity-duration thresholds (Caine 1980, Guzzetti 2008, Hong 2016, Ma 2015)", "mimeType": "application/json"}),
+            serde_json::json!({"uri": "geo://datasets/coastal-carbon", "name": "Blue Carbon Defaults", "description": "Blue carbon ecosystem defaults: mangrove, saltmarsh, seagrass (IPCC Tier 1)", "mimeType": "application/json"}),
+        ];
+        serde_json::json!({ "result": { "resources": resources } })
+    }
+
+    /// 生成 MCP prompts/list 响应。
+    pub fn generate_mcp_prompts(&self) -> serde_json::Value {
+        let prompts: Vec<serde_json::Value> = vec![
+            serde_json::json!({"name": "carbon-assessment", "description": "Carbon emission/sink assessment for an area of interest", "arguments": [{"name": "aoi_name", "description": "Area of interest name", "required": true}, {"name": "year", "description": "Assessment year", "required": true}, {"name": "source", "description": "Emission factor source (default: IPCC_2019)", "required": false}]}),
+            serde_json::json!({"name": "ecological-restoration", "description": "Ecological restoration assessment with NDVI change + carbon sink", "arguments": [{"name": "aoi_name", "description": "Area of interest name", "required": true}, {"name": "baseline_year", "description": "Baseline year for NDVI comparison", "required": true}, {"name": "assessment_year", "description": "Assessment year", "required": true}]}),
+            serde_json::json!({"name": "flood-risk", "description": "Flood risk assessment with SCS-CN runoff + watershed analysis", "arguments": [{"name": "aoi_name", "description": "Area of interest name", "required": true}, {"name": "rainfall_mm", "description": "24-hour rainfall in mm", "required": true}]}),
+            serde_json::json!({"name": "geohazard-assessment", "description": "Geohazard assessment: landslide susceptibility + FS + Newmark displacement", "arguments": [{"name": "slope_deg", "description": "Average slope in degrees", "required": true}, {"name": "cohesion_kpa", "description": "Soil cohesion in kPa", "required": true}, {"name": "friction_deg", "description": "Friction angle in degrees", "required": true}, {"name": "pga_g", "description": "Peak ground acceleration in g", "required": false}]}),
+            serde_json::json!({"name": "solar-suitability", "description": "Solar energy site suitability assessment", "arguments": [{"name": "site_name", "description": "Site name", "required": true}, {"name": "annual_radiation_kwh_m2", "description": "Annual solar radiation in kWh/m²", "required": true}]}),
+            serde_json::json!({"name": "forest-carbon-stock", "description": "Forest carbon stock change assessment from NDVI time series", "arguments": [{"name": "forest_name", "description": "Forest area name", "required": true}, {"name": "baseline_year", "description": "Baseline year", "required": true}, {"name": "assessment_year", "description": "Assessment year", "required": true}]}),
+        ];
+        serde_json::json!({ "result": { "prompts": prompts } })
+    }
+
     /// 生成 MCP tools/list JSON。
     pub fn generate_mcp_tools(&self) -> serde_json::Value {
         let tools: Vec<serde_json::Value> = self
@@ -167,6 +193,41 @@ impl PluginRegistry {
         serde_json::json!({
             "jsonrpc": "2.0",
             "result": { "tools": tools }
+        })
+    }
+
+    /// 生成全部注册工具的 JSON Schema 文档 (MCP Tool Schema 标准格式)。
+    pub fn generate_tool_schemas(&self) -> serde_json::Value {
+        let schemas: Vec<serde_json::Value> = self
+            .tools
+            .iter()
+            .map(|t| {
+                serde_json::json!({
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "title": t.name,
+                    "description": t.description,
+                    "type": "object",
+                    "properties": t.input_schema.get("properties").cloned().unwrap_or(serde_json::json!({})),
+                    "required": t.input_schema.get("required").cloned().unwrap_or(serde_json::json!([])),
+                })
+            })
+            .collect();
+
+        serde_json::json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "title": "geo-toolbox MCP Tool Schemas",
+            "description": "Complete JSON Schema definitions for all registered geo-toolbox tools",
+            "type": "object",
+            "properties": {
+                "tools": {
+                    "type": "array",
+                    "items": { "type": "object" },
+                    "description": "All registered MCP tool schemas"
+                },
+                "count": { "type": "integer" }
+            },
+            "tools": schemas,
+            "count": self.tools.len()
         })
     }
 }
@@ -298,5 +359,56 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(result["echo"]["x"], 42);
+    }
+
+    #[test]
+    fn test_generate_mcp_resources() {
+        let reg = PluginRegistry::new();
+        let r = reg.generate_mcp_resources();
+        let resources = r["result"]["resources"].as_array().unwrap();
+        assert!(resources.len() >= 6);
+        assert!(resources
+            .iter()
+            .any(|r| r["uri"] == "geo://datasets/emission-factors"));
+        assert!(resources
+            .iter()
+            .any(|r| r["uri"] == "geo://datasets/carbon-pools"));
+        assert!(resources
+            .iter()
+            .any(|r| r["uri"] == "geo://datasets/coastal-carbon"));
+    }
+
+    #[test]
+    fn test_generate_mcp_prompts() {
+        let reg = PluginRegistry::new();
+        let r = reg.generate_mcp_prompts();
+        let prompts = r["result"]["prompts"].as_array().unwrap();
+        assert_eq!(prompts.len(), 6);
+        assert!(prompts.iter().any(|p| p["name"] == "carbon-assessment"));
+        assert!(prompts
+            .iter()
+            .any(|p| p["name"] == "ecological-restoration"));
+        assert!(prompts.iter().any(|p| p["name"] == "forest-carbon-stock"));
+    }
+
+    #[test]
+    fn test_generate_tool_schemas() {
+        let mut reg = PluginRegistry::new();
+        reg.register_tool(
+            "test",
+            ToolDef {
+                name: "hello".into(),
+                description: "Say hello".into(),
+                input_schema: serde_json::json!({"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}),
+            },
+        );
+        let r = reg.generate_tool_schemas();
+        assert!(r["tools"].is_array());
+        assert!(r["count"] == serde_json::json!(1));
+        let tool = &r["tools"][0];
+        assert_eq!(tool["title"], "hello");
+        assert_eq!(tool["description"], "Say hello");
+        assert_eq!(tool["type"], "object");
+        assert!(tool["properties"]["name"].is_object());
     }
 }

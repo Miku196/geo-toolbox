@@ -1,3 +1,4 @@
+use geo_core::plugin::PluginConfig;
 use serde::Deserialize;
 
 /// Agriculture plugin top-level configuration.
@@ -300,3 +301,5 @@ mod tests {
         assert!(cfg.get("unknown").is_none());
     }
 }
+
+impl PluginConfig for AgriConfig {}

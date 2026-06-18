@@ -1,7 +1,7 @@
 # 🗺️ Geo-Toolbox 开发路线图
 
 > 基于代码库健康度分析 (Quality Signal: 10000/10000, Coverage: 28%)  
-> 生成时间: 2026-06-14 &nbsp; · &nbsp; 上次更新: 2026-06-17
+> 生成时间: 2026-06-14 &nbsp; · &nbsp; 上次更新: 2026-06-18
 
 ---
 
@@ -14,7 +14,7 @@
 | 复杂度分布 | ✅ 均衡 | Gini=0 (低集中度) |
 | 冗余代码 | ✅ 已消除 | `Config::default()` AST 同构已通过 `default_from_rules!` 宏消除 |
 | 测试覆盖率 | ✅ 持续改善 | 238/531 tests (45%), 新增 47 个测试 (ecology+hydro+geohazard) |
-| 死代码 | ⚠️ | 503 项 (含 WASM/py 辅助函数) |
+| 死代码 | ✅ 持续改善 | 503 → ~490 项 (已清理13项:warnings+unused) |
 | 工具数量 | ✅ 89 个 MCP 工具 | Core 16 + 碳核算 9 + 生态修复 4 + 新能源 4 + 林业 1 + 海岸带 5 + 水文 9 + 地灾 3 + 测绘 8 + 农业 4 + 城乡规划 6 + 数据接入 6 + 外部桥接 16 |
 
 ---
@@ -57,7 +57,7 @@
 ### 0.3 CI 看门狗
 
 - [ ] 覆盖率门禁 (PR 禁止降覆盖)
-- [ ] `cargo tarpaulin` 或 `cargo-llvm-cov` 接入
+- [x] `cargo tarpaulin` 或 `cargo-llvm-cov` 接入
 - [ ] 失败测试自动 issue
 
 ---
@@ -125,7 +125,7 @@
 - [x] **FS 安全系数**: 无限边坡模型 (粘聚力+摩擦+孔隙水压)
 - [x] **Newmark 位移**: Jibson (2007) 经验公式
 - [x] **降雨阈值**: ID 曲线 (Intensity-Duration)
-- [ ] **泥石流**: 体积-冲出距离经验模型
+- [x] **泥石流**: 体积-冲出距离经验模型 (debris_flow_runout_assessment + volume/runout/impact/area sub-methods)
 
 ### 2.4 `geo-plugin-coastal` — 从骨架到实体
 
@@ -214,8 +214,8 @@ register_plugin!(forestry, {
 
 - [x] WMS GetCapabilities / GetMap / GetFeatureInfo → `/wms` 端点
 - [ ] 用 `geo-tile` 的 mvt/pmtiles 直接出瓦片
-- [ ] WMTS GetTile
-- [ ] 预缓存热瓦片
+- [x] WMTS GetTile
+- [x] 预缓存热瓦片 (TileCache with pre_cache covering zoom levels 0-4)
 
 ### 4.3 Jupyter Kernel
 
@@ -228,8 +228,8 @@ register_plugin!(forestry, {
 
 - [x] `geo-adapter-qgis` 统一 `QgisAdapter` — Subprocess / REST 双后端 (enum `QgisBackend`)
 - [x] 环境变量自动检测: `QGIS_BACKEND=rest` → PyQGIS REST, 默认 → `qgis_process` CLI
-- [ ] 批处理任务队列
-- [ ] 进度回调
+- [x] 批处理任务队列 → JobQueue as VecDeque (submit/run_all/progress, 5 tests)
+- [x] 进度回调 → ProgressJobQueue (ProgressCallback fn, submit_batch/run_all)
 
 ---
 
@@ -237,15 +237,15 @@ register_plugin!(forestry, {
 
 ### 5.1 文档 & 报告
 
-- [ ] CCER 碳信用报告模板 (Tera 引擎)
+- [x] CCER 碳信用报告模板 (Tera 引擎, CcerReport + CcerMethodology in geo-plugin-carbon)
 - [x] 中国省级排放因子数据集打包 (geo-emission-factors crate)
 - [x] `geo-report` → 一键生成 PDF/HTML (printpdf 0.9, `carbon_report_pdf()` 方法)
 
 ### 5.2 MCP Server 升级
 
-- [ ] Resource 层: 数据集目录 (STAC 兼容)
-- [ ] Prompt 层: 分析提示词模板
-- [ ] Tool 层: 全部注册工具的 JSON Schema 文档
+- [x] Resource 层: 数据集目录 (6 builtin datasets: emission-factors, carbon-pools, soil-groups, landcover-cn, id-thresholds, coastal-carbon)
+- [x] Prompt 层: 分析提示词模板 (6 analysis prompts: carbon-assessment, ecological-restoration, flood-risk, geohazard-assessment, solar-suitability, forest-carbon-stock)
+- [x] Tool 层: 全部注册工具的 JSON Schema 文档 (generate_tool_docs + tool_to_schema_doc)
 
 ### 5.3 WASM 发布
 
@@ -292,9 +292,9 @@ go pipeline read aoi.geojson | geo pipeline simplify --epsilon 0.005 | geo pipel
 ### 立即可做 (无需新 deps)
 - [x] **测试覆盖率 28% → 50%** — 补齐剩余高风险函数 (Phase 0.3 CI 看门狗) — _已完成: 100/531→238/531 (45%), 关键函数已全测_
 - [x] **信息量模型 + ID 曲线** — geohazard 降雨阈值 (Phase 2.3) — _已完成: cumulative_rainfall + is_landslide_trigger + for_return_period + 4组全球阈值_
-- [ ] **随机森林 LULC** — 土地覆盖分类 (Phase 2.1a)
+- [x] **随机森林 LULC** — 土地覆盖分类 (Phase 2.1a) — _已验证: RandomForest + default_model + 4 tests in ecology/src/lulc.rs, MCP tool ecology_rf_lulc_
 - [x] **流域提取** — Pour-point delineation → watershed polygon (Phase 2.2) — _已验证: extract_watershed + watershed_to_geojson + 4tests_
-- [ ] **高斯烟羽 + CCER 报告** — 排放因子数据库 (Phase 2.1)
+- [x] **高斯烟羽 + CCER 报告** — 排放因子数据库 (Phase 2.1) — _已验证: GaussianPlume with 7 tests in plume.rs, CcerReport/CcerMethodology in ccer.rs_
 - [x] **geo-plugin-survey / urban / agri** — 空壳填充核心函数 (Round 3) — _已验证: 3插件均已有完备核心函数+测试_
 
 ### 需要新基础设施

@@ -5,6 +5,8 @@ use geo_core::plugin::{ExternalAdapter, Plugin, PluginCategory, GeoFeature};
 pub struct CadAdapter;
 impl CadAdapter { pub fn new() -> Self { Self } }
 impl Plugin for CadAdapter {
+    type Config = geo_core::plugin::EmptyConfig;
+    fn new(_config: Self::Config) -> Self { Self }
     fn name(&self) -> &str { "cad" } fn version(&self) -> &str { env!("CARGO_PKG_VERSION") }
     fn description(&self) -> &str { "CAD format adapter (DXF/DWG)" }
     fn category(&self) -> PluginCategory { PluginCategory::Adapter }

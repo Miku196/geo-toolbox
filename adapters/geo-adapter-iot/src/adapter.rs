@@ -13,6 +13,12 @@ impl IotAdapter {
     }
 }
 impl Plugin for IotAdapter {
+    type Config = geo_core::plugin::EmptyConfig;
+    fn new(_config: Self::Config) -> Self {
+        Self {
+            broker: String::new(),
+        }
+    }
     fn name(&self) -> &str {
         "iot"
     }

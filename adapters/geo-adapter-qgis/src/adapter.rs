@@ -316,6 +316,10 @@ impl QgisAdapter {
 // ── Plugin trait ──
 
 impl Plugin for QgisAdapter {
+    type Config = geo_core::plugin::EmptyConfig;
+    fn new(_config: Self::Config) -> Self {
+        Self::from_env()
+    }
     fn name(&self) -> &str {
         "qgis"
     }

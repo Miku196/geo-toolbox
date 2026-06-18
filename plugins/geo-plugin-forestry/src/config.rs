@@ -1,3 +1,4 @@
+use geo_core::plugin::PluginConfig;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -73,3 +74,5 @@ impl Default for ForestryConfig {
         }
     }
 }
+
+impl PluginConfig for ForestryConfig {}

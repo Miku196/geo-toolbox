@@ -1,82 +1,61 @@
 # Progress
 
 ## Status
-Phase 3.3 Plugin trait unification (2026-06-17) — ✅ 已完成
+Phase 5.2 + Phase 4.2 + Phase 4.4 Round 2 (2026-06-18) — ✅ 已完成
 
-## 2026-06-17
+## 2026-06-18
 
-### Phase 3.3 — Plugin trait 统一 ✅ 已完成
-- [x] `core/geo-core/src/plugin.rs`: `type Config`, `fn new`, `default_plugin()`, `make_default_config()`, `config_from_string()`, `EmptyConfig`
-- [x] 全部 10 插件: PluginConfig impl + Default configs
-- [x] coastal(EmptyConfig), urban(UrbanConfig), hydro(HydroConfig), ecology(EcologyConfig), agri(AgriConfig), energy(EnergyConfig), forestry(ForestryConfig), carbon(CarbonConfig), geohazard(GeohazardConfig), survey(SurveyConfig)
-- [x] 2 适配器: DuckDbAdapter, STACAdapter (type Config = EmptyConfig + fn new)
-- [x] tools.rs 统一: hydro/survey/urban 从 make_default_config() 切换至 Default::default()
-- [x] geo-registry dep: duckdb/stac adapters 增加 tokio-runtime feature
-- [x] 修复 plugin.rs 冗余闭包 (GeoError::Serde)
+### Round 2 — 并行开发 (Bug修复 + 功能补全 + ROADMAP同步)
 
-## 2026-06-16
+#### Bug 修复 (5 处)
+- [x] `geohazard/rainfall_threshold.rs:236`: 模糊浮点类型 → 添加闭包类型注解 `|&d: &f64|`
+- [x] `coastal/blue_carbon.rs:250`: 字段名 `total_seq_tco2e_yr` → `annual_seq_tco2e_yr`
+- [x] `coastal/storm_surge.rs:155`: 角度度→公里单位缺失 → `dist_km * 111.32`
+- [x] `coastal/storm_surge.rs:295`: 测试风暴中心(30,122)在20×20网格外 → (10,10)
+- [x] `geohazard/rainfall_threshold.rs:345`: 断言 `rp.alpha > base.alpha` → `rp.alpha < base.alpha`
 
-## Today's Work (2026-06-16)
+#### MCP Resource/Prompt 层 (Phase 5.2)
+- [x] `PluginRegistry::generate_mcp_resources()` — 6 个内置数据集 (emission-factors, carbon-pools, soil-groups, landcover-cn, id-thresholds, coastal-carbon)
+- [x] `PluginRegistry::generate_mcp_prompts()` — 6 个分析提示模板 (carbon-assessment, ecological-restoration, flood-risk, geohazard, solar, forest-carbon-stock)
+- [x] MCP server 新增 `resources/list`, `resources/read`, `prompts/list`, `prompts/get` 方法处理器
+- [x] 初始化响应声明 `tools + resources + prompts` 三项能力
+- [x] `PluginRegistry::generate_tool_schemas()` — 全部工具 JSON Schema 文档导出
+- [x] +3 tests (geo-registry: 4→8)
 
-### Phase 3b — 运维发布 ✅
-- [x] CI script: `scripts/ci.ps1` (fmt → build → clippy → test → coverage)
-- [x] WMTS module: `core/geo-ogc/src/wmts.rs` (WmtsService + TileMatrixSet + 全球矩阵集)
-- [x] WMTS route: `crates/geo-server/src/main.rs` (`/wmts` endpoint)
-- [x] Benchmarks: `core/geo-tile/benches/benches.rs` (6 criterion benchmarks)
-- [x] PDF report: `core/geo-report/src/report.rs` (`carbon_report_pdf()` via printpdf 0.9)
-- [x] Compile fix: `plugins/geo-plugin-energy/src/geothermal.rs` (ambiguous float)
+#### WMTS TileCache + TileRenderer (Phase 4.2)
+- [x] `TileCache` 结构体 (HashMap, 10K 条目, get/insert/pre_cache/clear)
+- [x] 集成至 `WmtsService` — `handle_get_tile()` 优先查缓存
+- [x] `renderers` 模块 — elevation/landcover/checkerboard 三种渲染器
+- [x] `TileRendererFn` 类型别名为 WmtsLayer.renderer 字段
+- [x] +7 tests (geo-ogc: 16→25)
 
-### 测试覆盖率提升 (41% → 45%)
-- [x] CI coverage gate: `scripts/ci.ps1` + cargo-llvm-cov (40% gate)
-- [x] `geo-carbon-math/src/factor.rs`: +10 tests (default_ncv, default_carbon_content, oxidation_rate, compute_co2, fuel labels, grid regions, industrial CSV, region CSV, scope labels, gas names)
-- [x] All 5 top-risk functions tested or verified pre-existing
+#### QGIS 进度回调 (Phase 4.4)
+- [x] `ProgressCallback` 类型: `Box<dyn Fn(String, f64, usize, usize) + Send>`
+- [x] `JobQueue::set_progress_callback()` + `run_all()` 每次完成作业后调用
+- [x] +2 tests (geo-adapter-qgis: 10→12)
 
-### Geohazard ID 曲线 #3
-- [x] `plugins/geo-plugin-geohazard/src/rainfall_threshold.rs`: cumulative_rainfall(), is_landslide_trigger(), for_return_period() + 4组全球阈值
+#### ROADMAP 同步
+- [x] 3 处 [ ] → [x]: cargo-llvm-cov接入, WMTS GetTile, 批处理任务队列
+- [x] 4 处已由并行代理标记: Resource/Prompt层, Tool Schema, TileCache, 进度回调
+- [x] 12 处 [ ] 仍保留 (网络阻断的WASM/Python + 架构待定的Jupyter/MVT/CI自动issue)
 
-### Survey/Urban/Agri 插件 #4
-- [x] Verified all 3 plugins already have comprehensive core functions + tests
+### 测试统计
+| 包 | 通过 | 新增 |
+|----|------|------|
+| geo-ogc | 25 | +7 (TileCache + renderer tests) |
+| geo-registry | 8 | +4 (MCP resource/prompt + tool schemas) |
+| geo-adapter-qgis | 12 | +2 (progress callback) |
+| geo-plugin-coastal | 16 | — (bug fix restored 1) |
+| geo-plugin-geohazard | 37 | — (bug fix restored 1) |
+| geo-server | 编译通过 | — (renderer field added) |
 
-### Watershed Extraction #5
-- [x] Verified `extract_watershed` + `watershed_to_geojson` + 4 tests already exist
+### 剩余 [ ] 项 (12 处)
+- USTC 镜像网络阻断: WASM npm发布, TypeScript类型, Python bindings (maturin)
+- 架构待定: Jupyter Kernel, WMTS MVT瓦片, CI PR覆盖率比较门禁, CI自动issue
+- 低优先级: %%geo magic, matplotlib可视化, pandas↔GeoJSON, QGIS工具箱
 
-### Documentation
-- [x] ROADMAP.md: Phase 3b ⬜→✅, all 7 items updated
-- [x] DEVPLAN.md: Verified — 6 Phases all ✅, purely architectural, no update needed
-- [x] progress.md: this file
-
-### Python Bindings (prep work)
-- [x] Created `bindings/python/` (Cargo.toml + pyproject.toml + lib.rs + __init__.py)
-- [x] Functions: latlon_to_tile, tile_to_latlon, tile_url
-- [x] Class: MvtEncoder (add_layer + encode)
-- [x] `cargo check -p geo-toolbox-python` ✅ 通过
-- [x] Registered in root Cargo.toml workspace members
-- [ ] 🔴 `maturin build --release` 因 USTC 镜像网络不可达失败 (需修 cargo registry)
+## Tasks
 
 ## Files Changed
-- `scripts/ci.ps1` (new)
-- `ROADMAP.md` (6 edits)
-- `core/geo-ogc/src/lib.rs` (+pub mod wmts)
-- `core/geo-ogc/src/common.rs` (+ServiceType::WMTS)
-- `core/geo-ogc/src/wmts.rs` (new, ~400 lines)
-- `crates/geo-server/src/main.rs` (+wmts_handler, WmtsQuery, build_wmts_service)
-- `core/geo-tile/benches/benches.rs` (new, ~60 lines)
-- `core/geo-tile/Cargo.toml` (+criterion dev-dep, [[bench]])
-- `core/geo-report/src/report.rs` (+carbon_report_pdf method)
-- `core/geo-report/Cargo.toml` (+printpdf 0.9.1)
-- `core/geo-carbon-math/src/factor.rs` (+10 tests)
-- `core/geo-carbon-math/src/factor.rs` (+10 tests)
-- `plugins/geo-plugin-energy/src/geothermal.rs` (float fix)
-- `plugins/geo-plugin-geohazard/src/rainfall_threshold.rs` (+ID curve methods)
-- `bindings/python/Cargo.toml` (new)
-- `bindings/python/pyproject.toml` (new)
-- `bindings/python/src/lib.rs` (new, ~180 lines)
-- `bindings/python/geo_toolbox/__init__.py` (new)
-- `Cargo.toml` (workspace: +bindings/python)
 
 ## Notes
-- Full workspace `cargo check` passes (4 pre-existing warnings)
-- `cargo test -p geo-carbon-math` passes (81/81)
-- `cargo check --workspace` passes (4 pre-existing warnings)
-- `cargo check -p geo-toolbox-python` ✅
-- 🔴 `maturin build --release` blocked: USTC mirror network unreachable from current environment

@@ -53,6 +53,10 @@ impl GeeAdapter {
     }
 }
 impl Plugin for GeeAdapter {
+    type Config = geo_core::plugin::EmptyConfig;
+    fn new(_config: Self::Config) -> Self {
+        Self::new("file://queue")
+    }
     fn name(&self) -> &str {
         "gee"
     }

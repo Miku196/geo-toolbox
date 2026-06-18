@@ -242,6 +242,7 @@ fn build_wmts_service() -> WmtsService {
         formats: vec!["image/png".into()],
         styles: vec!["default".into()],
         resource_url: Some("http://localhost:9378/wmts?request=GetTile&layer={layer}&TileMatrixSet={TileMatrixSet}&TileMatrix={TileMatrix}&TileCol={TileCol}&TileRow={TileRow}&format=image/png".into()),
+        renderer: None,
     });
     svc.add_layer(WmtsDef {
         name: "landcover".into(),
@@ -259,6 +260,7 @@ fn build_wmts_service() -> WmtsService {
         formats: vec!["image/png".into()],
         styles: vec!["default".into()],
         resource_url: Some("http://localhost:9378/wmts?request=GetTile&layer={layer}&TileMatrixSet={TileMatrixSet}&TileMatrix={TileMatrix}&TileCol={TileCol}&TileRow={TileRow}&format=image/png".into()),
+        renderer: None,
     });
     svc.add_tile_matrix_set(geo_ogc::wmts::global_geodetic_tile_matrix_set());
     svc.add_tile_matrix_set(geo_ogc::wmts::global_mercator_tile_matrix_set());

@@ -1,5 +1,6 @@
 //! 生态修复配置（rules.toml）。
 
+use geo_core::plugin::PluginConfig;
 use serde::Deserialize;
 
 /// 生态修复插件的顶级配置。
@@ -80,6 +81,8 @@ fn default_format() -> String {
 }
 
 geo_core::default_from_rules!(EcologyConfig, "ecology");
+
+impl PluginConfig for EcologyConfig {}
 
 impl Default for NdviThresholds {
     fn default() -> Self {

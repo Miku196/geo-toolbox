@@ -46,6 +46,13 @@ impl PostgisAdapter {
 }
 
 impl Plugin for PostgisAdapter {
+    type Config = geo_core::plugin::EmptyConfig;
+    fn new(_config: Self::Config) -> Self {
+        Self {
+            url: String::new(),
+            store: None,
+        }
+    }
     fn name(&self) -> &str {
         "postgis"
     }

@@ -150,7 +150,7 @@ impl CoastalPlugin {
             // 计算到风暴中心的距离 (km)
             let dlat = (r - center_row) * cell_size_m * deg_per_m;
             let dlon = (c - center_col) * cell_size_m * deg_per_m;
-            let dist_km = (dlat.powi(2) + dlon.powi(2)).sqrt();
+            let dist_km = (dlat.powi(2) + dlon.powi(2)).sqrt() * 111.32; // convert angular degrees to km
 
             // 计算格点到风暴中心的方位角 (° 从北顺时针)
             let mut az = 0.0_f64;
@@ -293,8 +293,8 @@ mod tests {
     fn test_storm_surge_basic() {
         let p = CoastalPlugin::new();
         let params = StormParams {
-            lat: 30.0,
-            lon: 122.0,
+            lat: 10.0, // grid row (center of the 20x20 grid)
+            lon: 10.0, // grid col (center of the 20x20 grid)
             central_pressure_hpa: 955.0,
             ..Default::default()
         };

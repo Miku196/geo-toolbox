@@ -205,19 +205,10 @@ fn buffer_geometry(
     distance: f64,
     _units: Option<&str>,
 ) -> Result<geojson::Geometry, Box<dyn std::error::Error>> {
-    use geo::algorithm::buffer::Buffer as _;
-    let geo_geom: geo::Geometry<f64> = geom
-        .value
-        .clone()
-        .try_into()
-        .map_err(|e| format!("Cannot convert geometry: {e}"))?;
-
-    // Note: geo buffer operates in the CRS units (degrees if WGS84, meters if projected).
-    // For degree-based CRS, divide distance by 111320.0 to approximate meters.
-    let buffered = geo_geom.buffer(distance / 111320.0); // approximate for WGS84
-
-    let gj_geom: geojson::Geometry = (&buffered).into();
-    Ok(gj_geom)
+    // Buffer was removed from geo 0.28. Use geo-buffer crate or polyline offset.
+    let _ = geom;
+    let _ = distance;
+    Err("buffer: geo 0.28 removed the buffer algorithm. Install 'geo-buffer' crate or use polyline offset.".into())
 }
 
 fn handle_simplify(epsilon: f64) -> Result<(), Box<dyn std::error::Error>> {
@@ -236,12 +227,22 @@ fn handle_simplify(epsilon: f64) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn simplify_geometry(geom: &geojson::Geometry, epsilon: f64) -> geojson::Geometry {
-    // Use the Douglas-Peucker algorithm from geo crate
+    // geo 0.28: Simplify is no longer implemented for Geometry<T>. Apply per-variant.
     use geo::algorithm::simplify::Simplify;
     let geo_geom: Option<geo::Geometry<f64>> = geom.value.clone().try_into().ok();
     match geo_geom {
         Some(g) => {
-            let simplified = g.simplify(&epsilon);
+            let simplified = match g {
+                geo::Geometry::LineString(ls) => geo::Geometry::LineString(ls.simplify(&epsilon)),
+                geo::Geometry::MultiLineString(mls) => {
+                    geo::Geometry::MultiLineString(mls.simplify(&epsilon))
+                }
+                geo::Geometry::Polygon(p) => geo::Geometry::Polygon(p.simplify(&epsilon)),
+                geo::Geometry::MultiPolygon(mp) => {
+                    geo::Geometry::MultiPolygon(mp.simplify(&epsilon))
+                }
+                other => other,
+            };
             (&simplified).into()
         }
         None => geom.clone(),

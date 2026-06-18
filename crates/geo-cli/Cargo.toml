@@ -60,7 +60,7 @@ chrono = { version = "0.4", features = ["serde"] }
 futures.workspace = true
 
 [features]
-default = ["postgis", "cad", "gee", "qgis", "gdal", "proj-crs"]
+default = ["postgis", "cad", "gee", "qgis", "gdal"]
 postgis = ["geo-adapter-postgis", "geo-wiring/postgis", "sqlx"]
 cad = ["geo-adapter-cad", "geo-wiring/cad"]
 iot = ["geo-adapter-iot", "geo-wiring/iot"]

@@ -86,3 +86,5 @@ impl Default for EnergyConfig {
         }
     }
 }
+
+impl PluginConfig for EnergyConfig {}
