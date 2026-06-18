@@ -29,6 +29,7 @@
 #![warn(missing_docs)]
 
 pub mod common;
+pub mod mvt_source;
 pub mod wfs;
 pub mod wms;
 pub mod wmts;

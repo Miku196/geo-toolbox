@@ -175,7 +175,7 @@ pub fn compute_r_factor_simple(annual_rainfall_mm: f64) -> f64 {
 /// - `structure_code` — 土壤结构代码 (1=块粒, 2=细团粒, 3=中粗团粒, 4=块状/板状)
 /// - `permeability_code` — 渗透性等级 (1=快, 6=极慢)
 pub fn compute_k_factor(
-    sand_pct: f64,
+    _sand_pct: f64,
     silt_pct: f64,
     clay_pct: f64,
     very_fine_sand_pct: f64,

@@ -43,7 +43,7 @@ impl ProcessPlugin for UrbanPlugin {
             imp_raw.map_or(vec![], |a| a.iter().map(|v| v.as_f64()).collect());
 
         let assessment = self.assess(tfa, bf, sa, ga, pop, imp, &ndvi, &impervious);
-        Ok(serde_json::to_value(&assessment).map_err(|e| geo_core::errors::GeoError::Serde(e))?)
+        serde_json::to_value(&assessment).map_err(geo_core::errors::GeoError::Serde)
     }
 }
 

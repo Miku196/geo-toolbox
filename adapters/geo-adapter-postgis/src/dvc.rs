@@ -99,7 +99,7 @@ pub fn dvc_snapshot(file_path: &str) -> GeoResult<DvcSnapshot> {
     }
 
     // ── Read .dvc file for the hash ──
-    let dvc_content = std::fs::read_to_string(&dvc_file).map_err(|e| GeoError::Io(e))?;
+    let dvc_content = std::fs::read_to_string(&dvc_file).map_err(GeoError::Io)?;
 
     let dvc_hash = extract_dvc_hash(&dvc_content).unwrap_or_else(|| {
         tracing::warn!("Could not extract DVC hash from {dvc_file}");

@@ -37,6 +37,6 @@ impl ProcessPlugin for HydroPlugin {
         let imp = p["impervious_ratio"].as_f64().unwrap_or(0.0);
         let rain = p["rainfall_mmh"].as_f64().unwrap_or(50.0);
         let a = self.assess(&dem, rows, cols, cell, imp, rain);
-        Ok(serde_json::to_value(&a).map_err(|e| geo_core::errors::GeoError::Serde(e))?)
+        serde_json::to_value(&a).map_err(geo_core::errors::GeoError::Serde)
     }
 }

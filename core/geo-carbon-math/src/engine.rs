@@ -132,7 +132,7 @@ pub struct CarbonEngine;
 
 impl CarbonEngine {
     pub fn new() -> Self {
-        Self::default()
+        Self
     }
 
     pub fn calculate(

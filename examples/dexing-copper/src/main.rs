@@ -166,7 +166,7 @@ async fn download_band_cog(url: &str, path: &std::path::Path, label: &str) -> Ge
     let bytes = resp
         .bytes()
         .await
-        .map_err(|e| GeoError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+        .map_err(|e| GeoError::Io(std::io::Error::other(e)))?;
 
     std::fs::write(path, &bytes)?;
     let size_mb = bytes.len() as f64 / 1_048_576.0;
@@ -244,7 +244,7 @@ fn read_tiff_crate(path: &std::path::Path, band_name: &str) -> GeoResult<RasterB
         .unwrap_or_default();
 
     let is_float = sample_format.as_ref().and_then(|v| v.first()) == Some(&3); // 3 = IEEE floating point
-    let is_uint16 = bits_per_sample.as_ref().and_then(|v| v.first()) == Some(&16) && !is_float;
+    let _is_uint16 = bits_per_sample.as_ref().and_then(|v| v.first()) == Some(&16) && !is_float;
 
     // 读取图像
     let img_result = decoder.read_image();
@@ -477,8 +477,8 @@ fn generate_simulated_bands(
         *seed = seed
             .wrapping_mul(6364136223846793005)
             .wrapping_add(1442695040888963407);
-        let x = (*seed >> 32) as f64 / u32::MAX as f64;
-        x
+
+        (*seed >> 32) as f64 / u32::MAX as f64
     }
 
     let mut s = hash;
@@ -519,8 +519,8 @@ fn generate_simulated_bands(
         }
     }
 
-    let red_band = RasterBand::new(format!("B4_RED"), rows, cols, red_data, -999.0);
-    let nir_band = RasterBand::new(format!("B8_NIR"), rows, cols, nir_data, -999.0);
+    let red_band = RasterBand::new("B4_RED".to_string(), rows, cols, red_data, -999.0);
+    let nir_band = RasterBand::new("B8_NIR".to_string(), rows, cols, nir_data, -999.0);
 
     (red_band, nir_band)
 }
@@ -743,7 +743,7 @@ fn export_restoration_dxf(
         Ok(polygons.len())
     }
 
-    let count = write_dxf(&polygons, output_path).map_err(|e| GeoError::Io(e))?;
+    let count = write_dxf(&polygons, output_path).map_err(GeoError::Io)?;
 
     println!("  ✓ DXF: {output_path} ({count} 个修复区多边形)");
     Ok(count)

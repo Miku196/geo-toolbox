@@ -213,7 +213,7 @@ register_plugin!(forestry, {
 ### 4.2 WMS/WMTS Tile Server
 
 - [x] WMS GetCapabilities / GetMap / GetFeatureInfo → `/wms` 端点
-- [ ] 用 `geo-tile` 的 mvt/pmtiles 直接出瓦片
+- [x] 用 `geo-tile` 的 mvt/pmtiles 直接出瓦片
 - [x] WMTS GetTile
 - [x] 预缓存热瓦片 (TileCache with pre_cache covering zoom levels 0-4)
 

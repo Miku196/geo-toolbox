@@ -1,6 +1,5 @@
 //! Tool registration — Urban plugin.
 use crate::UrbanPlugin;
-use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
 fn default_plugin() -> UrbanPlugin {
@@ -52,6 +51,6 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let ndvi: Vec<Option<f64>> = args["ndvi_values"].as_array().map(|a| a.iter().map(|v| v.as_f64()).collect()).unwrap_or_default();
         let iv: Vec<Option<f64>> = args["impervious_values"].as_array().map(|a| a.iter().map(|v| v.as_f64()).collect()).unwrap_or_default();
         let a = p.assess(args["total_floor_area_m2"].as_f64().unwrap_or(0.0),args["building_footprint_m2"].as_f64().unwrap_or(0.0),args["site_area_m2"].as_f64().unwrap_or(0.0),args["green_area_m2"].as_f64().unwrap_or(0.0),args["population"].as_u64().unwrap_or(0),args["impervious_ratio"].as_f64().unwrap_or(0.0),&ndvi,&iv);
-        Ok(serde_json::to_value(&a).map_err(|e| geo_core::errors::GeoError::Serde(e))?)
+        serde_json::to_value(&a).map_err(geo_core::errors::GeoError::Serde)
     }]);
 }

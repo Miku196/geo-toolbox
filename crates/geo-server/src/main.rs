@@ -11,6 +11,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use geo_ogc::mvt_source::JsonFeatureProvider;
 use geo_ogc::wms::{GetMapParams, WmsLayer, WmsRequest, WmsResponse, WmsService};
 use geo_ogc::wmts::{
     WmtsGetTileParams, WmtsLayer as WmtsDef, WmtsRequest, WmtsResponse, WmtsService,
@@ -226,6 +227,46 @@ fn build_wms_service() -> WmsService {
 
 fn build_wmts_service() -> WmtsService {
     let mut svc = WmtsService::new("geo-toolbox WMTS", "http://localhost:9378/wmts");
+
+    // MVT sample layer with China cities
+    let china_cities = serde_json::json!([
+        {"type": "Feature", "properties": {"name": "Beijing", "pop": 2154},
+         "geometry": {"type": "Point", "coordinates": [116.4, 39.9]}},
+        {"type": "Feature", "properties": {"name": "Shanghai", "pop": 2487},
+         "geometry": {"type": "Point", "coordinates": [121.5, 31.2]}},
+        {"type": "Feature", "properties": {"name": "Guangzhou", "pop": 1868},
+         "geometry": {"type": "Point", "coordinates": [113.3, 23.1]}},
+        {"type": "Feature", "properties": {"name": "Chengdu", "pop": 2094},
+         "geometry": {"type": "Point", "coordinates": [104.1, 30.6]}},
+        {"type": "Feature", "properties": {"name": "Wuhan", "pop": 1365},
+         "geometry": {"type": "Point", "coordinates": [114.3, 30.6]}},
+    ]);
+    let mvt_provider =
+        JsonFeatureProvider::from_features(china_cities.as_array().cloned().unwrap_or_default());
+
+    svc.add_layer(WmtsDef {
+        name: "china-cities".into(),
+        title: "China Cities (MVT)".into(),
+        abstract_: Some("Major Chinese cities as vector tile layer".into()),
+        keywords: vec!["china".into(), "cities".into()],
+        wgs84_bbox: Some(geo_ogc::common::Wgs84Bbox {
+            west: 100.0,
+            south: 20.0,
+            east: 125.0,
+            north: 45.0,
+        }),
+        crs: vec!["EPSG:4326".into(), "EPSG:3857".into()],
+        tile_matrix_sets: vec!["EPSG:4326".into(), "EPSG:3857".into()],
+        formats: vec![
+            "image/png".into(),
+            "application/vnd.mapbox-vector-tile".into(),
+        ],
+        styles: vec!["default".into()],
+        resource_url: Some("http://localhost:9378/wmts?request=GetTile&layer={layer}&TileMatrixSet={TileMatrixSet}&TileMatrix={TileMatrix}&TileCol={TileCol}&TileRow={TileRow}&format={format}".into()),
+        renderer: None,
+        mvt_source: Some(Arc::new(mvt_provider)),
+    });
+
     svc.add_layer(WmtsDef {
         name: "sentinel-2".into(),
         title: "Sentinel-2 NDVI".into(),
@@ -243,6 +284,7 @@ fn build_wmts_service() -> WmtsService {
         styles: vec!["default".into()],
         resource_url: Some("http://localhost:9378/wmts?request=GetTile&layer={layer}&TileMatrixSet={TileMatrixSet}&TileMatrix={TileMatrix}&TileCol={TileCol}&TileRow={TileRow}&format=image/png".into()),
         renderer: None,
+        mvt_source: None,
     });
     svc.add_layer(WmtsDef {
         name: "landcover".into(),
@@ -261,6 +303,7 @@ fn build_wmts_service() -> WmtsService {
         styles: vec!["default".into()],
         resource_url: Some("http://localhost:9378/wmts?request=GetTile&layer={layer}&TileMatrixSet={TileMatrixSet}&TileMatrix={TileMatrix}&TileCol={TileCol}&TileRow={TileRow}&format=image/png".into()),
         renderer: None,
+        mvt_source: None,
     });
     svc.add_tile_matrix_set(geo_ogc::wmts::global_geodetic_tile_matrix_set());
     svc.add_tile_matrix_set(geo_ogc::wmts::global_mercator_tile_matrix_set());
@@ -283,6 +326,7 @@ async fn main() {
         .route("/api/call/{tool}", post(call_tool))
         .route("/wms", get(wms_handler))
         .route("/wmts", get(wmts_handler))
+        .route("/pmtiles/{layer}", get(pmtiles_handler))
         .with_state((state, wms, wmts));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:9378").await.unwrap();
@@ -377,5 +421,40 @@ async fn wms_handler(
             let xml = e.to_xml();
             Err((StatusCode::BAD_REQUEST, xml))
         }
+    }
+}
+
+async fn pmtiles_handler(
+    State((_, _, wmts)): State<(Arc<AppState>, Arc<WmsService>, Arc<WmtsService>)>,
+    Path(layer): Path<String>,
+) -> Result<axum::response::Response, (StatusCode, String)> {
+    use axum::response::IntoResponse;
+
+    match wmts.build_pmtiles_archive(&layer, std::io::Cursor::new(Vec::new())) {
+        Ok(pm_writer) => match pm_writer.finish() {
+            Ok(cursor) => {
+                let bytes = cursor.into_inner();
+                Ok((
+                    StatusCode::OK,
+                    [
+                        (axum::http::header::CONTENT_TYPE, "application/vnd.pmtiles"),
+                        (
+                            axum::http::header::CONTENT_DISPOSITION,
+                            &format!("attachment; filename=\"{}.pmtiles\"", layer),
+                        ),
+                    ],
+                    bytes,
+                )
+                    .into_response())
+            }
+            Err(e) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("PMTiles finish failed: {e}"),
+            )),
+        },
+        Err(e) => Err((
+            StatusCode::BAD_REQUEST,
+            format!("PMTiles build failed: {}", e.to_xml()),
+        )),
     }
 }

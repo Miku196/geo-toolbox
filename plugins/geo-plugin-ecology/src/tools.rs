@@ -1,6 +1,5 @@
 //! Tool registration — Ecology plugin.
 use crate::config::EcologyConfig;
-use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
 
@@ -24,7 +23,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             let ra = RasterBand::new("B4_after", cols, rows, red_after, nodata);
             let na = RasterBand::new("B8_after", cols, rows, nir_after, nodata);
             let p = default_plugin();
-            let (prev, curr) = p.detect_ndvi_change(&rb, &nb, &ra, &na).map_err(|e| geo_core::GeoError::from(e))?;
+            let (prev, curr) = p.detect_ndvi_change(&rb, &nb, &ra, &na)?;
             Ok(serde_json::json!({"mean_ndvi_before": prev.mean_ndvi, "mean_ndvi_after": curr.mean_ndvi, "healthy_ratio_before": prev.healthy_ratio, "healthy_ratio_after": curr.healthy_ratio}))
         },
         sync "ecology_rusle_assessment" => "RUSLE soil loss assessment from DEM + NDVI" ; serde_json::json!({"type":"object","properties":{"dem":{"type":"array","items":{"type":"number"}},"ndvi":{"type":"array","items":{"type":"number"}},"rows":{"type":"integer"},"cols":{"type":"integer"},"cellsize_m":{"type":"number"},"r_factor":{"type":"number"},"practice":{"type":"string","default":"None","enum":["None","Contouring","StripCropping","Terracing"]}},"required":["dem","ndvi","rows","cols","cellsize_m","r_factor"]}) => |args| -> ToolResult {
@@ -41,7 +40,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
                 _ => crate::rusle::PracticeType::None,
             };
             let result = crate::rusle::assess_soil_loss(&dem, None, cellsize_m, rows, cols, r_factor, None, &ndvi, practice);
-            Ok(serde_json::to_value(&result).map_err(|e| geo_core::errors::GeoError::Serde(e))?)
+            serde_json::to_value(&result).map_err(geo_core::errors::GeoError::Serde)
         },
         sync "ecology_rusle_simple" => "RUSLE with manual factor arrays (R, K, LS, C, P grids)" ; serde_json::json!({"type":"object","properties":{"r_factor":{"type":"array","items":{"type":"number"}},"k_factor":{"type":"array","items":{"type":"number"}},"ls_factor":{"type":"array","items":{"type":"number"}},"c_factor":{"type":"array","items":{"type":"number"}},"p_factor":{"type":"array","items":{"type":"number"}},"cells":{"type":"integer"}},"required":["r_factor","k_factor","ls_factor","c_factor","p_factor","cells"]}) => |args| -> ToolResult {
             let cells = args["cells"].as_u64().unwrap_or(1) as usize;

@@ -1,5 +1,4 @@
 //! Tool registration — Carbon math engine.
-use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
 pub fn register_tools(registry: &mut PluginRegistry) {
@@ -8,12 +7,12 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let geojson = args["geojson"].as_str().unwrap_or("");
         let csv = args["csv"].as_str().unwrap_or("");
         let year = args["year"].as_u64().unwrap_or(2025) as u16;
-        let factors = crate::load_factors_from_csv(csv).map_err(|e| geo_core::GeoError::Validation(e))?;
+        let factors = crate::load_factors_from_csv(csv).map_err(geo_core::GeoError::Validation)?;
         let engine = crate::CarbonEngine::new();
         let fc: serde_json::Value = serde_json::from_str(geojson).map_err(geo_core::GeoError::Serde)?;
         let features: Vec<crate::GeoFeature> = fc["features"].as_array().unwrap_or(&vec![]).iter()
             .filter_map(|f| { let s = serde_json::to_string(f).ok()?; crate::GeoFeature::from_feature_json(&s).ok() }).collect();
-        let report = engine.calculate(&features, &factors, year).map_err(|e| geo_core::GeoError::Validation(e))?;
-        Ok(serde_json::to_value(report).map_err(geo_core::GeoError::Serde)?)
+        let report = engine.calculate(&features, &factors, year).map_err(geo_core::GeoError::Validation)?;
+        serde_json::to_value(report).map_err(geo_core::GeoError::Serde)
     }]);
 }

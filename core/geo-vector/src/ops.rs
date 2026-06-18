@@ -24,7 +24,7 @@ pub const MAX_BUFFER_VERTICES: usize = 500_000;
 /// - `mode`: 缓冲区模式选择
 pub fn buffer(poly: &Polygon<f64>, distance: f64, mode: BufferMode) -> MultiPolygon<f64> {
     let n = poly.exterior().0.len();
-    if n < 3 || n > MAX_BUFFER_VERTICES {
+    if !(3..=MAX_BUFFER_VERTICES).contains(&n) {
         return MultiPolygon::new(vec![poly.clone()]);
     }
     if distance == 0.0 {

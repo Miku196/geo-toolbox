@@ -1,5 +1,4 @@
 //! Tool registration — Vector ops.
-use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
 use geo_types::{LineString, Polygon};
@@ -30,7 +29,7 @@ fn polygon_to_json(poly: &Polygon<f64>) -> serde_json::Value {
     serde_json::json!({"type":"Polygon","coordinates":[c]})
 }
 fn multipolygon_to_json(mp: &geo_types::MultiPolygon<f64>) -> serde_json::Value {
-    let polys: Vec<serde_json::Value> = mp.iter().map(|p| polygon_to_json(p)).collect();
+    let polys: Vec<serde_json::Value> = mp.iter().map(polygon_to_json).collect();
     if polys.len() == 1 {
         polys.into_iter().next().unwrap()
     } else {

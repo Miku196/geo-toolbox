@@ -271,20 +271,15 @@ impl GridEmissionFactor {
 // ── GWP (Global Warming Potential) ─────────────────────────────
 
 /// IPCC Assessment Report version for GWP values.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum GwpVersion {
     /// IPCC Fourth Assessment Report (2007)
     AR4,
     /// IPCC Fifth Assessment Report (2014) — **default**
+    #[default]
     AR5,
     /// IPCC Sixth Assessment Report (2021)
     AR6,
-}
-
-impl Default for GwpVersion {
-    fn default() -> Self {
-        GwpVersion::AR5
-    }
 }
 
 /// Return the 100-year Global Warming Potential for a greenhouse gas.

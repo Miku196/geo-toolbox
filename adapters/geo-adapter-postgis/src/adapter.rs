@@ -310,7 +310,7 @@ async fn push_features(store: &PostgisStore, table: &str, data: &[GeoFeature]) -
     Ok(count)
 }
 
-//// Check if a GeoJSON geometry value is effectively empty.
+/// Check if a GeoJSON geometry value is effectively empty.
 fn is_geom_empty(geom: &serde_json::Value) -> bool {
     match geom {
         serde_json::Value::Null => true,

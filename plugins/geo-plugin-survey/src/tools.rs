@@ -1,6 +1,5 @@
 //! Tool registration — Survey plugin.
 use crate::SurveyPlugin;
-use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
 fn default_plugin() -> SurveyPlugin {
@@ -12,7 +11,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let p = default_plugin();
         let elev: Vec<f64> = args["existing_elevation"].as_array().map(|a| a.iter().filter_map(|v| v.as_f64()).collect()).unwrap_or_default();
         let r = p.grid_earthwork(&elev, args["design_elevation"].as_f64().unwrap_or(0.0), args["grid_cols"].as_u64().unwrap_or(0) as usize, args["grid_rows"].as_u64().unwrap_or(0) as usize);
-        Ok(serde_json::to_value(&r).map_err(|e| geo_core::errors::GeoError::Serde(e))?)
+        serde_json::to_value(&r).map_err(geo_core::errors::GeoError::Serde)
     },
         sync "survey_cross_section" => "Average end area cross-section earthwork (road/rail)" ; serde_json::json!({"type":"object","properties":{"cut_areas_m2":{"type":"array","items":{"type":"number"}},"fill_areas_m2":{"type":"array","items":{"type":"number"}},"distances_m":{"type":"array","items":{"type":"number"}}},"required":["cut_areas_m2","fill_areas_m2","distances_m"]}) => |args| -> ToolResult {
         let p = default_plugin();
@@ -22,13 +21,13 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let n = cuts.len().min(fills.len());
         let sections: Vec<(f64, f64)> = (0..n).map(|i| (cuts[i], fills[i])).collect();
         let r = p.cross_section_earthwork(&sections, &dists);
-        Ok(serde_json::to_value(&r).map_err(|e| geo_core::errors::GeoError::Serde(e))?)
+        serde_json::to_value(&r).map_err(geo_core::errors::GeoError::Serde)
     },
         sync "survey_adjustment" => "Control network adjustment (simplified least squares)" ; serde_json::json!({"type":"object","properties":{"observations":{"type":"array"},"initial":{"type":"number"}},"required":["observations"]}) => |args| -> ToolResult {
         let p = default_plugin();
-        let obs: Vec<(f64, f64)> = args["observations"].as_array().map(|a| a.iter().filter_map(|v| {let arr=v.as_array()?;Some((arr.get(0)?.as_f64()?,arr.get(1)?.as_f64()?))}).collect()).unwrap_or_default();
+        let obs: Vec<(f64, f64)> = args["observations"].as_array().map(|a| a.iter().filter_map(|v| {let arr=v.as_array()?;Some((arr.first()?.as_f64()?,arr.get(1)?.as_f64()?))}).collect()).unwrap_or_default();
         let r = p.control_network_adjustment(&obs, args["initial"].as_f64().unwrap_or(0.0));
-        Ok(serde_json::to_value(&r).map_err(|e| geo_core::errors::GeoError::Serde(e))?)
+        serde_json::to_value(&r).map_err(geo_core::errors::GeoError::Serde)
     },
         sync "survey_tin" => "TIN (triangular prism) earthwork volume calculation" ; serde_json::json!({"type":"object","properties":{"points":{"type":"array","items":{"type":"object"}},"design_elevation":{"type":"number"}},"required":["points","design_elevation"]}) => |args| -> ToolResult {
         let p = default_plugin();

@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use geo_types::{Coord, LineString, Point, Polygon};
+use geo_types::{Coord, LineString, Polygon};
 use geo_vector::{
     buffer, intersect, kernel_density, line_density, simplify, union_all, BufferMode,
 };

@@ -38,7 +38,7 @@ impl ProcessPlugin for ForestryPlugin {
                 .collect();
             RasterBand::new(k, c, r, v, nd)
         };
-        Ok(serde_json::to_value(self.assess_carbon_stock(
+        serde_json::to_value(self.assess_carbon_stock(
             p["aoi_name"].as_str().unwrap_or(""),
             p["aoi_geojson"].as_str().unwrap_or(""),
             &mk("red_old"),
@@ -50,6 +50,6 @@ impl ProcessPlugin for ForestryPlugin {
             p["baseline_area_ha"].as_f64().unwrap_or(100.0),
             p["baseline_volume_m3_ha"].as_f64().unwrap_or(200.0),
         )?)
-        .map_err(GeoError::Serde)?)
+        .map_err(GeoError::Serde)
     }
 }

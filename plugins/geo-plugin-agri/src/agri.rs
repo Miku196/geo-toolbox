@@ -135,7 +135,7 @@ impl AgriPlugin {
         let half_range = (sp.ph_hi - sp.ph_lo) / 2.0;
         let ph_score = if (ph - mid).abs() <= half_range {
             20.0
-        } else if ph >= 4.5 && ph <= 9.0 {
+        } else if (4.5..=9.0).contains(&ph) {
             let dist = (ph - mid).abs() - half_range;
             (20.0 - dist * 8.0).max(4.0)
         } else {

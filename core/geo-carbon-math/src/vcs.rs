@@ -396,7 +396,7 @@ impl CcbBenefit {
 }
 
 /// CCB certification status for a project.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CcbCertification {
     /// Whether CCB is applicable.
     pub applicable: bool,
@@ -406,17 +406,6 @@ pub struct CcbCertification {
     pub gold_level: bool,
     /// Verification body.
     pub verifier: Option<String>,
-}
-
-impl Default for CcbCertification {
-    fn default() -> Self {
-        Self {
-            applicable: false,
-            benefits: Vec::new(),
-            gold_level: false,
-            verifier: None,
-        }
-    }
 }
 
 // ── VCS Project Summary ───────────────────────────────────────

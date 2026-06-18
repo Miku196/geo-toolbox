@@ -218,7 +218,7 @@ impl Clone for GeeTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mq::{FileMq, GeeMq};
+    use crate::mq::FileMq;
     use std::time::Duration;
 
     #[tokio::test]

@@ -26,9 +26,10 @@ use serde::{Deserialize, Serialize};
 // ── Ellipsoid ─────────────────────────────────────────────────
 
 /// Supported reference ellipsoids for Chinese survey coordinate systems.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub enum Ellipsoid {
     /// CGCS2000 (a=6378137, f=1/298.257222101)
+    #[default]
     CGCS2000,
     /// Xi'an 1980 — IAG75 (a=6378140, f=1/298.257)
     Xian80,
@@ -78,12 +79,6 @@ impl Ellipsoid {
             Ellipsoid::Beijing54 => "Beijing54 (Krasovsky)",
             Ellipsoid::WGS84 => "WGS84",
         }
-    }
-}
-
-impl Default for Ellipsoid {
-    fn default() -> Self {
-        Ellipsoid::CGCS2000
     }
 }
 
@@ -205,7 +200,7 @@ fn footpoint_latitude(X: f64, ell: Ellipsoid) -> f64 {
             break;
         }
 
-        B = B - f / df;
+        B -= f / df;
 
         if f.abs() < 1e-12 {
             break;

@@ -1,6 +1,5 @@
 //! Tool registration — Coastal plugin.
 use crate::blue_carbon::BlueCarbonResult;
-use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
 pub fn register_tools(registry: &mut PluginRegistry) {
@@ -10,7 +9,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let nd=args["nodata"].as_f64().unwrap_or(-999.0);let c=args["cols"].as_u64().unwrap_or(1) as usize;let r=args["rows"].as_u64().unwrap_or(1) as usize;
         let mk=|k:&str,l:&str|{let v:Vec<f64>=args[k].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_f64()).collect();RasterBand::new(l,c,r,v,nd)};
         let report=crate::CoastalPlugin::new().assess_shoreline(args["aoi_name"].as_str().unwrap_or(""),args["aoi_geojson"].as_str().unwrap_or(""),&mk("dem_data","dem"),&mk("ndvi_old","o"),&mk("ndvi_new","n"),args["baseline_year"].as_u64().unwrap_or(2015) as u16,args["assessment_year"].as_u64().unwrap_or(2025) as u16,args["erosion_threshold_m"].as_f64().unwrap_or(1.0))?;
-        Ok(serde_json::to_value(report).map_err(geo_core::GeoError::Serde)?)
+        serde_json::to_value(report).map_err(geo_core::GeoError::Serde)
     },
         sync "coastal_storm_surge" => "SLOSH simplified storm surge model: Holland wind + wind setup + inundation" ; serde_json::json!({"type":"object","properties":{"lat":{"type":"number"},"lon":{"type":"number"},"central_pressure_hpa":{"type":"number"},"rmax_km":{"type":"number"},"forward_speed_m_s":{"type":"number"},"forward_bearing_deg":{"type":"number"},"dem":{"type":"array","items":{"type":"number"}},"cols":{"type":"integer"},"rows":{"type":"integer"},"cell_size_m":{"type":"number"},"land_mask":{"type":"array","items":{"type":"boolean"}}},"required":["dem","cols","rows","cell_size_m","land_mask"]}) => |args| -> ToolResult {
         let params=crate::storm_surge::StormParams{
@@ -29,14 +28,14 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let cell_size_m=args["cell_size_m"].as_f64().unwrap_or(1000.0);
         let land_mask:Vec<bool>=args["land_mask"].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_bool()).collect();
         let result=crate::CoastalPlugin::new().storm_surge(&params,&dem,rows,cols,cell_size_m,&land_mask)?;
-        Ok(serde_json::to_value(result).map_err(geo_core::GeoError::Serde)?)
+        serde_json::to_value(result).map_err(geo_core::GeoError::Serde)
     },
         sync "coastal_blue_carbon" => "Blue carbon stock & sequestration: mangrove/salt-marsh/seagrass" ; serde_json::json!({"type":"object","properties":{"ecosystem":{"type":"string","enum":["mangrove","salt_marsh","seagrass"]},"area_ha":{"type":"number"},"soil_factor":{"type":"number"}},"required":["ecosystem","area_ha"]}) => |args| -> ToolResult {
         let eco=args["ecosystem"].as_str().unwrap_or("mangrove");
         let area=args["area_ha"].as_f64().unwrap_or(1.0);
         let sf=args["soil_factor"].as_f64().unwrap_or(1.0);
         let r=crate::CoastalPlugin::new().assess_blue_carbon(eco,area,sf)?;
-        Ok(serde_json::to_value(r).map_err(geo_core::GeoError::Serde)?)
+        serde_json::to_value(r).map_err(geo_core::GeoError::Serde)
     },
         sync "coastal_blue_carbon_aggregate" => "Aggregate multiple blue carbon assessments" ; serde_json::json!({"type":"object","properties":{"items":{"type":"array","items":{"type":"object","properties":{"ecosystem":{"type":"string","enum":["mangrove","salt_marsh","seagrass"]},"area_ha":{"type":"number"},"soil_factor":{"type":"number"}},"required":["ecosystem","area_ha"]}}},"required":["items"]}) => |args| -> ToolResult {
         let items: Vec<BlueCarbonResult> = args["items"].as_array().unwrap_or(&vec![]).iter().map(|v| {
@@ -46,7 +45,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             crate::CoastalPlugin::new().assess_blue_carbon(eco,area,sf)
         }).filter_map(|r| r.ok()).collect();
         let agg=crate::CoastalPlugin::new().aggregate_blue_carbon(items);
-        Ok(serde_json::to_value(agg).map_err(geo_core::GeoError::Serde)?)
+        serde_json::to_value(agg).map_err(geo_core::GeoError::Serde)
     },
         sync "coastal_storm_surge_1d" => "1D storm surge profile: quick max surge along transect" ; serde_json::json!({"type":"object","properties":{"lat":{"type":"number"},"lon":{"type":"number"},"central_pressure_hpa":{"type":"number"},"rmax_km":{"type":"number"},"forward_speed_m_s":{"type":"number"},"coast_distance_km":{"type":"array","items":{"type":"number"}},"bathymetry_m":{"type":"array","items":{"type":"number"}}},"required":["coast_distance_km","bathymetry_m"]}) => |args| -> ToolResult {
         let params=crate::storm_surge::StormParams{

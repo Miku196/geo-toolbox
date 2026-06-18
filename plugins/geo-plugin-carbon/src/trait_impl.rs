@@ -27,6 +27,6 @@ impl ProcessPlugin for Cp {
     async fn execute(&self, p: serde_json::Value) -> GeoResult<serde_json::Value> {
         let g = p["geojson"].as_str().unwrap_or("");
         let y = p["year"].as_u64().unwrap_or(2025) as u16;
-        Ok(serde_json::to_value(self.calculate_from_geojson(g, y)?).map_err(GeoError::Serde)?)
+        serde_json::to_value(self.calculate_from_geojson(g, y)?).map_err(GeoError::Serde)
     }
 }

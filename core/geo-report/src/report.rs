@@ -111,7 +111,7 @@ impl ReportGenerator {
         let bytes = doc
             .with_pages(vec![page])
             .save(&PdfSaveOptions::default(), &mut Vec::new());
-        std::fs::write(path, bytes).map_err(|e| GeoError::Io(e))?;
+        std::fs::write(path, bytes).map_err(GeoError::Io)?;
         Ok(())
     }
 

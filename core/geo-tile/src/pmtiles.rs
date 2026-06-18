@@ -229,7 +229,7 @@ impl<W: Write + Seek> PmtilesWriter<W> {
     /// 写入文件。
     ///
     /// 写入顺序：Header (127B) → Directory → Tile Data。
-    pub fn finish(mut self) -> GeoResult<()> {
+    pub fn finish(mut self) -> GeoResult<W> {
         self.header.num_tiles = self.tiles.len() as u64;
 
         // 按 z, x, y 排序
@@ -315,7 +315,7 @@ impl<W: Write + Seek> PmtilesWriter<W> {
             self.writer.write_all(&data)?;
         }
 
-        Ok(())
+        Ok(self.writer)
     }
 }
 

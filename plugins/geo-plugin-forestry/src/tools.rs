@@ -1,5 +1,4 @@
 //! Tool registration — Forestry plugin.
-use geo_core::plugin::PluginCategory;
 use geo_registry::register_plugin;
 use geo_registry::registry::ToolResult;
 use geo_registry::PluginRegistry;
@@ -10,6 +9,6 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let nd=args["nodata"].as_f64().unwrap_or(-999.0);let c=args["cols"].as_u64().unwrap_or(1) as usize;let r=args["rows"].as_u64().unwrap_or(1) as usize;
         let mk=|k:&str,l:&str|{let v:Vec<f64>=args[k].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_f64()).collect();RasterBand::new(l,c,r,v,nd)};
         let result=crate::ForestryPlugin::new(Default::default()).assess_carbon_stock(args["aoi_name"].as_str().unwrap_or(""),args["aoi_geojson"].as_str().unwrap_or(""),&mk("red_old","r0"),&mk("nir_old","n0"),&mk("red_new","r1"),&mk("nir_new","n1"),args["year_old"].as_u64().unwrap_or(2020) as u16,args["year_new"].as_u64().unwrap_or(2025) as u16,args["baseline_area_ha"].as_f64().unwrap_or(100.0),args["baseline_volume_m3_ha"].as_f64().unwrap_or(200.0))?;
-        Ok(serde_json::to_value(result).map_err(geo_core::GeoError::Serde)?)
+        serde_json::to_value(result).map_err(geo_core::GeoError::Serde)
     }]);
 }

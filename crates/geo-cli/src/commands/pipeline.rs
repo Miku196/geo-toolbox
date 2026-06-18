@@ -9,7 +9,6 @@
 //! Wire format: GeoJSON FeatureCollection on stdin/stdout.
 //! stdin is read entirely before processing (not streaming).
 
-use geo_core::errors::GeoResult;
 use geo_wiring::PluginRegistry;
 use geojson::{FeatureCollection, GeoJson};
 use std::io::{self, Read, Write};
@@ -18,7 +17,7 @@ use crate::PipelineAction;
 
 /// Execute a pipeline action: read stdin, process, write stdout.
 pub fn handle(
-    registry: &PluginRegistry,
+    _registry: &PluginRegistry,
     action: PipelineAction,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match action {
@@ -40,7 +39,7 @@ fn read_stdin() -> io::Result<String> {
     Ok(buf)
 }
 
-fn read_input(input: Option<String>, format: &str) -> io::Result<String> {
+fn read_input(input: Option<String>, _format: &str) -> io::Result<String> {
     if let Some(path) = input {
         if path == "-" {
             read_stdin()
@@ -180,7 +179,7 @@ fn detect_column(headers: &csv::StringRecord, candidates: &[&str]) -> Option<usi
 
 fn handle_read(input: Option<String>, format: String) -> Result<(), Box<dyn std::error::Error>> {
     let content = read_input(input, &format)?;
-    let fc = parse_fc(&content, &format).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
+    let fc = parse_fc(&content, &format).map_err(Box::<dyn std::error::Error>::from)?;
     write_stdout(&fc_to_geojson(&fc))?;
     Ok(())
 }
@@ -249,12 +248,10 @@ fn simplify_geometry(geom: &geojson::Geometry, epsilon: f64) -> geojson::Geometr
     }
 }
 
-fn handle_reproject(from_epsg: u16, to_epsg: u16) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_reproject(_from_epsg: u16, _to_epsg: u16) -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(not(feature = "proj-crs"))]
     {
-        return Err(
-            "reproject requires 'proj-crs' feature (compiled with --features proj-crs)".into(),
-        );
+        Err("reproject requires 'proj-crs' feature (compiled with --features proj-crs)".into())
     }
     #[cfg(feature = "proj-crs")]
     {
@@ -417,7 +414,7 @@ fn handle_write(output: String, format: String) -> Result<(), Box<dyn std::error
         "csv" => {
             let mut wtr = csv::Writer::from_path(&output)?;
             // Write header
-            wtr.write_record(&["lon", "lat"])?;
+            wtr.write_record(["lon", "lat"])?;
             for feature in &fc.features {
                 if let Some(ref geom) = feature.geometry {
                     write_geom_csv(&mut wtr, geom)?;

@@ -29,5 +29,5 @@ mod tile_index;
 pub mod tools;
 
 pub use mvt::{GeomType, MvtEncoder, MvtFeature, MvtLayer};
-pub use pmtiles::{PmtilesReader, PmtilesWriter, TileType};
+pub use pmtiles::{Compression, PmtilesReader, PmtilesWriter, TileType};
 pub use tile_index::{latlon_to_tile, tile_bounds, tile_to_latlon, tile_url, TileSource};

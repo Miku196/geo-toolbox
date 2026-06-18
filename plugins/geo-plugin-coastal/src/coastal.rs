@@ -151,8 +151,8 @@ impl CoastalPlugin {
     pub fn bathtub_inundation(
         &self,
         dem: &[f64],
-        rows: usize,
-        cols: usize,
+        _rows: usize,
+        _cols: usize,
         cell_size_m: f64,
         sea_level_rise_m: f64,
     ) -> (f64, f64) {

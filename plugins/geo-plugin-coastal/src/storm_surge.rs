@@ -141,7 +141,7 @@ impl CoastalPlugin {
         let mut max_surge = 0.0_f64;
         let mut inundated_cells = 0usize;
         let mut total_surge = 0.0_f64;
-        let mut cell_area = cell_size_m * cell_size_m;
+        let cell_area = cell_size_m * cell_size_m;
 
         for i in 0..n {
             let r = (i / cols) as f64;
@@ -168,8 +168,8 @@ impl CoastalPlugin {
             // 3. 加入前进速度修正 (不对称风场)
             // 风向 = 梯度风方向 (绕中心逆时针) + 前进向量
             let bearing_rad = params.forward_bearing_deg * rad_per_deg;
-            let fx = params.forward_speed_m_s * bearing_rad.sin();
-            let fy = params.forward_speed_m_s * bearing_rad.cos();
+            let _fx = params.forward_speed_m_s * bearing_rad.sin();
+            let _fy = params.forward_speed_m_s * bearing_rad.cos();
 
             // 梯度风方向: 在风暴右侧(前进方向顺时针90°)更强
             let angle_from_center = (az - params.forward_bearing_deg + 360.0) % 360.0;

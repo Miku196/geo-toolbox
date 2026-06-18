@@ -35,6 +35,6 @@ impl ProcessPlugin for SurveyPlugin {
         let cols = p["grid_cols"].as_u64().unwrap_or(0) as usize;
         let rows = p["grid_rows"].as_u64().unwrap_or(0) as usize;
         let a = self.assess(&elev, design, cols, rows);
-        Ok(serde_json::to_value(&a).map_err(|e| geo_core::errors::GeoError::Serde(e))?)
+        serde_json::to_value(&a).map_err(geo_core::errors::GeoError::Serde)
     }
 }

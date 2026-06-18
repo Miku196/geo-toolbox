@@ -33,19 +33,15 @@ pub struct CarbonStockAssessment {
 /// 生长曲线模型类型（参考 forestat R 包 — CAF/IFRIT）。
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum GrowthModel {
+    #[default]
     Richards,
     Logistic,
     Korf,
     Gompertz,
     Weibull,
     Schumacher,
-}
-
-impl Default for GrowthModel {
-    fn default() -> Self {
-        Self::Richards
-    }
 }
 
 impl GrowthModel {

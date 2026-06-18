@@ -7,6 +7,7 @@ license.workspace = true
 
 [dependencies]
 geo-core = { path = "../geo-core" }
+geo-tile = { path = "../geo-tile" }
 geo-types.workspace = true
 geo.workspace = true
 serde = { workspace = true }

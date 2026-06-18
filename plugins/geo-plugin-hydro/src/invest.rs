@@ -154,7 +154,7 @@ pub fn assess_carbon_storage(
 
     for &lu in landuse_grid {
         let pool = match pools {
-            Some(ref map) => map
+            Some(map) => map
                 .get(lu)
                 .cloned()
                 .unwrap_or_else(|| default_carbon_pools(lu)),

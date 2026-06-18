@@ -6,8 +6,10 @@
 //! - `GetFeatureInfo` — query feature attributes at a pixel within a tile
 
 use crate::common::{OgcError, ServiceType, Wgs84Bbox};
+use crate::mvt_source::MvtFeatureProvider;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// WMTS request types per OGC WMTS 1.0.0 spec.
 #[derive(Debug, Clone)]
@@ -127,10 +129,14 @@ pub struct WmtsLayer {
     pub styles: Vec<String>,
     /// Resource URL template. Use {TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.{format}
     pub resource_url: Option<String>,
-    /// Optional tile renderer for real-time tile generation.
+    /// Optional tile renderer for real-time tile generation (raster/PNG).
     #[serde(skip)]
     #[allow(clippy::type_complexity)]
     pub renderer: Option<TileRendererFn>,
+    /// Optional MVT feature provider for vector tile generation.
+    /// When set, the layer can serve `application/vnd.mapbox-vector-tile`.
+    #[serde(skip)]
+    pub mvt_source: Option<Arc<dyn MvtFeatureProvider>>,
 }
 
 fn default_formats() -> Vec<String> {
@@ -149,7 +155,7 @@ pub mod renderers {
         let mut data = vec![0u8; 256 * 256 * 4];
         for py in 0usize..256 {
             for px in 0usize..256 {
-                let idx = (py as usize * 256 + px as usize) * 4;
+                let idx = (py * 256 + px) * 4;
                 let elev = ((x as f64 * 256.0 + px as f64) / (z.max(1) as f64 * 256.0)
                     + (y as f64 * 256.0 + py as f64) / (z.max(1) as f64 * 256.0))
                     % 1.0;
@@ -180,7 +186,7 @@ pub mod renderers {
     }
 
     /// Land cover style: colored blocks based on tile coordinates.
-    pub fn landcover(z: u32, x: u32, y: u32) -> Vec<u8> {
+    pub fn landcover(_z: u32, x: u32, y: u32) -> Vec<u8> {
         let colors: [(u8, u8, u8); 8] = [
             (34, 139, 34),   // forest green
             (154, 205, 50),  // grassland
@@ -322,7 +328,17 @@ impl WmtsService {
             });
         }
 
-        // Generate tile using layer renderer, fallback to default, then checkerboard
+        // Dispatch MVT format vs raster format
+        let is_mvt = params
+            .format
+            .starts_with("application/vnd.mapbox-vector-tile")
+            || params.format == "application/x-protobuf";
+
+        if is_mvt {
+            return self.handle_mvt_tile(layer, params);
+        }
+
+        // Generate raster tile using layer renderer, fallback to default, then checkerboard
         let tm: u32 = params.tile_matrix.parse().unwrap_or(0);
         let renderer = layer.renderer.as_ref().or(self.default_renderer.as_ref());
         let data = match renderer {
@@ -333,6 +349,70 @@ impl WmtsService {
         Ok(WmtsResponse::Tile {
             data,
             mime_type: params.format.clone(),
+        })
+    }
+
+    /// Handle an MVT (vector tile) request.
+    fn handle_mvt_tile(
+        &self,
+        layer: &WmtsLayer,
+        params: &WmtsGetTileParams,
+    ) -> Result<WmtsResponse, OgcError> {
+        let provider = layer.mvt_source.as_ref().ok_or_else(|| {
+            OgcError::new(
+                ServiceType::WMTS,
+                "1.0.0",
+                "InvalidParameterValue",
+                format!("Layer '{}' does not support MVT format", params.layer),
+            )
+        })?;
+
+        let zoom: u8 = params.tile_matrix.parse().unwrap_or(0);
+        let features = provider.features_for_tile(zoom, params.tile_col, params.tile_row);
+
+        if features.is_empty() {
+            // Return an empty MVT tile (valid protobuf)
+            let layer = geo_tile::MvtLayer {
+                name: params.layer.clone(),
+                extent: 4096,
+                features: vec![],
+            };
+            let encoder = geo_tile::MvtEncoder::new(4096);
+            let data = encoder.encode(&[layer]).map_err(|e| {
+                OgcError::new(
+                    ServiceType::WMTS,
+                    "1.0.0",
+                    "InternalError",
+                    format!("MVT encode error: {e}"),
+                )
+            })?;
+            return Ok(WmtsResponse::Tile {
+                data,
+                mime_type: "application/vnd.mapbox-vector-tile".to_string(),
+            });
+        }
+
+        let encoder = geo_tile::MvtEncoder::new(4096);
+        let data = encoder
+            .encode_tile(
+                &params.layer,
+                &features,
+                params.tile_col,
+                params.tile_row,
+                zoom,
+            )
+            .map_err(|e| {
+                OgcError::new(
+                    ServiceType::WMTS,
+                    "1.0.0",
+                    "InternalError",
+                    format!("MVT encode error: {e}"),
+                )
+            })?;
+
+        Ok(WmtsResponse::Tile {
+            data,
+            mime_type: "application/vnd.mapbox-vector-tile".to_string(),
         })
     }
 
@@ -596,6 +676,100 @@ pub enum WmtsResponse {
     },
 }
 
+// ── PMTiles archive building ──
+
+impl WmtsService {
+    /// Build a PMTiles archive for a named layer across all zoom levels 0-10.
+    ///
+    /// Uses the layer's `mvt_source` to generate vector tiles at each tile coordinate
+    /// for zoom levels 0 through 10. The archive is written to the provided writer.
+    ///
+    /// # Errors
+    /// Returns an error if the layer doesn't exist or doesn't have an MVT source.
+    pub fn build_pmtiles_archive<W: std::io::Write + std::io::Seek>(
+        &self,
+        layer_name: &str,
+        writer: W,
+    ) -> Result<geo_tile::PmtilesWriter<W>, OgcError> {
+        let layer = self
+            .layers
+            .iter()
+            .find(|l| l.name == layer_name)
+            .ok_or_else(|| {
+                OgcError::new(
+                    ServiceType::WMTS,
+                    "1.0.0",
+                    "LayerNotDefined",
+                    format!("Layer '{}' not found", layer_name),
+                )
+            })?;
+
+        let provider = layer.mvt_source.as_ref().ok_or_else(|| {
+            OgcError::new(
+                ServiceType::WMTS,
+                "1.0.0",
+                "InvalidParameterValue",
+                format!(
+                    "Layer '{}' does not have an MVT source. PMTiles requires an MVT source.",
+                    layer_name
+                ),
+            )
+        })?;
+
+        let mut pm_writer = geo_tile::PmtilesWriter::new(
+            writer,
+            geo_tile::TileType::Mvt,
+            geo_tile::Compression::None,
+        );
+
+        for z in 0..=10u8 {
+            let n = 2u32.pow(z as u32);
+            for x in 0..n {
+                for y in 0..n {
+                    let features = provider.features_for_tile(z, x, y);
+                    if !features.is_empty() {
+                        let encoder = geo_tile::MvtEncoder::new(4096);
+                        let tile_data = encoder
+                            .encode_tile(layer_name, &features, x, y, z)
+                            .map_err(|e| {
+                                OgcError::new(
+                                    ServiceType::WMTS,
+                                    "1.0.0",
+                                    "InternalError",
+                                    format!("MVT encode error at ({z},{x},{y}): {e}"),
+                                )
+                            })?;
+                        pm_writer.add_tile(z, x, y, tile_data);
+                    }
+                }
+            }
+        }
+
+        Ok(pm_writer)
+    }
+
+    /// Count MVT tiles that would be generated for a layer across all zoom levels 0-10.
+    /// Useful for estimating PMTiles archive size.
+    pub fn estimate_mvt_tile_count(&self, layer_name: &str) -> Option<usize> {
+        let layer = self.layers.iter().find(|l| l.name == layer_name)?;
+        let provider = layer.mvt_source.as_ref()?;
+
+        let mut count = 0;
+        for z in 0..=10u8 {
+            let n = 2u32.pow(z as u32);
+            for x in 0..n {
+                for y in 0..n {
+                    let features = provider.features_for_tile(z, x, y);
+                    if !features.is_empty() {
+                        count += 1;
+                    }
+                }
+            }
+        }
+        Some(count)
+    }
+}
+
 // ── Tile cache ──
 
 /// Key for identifying a cached tile.
@@ -703,7 +877,7 @@ impl TileCache {
                         tile_col: col,
                         tile_row: row,
                     };
-                    if !self.tiles.contains_key(&key) {
+                    if let std::collections::hash_map::Entry::Vacant(e) = self.tiles.entry(key) {
                         let mut data = vec![0u8; tile_size];
                         for yy in 0..256 {
                             for xx in 0..256 {
@@ -714,7 +888,7 @@ impl TileCache {
                                 data[idx + 3] = 255;
                             }
                         }
-                        self.tiles.insert(key, data);
+                        e.insert(data);
                         count += 1;
                     }
                 }
@@ -801,6 +975,7 @@ mod tests {
                     .into(),
             ),
             renderer: None,
+            mvt_source: None,
         });
         svc.add_tile_matrix_set(global_geodetic_tile_matrix_set());
         svc.add_tile_matrix_set(global_mercator_tile_matrix_set());
@@ -926,6 +1101,7 @@ mod tests {
             styles: vec![],
             resource_url: None,
             renderer: None,
+            mvt_source: None,
         });
         svc.add_tile_matrix_set(TileMatrixSet {
             identifier: "EPSG:4326".into(),
@@ -983,6 +1159,7 @@ mod tests {
             styles: vec![],
             resource_url: None,
             renderer: Some(renderers::elevation),
+            mvt_source: None,
         });
         svc.add_tile_matrix_set(TileMatrixSet {
             identifier: "EPSG:4326".into(),
@@ -1023,7 +1200,7 @@ mod tests {
     }
 
     #[test]
-    fn test_wmts_renderer_fallback() {
+    fn test_renderer_fallback() {
         let mut svc = WmtsService::new("Test", "http://localhost/test");
         svc.add_layer(WmtsLayer {
             name: "no_renderer".into(),
@@ -1037,6 +1214,7 @@ mod tests {
             styles: vec![],
             resource_url: None,
             renderer: None,
+            mvt_source: None,
         });
         svc.add_tile_matrix_set(TileMatrixSet {
             identifier: "EPSG:4326".into(),
@@ -1068,5 +1246,157 @@ mod tests {
         };
         let result = svc.handle(&WmtsRequest::GetTile(params));
         assert!(result.is_ok());
+    }
+
+    // ── MVT tile tests ──
+
+    fn make_service_with_mvt() -> WmtsService {
+        use crate::mvt_source::JsonFeatureProvider;
+
+        let geojson = r#"{
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "properties": {"name": "test-point"},
+                "geometry": {"type": "Point", "coordinates": [104.0, 30.0]}
+            }]
+        }"#;
+        let provider = JsonFeatureProvider::new(geojson).unwrap();
+
+        let mut svc = WmtsService::new("Test MVT", "http://localhost/wmts");
+        svc.add_layer(WmtsLayer {
+            name: "test-mvt".into(),
+            title: "Test MVT Layer".into(),
+            abstract_: None,
+            keywords: vec![],
+            wgs84_bbox: Some(Wgs84Bbox::new(100.0, 20.0, 110.0, 40.0)),
+            crs: vec!["EPSG:3857".into()],
+            tile_matrix_sets: vec!["EPSG:3857".into()],
+            formats: vec![
+                "image/png".into(),
+                "application/vnd.mapbox-vector-tile".into(),
+            ],
+            styles: vec!["default".into()],
+            resource_url: Some(
+                "http://localhost/wmts?request=GetTile&layer={layer}&TileMatrixSet={TileMatrixSet}&TileMatrix={TileMatrix}&TileCol={TileCol}&TileRow={TileRow}&format={format}"
+                    .into(),
+            ),
+            renderer: None,
+            mvt_source: Some(Arc::new(provider)),
+        });
+        svc.add_tile_matrix_set(global_mercator_tile_matrix_set());
+        svc
+    }
+
+    #[test]
+    fn test_mvt_get_tile() {
+        let svc = make_service_with_mvt();
+        let params = WmtsGetTileParams {
+            layer: "test-mvt".into(),
+            tile_matrix_set: "EPSG:3857".into(),
+            tile_matrix: "10".into(),
+            tile_col: 844,
+            tile_row: 385,
+            format: "application/vnd.mapbox-vector-tile".into(),
+        };
+        let result = svc.handle(&WmtsRequest::GetTile(params));
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        match response {
+            WmtsResponse::Tile { data, mime_type } => {
+                assert!(!data.is_empty(), "MVT tile data should not be empty");
+                assert_eq!(
+                    mime_type, "application/vnd.mapbox-vector-tile",
+                    "MIME type should be MVT"
+                );
+            }
+            _ => panic!("Expected Tile response, got Xml"),
+        }
+    }
+
+    #[test]
+    fn test_mvt_get_tile_png_fallback() {
+        // When requesting PNG format, the MVT layer should fall through to checkerboard
+        let svc = make_service_with_mvt();
+        let params = WmtsGetTileParams {
+            layer: "test-mvt".into(),
+            tile_matrix_set: "EPSG:3857".into(),
+            tile_matrix: "10".into(),
+            tile_col: 844,
+            tile_row: 385,
+            format: "image/png".into(),
+        };
+        let result = svc.handle(&WmtsRequest::GetTile(params));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_mvt_get_tile_layer_not_found() {
+        let svc = make_service_with_mvt();
+        let params = WmtsGetTileParams {
+            layer: "nonexistent".into(),
+            tile_matrix_set: "EPSG:3857".into(),
+            tile_matrix: "10".into(),
+            tile_col: 844,
+            tile_row: 385,
+            format: "application/vnd.mapbox-vector-tile".into(),
+        };
+        let result = svc.handle(&WmtsRequest::GetTile(params));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_mvt_layer_empty_source() {
+        // A layer without mvt_source should return error for MVT format
+        let svc = make_service(); // No MVT source
+        let params = WmtsGetTileParams {
+            layer: "sentinel-2".into(),
+            tile_matrix_set: "EPSG:4326".into(),
+            tile_matrix: "0".into(),
+            tile_col: 0,
+            tile_row: 0,
+            format: "application/vnd.mapbox-vector-tile".into(),
+        };
+        let result = svc.handle(&WmtsRequest::GetTile(params));
+        assert!(
+            result.is_err(),
+            "Layer without MVT source should error on MVT request"
+        );
+    }
+
+    #[test]
+    fn test_pmtiles_archive_build() {
+        let svc = make_service_with_mvt();
+        let cursor = std::io::Cursor::new(Vec::new());
+        let result = svc.build_pmtiles_archive("test-mvt", cursor);
+        assert!(result.is_ok(), "PMTiles archive build should succeed");
+        let pm_writer = result.unwrap();
+        assert!(pm_writer.finish().is_ok());
+    }
+
+    #[test]
+    fn test_pmtiles_archive_layer_not_found() {
+        let svc = make_service_with_mvt();
+        let writer = std::io::Cursor::new(Vec::new());
+        let result = svc.build_pmtiles_archive("nonexistent", writer);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_estimate_mvt_tile_count() {
+        let svc = make_service_with_mvt();
+        let count = svc.estimate_mvt_tile_count("test-mvt");
+        assert!(count.is_some(), "Should get a tile count estimate");
+        assert!(count.unwrap() > 0, "Should have at least 1 non-empty tile");
+    }
+
+    #[test]
+    fn test_estimate_mvt_tile_count_no_mvt() {
+        let svc = make_service(); // No MVT source
+        let count = svc.estimate_mvt_tile_count("sentinel-2");
+        assert!(
+            count.is_none(),
+            "Layer without MVT source should return None"
+        );
     }
 }

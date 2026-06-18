@@ -1,7 +1,7 @@
 use geo_core::plugin::PluginConfig;
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct SurveyConfig {
     pub plugin: PluginMeta,
     #[serde(default)]
@@ -80,17 +80,6 @@ impl Default for PluginMeta {
             name: "survey".into(),
             version: env!("CARGO_PKG_VERSION").into(),
             description: "测绘工程：方格网土方、断面法、TIN、控制网平差、高斯投影".into(),
-        }
-    }
-}
-
-impl Default for SurveyConfig {
-    fn default() -> Self {
-        Self {
-            plugin: PluginMeta::default(),
-            adjustment: AdjustmentParams::default(),
-            earthwork: EarthworkParams::default(),
-            contour: ContourParams::default(),
         }
     }
 }

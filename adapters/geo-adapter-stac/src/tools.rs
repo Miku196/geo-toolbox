@@ -7,6 +7,6 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let client = crate::StacClient::new(ep);
         let limit = (args["limit"].as_u64().unwrap_or(10) as usize).try_into().unwrap_or(10);
         let items = client.search(args["collection"].as_str().unwrap_or("sentinel-2-l2a"),args["min_lon"].as_f64().unwrap_or(0.0),args["min_lat"].as_f64().unwrap_or(0.0),args["max_lon"].as_f64().unwrap_or(0.0),args["max_lat"].as_f64().unwrap_or(0.0),args["date_from"].as_str().unwrap_or("2025-01-01"),args["date_to"].as_str().unwrap_or("2025-12-31"),limit).await.map_err(|e| geo_core::GeoError::Other(e.to_string()))?;
-        Ok(serde_json::to_value(items).map_err(geo_core::GeoError::Serde)?)
+        serde_json::to_value(items).map_err(geo_core::GeoError::Serde)
     })]);
 }

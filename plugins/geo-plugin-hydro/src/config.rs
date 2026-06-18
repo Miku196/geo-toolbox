@@ -1,7 +1,7 @@
 use geo_core::plugin::PluginConfig;
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct HydroConfig {
     pub plugin: PluginMeta,
     #[serde(default)]
@@ -78,17 +78,6 @@ impl Default for PluginMeta {
             name: "hydro".into(),
             version: env!("CARGO_PKG_VERSION").into(),
             description: "水文分析：D8 汇流、径流、淹没分析、集水区提取".into(),
-        }
-    }
-}
-
-impl Default for HydroConfig {
-    fn default() -> Self {
-        Self {
-            plugin: PluginMeta::default(),
-            flood: FloodParams::default(),
-            runoff: RunoffParams::default(),
-            catchment: CatchmentParams::default(),
         }
     }
 }

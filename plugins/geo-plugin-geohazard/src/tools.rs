@@ -1,6 +1,6 @@
 //! Tool registration — Geohazard plugin.
 use crate::config::GeohazardConfig;
-use crate::geohazard::{DebrisFlowRunout, GeohazardPlugin};
+use crate::geohazard::GeohazardPlugin;
 use crate::rainfall_threshold::{IdCurve, RainfallClass};
 use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;

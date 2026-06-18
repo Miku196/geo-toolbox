@@ -17,7 +17,7 @@ impl IpccEfDb {
 
     /// Full EmissionFactor for stationary combustion of a fuel.
     pub fn stationary_combustion(fuel: FuelType, quantity: f64) -> EmissionFactor {
-        let co2 = fuel.compute_co2(quantity);
+        let _co2 = fuel.compute_co2(quantity);
         EmissionFactor::for_fuel(fuel, quantity)
     }
 

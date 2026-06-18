@@ -535,7 +535,7 @@ pub fn zonal_stats(
 /// 将坡向角度映射为 8 方向字符串。
 fn classify_aspect(degrees: f64) -> String {
     match degrees {
-        d if d < 22.5 || d >= 337.5 => "N",
+        d if !(22.5..337.5).contains(&d) => "N",
         d if (22.5..67.5).contains(&d) => "NE",
         d if (67.5..112.5).contains(&d) => "E",
         d if (112.5..157.5).contains(&d) => "SE",

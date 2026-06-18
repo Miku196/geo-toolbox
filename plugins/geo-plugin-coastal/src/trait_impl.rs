@@ -37,7 +37,7 @@ impl ProcessPlugin for CoastalPlugin {
                 .collect();
             RasterBand::new(k, c, r, v, nd)
         };
-        Ok(serde_json::to_value(self.assess_shoreline(
+        serde_json::to_value(self.assess_shoreline(
             p["aoi_name"].as_str().unwrap_or(""),
             p["aoi_geojson"].as_str().unwrap_or(""),
             &mk("dem_data"),
@@ -47,6 +47,6 @@ impl ProcessPlugin for CoastalPlugin {
             p["assessment_year"].as_u64().unwrap_or(2025) as u16,
             p["erosion_threshold_m"].as_f64().unwrap_or(1.0),
         )?)
-        .map_err(GeoError::Serde)?)
+        .map_err(GeoError::Serde)
     }
 }

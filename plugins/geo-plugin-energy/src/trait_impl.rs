@@ -38,12 +38,12 @@ impl ProcessPlugin for EnergyPlugin {
                 .collect();
             RasterBand::new(k, c, r, v, nd)
         };
-        Ok(serde_json::to_value(self.assess_solar(
+        serde_json::to_value(self.assess_solar(
             p["aoi_name"].as_str().unwrap_or(""),
             p["aoi_geojson"].as_str().unwrap_or(""),
             &mk("dem_data"),
             &mk("radiation_data"),
         )?)
-        .map_err(GeoError::Serde)?)
+        .map_err(GeoError::Serde)
     }
 }

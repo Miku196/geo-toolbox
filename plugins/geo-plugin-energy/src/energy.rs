@@ -251,7 +251,7 @@ fn gamma_approx(x: f64) -> f64 {
     // Stirling: Γ(x) ≈ sqrt(2π/x) * (x/e)^x
     let n = x;
     let mut g = 1.0;
-    let mut t = n;
+    let _t = n;
     // Use the recurrence Γ(x+1) = x * Γ(x) with Lanczos-like log
     if n < 1.0 {
         g = std::f64::consts::PI / ((std::f64::consts::PI * n).sin() * gamma_approx(1.0 - n));
@@ -272,8 +272,8 @@ fn gamma_approx(x: f64) -> f64 {
             9.984369578019572e-6,
             1.5056327351493116e-7,
         ];
-        let mut z = n - 1.0;
-        let mut x_l = 0.99999999999980993;
+        let z = n - 1.0;
+        let mut x_l = 0.999_999_999_999_809_9;
         for (i, &pi) in p.iter().enumerate() {
             x_l += pi / (z + i as f64 + 1.0);
         }

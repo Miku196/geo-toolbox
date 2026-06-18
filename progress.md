@@ -1,61 +1,38 @@
 # Progress
 
 ## Status
-Phase 5.2 + Phase 4.2 + Phase 4.4 Round 2 (2026-06-18) — ✅ 已完成
+Phase 4.2 (MVT/PMTiles) + 死代码清理 (2026-06-19) — ✅
 
-## 2026-06-18
+## 2026-06-19
 
-### Round 2 — 并行开发 (Bug修复 + 功能补全 + ROADMAP同步)
+### WMTS MVT 瓦片 + PMTiles 归档 (Phase 4.2)
+- [x] `geo-ogc::mvt_source` 模块 — `MvtFeatureProvider` trait, `JsonFeatureProvider`, `render_mvt_tile()`
+- [x] `WmtsLayer` 新增 `mvt_source` 字段 — 支持 MVT 格式
+- [x] `handle_get_tile()` 根据 format 分发 MVT/栅格渲染
+- [x] `handle_mvt_tile()` — 使用 `geo-tile::MvtEncoder` 生成 protobuf 瓦片
+- [x] `WmtsService::build_pmtiles_archive()` — z0-10 全量 MVT 瓦片 → PMTiles v3
+- [x] `WmtsService::estimate_mvt_tile_count()` — MVT 瓦片数量预估
+- [x] `PmtilesWriter::finish()` 返回 `GeoResult<W>` 而非 `()`
+- [x] `geo-server` 新增 `china-cities` MVT 示例图层
+- [x] `geo-server` 新增 `GET /pmtiles/{layer}` 端点 → PMTiles 文件下载
+- [x] +14 tests (geo-ogc: 25→39)
 
-#### Bug 修复 (5 处)
-- [x] `geohazard/rainfall_threshold.rs:236`: 模糊浮点类型 → 添加闭包类型注解 `|&d: &f64|`
-- [x] `coastal/blue_carbon.rs:250`: 字段名 `total_seq_tco2e_yr` → `annual_seq_tco2e_yr`
-- [x] `coastal/storm_surge.rs:155`: 角度度→公里单位缺失 → `dist_km * 111.32`
-- [x] `coastal/storm_surge.rs:295`: 测试风暴中心(30,122)在20×20网格外 → (10,10)
-- [x] `geohazard/rainfall_threshold.rs:345`: 断言 `rp.alpha > base.alpha` → `rp.alpha < base.alpha`
-
-#### MCP Resource/Prompt 层 (Phase 5.2)
-- [x] `PluginRegistry::generate_mcp_resources()` — 6 个内置数据集 (emission-factors, carbon-pools, soil-groups, landcover-cn, id-thresholds, coastal-carbon)
-- [x] `PluginRegistry::generate_mcp_prompts()` — 6 个分析提示模板 (carbon-assessment, ecological-restoration, flood-risk, geohazard, solar, forest-carbon-stock)
-- [x] MCP server 新增 `resources/list`, `resources/read`, `prompts/list`, `prompts/get` 方法处理器
-- [x] 初始化响应声明 `tools + resources + prompts` 三项能力
-- [x] `PluginRegistry::generate_tool_schemas()` — 全部工具 JSON Schema 文档导出
-- [x] +3 tests (geo-registry: 4→8)
-
-#### WMTS TileCache + TileRenderer (Phase 4.2)
-- [x] `TileCache` 结构体 (HashMap, 10K 条目, get/insert/pre_cache/clear)
-- [x] 集成至 `WmtsService` — `handle_get_tile()` 优先查缓存
-- [x] `renderers` 模块 — elevation/landcover/checkerboard 三种渲染器
-- [x] `TileRendererFn` 类型别名为 WmtsLayer.renderer 字段
-- [x] +7 tests (geo-ogc: 16→25)
-
-#### QGIS 进度回调 (Phase 4.4)
-- [x] `ProgressCallback` 类型: `Box<dyn Fn(String, f64, usize, usize) + Send>`
-- [x] `JobQueue::set_progress_callback()` + `run_all()` 每次完成作业后调用
-- [x] +2 tests (geo-adapter-qgis: 10→12)
-
-#### ROADMAP 同步
-- [x] 3 处 [ ] → [x]: cargo-llvm-cov接入, WMTS GetTile, 批处理任务队列
-- [x] 4 处已由并行代理标记: Resource/Prompt层, Tool Schema, TileCache, 进度回调
-- [x] 12 处 [ ] 仍保留 (网络阻断的WASM/Python + 架构待定的Jupyter/MVT/CI自动issue)
+### 死代码清理
+- [x] 移除 3 个确实未用的 Rust 导入 (Point, DebrisFlowRunout, GeeMq)
+- [x] 保留 trait 导入 (Row/Column/ExternalAdapter/Plugin/Area/Centroid/BoundingRect/ConvexHull) — 方法解析必需
+- [x] ROADMAP.md 更新 MVT 瓦片状态 [ ]→[x]
 
 ### 测试统计
 | 包 | 通过 | 新增 |
 |----|------|------|
-| geo-ogc | 25 | +7 (TileCache + renderer tests) |
-| geo-registry | 8 | +4 (MCP resource/prompt + tool schemas) |
-| geo-adapter-qgis | 12 | +2 (progress callback) |
-| geo-plugin-coastal | 16 | — (bug fix restored 1) |
-| geo-plugin-geohazard | 37 | — (bug fix restored 1) |
-| geo-server | 编译通过 | — (renderer field added) |
+| geo-ogc | 39 | +14 (MVT/PMTiles) |
+| geo-tile | 11 | — (finish() 返回类型变更) |
+| geo-vector | 14 | — |
+| geo-server | 编译通过 | — |
+| workspace | ✅ 0 error | — |
 
-### 剩余 [ ] 项 (12 处)
+### 剩余 [ ] 项 (11 处)
 - USTC 镜像网络阻断: WASM npm发布, TypeScript类型, Python bindings (maturin)
-- 架构待定: Jupyter Kernel, WMTS MVT瓦片, CI PR覆盖率比较门禁, CI自动issue
-- 低优先级: %%geo magic, matplotlib可视化, pandas↔GeoJSON, QGIS工具箱
-
-## Tasks
-
-## Files Changed
-
-## Notes
+- 架构待定: Jupyter Kernel, %%geo magic, matplotlib可视化, pandas↔GeoJSON
+- CI: PR覆盖率比较门禁, CI自动issue
+- 低优先级: QGIS工具箱,

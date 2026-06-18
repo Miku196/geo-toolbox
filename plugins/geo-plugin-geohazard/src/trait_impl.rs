@@ -66,7 +66,7 @@ impl ProcessPlugin for GeohazardPlugin {
                 let result = self.landslide_susceptibility(
                     slope_deg, aspect_deg, lithology, rainfall, fault, ndvi,
                 );
-                Ok(serde_json::to_value(&result).map_err(|e| GeoError::Serde(e))?)
+                Ok(serde_json::to_value(&result).map_err(GeoError::Serde)?)
             }
 
             "debris_flow" => {
@@ -75,7 +75,7 @@ impl ProcessPlugin for GeohazardPlugin {
                 let rainfall = params["rainfall_24h_mm"].as_f64().unwrap_or(30.0);
 
                 let result = self.debris_flow_hazard(gradient, material, rainfall);
-                Ok(serde_json::to_value(&result).map_err(|e| GeoError::Serde(e))?)
+                Ok(serde_json::to_value(&result).map_err(GeoError::Serde)?)
             }
 
             "debris_flow_runout" => {
@@ -86,7 +86,7 @@ impl ProcessPlugin for GeohazardPlugin {
 
                 let result =
                     self.debris_flow_runout_assessment(area, rainfall, elevation, gradient)?;
-                Ok(serde_json::to_value(&result).map_err(|e| GeoError::Serde(e))?)
+                Ok(serde_json::to_value(&result).map_err(GeoError::Serde)?)
             }
 
             _ => {
@@ -122,7 +122,7 @@ impl ProcessPlugin for GeohazardPlugin {
                 };
 
                 let assessment = self.overall_assessment(ls, df, &aoi_name);
-                Ok(serde_json::to_value(&assessment).map_err(|e| GeoError::Serde(e))?)
+                Ok(serde_json::to_value(&assessment).map_err(GeoError::Serde)?)
             }
         }
     }

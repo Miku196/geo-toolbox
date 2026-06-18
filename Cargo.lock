@@ -2064,6 +2064,7 @@ dependencies = [
  "chrono",
  "geo",
  "geo-core",
+ "geo-tile",
  "geo-types",
  "serde",
  "serde_json",
@@ -2272,6 +2273,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "geo-ogc",
+ "geo-tile",
  "geo-wiring",
  "serde",
  "serde_json",
