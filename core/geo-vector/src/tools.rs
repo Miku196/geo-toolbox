@@ -41,12 +41,12 @@ pub fn register_tools(registry: &mut PluginRegistry) {
     register_plugin!(registry, "vector", "Pure-Rust vector ops: buffer, intersect, area, centroid", PluginCategory::Process, [
         sync "vector_buffer" => "Create a bbox buffer around a Polygon" ; serde_json::json!({"type":"object","properties":{"geojson":{"type":"string"},"distance_m":{"type":"number"}},"required":["geojson","distance_m"]}) => |args| -> ToolResult {
         let p = parse_polygon(args["geojson"].as_str().unwrap_or("{}"))?;
-        Ok(multipolygon_to_json(&crate::buffer(&p, args["distance_m"].as_f64().unwrap_or(0.0), crate::BufferMode::ConvexHull { quadrant_segments: 8 })))
+        Ok(multipolygon_to_json(&crate::ops::buffer(&p, args["distance_m"].as_f64().unwrap_or(0.0), crate::ops::BufferMode::ConvexHull { quadrant_segments: 8 })))
     },
         sync "vector_intersect" => "Compute intersection of two Polygons" ; serde_json::json!({"type":"object","properties":{"geojson_a":{"type":"string"},"geojson_b":{"type":"string"}},"required":["geojson_a","geojson_b"]}) => |args| -> ToolResult {
         let a = parse_polygon(args["geojson_a"].as_str().unwrap_or("{}"))?;
         let b = parse_polygon(args["geojson_b"].as_str().unwrap_or("{}"))?;
-        let r = crate::intersect(&a,&b).ok_or_else(|| geo_core::GeoError::Validation("no intersection".into()))?;
+        let r = crate::ops::intersect(&a,&b).ok_or_else(|| geo_core::GeoError::Validation("no intersection".into()))?;
         Ok(multipolygon_to_json(&r))
     },
         sync "vector_area" => "Compute area of a Polygon in m² and ha" ; serde_json::json!({"type":"object","properties":{"geojson":{"type":"string"}},"required":["geojson"]}) => |args| -> ToolResult {
@@ -56,7 +56,40 @@ pub fn register_tools(registry: &mut PluginRegistry) {
     },
         sync "vector_centroid" => "Compute centroid of a Polygon" ; serde_json::json!({"type":"object","properties":{"geojson":{"type":"string"}},"required":["geojson"]}) => |args| -> ToolResult {
         let p = parse_polygon(args["geojson"].as_str().unwrap_or("{}"))?;
-        let c = crate::centroid(&p).ok_or_else(|| geo_core::GeoError::Validation("centroid failed".into()))?;
+        let c = crate::stats::centroid(&p).ok_or_else(|| geo_core::GeoError::Validation("centroid failed".into()))?;
         Ok(serde_json::json!({"lon":c.x(),"lat":c.y()}))
+    },
+        sync "vector_difference" => "A - B: erase/remove area of B from A" ; serde_json::json!({"type":"object","properties":{"geojson_a":{"type":"string"},"geojson_b":{"type":"string"}},"required":["geojson_a","geojson_b"]}) => |args| -> ToolResult {
+        let a = parse_polygon(args["geojson_a"].as_str().unwrap_or("{}"))?;
+        let b = parse_polygon(args["geojson_b"].as_str().unwrap_or("{}"))?;
+        let r = crate::ops::difference(&a,&b).ok_or_else(|| geo_core::GeoError::Validation("difference produced empty result".into()))?;
+        Ok(multipolygon_to_json(&r))
+    },
+        sync "vector_sym_difference" => "A XOR B: non-overlapping parts of two Polygons" ; serde_json::json!({"type":"object","properties":{"geojson_a":{"type":"string"},"geojson_b":{"type":"string"}},"required":["geojson_a","geojson_b"]}) => |args| -> ToolResult {
+        let a = parse_polygon(args["geojson_a"].as_str().unwrap_or("{}"))?;
+        let b = parse_polygon(args["geojson_b"].as_str().unwrap_or("{}"))?;
+        let r = crate::ops::sym_difference(&a,&b).ok_or_else(|| geo_core::GeoError::Validation("sym_difference produced empty result".into()))?;
+        Ok(multipolygon_to_json(&r))
+    },
+        sync "vector_clip" => "Clip a MultiPolygon by a Polygon boundary" ; serde_json::json!({"type":"object","properties":{"geojson_target":{"type":"string"},"geojson_clip":{"type":"string"}},"required":["geojson_target","geojson_clip"]}) => |args| -> ToolResult {
+        let target_v: serde_json::Value = serde_json::from_str(args["geojson_target"].as_str().unwrap_or("{}"))?;
+        let _coords = target_v["coordinates"].as_array().and_then(|c| c[0].as_array()).cloned().unwrap_or_default();
+        let polys: Vec<geo_types::Polygon<f64>> = if target_v["type"] == "MultiPolygon" {
+            target_v["coordinates"].as_array().map(|arr| {
+                arr.iter().filter_map(|p| {
+                    let ring = p[0].as_array()?;
+                    let pts: Vec<_> = ring.iter().filter_map(|c| Some(geo_types::Coord{x: c[0].as_f64()?, y: c[1].as_f64()?})).collect();
+                    Some(geo_types::Polygon::new(geo_types::LineString::from(pts), vec![]))
+                }).collect()
+            }).unwrap_or_default()
+        } else {
+            let ring = target_v["coordinates"][0].as_array().cloned().unwrap_or_default();
+            let pts: Vec<_> = ring.iter().filter_map(|c| Some(geo_types::Coord{x: c[0].as_f64()?, y: c[1].as_f64()?})).collect();
+            vec![geo_types::Polygon::new(geo_types::LineString::from(pts), vec![])]
+        };
+        let mp: geo_types::MultiPolygon<f64> = polys.into();
+        let clip_p = parse_polygon(args["geojson_clip"].as_str().unwrap_or("{}"))?;
+        let result = crate::ops::clip(&mp, &clip_p);
+        Ok(multipolygon_to_json(&result))
     }]);
 }

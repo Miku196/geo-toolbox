@@ -357,6 +357,36 @@ pub fn union_all(polys: &[Polygon<f64>]) -> Option<MultiPolygon<f64>> {
     Some(result)
 }
 
+/// 计算 A - B（擦除/裁剪）。返回 A 中不在 B 内的部分。
+pub fn difference(a: &Polygon<f64>, b: &Polygon<f64>) -> Option<MultiPolygon<f64>> {
+    if !bbox_intersect(a, b) {
+        return Some(MultiPolygon::new(vec![a.clone()]));
+    }
+    let result = a.difference(b);
+    if result.0.is_empty() { None } else { Some(result) }
+}
+
+/// 计算对称差 (A XOR B)。返回 A 和 B 的不重叠部分。
+pub fn sym_difference(a: &Polygon<f64>, b: &Polygon<f64>) -> Option<MultiPolygon<f64>> {
+    if !bbox_intersect(a, b) {
+        return Some(MultiPolygon::new(vec![a.clone(), b.clone()]));
+    }
+    let result = a.xor(b);
+    if result.0.is_empty() { None } else { Some(result) }
+}
+
+/// 用裁剪多边形切割 MultiPolygon，保留重叠部分。
+pub fn clip(target: &MultiPolygon<f64>, clip_poly: &Polygon<f64>) -> MultiPolygon<f64> {
+    target
+        .iter()
+        .flat_map(|poly| {
+            let inter = poly.intersection(clip_poly);
+            inter.0
+        })
+        .collect::<Vec<_>>()
+        .into()
+}
+
 /// 计算多边形面积（unsigned, sq degrees）。
 pub fn area_sq_deg(poly: &Polygon<f64>) -> f64 {
     poly.unsigned_area()
@@ -760,5 +790,76 @@ mod tests {
         // 交叉点附近应有更高密度
         let center = result[5 * 10 + 5];
         assert!(center > 0.0, "Center should have non-zero line density");
+    }
+
+    #[test]
+    fn test_difference_overlapping() {
+        // Square minus inner square
+        let a = square(0.0, 0.0, 10.0);
+        let b = square(2.0, 2.0, 4.0);
+        let result = difference(&a, &b);
+        assert!(result.is_some());
+        let mp = result.unwrap();
+        // Difference should create a donut (one or more polygons)
+        assert!(!mp.0.is_empty());
+    }
+
+    #[test]
+    fn test_difference_non_overlapping() {
+        let a = square(0.0, 0.0, 5.0);
+        let b = square(10.0, 10.0, 5.0);
+        let result = difference(&a, &b);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().0.len(), 1);
+    }
+
+    #[test]
+    fn test_sym_difference_overlapping() {
+        let a = square(0.0, 0.0, 10.0);
+        let b = square(5.0, 0.0, 10.0);
+        let result = sym_difference(&a, &b);
+        assert!(result.is_some());
+        // XOR of two overlapping squares should produce multiple shapes
+        let mp = result.unwrap();
+        assert!(mp.0.len() >= 2, "XOR should produce ≥2 polygons");
+    }
+
+    #[test]
+    fn test_clip_polygon() {
+        let target: MultiPolygon<f64> = vec![
+            square(0.0, 0.0, 100.0),
+            square(200.0, 200.0, 50.0),
+        ].into();
+        let clip_poly = square(0.0, 0.0, 150.0);
+        let result = clip(&target, &clip_poly);
+        // Only the first square (0-100) should be within clip (0-150)
+        assert!(!result.0.is_empty());
+        // Second square (200-250) is outside, should be clipped away
+        assert_eq!(result.0.len(), 1);
+    }
+
+    #[test]
+    fn test_sym_difference_non_overlapping() {
+        let a = square(0.0, 0.0, 5.0);
+        let b = square(10.0, 10.0, 5.0);
+        let result = sym_difference(&a, &b);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().0.len(), 2);
+    }
+
+    #[test]
+    fn test_difference_identical() {
+        let a = square(0.0, 0.0, 10.0);
+        let b = square(0.0, 0.0, 10.0);
+        let result = difference(&a, &b);
+        assert!(result.is_none(), "Identical polygons should produce None");
+    }
+
+    #[test]
+    fn test_clip_empty() {
+        let target: MultiPolygon<f64> = vec![square(1000.0, 1000.0, 10.0)].into();
+        let clip_poly = square(0.0, 0.0, 10.0);
+        let result = clip(&target, &clip_poly);
+        assert!(result.0.is_empty(), "Non-overlapping clip should be empty");
     }
 }
