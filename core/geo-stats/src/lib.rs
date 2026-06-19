@@ -9,6 +9,7 @@ pub mod classify;
 pub mod hotspot;
 pub mod idw;
 pub mod moran;
+/// MCP 工具注册 — 导出 5 个空间统计工具到运行时注册表。
 pub mod tools;
 pub mod zonal;
 

@@ -429,6 +429,18 @@ pub fn simplify_line(line: &LineString<f64>, epsilon: f64) -> LineString<f64> {
     line.simplify(&epsilon)
 }
 
+/// Visvalingam-Whyatt 简化（LineString），按面积阈值删除次要顶点。
+pub fn simplify_visvalingam(line: &LineString<f64>, epsilon: f64) -> LineString<f64> {
+    use geo::SimplifyVw;
+    line.simplify_vw(&epsilon)
+}
+
+/// Visvalingam-Whyatt 拓扑保持简化（LineString），避免自交。
+pub fn simplify_visvalingam_preserve(line: &LineString<f64>, epsilon: f64) -> LineString<f64> {
+    use geo::SimplifyVwPreserve;
+    line.simplify_vw_preserve(&epsilon)
+}
+
 /// 核密度估计 (Kernel Density Estimation)。
 ///
 /// 对点集做高斯核密度估计，返回规则网格的密度值。
@@ -868,5 +880,31 @@ mod tests {
         let clip_poly = square(0.0, 0.0, 10.0);
         let result = clip(&target, &clip_poly);
         assert!(result.0.is_empty(), "Non-overlapping clip should be empty");
+    }
+
+    #[test]
+    fn test_simplify_visvalingam() {
+        let line = LineString::new(vec![
+            Coord { x: 0.0, y: 0.0 },
+            Coord { x: 1.0, y: 0.1 },
+            Coord { x: 2.0, y: 0.0 },
+            Coord { x: 3.0, y: 0.0 },
+        ]);
+        let result = simplify_visvalingam(&line, 0.01);
+        assert!(result.0.len() <= line.0.len());
+        assert_eq!(result.0.first().unwrap(), &Coord { x: 0.0, y: 0.0 });
+        assert_eq!(result.0.last().unwrap(), &Coord { x: 3.0, y: 0.0 });
+    }
+
+    #[test]
+    fn test_simplify_visvalingam_preserve() {
+        let line = LineString::new(vec![
+            Coord { x: 0.0, y: 0.0 },
+            Coord { x: 1.0, y: 0.5 },
+            Coord { x: 2.0, y: 0.0 },
+            Coord { x: 3.0, y: 0.0 },
+        ]);
+        let result = simplify_visvalingam_preserve(&line, 0.01);
+        assert!(result.0.len() <= line.0.len());
     }
 }

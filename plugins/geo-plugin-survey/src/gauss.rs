@@ -283,6 +283,7 @@ pub fn gauss_forward(B: f64, L: f64, L0: f64, ell: Ellipsoid) -> (f64, f64) {
 /// - `ell`: Reference ellipsoid
 ///
 /// Returns `(B, L)` in radians.
+#[allow(non_snake_case)]
 pub fn gauss_inverse(X: f64, Y: f64, L0: f64, ell: Ellipsoid) -> (f64, f64) {
     let e2 = ell.e2();
     let ep2 = ell.ep2();

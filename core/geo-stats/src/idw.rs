@@ -42,6 +42,7 @@ pub struct IdwResult {
 /// * `min_neighbors` — minimum neighbors needed (returns None below).
 ///
 /// Returns `None` if fewer than `min_neighbors` within `max_radius`.
+#[allow(clippy::too_many_arguments)]
 pub fn idw_point(
     x_target: f64,
     y_target: f64,
@@ -98,6 +99,7 @@ pub fn idw_point(
 /// # Returns
 /// 2D array of interpolated values (row-major: row, col → r * ncols + c),
 /// plus metadata. Cells with insufficient neighbors get `NaN`.
+#[allow(clippy::too_many_arguments)]
 pub fn idw_grid(
     bbox: &BBox,
     ncols: usize,

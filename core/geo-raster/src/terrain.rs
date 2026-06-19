@@ -547,6 +547,100 @@ fn classify_aspect(degrees: f64) -> String {
     .to_string()
 }
 
+/// 地形曲率计算（Profile / Plan / General）。
+///
+/// 使用二阶多项式曲面拟合 3×3 窗口（Zevenbergen & Thorne 1987）。
+///
+/// # 参数
+/// - `dem`: DEM 高程值，行优先
+/// - `rows`, `cols`: DEM 尺寸
+/// - `cell_size_m`: 像元分辨率（米）
+/// - `nodata`: NoData 值
+///
+/// # 返回值
+/// `(profile_curvature, plan_curvature, general_curvature)`，各为 `rows×cols` 数组。
+/// 正值=凸，负值=凹。边界像素为 NaN。
+#[allow(clippy::unnecessary_min_or_max)]
+pub fn compute_curvature(
+    dem: &[f64],
+    rows: usize,
+    cols: usize,
+    cell_size_m: f64,
+    nodata: Option<f64>,
+) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+    let nd = nodata.unwrap_or(f64::NAN);
+    let n = rows * cols;
+    let mut profile = vec![f64::NAN; n]; // ∂²z/∂² 坡度坡向方向的二阶导数
+    let mut plan = vec![f64::NAN; n]; // 垂直于坡度坡向方向的二阶导数
+    let mut general = vec![f64::NAN; n]; // profile + plan 综合
+
+    let d = cell_size_m;
+    let d2 = d * d;
+
+    for r in 1..rows - 1 {
+        for c in 1..cols - 1 {
+            let i = r * cols + c;
+            let z = dem[i];
+            if z == nd || z.is_nan() {
+                continue;
+            }
+
+            // 3×3 窗口像素
+            let z_nw = dem[(r - 1) * cols + (c - 1).max(0)];
+            let z_n = dem[(r - 1) * cols + c];
+            let z_ne = dem[(r - 1) * cols + (c + 1).min(cols - 1)];
+            let z_w = dem[r * cols + (c - 1).max(0)];
+            let z_e = dem[r * cols + (c + 1).min(cols - 1)];
+            let z_sw = dem[(r + 1).min(rows - 1) * cols + (c - 1).max(0)];
+            let z_s = dem[(r + 1).min(rows - 1) * cols + c];
+            let z_se = dem[(r + 1).min(rows - 1) * cols + (c + 1).min(cols - 1)];
+
+            if [z_nw, z_n, z_ne, z_w, z_e, z_sw, z_s, z_se]
+                .iter()
+                .any(|&v| v == nd || v.is_nan())
+            {
+                continue;
+            }
+
+            // Horn 1981 有限差分系数
+            let dz_dx = ((z_ne - z_nw) + 2.0 * (z_e - z_w) + (z_se - z_sw)) / (8.0 * d);
+            let dz_dy = ((z_nw - z_sw) + 2.0 * (z_n - z_s) + (z_ne - z_se)) / (8.0 * d);
+
+            // 二阶偏导数 (Zevenbergen & Thorne 1987)
+            let d2z_dx2 = (z_e - 2.0 * z + z_w) / d2;
+            let d2z_dy2 = (z_n - 2.0 * z + z_s) / d2;
+            let d2z_dxdy = (z_se - z_sw - z_ne + z_nw) / (4.0 * d2);
+
+            let p = dz_dx;
+            let q = dz_dy;
+            let p2 = p * p;
+            let q2 = q * q;
+            let p_q = p2 + q2;
+
+            if p_q < 1e-12 {
+                // 平坦区域
+                profile[i] = 0.0;
+                plan[i] = 0.0;
+                general[i] = 0.0;
+                continue;
+            }
+
+            // Profile curvature (沿坡度坡向)
+            profile[i] = -(p2 * d2z_dx2 + 2.0 * p * q * d2z_dxdy + q2 * d2z_dy2)
+                / ((p_q).sqrt() * (1.0 + p_q).powf(1.5));
+
+            // Plan curvature (垂直于坡度坡向)
+            plan[i] = -(q2 * d2z_dx2 - 2.0 * p * q * d2z_dxdy + p2 * d2z_dy2)
+                / ((p_q).sqrt() * (p_q).sqrt() * (p_q).sqrt());
+
+            // General curvature
+            general[i] = profile[i] + plan[i];
+        }
+    }
+
+    (profile, plan, general)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -714,5 +808,22 @@ mod tests {
         assert_eq!(result.zones[1].mean, Some(6.5));
         assert_eq!(result.zones[1].min, Some(4.0));
         assert_eq!(result.zones[1].max, Some(9.0));
+    }
+
+    #[test]
+    fn test_curvature() {
+        let (dem, rows, cols) = test_dem();
+        let (profile, plan, general) = compute_curvature(&dem, rows, cols, 10.0, None);
+        assert_eq!(profile.len(), rows * cols);
+        assert_eq!(plan.len(), rows * cols);
+        assert_eq!(general.len(), rows * cols);
+        // 坡面元 (1,2) 在隆起侧面应有非零曲率
+        let side = 1 * cols + 2;
+        assert!(
+            profile[side].abs() > 1e-6 || plan[side].abs() > 1e-6,
+            "slope cell should have non-zero curvature: profile={}, plan={}",
+            profile[side],
+            plan[side]
+        );
     }
 }

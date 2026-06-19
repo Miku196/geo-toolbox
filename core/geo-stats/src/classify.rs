@@ -27,7 +27,7 @@ pub struct JenksResult {
 /// Returns `None` if data is too short or k < 2.
 pub fn jenks(data: &[f64], k: usize) -> Option<JenksResult> {
     let n = data.len();
-    if n < k || k < 2 || k > 10 {
+    if n < k || !(2..=10).contains(&k) {
         return None;
     }
 
