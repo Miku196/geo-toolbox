@@ -36,30 +36,27 @@ pub enum GreenhouseGas {
 }
 
 impl GreenhouseGas {
+    /// Meta: returns (human-readable name, chemical formula).
+    fn meta(&self) -> (&'static str, &'static str) {
+        match self {
+            GreenhouseGas::CO2 => ("Carbon dioxide", "CO₂"),
+            GreenhouseGas::CH4 => ("Methane", "CH₄"),
+            GreenhouseGas::N2O => ("Nitrous oxide", "N₂O"),
+            GreenhouseGas::HFCs => ("Hydrofluorocarbons", "HFCs"),
+            GreenhouseGas::PFCs => ("Perfluorocarbons", "PFCs"),
+            GreenhouseGas::SF6 => ("Sulfur hexafluoride", "SF₆"),
+            GreenhouseGas::NF3 => ("Nitrogen trifluoride", "NF₃"),
+        }
+    }
+
     /// Human-readable name.
     pub fn name(&self) -> &'static str {
-        match self {
-            GreenhouseGas::CO2 => "Carbon dioxide",
-            GreenhouseGas::CH4 => "Methane",
-            GreenhouseGas::N2O => "Nitrous oxide",
-            GreenhouseGas::HFCs => "Hydrofluorocarbons",
-            GreenhouseGas::PFCs => "Perfluorocarbons",
-            GreenhouseGas::SF6 => "Sulfur hexafluoride",
-            GreenhouseGas::NF3 => "Nitrogen trifluoride",
-        }
+        self.meta().0
     }
 
     /// Chemical formula.
     pub fn formula(&self) -> &'static str {
-        match self {
-            GreenhouseGas::CO2 => "CO₂",
-            GreenhouseGas::CH4 => "CH₄",
-            GreenhouseGas::N2O => "N₂O",
-            GreenhouseGas::HFCs => "HFCs",
-            GreenhouseGas::PFCs => "PFCs",
-            GreenhouseGas::SF6 => "SF₆",
-            GreenhouseGas::NF3 => "NF₃",
-        }
+        self.meta().1
     }
 }
 
@@ -288,45 +285,33 @@ pub enum GwpVersion {
 /// For HFCs/PFCs groups, returns a conservative average.
 pub fn gwp100(gas: GreenhouseGas, version: GwpVersion) -> f64 {
     match version {
-        GwpVersion::AR4 => gwp_ar4(gas),
-        GwpVersion::AR5 => gwp_ar5(gas),
-        GwpVersion::AR6 => gwp_ar6(gas),
-    }
-}
-
-fn gwp_ar5(gas: GreenhouseGas) -> f64 {
-    match gas {
-        GreenhouseGas::CO2 => 1.0,
-        GreenhouseGas::CH4 => 28.0, // fossil; non-fossil is 27.2
-        GreenhouseGas::N2O => 265.0,
-        GreenhouseGas::HFCs => 1400.0, // aggregate
-        GreenhouseGas::PFCs => 7400.0, // aggregate
-        GreenhouseGas::SF6 => 23500.0,
-        GreenhouseGas::NF3 => 16100.0,
-    }
-}
-
-fn gwp_ar4(gas: GreenhouseGas) -> f64 {
-    match gas {
-        GreenhouseGas::CO2 => 1.0,
-        GreenhouseGas::CH4 => 25.0,
-        GreenhouseGas::N2O => 298.0,
-        GreenhouseGas::HFCs => 1600.0,
-        GreenhouseGas::PFCs => 8300.0,
-        GreenhouseGas::SF6 => 22800.0,
-        GreenhouseGas::NF3 => 17200.0,
-    }
-}
-
-fn gwp_ar6(gas: GreenhouseGas) -> f64 {
-    match gas {
-        GreenhouseGas::CO2 => 1.0,
-        GreenhouseGas::CH4 => 27.0, // fossil; non-fossil is 27.2
-        GreenhouseGas::N2O => 273.0,
-        GreenhouseGas::HFCs => 1500.0, // aggregate
-        GreenhouseGas::PFCs => 7800.0, // aggregate
-        GreenhouseGas::SF6 => 24300.0,
-        GreenhouseGas::NF3 => 17400.0,
+        GwpVersion::AR4 => match gas {
+            GreenhouseGas::CO2 => 1.0,
+            GreenhouseGas::CH4 => 25.0,
+            GreenhouseGas::N2O => 298.0,
+            GreenhouseGas::HFCs => 1600.0,
+            GreenhouseGas::PFCs => 8300.0,
+            GreenhouseGas::SF6 => 22800.0,
+            GreenhouseGas::NF3 => 17200.0,
+        },
+        GwpVersion::AR5 => match gas {
+            GreenhouseGas::CO2 => 1.0,
+            GreenhouseGas::CH4 => 28.0,
+            GreenhouseGas::N2O => 265.0,
+            GreenhouseGas::HFCs => 1400.0,
+            GreenhouseGas::PFCs => 7400.0,
+            GreenhouseGas::SF6 => 23500.0,
+            GreenhouseGas::NF3 => 16100.0,
+        },
+        GwpVersion::AR6 => match gas {
+            GreenhouseGas::CO2 => 1.0,
+            GreenhouseGas::CH4 => 27.0,
+            GreenhouseGas::N2O => 273.0,
+            GreenhouseGas::HFCs => 1500.0,
+            GreenhouseGas::PFCs => 7800.0,
+            GreenhouseGas::SF6 => 24300.0,
+            GreenhouseGas::NF3 => 17400.0,
+        },
     }
 }
 
@@ -914,8 +899,7 @@ mod tests {
         assert_eq!(GwpVersion::default(), GwpVersion::AR5);
     }
 
-    #[test]
-    fn test_fuel_type_default_ncv_all_variants() {
+    fn assert_all_fuels_positive<F: Fn(&FuelType) -> f64>(f: F, name: &str) {
         let variants = [
             FuelType::RawCoal,
             FuelType::CleanedCoal,
@@ -932,32 +916,19 @@ mod tests {
             FuelType::OtherFuel,
         ];
         for fuel in &variants {
-            let ncv = fuel.default_ncv();
-            assert!(ncv > 0.0, "NCV should be positive for {:?}", fuel);
+            let val = f(fuel);
+            assert!(val > 0.0, "{name} should be positive for {:?}", fuel);
         }
     }
 
     #[test]
+    fn test_fuel_type_default_ncv_all_variants() {
+        assert_all_fuels_positive(|f| f.default_ncv(), "NCV");
+    }
+
+    #[test]
     fn test_fuel_type_default_carbon_content_all_variants() {
-        let variants = [
-            FuelType::RawCoal,
-            FuelType::CleanedCoal,
-            FuelType::Coke,
-            FuelType::CrudeOil,
-            FuelType::Gasoline,
-            FuelType::Diesel,
-            FuelType::FuelOil,
-            FuelType::LPG,
-            FuelType::NaturalGas,
-            FuelType::CokeOvenGas,
-            FuelType::BlastFurnaceGas,
-            FuelType::Biomass,
-            FuelType::OtherFuel,
-        ];
-        for fuel in &variants {
-            let cc = fuel.default_carbon_content();
-            assert!(cc > 0.0, "CC should be positive for {:?}", fuel);
-        }
+        assert_all_fuels_positive(|f| f.default_carbon_content(), "Carbon content");
     }
 
     #[test]

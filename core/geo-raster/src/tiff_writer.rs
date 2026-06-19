@@ -73,14 +73,16 @@ impl GeoTiffInfo {
 /// 将单波段 `RasterBand` 写为 Float32 GeoTIFF + .tfw 世界文件。
 pub fn write_geotiff(band: &RasterBand, path: &Path, info: &GeoTiffInfo) -> GeoResult<()> {
     let mut file = File::create(path).map_err(|e| {
-        GeoError::Other(format!("Failed to create TIFF file '{}': {e}", path.display()))
+        GeoError::Other(format!(
+            "Failed to create TIFF file '{}': {e}",
+            path.display()
+        ))
     })?;
 
     let float_data: Vec<f32> = band.data.iter().map(|&v| v as f32).collect();
 
-    let mut encoder = tiff::encoder::TiffEncoder::new(&mut file).map_err(|e| {
-        GeoError::Other(format!("Failed to create TIFF encoder: {e}"))
-    })?;
+    let mut encoder = tiff::encoder::TiffEncoder::new(&mut file)
+        .map_err(|e| GeoError::Other(format!("Failed to create TIFF encoder: {e}")))?;
 
     encoder
         .write_image::<tiff::encoder::colortype::Gray32Float>(
@@ -88,9 +90,7 @@ pub fn write_geotiff(band: &RasterBand, path: &Path, info: &GeoTiffInfo) -> GeoR
             band.rows as u32,
             &float_data,
         )
-        .map_err(|e| {
-            GeoError::Other(format!("Failed to write TIFF image: {e}"))
-        })?;
+        .map_err(|e| GeoError::Other(format!("Failed to write TIFF image: {e}")))?;
 
     write_tfw(path, info)?;
     Ok(())
@@ -104,8 +104,11 @@ pub fn write_geotiff_rgb(
     path: &Path,
     info: &GeoTiffInfo,
 ) -> GeoResult<()> {
-    if red.rows != green.rows || red.rows != blue.rows ||
-       red.cols != green.cols || red.cols != blue.cols {
+    if red.rows != green.rows
+        || red.rows != blue.rows
+        || red.cols != green.cols
+        || red.cols != blue.cols
+    {
         return Err(GeoError::Validation(format!(
             "RGB band size mismatch: R {}x{} G {}x{} B {}x{}",
             red.rows, red.cols, green.rows, green.cols, blue.rows, blue.cols
@@ -116,11 +119,14 @@ pub fn write_geotiff_rgb(
         let min_val = band.min().unwrap_or(0.0);
         let max_val = band.max().unwrap_or(1.0);
         let range = (max_val - min_val).max(1e-6);
-        band.data.iter()
+        band.data
+            .iter()
             .map(|&v| {
                 if v != band.nodata && !v.is_nan() {
                     ((v - min_val) / range * 255.0).clamp(0.0, 255.0) as u8
-                } else { 0 }
+                } else {
+                    0
+                }
             })
             .collect()
     }
@@ -137,20 +143,18 @@ pub fn write_geotiff_rgb(
     }
 
     let mut file = File::create(path).map_err(|e| {
-        GeoError::Other(format!("Failed to create RGB TIFF file '{}': {e}", path.display()))
+        GeoError::Other(format!(
+            "Failed to create RGB TIFF file '{}': {e}",
+            path.display()
+        ))
     })?;
 
-    let mut encoder = tiff::encoder::TiffEncoder::new(&mut file).map_err(|e| {
-        GeoError::Other(format!("Failed to create TIFF encoder: {e}"))
-    })?;
+    let mut encoder = tiff::encoder::TiffEncoder::new(&mut file)
+        .map_err(|e| GeoError::Other(format!("Failed to create TIFF encoder: {e}")))?;
 
     encoder
-        .write_image::<tiff::encoder::colortype::RGB8>(
-            red.cols as u32, red.rows as u32, &rgb_data,
-        )
-        .map_err(|e| {
-            GeoError::Other(format!("Failed to write RGB TIFF image: {e}"))
-        })?;
+        .write_image::<tiff::encoder::colortype::RGB8>(red.cols as u32, red.rows as u32, &rgb_data)
+        .map_err(|e| GeoError::Other(format!("Failed to write RGB TIFF image: {e}")))?;
 
     write_tfw(path, info)?;
     Ok(())
@@ -159,7 +163,10 @@ pub fn write_geotiff_rgb(
 fn write_tfw(image_path: &Path, info: &GeoTiffInfo) -> GeoResult<()> {
     let tfw_path = image_path.with_extension("tfw");
     let mut file = File::create(&tfw_path).map_err(|e| {
-        GeoError::Other(format!("Failed to create TFW file '{}': {e}", tfw_path.display()))
+        GeoError::Other(format!(
+            "Failed to create TFW file '{}': {e}",
+            tfw_path.display()
+        ))
     })?;
 
     writeln!(file, "{:.15}", info.pixel_width)?;
@@ -203,7 +210,8 @@ mod tests {
             &make_band("r", 5, 10, 0.1),
             &make_band("g", 5, 10, 0.5),
             &make_band("b", 5, 10, 0.9),
-            &path, &info,
+            &path,
+            &info,
         );
         assert!(result.is_ok());
         assert!(path.exists());
@@ -222,8 +230,12 @@ mod tests {
     fn test_tfw_content_format() {
         let dir = tempdir().unwrap();
         let path = dir.path().join("fmt.tiff");
-        write_geotiff(&make_band("t", 3, 4, 0.0), &path,
-            &GeoTiffInfo::new(0.5, 0.5, 100.0, 50.0, None)).unwrap();
+        write_geotiff(
+            &make_band("t", 3, 4, 0.0),
+            &path,
+            &GeoTiffInfo::new(0.5, 0.5, 100.0, 50.0, None),
+        )
+        .unwrap();
 
         let content = std::fs::read_to_string(path.with_extension("tfw")).unwrap();
         let lines: Vec<&str> = content.trim().lines().collect();
@@ -240,7 +252,8 @@ mod tests {
             &make_band("r", 2, 2, 0.0),
             &make_band("g", 3, 3, 0.0),
             &make_band("b", 2, 2, 0.0),
-            &dir.path().join("err.tiff"), &info,
+            &dir.path().join("err.tiff"),
+            &info,
         );
         assert!(result.is_err());
     }

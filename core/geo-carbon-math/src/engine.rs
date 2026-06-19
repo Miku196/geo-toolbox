@@ -135,6 +135,7 @@ impl CarbonEngine {
         Self
     }
 
+    #[tracing::instrument(skip(self, features, factors), fields(feature_count = features.len(), factor_count = factors.len(), year))]
     pub fn calculate(
         &self,
         features: &[GeoFeature],

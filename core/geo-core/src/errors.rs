@@ -84,6 +84,44 @@ pub enum GeoError {
         message: String,
     },
 
+    /// Payload exceeds configured size limit.
+    #[error("Payload too large: {actual} bytes (limit {limit} bytes)")]
+    PayloadTooLarge {
+        /// Actual payload size in bytes.
+        actual: u64,
+        /// Maximum allowed payload size in bytes.
+        limit: u64,
+    },
+
+    /// Too many features in a single request.
+    #[error("Too many features: {actual} (limit {limit})")]
+    TooManyFeatures {
+        /// Actual feature count.
+        actual: usize,
+        /// Maximum allowed feature count.
+        limit: usize,
+    },
+
+    /// Raster dimension exceeds limit.
+    #[error("Raster too large: {cols}×{rows} (max dimension {max_dim})")]
+    RasterTooLarge {
+        /// Actual column count.
+        cols: usize,
+        /// Actual row count.
+        rows: usize,
+        /// Maximum allowed dimension.
+        max_dim: usize,
+    },
+
+    /// Raster pixel count exceeds limit.
+    #[error("Raster too many pixels: {pixels} (limit {limit})")]
+    RasterTooManyPixels {
+        /// Actual pixel count.
+        pixels: u64,
+        /// Maximum allowed pixel count.
+        limit: u64,
+    },
+
     /// Not-yet-implemented feature.
     #[error("Not implemented: {0}")]
     Unimplemented(String),

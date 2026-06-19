@@ -8,6 +8,7 @@ use geo_core::errors::{GeoError, GeoResult};
 use geo_core::plugin::GeoFeature;
 use geo_core::plugin::{ExternalAdapter, Plugin, PluginCategory};
 use sqlx::Column;
+use tracing::warn;
 
 /// PostGIS 适配器。
 ///
@@ -96,11 +97,16 @@ impl Plugin for PostgisAdapter {
         self.store
             .as_ref()
             .map(|s| {
-                let rt = tokio::runtime::Builder::new_current_thread()
+                match tokio::runtime::Builder::new_current_thread()
                     .enable_all()
                     .build()
-                    .expect("tokio runtime for is_healthy");
-                rt.block_on(s.ping()).is_ok()
+                {
+                    Ok(rt) => rt.block_on(s.ping()).is_ok(),
+                    Err(e) => {
+                        warn!("Failed to build tokio runtime for health check: {e}");
+                        false
+                    }
+                }
             })
             .unwrap_or(false)
     }

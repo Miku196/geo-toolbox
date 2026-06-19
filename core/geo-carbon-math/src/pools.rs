@@ -40,26 +40,25 @@ pub enum CarbonPool {
 }
 
 impl CarbonPool {
+    /// Meta: returns (display label, short code).
+    fn meta(&self) -> (&'static str, &'static str) {
+        match self {
+            CarbonPool::AGB => ("Above-Ground Biomass", "AGB"),
+            CarbonPool::BGB => ("Below-Ground Biomass", "BGB"),
+            CarbonPool::Deadwood => ("Deadwood", "DW"),
+            CarbonPool::Litter => ("Litter", "LT"),
+            CarbonPool::SOC => ("Soil Organic Carbon", "SOC"),
+        }
+    }
+
     /// IPCC pool display name.
     pub fn label(&self) -> &'static str {
-        match self {
-            CarbonPool::AGB => "Above-Ground Biomass",
-            CarbonPool::BGB => "Below-Ground Biomass",
-            CarbonPool::Deadwood => "Deadwood",
-            CarbonPool::Litter => "Litter",
-            CarbonPool::SOC => "Soil Organic Carbon",
-        }
+        self.meta().0
     }
 
     /// Short IPCC pool code.
     pub fn code(&self) -> &'static str {
-        match self {
-            CarbonPool::AGB => "AGB",
-            CarbonPool::BGB => "BGB",
-            CarbonPool::Deadwood => "DW",
-            CarbonPool::Litter => "LT",
-            CarbonPool::SOC => "SOC",
-        }
+        self.meta().1
     }
 
     /// Default uncertainty (±%).
@@ -85,6 +84,19 @@ impl CarbonPool {
 }
 
 // ── Biomass Parameters ────────────────────────────────────────
+
+/// IPCC ecological zone classification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum EcoZone {
+    /// Tropical moist forest (warm, wet year-round).
+    TropicalMoist,
+    /// Temperate coniferous forest.
+    TemperateConiferous,
+    /// Temperate broadleaf forest.
+    TemperateBroadleaf,
+    /// Boreal / taiga forest.
+    Boreal,
+}
 
 /// Biomass parameters for a forest type or ecological zone.
 ///
@@ -127,64 +139,87 @@ impl Default for BiomassParams {
 }
 
 impl BiomassParams {
+    /// Get IPCC default biomass parameters for a given ecological zone.
+    pub fn for_eco_zone(zone: EcoZone) -> Self {
+        match zone {
+            EcoZone::TropicalMoist => Self {
+                wood_density: 0.60,
+                bef: 2.2,
+                carbon_fraction: 0.47,
+                root_shoot_ratio: 0.27,
+                deadwood_ratio: 0.12,
+                litter_ratio: 0.04,
+                litter_turnover: 0.6,
+                deadwood_decay_rate: 0.10,
+            },
+            EcoZone::TemperateConiferous => Self {
+                wood_density: 0.45,
+                bef: 1.5,
+                carbon_fraction: 0.47,
+                root_shoot_ratio: 0.26,
+                deadwood_ratio: 0.18,
+                litter_ratio: 0.06,
+                litter_turnover: 0.4,
+                deadwood_decay_rate: 0.05,
+            },
+            EcoZone::TemperateBroadleaf => Self {
+                wood_density: 0.58,
+                bef: 2.0,
+                carbon_fraction: 0.47,
+                root_shoot_ratio: 0.24,
+                deadwood_ratio: 0.15,
+                litter_ratio: 0.05,
+                litter_turnover: 0.5,
+                deadwood_decay_rate: 0.07,
+            },
+            EcoZone::Boreal => Self {
+                wood_density: 0.40,
+                bef: 1.3,
+                carbon_fraction: 0.47,
+                root_shoot_ratio: 0.29,
+                deadwood_ratio: 0.25,
+                litter_ratio: 0.08,
+                litter_turnover: 0.3,
+                deadwood_decay_rate: 0.03,
+            },
+        }
+    }
+
     /// IPCC default for tropical moist forest.
     pub fn tropical_moist() -> Self {
-        Self {
-            wood_density: 0.60,
-            bef: 2.2,
-            carbon_fraction: 0.47,
-            root_shoot_ratio: 0.27,
-            deadwood_ratio: 0.12,
-            litter_ratio: 0.04,
-            litter_turnover: 0.6,
-            deadwood_decay_rate: 0.10,
-        }
+        Self::for_eco_zone(EcoZone::TropicalMoist)
     }
 
     /// IPCC default for temperate coniferous.
     pub fn temperate_coniferous() -> Self {
-        Self {
-            wood_density: 0.45,
-            bef: 1.5,
-            carbon_fraction: 0.47,
-            root_shoot_ratio: 0.26,
-            deadwood_ratio: 0.18,
-            litter_ratio: 0.06,
-            litter_turnover: 0.4,
-            deadwood_decay_rate: 0.05,
-        }
+        Self::for_eco_zone(EcoZone::TemperateConiferous)
     }
 
     /// IPCC default for temperate broadleaf.
     pub fn temperate_broadleaf() -> Self {
-        Self {
-            wood_density: 0.58,
-            bef: 2.0,
-            carbon_fraction: 0.47,
-            root_shoot_ratio: 0.24,
-            deadwood_ratio: 0.15,
-            litter_ratio: 0.05,
-            litter_turnover: 0.5,
-            deadwood_decay_rate: 0.07,
-        }
+        Self::for_eco_zone(EcoZone::TemperateBroadleaf)
     }
 
     /// IPCC default for boreal forest.
     pub fn boreal() -> Self {
-        Self {
-            wood_density: 0.40,
-            bef: 1.3,
-            carbon_fraction: 0.47,
-            root_shoot_ratio: 0.29,
-            deadwood_ratio: 0.25,
-            litter_ratio: 0.08,
-            litter_turnover: 0.3,
-            deadwood_decay_rate: 0.03,
-        }
+        Self::for_eco_zone(EcoZone::Boreal)
     }
 }
 
 // ── SOC Parameters ────────────────────────────────────────────
+
+/// Land-use scenario for SOC parameter selection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LandUseScenario {
+    /// Native forest under default management.
+    NativeForest,
+    /// Degraded cropland, reduced input.
+    DegradedCropland,
+    /// Afforestation on former cropland.
+    AfforestationCropland,
+    /// Deforestation from forest to cropland.
+    DeforestationCropland,
+}
 
 /// Soil organic carbon reference + land use factors.
 ///
@@ -213,49 +248,96 @@ impl Default for SocParams {
 }
 
 impl SocParams {
-    /// SOC factors for native forest under default management.
-    pub fn native_forest(soc_ref: f64) -> Self {
-        Self {
-            soc_ref_tc_ha: soc_ref,
-            flu: 1.0,
-            fmg: 1.0,
-            fi: 1.0,
+    /// Get SOC parameters for a given land-use scenario.
+    pub fn for_scenario(scenario: LandUseScenario, soc_ref: f64) -> Self {
+        match scenario {
+            LandUseScenario::NativeForest => Self {
+                soc_ref_tc_ha: soc_ref,
+                flu: 1.0,
+                fmg: 1.0,
+                fi: 1.0,
+            },
+            LandUseScenario::DegradedCropland => Self {
+                soc_ref_tc_ha: soc_ref,
+                flu: 0.80,
+                fmg: 1.0,
+                fi: 0.95,
+            },
+            LandUseScenario::AfforestationCropland => Self {
+                soc_ref_tc_ha: soc_ref,
+                flu: 1.0,
+                fmg: 1.0,
+                fi: 1.0,
+            },
+            LandUseScenario::DeforestationCropland => Self {
+                soc_ref_tc_ha: soc_ref,
+                flu: 0.80,
+                fmg: 0.95,
+                fi: 0.92,
+            },
         }
     }
 
-    /// SOC factors for plantation forest, full tillage, low input.
+    /// SOC factors for native forest under default management.
+    pub fn native_forest(soc_ref: f64) -> Self {
+        Self::for_scenario(LandUseScenario::NativeForest, soc_ref)
+    }
+
+    /// SOC factors for degraded cropland.
     pub fn degraded_cropland(soc_ref: f64) -> Self {
-        Self {
-            soc_ref_tc_ha: soc_ref,
-            flu: 0.80,
-            fmg: 1.0,
-            fi: 0.95,
-        }
+        Self::for_scenario(LandUseScenario::DegradedCropland, soc_ref)
     }
 
     /// SOC factors for afforestation on cropland.
     pub fn afforestation_cropland(soc_ref: f64) -> Self {
-        Self {
-            soc_ref_tc_ha: soc_ref,
-            flu: 1.0, // forest land use
-            fmg: 1.0, // native species
-            fi: 1.0,  // medium input
-        }
+        Self::for_scenario(LandUseScenario::AfforestationCropland, soc_ref)
     }
 
-    /// SOC factors for deforestation (forest → cropland).
+    /// SOC factors for deforestation.
     pub fn deforestation_cropland(soc_ref: f64) -> Self {
-        Self {
-            soc_ref_tc_ha: soc_ref,
-            flu: 0.80, // cropland
-            fmg: 0.95, // reduced tillage
-            fi: 0.92,  // low input
-        }
+        Self::for_scenario(LandUseScenario::DeforestationCropland, soc_ref)
     }
 
     /// Compute SOC stock (t C / ha).
     pub fn compute_stock_tc_ha(&self) -> f64 {
         self.soc_ref_tc_ha * self.flu * self.fmg * self.fi
+    }
+}
+
+// ── Scenario Matrix ────────────────────────────────────────────
+
+/// Combined biomass + SOC parameters for a given (eco-zone, land-use) pair.
+///
+/// This is the single entry point for looking up IPCC Tier 1 default parameters.
+/// Covers all 4×4 = 16 combinatorially-valid eco-zone × land-use scenarios.
+///
+/// ```rust,ignore
+/// let params = scenario_matrix(EcoZone::TropicalMoist, LandUseScenario::NativeForest, 60.0);
+/// let agb = compute_agb_tco2e_ha(vol, params.biomass.wood_density, params.biomass.bef, params.biomass.carbon_fraction);
+/// let soc_stock = params.soc.compute_stock_tc_ha();
+/// ```
+#[derive(Debug, Clone)]
+pub struct ScenarioParams {
+    pub biomass: BiomassParams,
+    pub soc: SocParams,
+    pub eco_zone: EcoZone,
+    pub land_use: LandUseScenario,
+}
+
+/// Lookup biomass and SOC parameters in a single dispatch.
+///
+/// Serves as the canonical data table for all IPCC Tier 1 eco-zone × land-use combos.
+/// For new eco-zones or land-use scenarios: only this function + the two enums need updating.
+pub fn scenario_matrix(
+    eco_zone: EcoZone,
+    land_use: LandUseScenario,
+    soc_ref: f64,
+) -> ScenarioParams {
+    ScenarioParams {
+        biomass: BiomassParams::for_eco_zone(eco_zone),
+        soc: SocParams::for_scenario(land_use, soc_ref),
+        eco_zone,
+        land_use,
     }
 }
 

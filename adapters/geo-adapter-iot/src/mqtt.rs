@@ -95,9 +95,9 @@ impl MqttIngestor {
         Self::new(pool, MqttConfig::default())
     }
 
-    /// Get current stats.
+    /// Get current stats (recovers from poisoned lock).
     pub fn stats(&self) -> MqttStats {
-        self.stats.lock().unwrap().clone()
+        self.stats.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
     fn build_mqtt_options(&self) -> GeoResult<MqttOptions> {

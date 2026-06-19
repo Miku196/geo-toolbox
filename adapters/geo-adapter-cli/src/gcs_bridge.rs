@@ -232,10 +232,17 @@ impl GcsBridge {
         use object_store::path::Path as ObjectPath;
         use object_store::ObjectStore;
 
-        let endpoint = self.config.minio_endpoint.as_ref().unwrap();
+        let endpoint =
+            self.config.minio_endpoint.as_ref().ok_or_else(|| {
+                GeoError::config_error("minio_endpoint", "missing MinIO endpoint")
+            })?;
         let access_key = self.config.minio_access_key.as_deref().unwrap_or("");
         let secret_key = self.config.minio_secret_key.as_deref().unwrap_or("");
-        let bucket = self.config.minio_bucket.as_ref().unwrap();
+        let bucket = self
+            .config
+            .minio_bucket
+            .as_ref()
+            .ok_or_else(|| GeoError::config_error("minio_bucket", "missing MinIO bucket"))?;
 
         let store = AmazonS3Builder::new()
             .with_endpoint(endpoint)

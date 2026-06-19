@@ -146,14 +146,15 @@ impl CrsRegistry {
 
         PROJ_CACHE.with(|cache| {
             let mut cache = cache.borrow_mut();
-            let proj = if let Some(p) = cache.get(&(from_epsg, to_epsg)) {
-                // Reuse cached instance
-                p
-            } else {
-                let p = Proj::new_known_crs(from_def.proj4, to_def.proj4, None)
-                    .map_err(|e| GeoError::CrsTransform(format!("{from_epsg}→{to_epsg}: {e}")))?;
-                cache.insert((from_epsg, to_epsg), p);
-                cache.get(&(from_epsg, to_epsg)).unwrap()
+            let proj = match cache.entry((from_epsg, to_epsg)) {
+                std::collections::hash_map::Entry::Occupied(o) => o.into_mut(),
+                std::collections::hash_map::Entry::Vacant(v) => {
+                    let p =
+                        Proj::new_known_crs(from_def.proj4, to_def.proj4, None).map_err(|e| {
+                            GeoError::CrsTransform(format!("{from_epsg}→{to_epsg}: {e}"))
+                        })?;
+                    v.insert(p)
+                }
             };
             // Note: proj.convert takes (&self) so a shared reference is fine
             proj.convert((x, y))

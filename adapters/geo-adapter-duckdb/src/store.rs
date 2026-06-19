@@ -6,6 +6,7 @@ use geo_core::errors::{GeoError, GeoResult};
 use rusqlite::{params, Connection};
 use std::path::Path;
 use std::sync::Mutex;
+use tracing::info;
 
 /// 校验表名安全（仅允许字母数字下划线）。
 fn validate_table_name(name: &str) -> GeoResult<()> {
@@ -111,7 +112,7 @@ impl DuckDbStore {
             count += 1;
         }
 
-        tracing::info!("SQLite ingested {count} features into {table}");
+        info!(count, table = %table, "geo-io ingested features");
         Ok(count)
     }
 
@@ -188,11 +189,14 @@ impl DuckDbStore {
 
     /// 健康检查。
     pub fn ping(&self) -> GeoResult<()> {
-        self.conn
+        let result = self
+            .conn
             .lock()
             .unwrap()
             .execute_batch("SELECT 1")
-            .map_err(|_| GeoError::Database("ping failed".into()))
+            .map_err(|_| GeoError::Database("ping failed".into()));
+        info!(healthy = result.is_ok(), "sqlite ping");
+        result
     }
 
     /// 表行数。

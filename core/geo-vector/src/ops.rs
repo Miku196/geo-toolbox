@@ -363,7 +363,11 @@ pub fn difference(a: &Polygon<f64>, b: &Polygon<f64>) -> Option<MultiPolygon<f64
         return Some(MultiPolygon::new(vec![a.clone()]));
     }
     let result = a.difference(b);
-    if result.0.is_empty() { None } else { Some(result) }
+    if result.0.is_empty() {
+        None
+    } else {
+        Some(result)
+    }
 }
 
 /// 计算对称差 (A XOR B)。返回 A 和 B 的不重叠部分。
@@ -372,7 +376,11 @@ pub fn sym_difference(a: &Polygon<f64>, b: &Polygon<f64>) -> Option<MultiPolygon
         return Some(MultiPolygon::new(vec![a.clone(), b.clone()]));
     }
     let result = a.xor(b);
-    if result.0.is_empty() { None } else { Some(result) }
+    if result.0.is_empty() {
+        None
+    } else {
+        Some(result)
+    }
 }
 
 /// 用裁剪多边形切割 MultiPolygon，保留重叠部分。
@@ -826,10 +834,8 @@ mod tests {
 
     #[test]
     fn test_clip_polygon() {
-        let target: MultiPolygon<f64> = vec![
-            square(0.0, 0.0, 100.0),
-            square(200.0, 200.0, 50.0),
-        ].into();
+        let target: MultiPolygon<f64> =
+            vec![square(0.0, 0.0, 100.0), square(200.0, 200.0, 50.0)].into();
         let clip_poly = square(0.0, 0.0, 150.0);
         let result = clip(&target, &clip_poly);
         // Only the first square (0-100) should be within clip (0-150)
