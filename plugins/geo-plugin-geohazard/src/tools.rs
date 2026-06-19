@@ -2,7 +2,6 @@
 use crate::config::GeohazardConfig;
 use crate::geohazard::GeohazardPlugin;
 use crate::rainfall_threshold::{IdCurve, RainfallClass};
-use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
 
@@ -39,7 +38,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
                 args["elevation_drop_m"].as_f64().unwrap_or(100.0),
                 args["channel_gradient_deg"].as_f64().unwrap_or(20.0),
             )?;
-            Ok(serde_json::to_value(&assessment).map_err(|e| geo_core::errors::GeoError::Serde(e))?)
+            serde_json::to_value(&assessment).map_err(geo_core::errors::GeoError::Serde)
         },
     ]);
 }

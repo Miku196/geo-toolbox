@@ -282,6 +282,7 @@ pub fn least_cost_path(
 }
 
 /// 完整输电走廊评估。
+#[allow(clippy::too_many_arguments)]
 pub fn assess_corridor(
     name: &str,
     source_name: &str,

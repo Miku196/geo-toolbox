@@ -41,14 +41,14 @@ pub fn buffer(poly: &Polygon<f64>, distance: f64, mode: BufferMode) -> MultiPoly
         }
         BufferMode::ConvexHull { quadrant_segments } => {
             if distance > 0.0 {
-                convexhull_buffer_outer(poly, distance, quadrant_segments.max(4).min(32) as usize)
+                convexhull_buffer_outer(poly, distance, quadrant_segments.clamp(4, 32) as usize)
             } else {
                 bbox_buffer_inner(poly, -distance)
             }
         }
         BufferMode::Precise { quadrant_segments } => {
             if distance > 0.0 {
-                precise_buffer_outer(poly, distance, quadrant_segments.max(4).min(32) as usize)
+                precise_buffer_outer(poly, distance, quadrant_segments.clamp(4, 32) as usize)
             } else {
                 bbox_buffer_inner(poly, -distance)
             }
@@ -553,6 +553,7 @@ pub fn line_density(
 }
 
 /// 计算线段与矩形裁剪后的长度（Cohen-Sutherland 裁剪简化版）。
+#[allow(clippy::too_many_arguments)]
 fn clip_line_length(
     x1: f64,
     y1: f64,

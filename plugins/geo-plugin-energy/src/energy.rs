@@ -250,6 +250,7 @@ fn gamma_approx(x: f64) -> f64 {
     }
     // Stirling: Γ(x) ≈ sqrt(2π/x) * (x/e)^x
     let n = x;
+    #[allow(unused_assignments)]
     let mut g = 1.0;
     let _t = n;
     // Use the recurrence Γ(x+1) = x * Γ(x) with Lanczos-like log

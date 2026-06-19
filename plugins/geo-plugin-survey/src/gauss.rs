@@ -107,7 +107,7 @@ pub fn zone_info(lon_deg: f64) -> ZoneInfoResult {
 
     // 3° zone: zone = floor((lon - 1.5) / 3) + 1
     let zone3_raw = ((lon_deg - 1.5) / 3.0).floor() as u16 + 1;
-    let zone3 = zone3_raw.max(1).min(120);
+    let zone3 = zone3_raw.clamp(1, 120);
     let cm3 = zone3 as f64 * 3.0;
 
     ZoneInfoResult {
@@ -142,6 +142,7 @@ pub fn central_meridian(zone: u16, is_3degree: bool) -> f64 {
 ///
 /// Uses series expansion with coefficients A₀, A₂, A₄, A₆, A₈.
 /// X₀ = a·(1-e²)·[A₀·B + A₂·sin2B + A₄·sin4B + A₆·sin6B + A₈·sin8B]
+#[allow(non_snake_case)]
 fn meridian_arc(B: f64, ell: Ellipsoid) -> f64 {
     let e2 = ell.e2();
     let e4 = e2 * e2;
@@ -165,6 +166,7 @@ fn meridian_arc(B: f64, ell: Ellipsoid) -> f64 {
 /// Compute footpoint latitude (latitude where meridian arc length equals given X).
 ///
 /// Uses Newton-Raphson iteration: B_{n+1} = B_n - f(B_n)/f'(B_n)
+#[allow(non_snake_case)]
 fn footpoint_latitude(X: f64, ell: Ellipsoid) -> f64 {
     // Initial approximation
     let mut B = X / (ell.a() * (1.0 - ell.e2()));
@@ -222,6 +224,7 @@ fn footpoint_latitude(X: f64, ell: Ellipsoid) -> f64 {
 ///
 /// Returns `(X, Y)` in meters.
 /// X = North coordinate, Y = East coordinate (with 500km false easting).
+#[allow(non_snake_case)]
 pub fn gauss_forward(B: f64, L: f64, L0: f64, ell: Ellipsoid) -> (f64, f64) {
     let e2 = ell.e2();
     let ep2 = ell.ep2();

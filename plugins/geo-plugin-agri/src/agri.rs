@@ -109,6 +109,7 @@ impl AgriPlugin {
     ///   - Available N, P, K
     ///   - Soil texture
     ///   - Drainage
+    #[allow(clippy::too_many_arguments)]
     pub fn soil_rating_detailed(
         &self,
         organic_matter_pct: f64,
