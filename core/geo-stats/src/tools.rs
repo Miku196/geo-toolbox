@@ -1,6 +1,8 @@
 //! Tool registration — Zonal statistics.
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
+
+/// Register zonal statistics tools.
 pub fn register_tools(registry: &mut PluginRegistry) {
     register_plugin!(registry, "stats", "Zonal statistics: compute raster stats within polygon zones", PluginCategory::Process, [
         sync "zonal_stats" => "Compute zonal statistics for raster data within bboxes" ; serde_json::json!({"type":"object","properties":{"zones":{"type":"array"},"raster_data":{"type":"array","items":{"type":"number"}},"raster_cols":{"type":"integer"},"raster_min_x":{"type":"number"},"raster_min_y":{"type":"number"},"raster_max_x":{"type":"number"},"raster_max_y":{"type":"number"},"nodata":{"type":"number"}},"required":["zones","raster_data","raster_cols"]}) => |args| -> ToolResult {

@@ -56,7 +56,6 @@ impl ReportGenerator {
                     },
                     Op::EndTextSection,
                 ]);
-                y -= $size * 0.4;
             };
         }
 

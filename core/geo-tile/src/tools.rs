@@ -1,7 +1,8 @@
 //! Tool registration — Tile engine.
-use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
+
+/// Register tile-related tools (latlon-to-tile, MVT encode, PMTiles).
 pub fn register_tools(registry: &mut PluginRegistry) {
     register_plugin!(registry, "tile", "Vector tile (MVT) encoder + raster tile (PMTiles)", PluginCategory::Process, [
         sync "tile_latlon_to_tile" => "Convert lat/lon to tile z/x/y" ; serde_json::json!({"type":"object","properties":{"lon":{"type":"number"},"lat":{"type":"number"},"zoom":{"type":"integer"}},"required":["lon","lat","zoom"]}) => |args| -> ToolResult {

@@ -10,6 +10,7 @@ struct QNode {
     /// 叶子存储的数据索引。
     items: Vec<usize>,
     /// 子节点（如果分裂），0-4 个。
+    #[allow(clippy::vec_box)]
     children: Vec<Box<QNode>>,
 }
 

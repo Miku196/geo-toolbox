@@ -318,9 +318,13 @@ impl SocParams {
 /// ```
 #[derive(Debug, Clone)]
 pub struct ScenarioParams {
+    /// Biomass parameters for the selected eco-zone.
     pub biomass: BiomassParams,
+    /// Soil organic carbon parameters for the selected land-use scenario.
     pub soc: SocParams,
+    /// Ecological zone classification.
     pub eco_zone: EcoZone,
+    /// Land-use scenario.
     pub land_use: LandUseScenario,
 }
 
@@ -357,6 +361,7 @@ pub struct PoolStock {
 }
 
 impl PoolStock {
+    /// Create a new pool stock entry.
     pub fn new(pool: CarbonPool, tco2e_per_ha: f64, uncertainty_pct: f64, source: &str) -> Self {
         Self {
             pool,
@@ -389,6 +394,7 @@ pub struct PoolChange {
 }
 
 impl PoolChange {
+    /// Compute total CO2 emission over the given area.
     pub fn emission_tco2e(&self, _area_ha: f64) -> f64 {
         self.delta_total_tco2e
     }

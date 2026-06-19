@@ -127,10 +127,15 @@ impl ActivityRecord {
 
 // ── Engine ────────────────────────────────────────────────────
 
+/// Carbon calculation engine.
+///
+/// Pure-Rust implementation of IPCC Tier 1 emission factor methodology.
+/// Extended with multi-gas breakdown, GWP conversion, uncertainty propagation.
 #[derive(Debug, Default)]
 pub struct CarbonEngine;
 
 impl CarbonEngine {
+    /// Create a new carbon engine instance.
     pub fn new() -> Self {
         Self
     }

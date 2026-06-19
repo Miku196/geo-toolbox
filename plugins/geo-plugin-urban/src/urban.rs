@@ -258,6 +258,7 @@ impl UrbanPlugin {
     }
 
     // ── 综合评估 ──
+    #[allow(clippy::too_many_arguments)]
     pub fn assess(
         &self,
         total_floor_area_m2: f64,
