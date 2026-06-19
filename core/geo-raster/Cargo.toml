@@ -11,9 +11,11 @@ geo-io = { path = "../geo-io" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+tiff.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
+tempfile = "3"
 
 [[bench]]
 name = "bench_ndvi"

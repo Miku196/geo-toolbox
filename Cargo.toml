@@ -95,6 +95,7 @@ chrono       = { version = "0.4", features = ["serde"] }
 reqwest      = { version = "0.12", features = ["json"] }
 ndarray      = "0.16"
 duckdb       = "1.1"
+tiff         = "0.9"
 rusqlite     = { version = "0.32", features = ["bundled"] }
 futures      = "0.3"
 

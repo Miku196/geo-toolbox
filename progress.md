@@ -22,18 +22,26 @@ Phase 4.2 (MVT/PMTiles) + 死代码清理 (2026-06-19) — ✅
 - [x] 保留 trait 导入 (Row/Column/ExternalAdapter/Plugin/Area/Centroid/BoundingRect/ConvexHull) — 方法解析必需
 - [x] ROADMAP.md 更新 MVT 瓦片状态 [ ]→[x]
 
+### GeoTIFF 写入器
+- [x] `write_geotiff()` — Float32 单波段 TIFF + `.tfw` 世界文件
+- [x] `write_geotiff_rgb()` — 24-bit RGB TIFF + `.tfw`
+- [x] `GeoTiffInfo` — 地理参考信息 (pixel_size, bbox, crs)
+- [x] `GeoTiffInfo::from_bbox()` — 从 WGS84 bbox 自动计算
+- [x] +7 tests (geo-raster: 22→29)
+
 ### CI 覆盖率门禁 (Phase 0.3)
 - [x] PR 覆盖率对比门禁 — head 低于 base 时禁止合并
 - [x] 主分支门禁 25%→45%
 - [x] 定时任务：自动创建/更新覆盖率报告 issue
-- [x] ROADMAP.md 更新 [ ]→[x]
+- [x] ROADMAP.md + progress.md 更新
 
 ### 测试统计
 | 包 | 通过 | 新增 |
 |----|------|------|
 | geo-ogc | 39 | +14 (MVT/PMTiles) |
-| geo-tile | 11 | — (finish() 返回类型变更) |
+| geo-tile | 11 | — |
 | geo-vector | 14 | — |
+| geo-raster | 29 | +7 (GeoTIFF 写入器) |
 | geo-server | 编译通过 | — |
 | workspace | ✅ 0 error | — |
 

@@ -13,6 +13,8 @@
 pub mod band;
 pub mod grid;
 pub mod ndvi;
+/// GeoTIFF 写入器：将 `RasterBand` 写出为 Float32 TIFF + .tfw 世界文件。
+pub mod tiff_writer;
 /// 地形分析算子：坡度（度/百分比）、坡向（Horn 1981 算法）。
 pub mod terrain;
 
