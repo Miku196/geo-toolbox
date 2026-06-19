@@ -12,6 +12,7 @@
 
 #![allow(missing_docs)]
 
+pub mod join;
 pub mod ops;
 pub mod stats;
 pub mod tools;

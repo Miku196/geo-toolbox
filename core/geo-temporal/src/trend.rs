@@ -392,7 +392,8 @@ pub fn bfast_simple(values: &[f64], season_len: usize, max_breaks: usize) -> Vec
     let deseasoned: Vec<f64> = if season_len > 0 && n >= season_len * 2 {
         let half = season_len / 2;
         let mut ds = vec![f64::NAN; n];
-        for (i, _) in ds.iter_mut().enumerate().take(n) {
+        #[allow(clippy::needless_range_loop)]
+        for i in 0..n {
             let start = i.saturating_sub(half);
             let end = (i + half + 1).min(n);
             let window: Vec<f64> = values[start..end]

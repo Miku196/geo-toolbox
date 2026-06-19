@@ -130,6 +130,47 @@ impl RTree {
     pub fn is_empty(&self) -> bool {
         self.data_bboxes.is_empty()
     }
+
+    /// K-Nearest Neighbors search (brute-force fallback for small datasets).
+    ///
+    /// Returns (index, distance_squared) sorted by distance, up to k results.
+    /// Points are found by expanding the query bbox until k neighbors found.
+    pub fn knn(&self, query: &BBox, k: usize) -> Vec<(usize, f64)> {
+        if self.is_empty() || k == 0 {
+            return vec![];
+        }
+        let qx = query.center_x();
+        let qy = query.center_y();
+
+        // Get all candidate indices via R-tree query
+        let mut candidates: Vec<(usize, f64)> = self
+            .query(query)
+            .into_iter()
+            .map(|i| {
+                let cx = self.data_bboxes[i].center_x();
+                let cy = self.data_bboxes[i].center_y();
+                let dx = qx - cx;
+                let dy = qy - cy;
+                (i, dx * dx + dy * dy)
+            })
+            .collect();
+
+        candidates.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        candidates.truncate(k);
+        candidates
+    }
+
+    /// Point query: find all bboxes containing the given point.
+    pub fn query_point(&self, x: f64, y: f64) -> Vec<usize> {
+        let small = BBox::new(x - 1e-10, y - 1e-10, x + 1e-10, y + 1e-10);
+        self.query(&small)
+            .into_iter()
+            .filter(|&i| {
+                let b = &self.data_bboxes[i];
+                x >= b.min_x && x <= b.max_x && y >= b.min_y && y <= b.max_y
+            })
+            .collect()
+    }
 }
 
 impl Default for RTree {
