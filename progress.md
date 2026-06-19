@@ -22,6 +22,12 @@ Phase 4.2 (MVT/PMTiles) + 死代码清理 (2026-06-19) — ✅
 - [x] 保留 trait 导入 (Row/Column/ExternalAdapter/Plugin/Area/Centroid/BoundingRect/ConvexHull) — 方法解析必需
 - [x] ROADMAP.md 更新 MVT 瓦片状态 [ ]→[x]
 
+### CI 覆盖率门禁 (Phase 0.3)
+- [x] PR 覆盖率对比门禁 — head 低于 base 时禁止合并
+- [x] 主分支门禁 25%→45%
+- [x] 定时任务：自动创建/更新覆盖率报告 issue
+- [x] ROADMAP.md 更新 [ ]→[x]
+
 ### 测试统计
 | 包 | 通过 | 新增 |
 |----|------|------|
@@ -31,8 +37,8 @@ Phase 4.2 (MVT/PMTiles) + 死代码清理 (2026-06-19) — ✅
 | geo-server | 编译通过 | — |
 | workspace | ✅ 0 error | — |
 
-### 剩余 [ ] 项 (11 处)
+### 剩余 [ ] 项 (10 处)
 - USTC 镜像网络阻断: WASM npm发布, TypeScript类型, Python bindings (maturin)
 - 架构待定: Jupyter Kernel, %%geo magic, matplotlib可视化, pandas↔GeoJSON
-- CI: PR覆盖率比较门禁, CI自动issue
+- CI: 失败测试自动issue
 - 低优先级: QGIS工具箱,

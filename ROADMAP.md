@@ -56,7 +56,7 @@
 
 ### 0.3 CI 看门狗
 
-- [ ] 覆盖率门禁 (PR 禁止降覆盖)
+- [x] 覆盖率门禁 (PR 禁止降覆盖)
 - [x] `cargo tarpaulin` 或 `cargo-llvm-cov` 接入
 - [ ] 失败测试自动 issue
 
