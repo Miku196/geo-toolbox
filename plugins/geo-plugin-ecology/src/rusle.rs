@@ -578,17 +578,7 @@ pub fn assess_soil_loss(
     let ls = compute_ls_from_dem(dem, cellsize_m, rows, cols);
 
     // K 因子
-    let k: Vec<f64> = match k_factor_grid {
-        Some(g) => {
-            if g.len() >= n {
-                g[..n].to_vec()
-            } else {
-                let fill = g.first().copied().unwrap_or(0.032);
-                vec![fill; n]
-            }
-        }
-        None => vec![0.032; n], // 默认粉砂壤土 K 值
-    };
+    let k = resolve_k_factor(k_factor_grid, n);
 
     // C 因子
     let c = compute_c_factor_from_ndvi(ndvi);
@@ -606,13 +596,47 @@ pub fn assess_soil_loss(
     // A = R × K × LS × C × P
     let soil_loss = compute_soil_loss(&r_arr, &k, &ls, &c, &p, n);
 
-    // 统计
+    compute_erosion_statistics(r_factor, area_cell_ha, area_ha, &k, &ls, &c, &p, soil_loss)
+}
+
+/// Resolve K factor grid with fallback to default silt-loam (0.032).
+fn resolve_k_factor(k_factor_grid: Option<&[f64]>, n: usize) -> Vec<f64> {
+    match k_factor_grid {
+        Some(g) => {
+            if g.len() >= n {
+                g[..n].to_vec()
+            } else {
+                let fill = g.first().copied().unwrap_or(0.032);
+                vec![fill; n]
+            }
+        }
+        None => vec![0.032; n], // 默认粉砂壤土 K 值
+    }
+}
+
+/// Compute erosion statistics and build the final RusleAssessment.
+#[allow(clippy::too_many_arguments)]
+fn compute_erosion_statistics(
+    r_factor: f64,
+    area_cell_ha: f64,
+    area_ha: f64,
+    k: &[f64],
+    ls: &[f64],
+    c: &[f64],
+    p: &[f64],
+    soil_loss: Vec<f64>,
+) -> RusleAssessment {
+    let n = soil_loss.len();
     let mean_loss = if n > 0 {
         soil_loss.iter().sum::<f64>() / n as f64
     } else {
         0.0
     };
-    let total_loss = soil_loss.iter().sum::<f64>() * area_cell_ha;
+    let total_loss = if n > 0 {
+        soil_loss.iter().sum::<f64>() * area_cell_ha
+    } else {
+        0.0
+    };
 
     // 侵蚀等级分布
     let classes = [
@@ -636,28 +660,20 @@ pub fn assess_soil_loss(
         class_dist.push((cls, pct));
     }
 
+    fn factor_mean(factors: &[f64]) -> f64 {
+        if factors.is_empty() {
+            0.0
+        } else {
+            factors.iter().sum::<f64>() / factors.len() as f64
+        }
+    }
+
     RusleAssessment {
         r_factor,
-        k_factor_mean: if n > 0 {
-            k.iter().sum::<f64>() / n as f64
-        } else {
-            0.0
-        },
-        ls_factor_mean: if n > 0 {
-            ls.iter().sum::<f64>() / n as f64
-        } else {
-            0.0
-        },
-        c_factor_mean: if n > 0 {
-            c.iter().sum::<f64>() / n as f64
-        } else {
-            0.0
-        },
-        p_factor_mean: if n > 0 {
-            p.iter().sum::<f64>() / n as f64
-        } else {
-            0.0
-        },
+        k_factor_mean: factor_mean(k),
+        ls_factor_mean: factor_mean(ls),
+        c_factor_mean: factor_mean(c),
+        p_factor_mean: factor_mean(p),
         soil_loss_mean: mean_loss,
         soil_loss_total: total_loss,
         area_ha,

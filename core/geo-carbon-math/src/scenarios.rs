@@ -282,18 +282,13 @@ impl ScenarioResult {
 }
 
 // ── Scenario Computation ──────────────────────────────────────
-
-/// Compute carbon stock change for a scenario.
-///
-/// Applies the 5-pool model to compute stock before and after the land-use change,
-/// then calculates the net delta.
 pub fn compute_scenario(input: &ScenarioInput) -> ScenarioResult {
-    // Own temporary values so we can take references to them
     let before_biomass = input.before.ecozone.biomass_params();
     let before_soc = SocParams::native_forest(input.before.ecozone.soc_ref_tc_ha());
     let after_biomass = input.after.ecozone.biomass_params();
     let after_soc = SocParams::native_forest(input.after.ecozone.soc_ref_tc_ha());
 
+    // Resolve biomass & SOC params (override or ecozone default)
     let biomass_before = input
         .before
         .biomass_params
@@ -307,22 +302,11 @@ pub fn compute_scenario(input: &ScenarioInput) -> ScenarioResult {
         .unwrap_or(&after_biomass);
     let soc_after = input.after.soc_params.as_ref().unwrap_or(&after_soc);
 
-    // Compute before stock
+    // Compute before/after stocks
     let stock_before = compute_stock(&input.before, biomass_before, soc_before);
-    // Compute after stock
     let stock_after = compute_stock(&input.after, biomass_after, soc_after);
 
-    let methodology = if input.methodology.is_empty() {
-        match input.scenario {
-            CarbonScenario::Afforestation => "IPCC Tier 1 — A/R (2006 GL Vol.4 Ch.2.4)".to_string(),
-            CarbonScenario::IFM => "IPCC Tier 1 — IFM (2006 GL Vol.4 Ch.2.3)".to_string(),
-            CarbonScenario::Deforestation => {
-                "IPCC Tier 1 — Deforestation (2006 GL Vol.4 Ch.2.5)".to_string()
-            }
-        }
-    } else {
-        input.methodology.clone()
-    };
+    let methodology = resolve_methodology(input);
 
     let mut change = MultiPoolChange::new(input.area_ha, &methodology, 1);
 
@@ -330,41 +314,15 @@ pub fn compute_scenario(input: &ScenarioInput) -> ScenarioResult {
         let before_stock = find_pool_value(&stock_before, pool);
         let after_stock = find_pool_value(&stock_after, pool);
 
-        // For SOC: apply transition dynamics over the time horizon
-        let (effective_before, effective_after) =
-            if pool == CarbonPool::SOC && input.time_horizon_years > 0.0 {
-                // SOC transition to new equilibrium
-                let target = after_stock;
-                let k = 1.0 / input.after.ecozone.soc_transition_years();
-                let soc_after_transitioned =
-                    compute_soc_transition(before_stock, target, k, input.time_horizon_years);
-                (before_stock, soc_after_transitioned)
-            } else if pool == CarbonPool::Deadwood && input.time_horizon_years > 0.0 {
-                // When AGB changes, deadwood input changes too
-                let _agb_before = find_pool_value(&stock_before, CarbonPool::AGB);
-                let agb_after = find_pool_value(&stock_after, CarbonPool::AGB);
-                let dw_input_after =
-                    agb_after * biomass_after.deadwood_ratio * biomass_after.deadwood_decay_rate;
-
-                let dw_after_decayed = compute_deadwood_decay(
-                    before_stock,
-                    dw_input_after,
-                    biomass_after.deadwood_decay_rate,
-                    input.time_horizon_years,
-                );
-                (before_stock, dw_after_decayed)
-            } else if pool == CarbonPool::Litter && input.time_horizon_years > 0.0 {
-                let agb_after = find_pool_value(&stock_after, CarbonPool::AGB);
-                let lt_after_turnover = compute_litter_turnover(
-                    before_stock,
-                    agb_after,
-                    biomass_after.litter_turnover,
-                    input.time_horizon_years,
-                );
-                (before_stock, lt_after_turnover)
-            } else {
-                (before_stock, after_stock)
-            };
+        let (effective_before, effective_after) = compute_effective_pool(
+            pool,
+            input,
+            &stock_before,
+            &stock_after,
+            before_stock,
+            after_stock,
+            biomass_after,
+        );
 
         let delta_per_ha = effective_before - effective_after;
         let delta_total = delta_per_ha * input.area_ha;
@@ -418,6 +376,70 @@ pub fn compute_scenario(input: &ScenarioInput) -> ScenarioResult {
         project_label: input.after.landcover_class.clone(),
         methodology,
     }
+}
+
+/// Resolve methodology reference string from input.
+fn resolve_methodology(input: &ScenarioInput) -> String {
+    if input.methodology.is_empty() {
+        match input.scenario {
+            CarbonScenario::Afforestation => "IPCC Tier 1 — A/R (2006 GL Vol.4 Ch.2.4)".to_string(),
+            CarbonScenario::IFM => "IPCC Tier 1 — IFM (2006 GL Vol.4 Ch.2.3)".to_string(),
+            CarbonScenario::Deforestation => {
+                "IPCC Tier 1 — Deforestation (2006 GL Vol.4 Ch.2.5)".to_string()
+            }
+        }
+    } else {
+        input.methodology.clone()
+    }
+}
+
+/// Compute effective before/after pool values considering transition dynamics.
+fn compute_effective_pool(
+    pool: CarbonPool,
+    input: &ScenarioInput,
+    _stock_before: &MultiPoolStock,
+    stock_after: &MultiPoolStock,
+    before_stock: f64,
+    after_stock: f64,
+    biomass_after: &BiomassParams,
+) -> (f64, f64) {
+    // SOC transition to new equilibrium
+    if pool == CarbonPool::SOC && input.time_horizon_years > 0.0 {
+        let target = after_stock;
+        let k = 1.0 / input.after.ecozone.soc_transition_years();
+        let soc_after_transitioned =
+            compute_soc_transition(before_stock, target, k, input.time_horizon_years);
+        return (before_stock, soc_after_transitioned);
+    }
+
+    // Deadwood decay dynamics
+    if pool == CarbonPool::Deadwood && input.time_horizon_years > 0.0 {
+        let agb_after = find_pool_value(stock_after, CarbonPool::AGB);
+        let dw_input_after =
+            agb_after * biomass_after.deadwood_ratio * biomass_after.deadwood_decay_rate;
+        let dw_after_decayed = compute_deadwood_decay(
+            before_stock,
+            dw_input_after,
+            biomass_after.deadwood_decay_rate,
+            input.time_horizon_years,
+        );
+        return (before_stock, dw_after_decayed);
+    }
+
+    // Litter turnover dynamics
+    if pool == CarbonPool::Litter && input.time_horizon_years > 0.0 {
+        let agb_after = find_pool_value(stock_after, CarbonPool::AGB);
+        let lt_after_turnover = compute_litter_turnover(
+            before_stock,
+            agb_after,
+            biomass_after.litter_turnover,
+            input.time_horizon_years,
+        );
+        return (before_stock, lt_after_turnover);
+    }
+
+    // Default: unchanged stock
+    (before_stock, after_stock)
 }
 
 /// Compute multi-pool stock for a land state.

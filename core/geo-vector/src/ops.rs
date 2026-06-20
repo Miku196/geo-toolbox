@@ -183,58 +183,54 @@ fn convexhull_buffer_outer(poly: &Polygon<f64>, dist: f64, segments: usize) -> M
 // ═══════════════════════ Precise 模式 ═══════════════════════
 
 /// 精确外扩缓冲：逐边平行四边形挤推 + 顶点圆弧 + BooleanOps Union。
-fn precise_buffer_outer(poly: &Polygon<f64>, dist: f64, segments: usize) -> MultiPolygon<f64> {
-    let exterior = poly.exterior();
-    let coords = &exterior.0;
-    let n = coords.len() - 1; // 首尾重复顶点不计
-    if n < 3 {
-        return MultiPolygon::new(vec![poly.clone()]);
-    }
+#[derive(Clone, Copy)]
+struct EdgeNormal {
+    nx: f64,
+    ny: f64,
+    len: f64,
+}
 
-    let mut parts: Vec<Polygon<f64>> = Vec::with_capacity(n * 2);
-
-    // 预计算每条边的外法线方向
-    #[derive(Clone, Copy)]
-    struct EdgeNormal {
-        nx: f64,
-        ny: f64,
-        len: f64,
-    }
-    let mut edge_normals: Vec<EdgeNormal> = Vec::with_capacity(n);
+/// Pre-compute outward edge normals for each segment of the polygon ring.
+fn compute_edge_normals(coords: &[Coord<f64>], n: usize) -> Vec<EdgeNormal> {
+    let mut normals = Vec::with_capacity(n);
     for i in 0..n {
         let j = (i + 1) % n;
         let dx = coords[j].x - coords[i].x;
         let dy = coords[j].y - coords[i].y;
         let len = (dx * dx + dy * dy).sqrt();
         if len < 1e-12 {
-            edge_normals.push(EdgeNormal {
+            normals.push(EdgeNormal {
                 nx: 0.0,
                 ny: 0.0,
                 len: 0.0,
             });
         } else {
-            edge_normals.push(EdgeNormal {
+            normals.push(EdgeNormal {
                 nx: dy / len,
                 ny: -dx / len,
                 len,
             });
         }
     }
+    normals
+}
 
-    // 0) 原始多边形本身作为基座加入 Union
-    parts.push(poly.clone());
-
-    // 1) 每条边生成平行四边形
+/// Build offset parallelograms for every edge of the polygon.
+fn generate_offset_parallelograms(
+    coords: &[Coord<f64>],
+    n: usize,
+    normals: &[EdgeNormal],
+    dist: f64,
+) -> Vec<Polygon<f64>> {
+    let mut parts = Vec::with_capacity(n);
     for i in 0..n {
         let j = (i + 1) % n;
-        let nv = &edge_normals[i];
+        let nv = &normals[i];
         if nv.len < 1e-12 {
             continue;
         }
-
         let ib = coords[i];
         let jb = coords[j];
-
         let i_off = Coord {
             x: ib.x + nv.nx * dist,
             y: ib.y + nv.ny * dist,
@@ -243,32 +239,38 @@ fn precise_buffer_outer(poly: &Polygon<f64>, dist: f64, segments: usize) -> Mult
             x: jb.x + nv.nx * dist,
             y: jb.y + nv.ny * dist,
         };
-
         parts.push(Polygon::new(
             LineString::new(vec![ib, i_off, j_off, jb, ib]),
             vec![],
         ));
     }
+    parts
+}
 
-    // 2) 凸顶点插入圆弧
+/// Insert arc polygons at convex vertices to round the offset corners.
+fn build_convex_vertex_arcs(
+    coords: &[Coord<f64>],
+    n: usize,
+    normals: &[EdgeNormal],
+    dist: f64,
+    segments: usize,
+) -> Vec<Polygon<f64>> {
     let step_angle = std::f64::consts::FRAC_PI_2 / (segments as f64).max(1.0);
+    let mut parts = Vec::with_capacity(n);
     for i in 0..n {
         let prev = (i + n - 1) % n;
         let curr = i;
 
-        let n1 = &edge_normals[prev];
-        let n2 = &edge_normals[curr];
+        let n1 = &normals[prev];
+        let n2 = &normals[curr];
         if n1.len < 1e-12 || n2.len < 1e-12 {
             continue;
         }
 
-        // 判断凹凸：上一段结束点的偏移 vs 当前段起点的偏移
-        // 前一相邻点、当前点、后一相邻点的转角符号
         let prev_pt = coords[prev];
         let curr_pt = coords[curr];
         let next_pt = coords[(curr + 1) % n];
 
-        // 叉积判断凹凸 (> 0 = 左转 = 凸)
         let dx1 = curr_pt.x - prev_pt.x;
         let dy1 = curr_pt.y - prev_pt.y;
         let dx2 = next_pt.x - curr_pt.x;
@@ -276,11 +278,9 @@ fn precise_buffer_outer(poly: &Polygon<f64>, dist: f64, segments: usize) -> Mult
         let cross = dx1 * dy2 - dy1 * dx2;
 
         if cross <= 0.0 {
-            // 凹顶点或共线：平行四边形会自动覆盖，跳过圆弧
             continue;
         }
 
-        // 凸顶点：计算圆弧起止方向角
         let prev_offset_end = Coord {
             x: curr_pt.x + n1.nx * dist,
             y: curr_pt.y + n1.ny * dist,
@@ -293,7 +293,6 @@ fn precise_buffer_outer(poly: &Polygon<f64>, dist: f64, segments: usize) -> Mult
         let angle1 = (prev_offset_end.y - curr_pt.y).atan2(prev_offset_end.x - curr_pt.x);
         let angle2 = (curr_offset_start.y - curr_pt.y).atan2(curr_offset_start.x - curr_pt.x);
 
-        // 确定圆弧扫过方向（取最短弧）
         let mut sweep = angle2 - angle1;
         while sweep < -std::f64::consts::PI {
             sweep += std::f64::consts::TAU;
@@ -306,7 +305,7 @@ fn precise_buffer_outer(poly: &Polygon<f64>, dist: f64, segments: usize) -> Mult
         let arc_step = sweep / arc_steps as f64;
 
         let mut arc_coords: Vec<Coord<f64>> = Vec::with_capacity(arc_steps + 2);
-        arc_coords.push(curr_pt); // 圆弧起点 — 顶点本身
+        arc_coords.push(curr_pt);
         for k in 0..=arc_steps {
             let a = angle1 + arc_step * k as f64;
             arc_coords.push(Coord {
@@ -317,17 +316,45 @@ fn precise_buffer_outer(poly: &Polygon<f64>, dist: f64, segments: usize) -> Mult
 
         parts.push(Polygon::new(LineString::new(arc_coords), vec![]));
     }
+    parts
+}
 
-    // 3) Union 合并所有部件
+/// Union all geometry parts into a single MultiPolygon, falling back to BBox on failure.
+fn union_geometry_parts(
+    parts: Vec<Polygon<f64>>,
+    poly: &Polygon<f64>,
+    dist: f64,
+) -> MultiPolygon<f64> {
     if parts.is_empty() {
         return bbox_buffer_outer(poly, dist);
     }
-
     let mut result = MultiPolygon::new(vec![parts[0].clone()]);
     for part in &parts[1..] {
         result = result.union(&MultiPolygon::new(vec![part.clone()]));
     }
     result
+}
+
+fn precise_buffer_outer(poly: &Polygon<f64>, dist: f64, segments: usize) -> MultiPolygon<f64> {
+    let exterior = poly.exterior();
+    let coords = &exterior.0;
+    let n = coords.len() - 1;
+    if n < 3 {
+        return MultiPolygon::new(vec![poly.clone()]);
+    }
+
+    let edge_normals = compute_edge_normals(coords, n);
+    let mut parts: Vec<Polygon<f64>> = Vec::with_capacity(n * 2);
+
+    parts.push(poly.clone());
+
+    let pgrams = generate_offset_parallelograms(coords, n, &edge_normals, dist);
+    parts.extend(pgrams);
+
+    let arcs = build_convex_vertex_arcs(coords, n, &edge_normals, dist, segments);
+    parts.extend(arcs);
+
+    union_geometry_parts(parts, poly, dist)
 }
 
 // ═══════════════════════ 通用运算 ═══════════════════════
