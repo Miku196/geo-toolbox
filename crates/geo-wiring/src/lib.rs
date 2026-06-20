@@ -42,26 +42,26 @@ pub fn populate_defaults(reg: &mut PluginRegistry) {
     // ── Adapters: feature-gated ──
     #[cfg(feature = "postgis")]
     {
-        geo_adapter_postgis::tools::register_tools(reg);
+        let _ = geo_adapter_postgis::tools::register_tools(reg);
     }
     #[cfg(feature = "gee")]
     {
-        geo_adapter_gee::tools::register_tools(reg);
+        let _ = geo_adapter_gee::tools::register_tools(reg);
     }
     #[cfg(feature = "qgis")]
     {
-        geo_adapter_qgis::tools::register_tools(reg);
+        let _ = geo_adapter_qgis::tools::register_tools(reg);
     }
     #[cfg(feature = "cad")]
     {
-        geo_adapter_cad::tools::register_tools(reg);
+        let _ = geo_adapter_cad::tools::register_tools(reg);
     }
     #[cfg(feature = "gdal")]
     {
-        geo_adapter_cli::tools::register_tools(reg);
+        let _ = geo_adapter_cli::tools::register_tools(reg);
     }
     #[cfg(feature = "iot")]
     {
-        geo_adapter_iot::tools::register_tools(reg);
+        let _ = geo_adapter_iot::tools::register_tools(reg);
     }
 }

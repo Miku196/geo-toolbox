@@ -284,10 +284,16 @@ pub fn compute_water_yield_grid(
     cells: usize,
 ) -> Vec<f64> {
     let mut yields = vec![0.0; cells];
-    for i in 0..cells {
-        let p = precipitation.get(i).copied().unwrap_or(0.0);
-        let e = pet.get(i).copied().unwrap_or(0.0);
-        let a = awc.get(i).copied().unwrap_or(0.0);
+    for (i, ((p, e), a)) in precipitation
+        .iter()
+        .zip(pet.iter())
+        .zip(awc.iter())
+        .take(cells)
+        .enumerate()
+    {
+        let p = *p;
+        let e = *e;
+        let a = *a;
         yields[i] = compute_water_yield(p, e, a, z_coefficient);
     }
     yields

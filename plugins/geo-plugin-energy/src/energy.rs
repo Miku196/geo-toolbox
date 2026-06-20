@@ -284,6 +284,103 @@ fn gamma_approx(x: f64) -> f64 {
     g.max(1e-10)
 }
 
+// ── 风力机功率模型 ───────────────────────────────────────────
+
+/// 风机规格参数。
+///
+/// 定义一台风力发电机的关键参数，用于计算实际输出功率。
+#[derive(Debug, Clone)]
+pub struct TurbineSpec {
+    /// 额定功率 (kW)，例如 2000（2 MW）
+    pub rated_power_kw: f64,
+    /// 切入风速 (m/s)
+    pub cut_in_m_s: f64,
+    /// 额定风速 (m/s)
+    pub rated_wind_speed_m_s: f64,
+    /// 切出风速 (m/s)
+    pub cut_out_m_s: f64,
+    /// 叶轮直径 (m)
+    pub rotor_diameter_m: f64,
+    /// 推力系数（用于尾流估算，0.0–1.0）
+    pub thrust_coefficient: f64,
+}
+
+impl Default for TurbineSpec {
+    fn default() -> Self {
+        Self {
+            rated_power_kw: 2000.0,
+            cut_in_m_s: 3.0,
+            rated_wind_speed_m_s: 12.0,
+            cut_out_m_s: 25.0,
+            rotor_diameter_m: 90.0,
+            thrust_coefficient: 0.8,
+        }
+    }
+}
+
+/// 风能利用系数 Cp(λ, β) 模型。
+///
+/// Cp = 0.5176 × (116/λ_i - 0.4×β - 5) × exp(-21/λ_i) + 0.0068×λ
+/// 其中 1/λ_i = 1/(λ + 0.08×β) - 0.035/(β³ + 1)
+///
+/// - λ = 叶尖速比 (tip-speed ratio)
+/// - β = 桨距角 (degrees)
+/// - Betz 极限 Cp_max = 0.593
+///
+/// **来源**: Heier, S. (2014). *Grid Integration of Wind Energy*, 3rd ed., Eq. 6.25.
+pub fn compute_cp(lambda: f64, beta_deg: f64) -> f64 {
+    if lambda <= 0.0 {
+        return 0.0;
+    }
+    let beta = beta_deg.to_radians();
+    let lambda_i = 1.0 / (1.0 / (lambda + 0.08 * beta) - 0.035 / (beta.powi(3) + 1.0));
+    let cp =
+        0.5176 * (116.0 / lambda_i - 0.4 * beta - 5.0) * (-21.0 / lambda_i).exp() + 0.0068 * lambda;
+    cp.clamp(0.0, 0.593)
+}
+
+/// 计算单台风机的输出功率 (kW)。
+///
+/// 分段功率曲线：
+/// - v < cut_in: P = 0
+/// - cut_in ≤ v < rated: P = ½·ρ·A·Cp(λ,β)·v³ / 1000
+/// - rated ≤ v ≤ cut_out: P = rated_power
+/// - v > cut_out: P = 0
+///
+/// **注意**: ½·ρ·v³ 是风功率密度 (W/m²)，不是风机输出。
+/// 实际风机输出需要乘以扫风面积 A 和 Cp。
+///
+/// # 参数
+/// - `wind_speed_m_s` — 轮毂高度风速
+/// - `turbine` — 风机规格
+/// - `air_density` — 空气密度 (kg/m³)，默认 1.225
+///
+/// 返回风机输出功率 (kW)。
+pub fn compute_turbine_power(wind_speed_m_s: f64, turbine: &TurbineSpec, air_density: f64) -> f64 {
+    if wind_speed_m_s < turbine.cut_in_m_s || wind_speed_m_s > turbine.cut_out_m_s {
+        return 0.0;
+    }
+
+    if wind_speed_m_s >= turbine.rated_wind_speed_m_s {
+        return turbine.rated_power_kw;
+    }
+
+    // 扫风面积 A = π(D/2)²
+    let area = std::f64::consts::PI * (turbine.rotor_diameter_m / 2.0).powi(2);
+
+    // 叶尖速比 λ = ωR/v
+    // 在额定点到切入之间按线性估算转速
+    let tip_speed_ratio = 7.0; // 典型最优 λ ≈ 7
+
+    // 桨距角最优值 β = 0°（低于额定风速时变桨不启动）
+    let cp = compute_cp(tip_speed_ratio, 0.0);
+
+    // P = ½·ρ·A·Cp·v³ / 1000 (kW)
+    let power = 0.5 * air_density * area * cp * wind_speed_m_s.powi(3) / 1000.0;
+
+    power.min(turbine.rated_power_kw)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -306,6 +403,33 @@ mod tests {
         // Γ(1) = 1
         assert!((gamma_approx(1.0) - 1.0).abs() < 0.1);
     }
+
+    #[test]
+    fn test_compute_cp() {
+        // 最优 λ≈7, β=0 → Cp ≈ 0.48 (低于 Betz 极限 0.593)
+        let cp = compute_cp(7.0, 0.0);
+        assert!(cp > 0.3 && cp < 0.593, "Cp(7,0)={cp} out of expected range");
+        // 极端值：λ=0 → Cp=0
+        assert_eq!(compute_cp(0.0, 0.0), 0.0);
+        // 大桨距角 → Cp 降低
+        let cp_low = compute_cp(7.0, 20.0);
+        assert!(cp_low < cp, "large pitch angle should reduce Cp");
+    }
+
+    #[test]
+    fn test_turbine_power() {
+        let t = TurbineSpec::default();
+        // 低于切入风速 → 0
+        assert_eq!(compute_turbine_power(2.0, &t, 1.225), 0.0);
+        // 高于切出风速 → 0
+        assert_eq!(compute_turbine_power(30.0, &t, 1.225), 0.0);
+        // 额定风速以上 → 额定功率
+        assert!((compute_turbine_power(15.0, &t, 1.225) - 2000.0).abs() < 1e-6);
+        // 额定风速以下 → 输出 > 0 且 < 额定
+        let p = compute_turbine_power(8.0, &t, 1.225);
+        assert!(p > 0.0 && p < 2000.0, "partial power={p} out of range");
+    }
+
     use geo_raster::RasterBand;
 
     fn make_band(data: Vec<f64>) -> RasterBand {

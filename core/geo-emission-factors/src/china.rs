@@ -1,4 +1,4 @@
-use geo_carbon_math::{EmissionFactor, EmissionScope, GasFactor, GreenhouseGas, GwpVersion};
+use geo_carbon_math::{EmissionFactor, EmissionScope, GasFactor, GreenhouseGas};
 
 /// China-specific emission factors.
 ///

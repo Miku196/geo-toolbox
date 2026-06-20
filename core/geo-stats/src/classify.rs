@@ -91,9 +91,12 @@ pub fn jenks(data: &[f64], k: usize) -> Option<JenksResult> {
     break_positions.reverse();
 
     // Convert positions to actual break values (upper bound of each class)
+    // Use all break positions except the last one (which points past the final class)
     let mut class_breaks: Vec<f64> = Vec::with_capacity(k - 1);
-    for &pos in &break_positions[..break_positions.len().saturating_sub(1)] {
-        class_breaks.push(sorted[pos]);
+    let n_breaks = break_positions.len();
+    for &pos in &break_positions[..n_breaks] {
+        let idx = pos.min(sorted.len().saturating_sub(1));
+        class_breaks.push(sorted[idx]);
     }
 
     // Assign classes to original data

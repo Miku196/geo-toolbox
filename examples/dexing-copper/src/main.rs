@@ -528,6 +528,7 @@ fn generate_simulated_bands(
 // ── NDVI → 土地覆盖分类 ─────────────────────────────────
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct LandcoverClass {
     name: String,
     area_ha: f64,

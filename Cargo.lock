@@ -2112,6 +2112,7 @@ dependencies = [
  "geo-core",
  "geo-emission-factors",
  "geo-registry",
+ "reqwest",
  "serde",
  "serde_json",
  "tokio",
@@ -2328,9 +2329,17 @@ dependencies = [
 name = "geo-toolbox-python"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "csv",
+ "geo",
+ "geo-carbon-math",
  "geo-core",
+ "geo-index",
+ "geo-report",
  "geo-tile",
+ "geo-types",
  "pyo3",
+ "rust_xlsxwriter",
  "serde_json",
 ]
 
@@ -4842,6 +4851,7 @@ dependencies = [
  "base64",
  "bytes",
  "encoding_rs",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "h2",

@@ -92,7 +92,7 @@ macro_rules! timed_op {
 mod tests {
     #[test]
     fn test_timed_op() {
-        let (v, _t) = timed_op!(|| 42);
+        let (v, _t) = timed_op!({ 42 });
         assert_eq!(v, 42);
     }
 }

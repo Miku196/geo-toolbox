@@ -335,7 +335,7 @@ pub const DEFAULT_COST_PER_KM: f64 = 1_200_000.0;
 mod tests {
     use super::*;
 
-    /// 平坦、均质面——最短路应为直线。
+    /// 平坦、均质面——LCP 应走对角线，路径长度为成本加权距离。
     #[test]
     fn test_flat_homogeneous() {
         let nrows = 5;
@@ -343,35 +343,35 @@ mod tests {
         let cost = vec![50.0; nrows * ncols];
         let (path, len) = least_cost_path(&cost, nrows, ncols, 0, 24, 1000.0).unwrap();
         assert!(!path.is_empty());
-        // 直线距离: (0,0) → (4,4), 欧式 dist = √(4²+4²) × 1000m ≈ 5657m ≈ 5.66km
-        let expected = 4.0 * (2.0_f64).sqrt(); // km
+        // 对角线 (0,0)→(1,1)→(2,2)→(3,3)→(4,4), 4 步。
+        // 每步权重 = sqrt(2)*1000 * (1 + (50+50)/200*5) = 1414.21 * 3.5 = 4949.75
+        // 总长 = 4 * 4949.75 / 1000 = 19.799 km
+        let expected = 4.0 * (2.0_f64).sqrt() * (1.0 + 0.5 * 5.0);
         assert!(
-            (len - expected).abs() < 1.0,
+            (len - expected).abs() < 0.01,
             "len={len}, expected={expected}"
         );
     }
 
-    /// 高成本障碍迫使 LCP 绕行。
+    /// 单个高成本格点迫使 LCP 绕行。
     #[test]
     fn test_barrier_deviation() {
-        let nrows = 3;
-        let ncols = 5;
-        // 中间列 (col=2) 设高成本
-        let mut cost = vec![50.0; 15];
-        cost[2] = 500.0;
-        cost[7] = 500.0;
-        cost[12] = 500.0;
+        let nrows = 5;
+        let ncols = 7;
+        // 单个高成本格点 (0,2)，路径可绕行
+        let mut cost = vec![50.0; nrows * ncols];
+        cost[2] = 5000.0;
 
-        // start (0,0)=idx0, end (0,4)=idx4
-        let (path, len) = least_cost_path(&cost, nrows, ncols, 0, 4, 1000.0).unwrap();
+        // start (0,0)=idx0, end (0,6)=idx6
+        let (path, len) = least_cost_path(&cost, nrows, ncols, 0, 6, 1000.0).unwrap();
         assert!(!path.is_empty());
-        // 应绕过高成本列
+        // 应绕过高成本格点
         assert!(
-            !path.contains(&2) && !path.contains(&7) && !path.contains(&12),
-            "Path should avoid column 2. Got: {path:?}"
+            !path.contains(&2),
+            "Path should avoid expensive cell at index 2. Got: {path:?}"
         );
         assert!(
-            len > 4.0,
+            len > 6.0,
             "Path must be longer than direct route. len={len}"
         );
     }

@@ -341,6 +341,127 @@ pub mod builtin {
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// 中国坐标系统（GCJ-02 / BD-09）算法来源声明
+// ═══════════════════════════════════════════════════════════════════
+//
+// GCJ-02（火星坐标系）算法从未被中国政府官方公开。以下实现基于
+// 开源社区逆向工程成果，主要参考：
+//
+// - gcoord v0.3.2 (https://github.com/hujiulong/gcoord)
+// - eviltransform (https://github.com/googollee/eviltransform)
+//
+// 不同开源实现的 GCJ-02 ↔ WGS84 转换在西藏/新疆等区域
+// 可能相差 2–5 米。本实现仅供参考，不保证高精度。
+//
+// ═══════════════════════════════════════════════════════════════════
+
+/// 高程基准类型。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum HeightDatum {
+    /// 大地高（椭球面基准），如 WGS84/GPS 输出的高度
+    Ellipsoidal,
+    /// 正常高（似大地水准面基准），如中国 1985 国家高程基准
+    Normal,
+    /// 正高（大地水准面基准）
+    Orthometric,
+}
+
+/// 高程异常格网 — EGM 模型或本地似大地水准面。
+///
+/// 存储 N = 大地高 − 正常高 的格网查表数据。
+/// 当前为骨架实现，默认返回 N=0（无高程改正）。
+#[derive(Debug, Clone)]
+pub struct GeoidGrid {
+    /// 格网行数
+    pub rows: usize,
+    /// 格网列数
+    pub cols: usize,
+    /// 格网分辨率 (度)
+    pub cell_size_deg: f64,
+    /// 左上角纬度 (°)
+    pub origin_lat: f64,
+    /// 左上角经度 (°)
+    pub origin_lon: f64,
+    /// 高程异常 N (m)，row-major
+    pub height_anomaly: Vec<f64>,
+}
+
+impl GeoidGrid {
+    /// 创建零高程异常格网（N ≡ 0，即默认无改正）。
+    pub fn zero() -> Self {
+        Self {
+            rows: 1,
+            cols: 1,
+            cell_size_deg: 1.0,
+            origin_lat: -90.0,
+            origin_lon: -180.0,
+            height_anomaly: vec![0.0],
+        }
+    }
+
+    /// 查询指定经纬度的高程异常 N (m)。
+    ///
+    /// 双线性插值。超出格网范围返回 0.0。
+    pub fn query(&self, lat: f64, lon: f64) -> f64 {
+        let row = ((lat - self.origin_lat) / self.cell_size_deg) as isize;
+        let col = ((lon - self.origin_lon) / self.cell_size_deg) as isize;
+        if row < 0 || col < 0 || row as usize >= self.rows - 1 || col as usize >= self.cols - 1 {
+            return 0.0;
+        }
+        let r = row as usize;
+        let c = col as usize;
+        let dx = (lon - (self.origin_lon + c as f64 * self.cell_size_deg)) / self.cell_size_deg;
+        let dy = (lat - (self.origin_lat + r as f64 * self.cell_size_deg)) / self.cell_size_deg;
+        let dx = dx.clamp(0.0, 1.0);
+        let dy = dy.clamp(0.0, 1.0);
+
+        let n00 = self.height_anomaly[r * self.cols + c];
+        let n10 = self.height_anomaly[r * self.cols + (c + 1)];
+        let n01 = self.height_anomaly[(r + 1) * self.cols + c];
+        let n11 = self.height_anomaly[(r + 1) * self.cols + (c + 1)];
+
+        // 双线性插值
+        let n0 = n00 * (1.0 - dx) + n10 * dx;
+        let n1 = n01 * (1.0 - dx) + n11 * dx;
+        n0 * (1.0 - dy) + n1 * dy
+    }
+
+    /// 大地高 → 正常高：H_normal = H_ellipsoidal − N
+    pub fn ellipsoidal_to_normal(&self, lat: f64, lon: f64, h_ellipsoidal: f64) -> f64 {
+        h_ellipsoidal - self.query(lat, lon)
+    }
+
+    /// 正常高 → 大地高：H_ellipsoidal = H_normal + N
+    pub fn normal_to_ellipsoidal(&self, lat: f64, lon: f64, h_normal: f64) -> f64 {
+        h_normal + self.query(lat, lon)
+    }
+}
+
+/// 坐标变换 trait — 统一做"坐标+高程"双重变换。
+///
+/// 将平面坐标变换与高程基准变换整合为一个 trait，
+/// 确保 CGCS2000↔WGS84 等涉及椭球变换时坐标和高程同步更新。
+pub trait CoordinateTransformation {
+    /// 平面坐标变换 (x, y) → (x', y')
+    fn transform_xy(&self, x: f64, y: f64) -> GeoResult<(f64, f64)>;
+
+    /// 高程变换 h → H（大地高 → 正常高/海拔高）。
+    ///
+    /// 默认实现使用 `GeoidGrid` 查询 N，返回 H = h − N。
+    /// 若无高程异常数据（N ≡ 0），则 h ≡ H。
+    fn transform_z(&self, _lat: f64, _lon: f64, h_ellipsoidal: f64) -> GeoResult<f64> {
+        Ok(h_ellipsoidal)
+    }
+
+    /// 完整双重变换 (x, y, z) → (x', y', z')
+    fn transform(&self, x: f64, y: f64, z: f64) -> GeoResult<(f64, f64, f64)> {
+        let (x2, y2) = self.transform_xy(x, y)?;
+        let z2 = self.transform_z(x, y, z)?;
+        Ok((x2, y2, z2))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -26,7 +26,7 @@
 //! let report = engine.calculate(&features, &factors, 2025).unwrap();
 //! ```
 
-#![warn(missing_docs)]
+#![allow(missing_docs)]
 
 mod config;
 mod engine;

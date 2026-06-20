@@ -3,7 +3,7 @@ name = "geo-toolbox-python"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Python bindings for geo-toolbox — tile math, MVT encoding, PMTiles"
+description = "Python bindings for geo-toolbox — tile math, CRS, carbon, spatial ops, IO, geohash"
 
 [lib]
 name = "_geo_toolbox"
@@ -12,5 +12,13 @@ crate-type = ["cdylib"]
 [dependencies]
 geo-tile = { path = "../../core/geo-tile" }
 geo-core = { path = "../../core/geo-core" }
+geo-carbon-math = { path = "../../core/geo-carbon-math" }
+geo-index = { path = "../../core/geo-index" }
+geo-report = { path = "../../core/geo-report" }
 pyo3 = { version = "0.23", features = ["extension-module"] }
 serde_json = { workspace = true }
+geo = { workspace = true }
+geo-types = { workspace = true }
+chrono = { workspace = true }
+csv = { workspace = true }
+rust_xlsxwriter = { workspace = true }

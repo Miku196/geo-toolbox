@@ -224,7 +224,7 @@ mod tests {
 
     #[test]
     fn test_ch4_factor() {
-        let gf = IpccEfDb::ch4_factor(1.0, GwpVersion::Ar5);
+        let gf = IpccEfDb::ch4_factor(1.0, GwpVersion::AR5);
         assert!((gf.factor - 28.0).abs() < 1e-6);
     }
 

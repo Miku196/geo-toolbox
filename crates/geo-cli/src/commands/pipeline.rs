@@ -204,10 +204,86 @@ fn buffer_geometry(
     distance: f64,
     _units: Option<&str>,
 ) -> Result<geojson::Geometry, Box<dyn std::error::Error>> {
-    // Buffer was removed from geo 0.28. Use geo-buffer crate or polyline offset.
-    let _ = geom;
-    let _ = distance;
-    Err("buffer: geo 0.28 removed the buffer algorithm. Install 'geo-buffer' crate or use polyline offset.".into())
+    let geo_geom: geo::Geometry<f64> = geom
+        .value
+        .clone()
+        .try_into()
+        .map_err(|e: geojson::Error| e.to_string())?;
+    let buffered = buffer_simple(&geo_geom, distance);
+    Ok((&buffered).into())
+}
+
+/// Simple buffer approximation for geo 0.28 (which removed `geo::algorithm::Buffer`).
+/// Point → circle polygon with `n` segments.
+/// Line/Polygon → convex hull of point-buffered vertices (approximate).
+fn buffer_simple(geom: &geo::Geometry<f64>, distance: f64) -> geo::Geometry<f64> {
+    use geo::algorithm::convex_hull::ConvexHull;
+    const N: usize = 32;
+    match geom {
+        geo::Geometry::Point(pt) => {
+            let segs = circle_points(pt.x(), pt.y(), distance, N);
+            geo::Geometry::Polygon(geo::Polygon::new(geo::LineString(segs), vec![]))
+        }
+        geo::Geometry::LineString(ls) => {
+            let pts: Vec<geo::Point<f64>> = ls
+                .points()
+                .flat_map(|p| {
+                    let pts = circle_points(p.x(), p.y(), distance, 8);
+                    pts.into_iter().map(|c| geo::Point::new(c.x, c.y))
+                })
+                .collect();
+            geo::Geometry::Polygon(geo::MultiPoint(pts).convex_hull())
+        }
+        geo::Geometry::Polygon(p) => {
+            let pts: Vec<geo::Point<f64>> = p
+                .exterior()
+                .points()
+                .flat_map(|p| {
+                    let pts = circle_points(p.x(), p.y(), distance, 8);
+                    pts.into_iter().map(|c| geo::Point::new(c.x, c.y))
+                })
+                .collect();
+            geo::Geometry::Polygon(geo::MultiPoint(pts).convex_hull())
+        }
+        geo::Geometry::MultiLineString(mls) => {
+            let pts: Vec<geo::Point<f64>> = mls
+                .iter()
+                .flat_map(|ls| {
+                    ls.points().flat_map(|p| {
+                        let pts = circle_points(p.x(), p.y(), distance, 8);
+                        pts.into_iter().map(|c| geo::Point::new(c.x, c.y))
+                    })
+                })
+                .collect();
+            geo::Geometry::MultiPolygon(geo::MultiPoint(pts).convex_hull().into())
+        }
+        geo::Geometry::MultiPolygon(mp) => {
+            let pts: Vec<geo::Point<f64>> = mp
+                .iter()
+                .flat_map(|p| {
+                    p.exterior().points().flat_map(|p| {
+                        let pts = circle_points(p.x(), p.y(), distance, 8);
+                        pts.into_iter().map(|c| geo::Point::new(c.x, c.y))
+                    })
+                })
+                .collect();
+            geo::Geometry::MultiPolygon(geo::MultiPoint(pts).convex_hull().into())
+        }
+        other => other.clone(),
+    }
+}
+
+fn circle_points(cx: f64, cy: f64, r: f64, n: usize) -> Vec<geo::Coord<f64>> {
+    let mut pts = Vec::with_capacity(n + 1);
+    for i in 0..n {
+        let angle = 2.0 * std::f64::consts::PI * i as f64 / n as f64;
+        pts.push(geo::Coord {
+            x: cx + r * angle.cos(),
+            y: cy + r * angle.sin(),
+        });
+    }
+    pts.push(pts[0]); // close ring
+    pts
 }
 
 fn handle_simplify(epsilon: f64) -> Result<(), Box<dyn std::error::Error>> {

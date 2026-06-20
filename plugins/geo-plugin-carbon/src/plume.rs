@@ -110,8 +110,10 @@ impl GaussianPlume {
             return 0.0;
         }
 
+        #[allow(non_snake_case)]
         let H = self.source_height_m;
         let zr = if z < 0.0 { self.receptor_height_m } else { z };
+        #[allow(non_snake_case)]
         let Q = self.emission_rate_g_s;
         let u = self.wind_speed_m_s;
 

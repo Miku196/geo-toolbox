@@ -113,6 +113,7 @@ impl CoastalPlugin {
     ///
     /// # 返回
     /// 增水栅格 + 淹没统计
+    #[allow(clippy::too_many_arguments)]
     pub fn storm_surge(
         &self,
         params: &StormParams,
@@ -323,7 +324,9 @@ mod tests {
         let land_mask: Vec<bool> = dem.iter().map(|z| *z >= 0.0).collect();
 
         let result = p
-            .storm_surge(&params, &dem, rows, cols, cell_size, &land_mask, ul_lat, ul_lon)
+            .storm_surge(
+                &params, &dem, rows, cols, cell_size, &land_mask, ul_lat, ul_lon,
+            )
             .unwrap();
         assert!(result.max_surge_m > 0.0);
         assert!(result.inundated_cells > 0);

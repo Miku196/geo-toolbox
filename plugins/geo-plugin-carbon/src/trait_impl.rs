@@ -5,7 +5,7 @@ use geo_core::plugin::{Plugin, PluginCategory, ProcessPlugin};
 impl Plugin for Cp {
     type Config = CarbonConfig;
     fn new(config: Self::Config) -> Self {
-        Cp::new(config)
+        Cp::load(config)
     }
     fn name(&self) -> &str {
         "carbon"

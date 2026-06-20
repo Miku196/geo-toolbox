@@ -7,7 +7,6 @@
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
@@ -30,6 +29,7 @@ struct AppState {
 
 /// WMS query parameters (KVP encoding per OGC WMS 1.3.0).
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct WmsQuery {
     request: Option<String>,
     service: Option<String>,
@@ -61,6 +61,7 @@ struct WmsQuery {
 
 /// WMTS query parameters (KVP encoding per OGC WMTS 1.0.0).
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct WmtsQuery {
     request: Option<String>,
     service: Option<String>,

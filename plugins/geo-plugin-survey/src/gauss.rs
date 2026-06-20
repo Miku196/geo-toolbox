@@ -356,6 +356,7 @@ pub fn gauss_inverse(X: f64, Y: f64, L0: f64, ell: Ellipsoid) -> (f64, f64) {
 /// - `ell`: Reference ellipsoid
 ///
 /// Returns `(X', Y')` in target zone coordinates.
+#[allow(non_snake_case)]
 pub fn zone_transform(
     X: f64,
     Y: f64,
@@ -372,6 +373,7 @@ pub fn zone_transform(
 }
 
 /// Coordinate zone transformation using source and target central meridians directly.
+#[allow(non_snake_case)]
 pub fn zone_transform_by_meridians(
     X: f64,
     Y: f64,
@@ -389,6 +391,7 @@ pub fn zone_transform_by_meridians(
 /// extracted via inverse calculation matches a standard zone.
 ///
 /// Returns `(zone_number, central_meridian, is_3degree)` or None if detection fails.
+#[allow(non_snake_case)]
 pub fn auto_detect_zone(X: f64, Y: f64, ell: Ellipsoid) -> Option<(u16, f64, bool)> {
     // Try inverse with each candidate meridian and pick the one closest
     // to a valid zone center

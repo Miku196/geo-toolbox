@@ -498,6 +498,48 @@ pub fn compute_soil_loss(
     loss
 }
 
+/// 计算 MUSLE（Modified Universal Soil Loss Equation）— 单场暴雨产沙量。
+///
+/// MUSLE 用径流因子替代 RUSLE 的降雨侵蚀力 R 因子，
+/// 适用于单场暴雨的泥沙产量估算。
+/// `Y = 11.8 × (Q × q_p)^0.56 × K × LS × C × P`
+///
+/// 其中 `Q` 为径流深 (mm，来自 SCS-CN)，`q_p` 为洪峰流量 (mm/h)，
+/// K/LS/C/P 与 RUSLE 相同。返回 t/ha（吨/公顷）。
+///
+/// **来源**: Williams, J.R. (1975).
+/// "Sediment-yield prediction with Universal Equation using runoff energy factor".
+/// USDA-ARS, ARS-S-40, pp. 244-252.
+///
+/// **注意**: MUSLE 是事件模型，适用于单次暴雨。
+/// 常数 11.8 将单位转换为 (t·ha⁻¹)。
+pub fn compute_musle_sediment(
+    runoff_depth_mm: &[f64],
+    peak_runoff_rate_mm_h: &[f64],
+    k_factor: &[f64],
+    ls_factor: &[f64],
+    c_factor: &[f64],
+    p_factor: &[f64],
+    cells: usize,
+) -> Vec<f64> {
+    let mut sediment = vec![0.0; cells];
+    for i in 0..cells {
+        let q = runoff_depth_mm.get(i).copied().unwrap_or(0.0);
+        let qp = peak_runoff_rate_mm_h.get(i).copied().unwrap_or(0.0);
+        let k = k_factor.get(i).copied().unwrap_or(0.0);
+        let ls = ls_factor.get(i).copied().unwrap_or(0.0);
+        let c = c_factor.get(i).copied().unwrap_or(0.0);
+        let p = p_factor.get(i).copied().unwrap_or(0.0);
+
+        if q <= 0.0 || qp <= 0.0 {
+            continue;
+        }
+        let energy = (q * qp).powf(0.56);
+        sediment[i] = 11.8 * energy * k * ls * c * p;
+    }
+    sediment
+}
+
 /// 完整的 RUSLE 土壤流失评估。
 ///
 /// # 参数
@@ -774,6 +816,32 @@ mod tests {
         let loss2 = compute_soil_loss(&r2, &k, &ls, &c, &p, n);
         assert!(approx_eq(loss2[0], 40.0, 1e-6));
         assert_eq!(loss2[5], 0.0);
+    }
+
+    #[test]
+    fn test_musle_sediment() {
+        let q = vec![30.0, 0.0, 50.0];
+        let qp = vec![10.0, 20.0, 0.0];
+        let k = vec![0.04, 0.04, 0.04];
+        let ls = vec![1.0, 1.0, 1.0];
+        let c = vec![0.2, 0.2, 0.2];
+        let p = vec![1.0, 1.0, 1.0];
+        let sed = compute_musle_sediment(&q, &qp, &k, &ls, &c, &p, 3);
+        // cell 0: 11.8 × (30×10)^0.56 × 0.04 × 1.0 × 0.2 × 1.0 > 0
+        assert!(sed[0] > 0.0, "cell0 should have sediment, got {}", sed[0]);
+        // cell 1: Q=0 → sediment=0
+        assert_eq!(sed[1], 0.0);
+        // cell 2: qp=0 → sediment=0
+        assert_eq!(sed[2], 0.0);
+        // Running 11.8 × (30×10)^0.56 × 0.04 × 0.2
+        // = 11.8 × (300)^0.56 × 0.008
+        let expected = 11.8 * (300.0_f64).powf(0.56) * 0.04 * 0.2;
+        assert!(
+            (sed[0] - expected).abs() < 1e-6,
+            "sed[0]={} expected={}",
+            sed[0],
+            expected
+        );
     }
 
     #[test]
