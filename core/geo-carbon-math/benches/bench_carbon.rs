@@ -4,22 +4,13 @@ use geo_carbon_math::{CarbonEngine, CarbonReport, EmissionFactor, GeoFeature};
 fn make_features(count: usize) -> Vec<GeoFeature> {
     (0..count)
         .map(|i| {
+            let offset = i as f64 * 0.01;
+            let lon0 = 116.0 + offset;
+            let lon1 = 116.0 + offset + 0.005;
+            let lat0 = 39.0;
+            let lat1 = 39.005;
             let geojson = format!(
-                r#"{{
-                "type": "Polygon",
-                "coordinates": [[[
-                    {}, 39.0,
-                    {}, 39.0,
-                    {}, 39.005,
-                    {}, 39.005,
-                    {}, 39.0
-                ]]]
-            }}"#,
-                116.0 + i as f64 * 0.01,
-                116.0 + i as f64 * 0.01 + 0.005,
-                116.0 + i as f64 * 0.01 + 0.005,
-                116.0 + i as f64 * 0.01,
-                116.0 + i as f64 * 0.01,
+                r##"{{"type":"Polygon","coordinates":[[[{lon0},{lat0}],[{lon1},{lat0}],[{lon1},{lat1}],[{lon0},{lat1}],[{lon0},{lat0}]]]}}"##
             );
             GeoFeature::new("rice", &geojson).unwrap()
         })
