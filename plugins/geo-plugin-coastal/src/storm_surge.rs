@@ -103,11 +103,13 @@ impl CoastalPlugin {
     /// 风暴潮模拟 (SLOSH 简化版)。
     ///
     /// # 参数
-    /// * `params` — 风暴参数
+    /// * `params` — 风暴参数（lat/lon 为地理坐标°）
     /// * `dem` — 地形高程 (m), flat row-major
     /// * `rows` / `cols` — 网格尺寸
     /// * `cell_size_m` — 格网边长 (m)
     /// * `land_mask` — true=陆地, false=水体/海
+    /// * `ul_lat` — 网格左上角纬度 (°)
+    /// * `ul_lon` — 网格左上角经度 (°)
     ///
     /// # 返回
     /// 增水栅格 + 淹没统计
@@ -119,6 +121,8 @@ impl CoastalPlugin {
         cols: usize,
         cell_size_m: f64,
         land_mask: &[bool],
+        ul_lat: f64,
+        ul_lon: f64,
     ) -> GeoResult<StormSurgeResult> {
         let n = rows * cols;
         if dem.len() < n || land_mask.len() < n {
@@ -130,11 +134,12 @@ impl CoastalPlugin {
 
         let delta_p_pa = (params.ambient_pressure_hpa - params.central_pressure_hpa) * 100.0; // hPa → Pa
 
-        // 1. 计算每个格点的风速和风向
-        let center_row = params.lat;
-        let center_col = params.lon;
-        let deg_per_m = 1.0 / 111_320.0; // 近似纬度 1° ≈ 111.32 km
+        // 1. 将风暴中心地理坐标(lat/lon)转为网格行列索引
+        let deg_per_m = 1.0 / 111_320.0;
+        let cell_size_deg = cell_size_m * deg_per_m;
         let rad_per_deg = std::f64::consts::PI / 180.0;
+        let center_row = ((params.lat - ul_lat) / cell_size_deg).round();
+        let center_col = ((params.lon - ul_lon) / cell_size_deg).round();
 
         // 预先计算各格点到 storm center 的距离 (km) 和方位角
         let mut surge_grid = vec![0.0_f64; n];
@@ -292,15 +297,20 @@ mod tests {
     #[test]
     fn test_storm_surge_basic() {
         let p = CoastalPlugin::new();
-        let params = StormParams {
-            lat: 10.0, // grid row (center of the 20x20 grid)
-            lon: 10.0, // grid col (center of the 20x20 grid)
-            central_pressure_hpa: 955.0,
-            ..Default::default()
-        };
         let rows = 20;
         let cols = 20;
         let cell_size = 1000.0; // 1km → 20x20 km grid
+        let cell_size_deg = cell_size / 111_320.0;
+        // 网格左上角地理坐标
+        let ul_lat = 30.0;
+        let ul_lon = 120.0;
+        // 风暴中心在第10行、第10列 → 换算为地理坐标
+        let params = StormParams {
+            lat: ul_lat + 10.0 * cell_size_deg,
+            lon: ul_lon + 10.0 * cell_size_deg,
+            central_pressure_hpa: 955.0,
+            ..Default::default()
+        };
         let n = rows * cols;
         let mut dem = vec![5.0_f64; n]; // all land at 5m
                                         // Put a shallow bay in center
@@ -313,7 +323,7 @@ mod tests {
         let land_mask: Vec<bool> = dem.iter().map(|z| *z >= 0.0).collect();
 
         let result = p
-            .storm_surge(&params, &dem, rows, cols, cell_size, &land_mask)
+            .storm_surge(&params, &dem, rows, cols, cell_size, &land_mask, ul_lat, ul_lon)
             .unwrap();
         assert!(result.max_surge_m > 0.0);
         assert!(result.inundated_cells > 0);
@@ -337,7 +347,6 @@ mod tests {
     #[test]
     fn test_pressure_surge() {
         // 100hPa drop ≈ 1m 逆气压效应
-        let p = CoastalPlugin::new();
         let params = StormParams {
             central_pressure_hpa: 913.0, // 超级台风
             ..Default::default()

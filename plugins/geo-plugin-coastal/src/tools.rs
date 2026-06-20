@@ -11,7 +11,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let report=crate::CoastalPlugin::new().assess_shoreline(args["aoi_name"].as_str().unwrap_or(""),args["aoi_geojson"].as_str().unwrap_or(""),&mk("dem_data","dem"),&mk("ndvi_old","o"),&mk("ndvi_new","n"),args["baseline_year"].as_u64().unwrap_or(2015) as u16,args["assessment_year"].as_u64().unwrap_or(2025) as u16,args["erosion_threshold_m"].as_f64().unwrap_or(1.0))?;
         serde_json::to_value(report).map_err(geo_core::GeoError::Serde)
     },
-        sync "coastal_storm_surge" => "SLOSH simplified storm surge model: Holland wind + wind setup + inundation" ; serde_json::json!({"type":"object","properties":{"lat":{"type":"number"},"lon":{"type":"number"},"central_pressure_hpa":{"type":"number"},"rmax_km":{"type":"number"},"forward_speed_m_s":{"type":"number"},"forward_bearing_deg":{"type":"number"},"dem":{"type":"array","items":{"type":"number"}},"cols":{"type":"integer"},"rows":{"type":"integer"},"cell_size_m":{"type":"number"},"land_mask":{"type":"array","items":{"type":"boolean"}}},"required":["dem","cols","rows","cell_size_m","land_mask"]}) => |args| -> ToolResult {
+        sync "coastal_storm_surge" => "SLOSH simplified storm surge model: Holland wind + wind setup + inundation" ; serde_json::json!({"type":"object","properties":{"lat":{"type":"number"},"lon":{"type":"number"},"ul_lat":{"type":"number","description":"Grid upper-left corner latitude (°)"},"ul_lon":{"type":"number","description":"Grid upper-left corner longitude (°)"},"central_pressure_hpa":{"type":"number"},"rmax_km":{"type":"number"},"forward_speed_m_s":{"type":"number"},"forward_bearing_deg":{"type":"number"},"dem":{"type":"array","items":{"type":"number"}},"cols":{"type":"integer"},"rows":{"type":"integer"},"cell_size_m":{"type":"number"},"land_mask":{"type":"array","items":{"type":"boolean"}}},"required":["dem","cols","rows","cell_size_m","land_mask","ul_lat","ul_lon"]}) => |args| -> ToolResult {
         let params=crate::storm_surge::StormParams{
             lat:args["lat"].as_f64().unwrap_or(30.0),
             lon:args["lon"].as_f64().unwrap_or(122.0),
@@ -26,8 +26,10 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let rows=args["rows"].as_u64().unwrap_or(1) as usize;
         let cols=args["cols"].as_u64().unwrap_or(1) as usize;
         let cell_size_m=args["cell_size_m"].as_f64().unwrap_or(1000.0);
+        let ul_lat=args["ul_lat"].as_f64().unwrap_or(30.0);
+        let ul_lon=args["ul_lon"].as_f64().unwrap_or(120.0);
         let land_mask:Vec<bool>=args["land_mask"].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_bool()).collect();
-        let result=crate::CoastalPlugin::new().storm_surge(&params,&dem,rows,cols,cell_size_m,&land_mask)?;
+        let result=crate::CoastalPlugin::new().storm_surge(&params,&dem,rows,cols,cell_size_m,&land_mask,ul_lat,ul_lon)?;
         serde_json::to_value(result).map_err(geo_core::GeoError::Serde)
     },
         sync "coastal_blue_carbon" => "Blue carbon stock & sequestration: mangrove/salt-marsh/seagrass" ; serde_json::json!({"type":"object","properties":{"ecosystem":{"type":"string","enum":["mangrove","salt_marsh","seagrass"]},"area_ha":{"type":"number"},"soil_factor":{"type":"number"}},"required":["ecosystem","area_ha"]}) => |args| -> ToolResult {

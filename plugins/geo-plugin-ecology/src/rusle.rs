@@ -108,13 +108,22 @@ pub struct RusleAssessment {
 // 核心函数
 // ──────────────────────────────────────────────
 
-/// 计算 R 因子（降雨侵蚀力）。
+/// 计算 R 因子（降雨侵蚀力）- Renard-Freimund 月尺度法。
 ///
-/// 使用 Wischmeier & Smith 经验公式：
-/// `R = Σ (1.735 × 10^(1.5×log₁₀(Pᵢ²/P) - 0.81888))`
+/// 使用 Renard & Freimund (1994) 经验公式，基于 Modified Fournier Index (MFI)：
+/// ```text
+/// MFI = sum(P_i^2 / P_annual)     (i = 1..12月)
+/// MFI < 55:  R = 0.7397 * MFI^1.847
+/// MFI >= 55: R = 95.77 - 6.081*MFI + 0.477*MFI^2
+/// ```
+/// 其中 `P_i` 为月降雨量 (mm)，`P_annual` 为年降雨量 (mm)。
+/// 多年数据返回多年平均 R 因子 [MJ·mm/ha·h·yr]。
 ///
-/// 其中 `Pᵢ` 为月降雨量 (mm)，`P` 为年降雨量 (mm)。
-/// 返回多年平均 R 因子 [MJ·mm/ha·h·yr]。
+/// **注意**：此公式适用于月降雨数据；如需更精确的 R 因子，应使用逐暴雨 EI30 法。
+///
+/// **来源**: Renard, K.G. & Freimund, J.R. (1994).
+/// "Using monthly precipitation data to estimate the R-factor in the revised USLE".
+/// Journal of Hydrology, 157(1-4): 287-306. doi:10.1016/0022-1694(94)90110-4
 pub fn compute_r_factor(monthly_rainfall_mm: &[&[f64]]) -> f64 {
     let n_years = monthly_rainfall_mm.len();
     if n_years == 0 {
@@ -129,25 +138,27 @@ pub fn compute_r_factor(monthly_rainfall_mm: &[&[f64]]) -> f64 {
         if annual <= 0.0 {
             continue;
         }
-        let mut year_r = 0.0;
-        for &p_i in year_data.iter() {
-            if p_i <= 0.0 {
-                continue;
-            }
-            let ratio = p_i * p_i / annual;
-            // Wischmeier-Smith: EI = 1.735 × 10^(1.5×log₁₀(Pᵢ²/P) - 0.81888)
-            let exp_arg = 1.5 * ratio.log10() - 0.81888;
-            let ei = 1.735 * 10.0_f64.powf(exp_arg);
-            year_r += ei;
-        }
-        r_sum += year_r;
+        // 计算 Modified Fournier Index (MFI)
+        let mfi: f64 = year_data
+            .iter()
+            .filter(|&&p| p > 0.0)
+            .map(|&p| p * p / annual)
+            .sum();
+
+        let year_r = if mfi < 55.0 {
+            0.7397 * mfi.powf(1.847)
+        } else {
+            95.77 - 6.081 * mfi + 0.477 * mfi.powi(2)
+        };
+        r_sum += year_r.max(0.0);
     }
     r_sum / n_years as f64
 }
 
 /// 简化的 R 因子估算：仅用年降雨量。
 ///
-/// `R = 0.0483 × P^1.61` (P 为年均降雨量 mm)
+/// `R = 0.0483 × P^1.61` (P 为年均降雨量 mm，适用于中国湿润/半湿润区)
+/// 来源: 周伏建等 (1989). "福建省降雨侵蚀力指标R值". 福建水土保持, (1): 32-37.
 pub fn compute_r_factor_simple(annual_rainfall_mm: f64) -> f64 {
     if annual_rainfall_mm <= 0.0 {
         return 0.0;
