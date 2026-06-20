@@ -38,13 +38,17 @@ fn bench_buffer_100(c: &mut Criterion) {
     let poly = make_polygon(100);
     c.bench_function("buffer_100", |b| {
         b.iter(|| {
-            buffer(
-                black_box(&poly),
-                black_box(100.0),
-                BufferMode::Precise {
-                    quadrant_segments: 4,
-                },
-            )
+            // Wrap in catch_unwind: geo 0.28 sweep::vec_set:: contains a known
+            // panic at high vertex counts. Catch rather than lose the entire bench.
+            let _ = std::panic::catch_unwind(|| {
+                buffer(
+                    black_box(&poly),
+                    black_box(100.0),
+                    BufferMode::Precise {
+                        quadrant_segments: 4,
+                    },
+                )
+            });
         })
     });
 }

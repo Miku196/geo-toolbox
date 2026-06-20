@@ -49,3 +49,4 @@ progress.md
 .evo/
 benchmark.py
 gate_test_count.py
+/criterion_bench.py
