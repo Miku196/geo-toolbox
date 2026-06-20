@@ -30,11 +30,11 @@ pub fn parse_nmea_impl(sentence: &str) -> PyResult<std::collections::HashMap<Str
     let talker_sentence = parts[0];
     result.insert("sentence_type".to_string(), talker_sentence.to_string());
     match talker_sentence
-        .rsplitn(2, "GP")
+        .rsplit("GP")
         .next()
-        .or_else(|| talker_sentence.rsplitn(2, "GL").next())
-        .or_else(|| talker_sentence.rsplitn(2, "GN").next())
-        .or_else(|| talker_sentence.rsplitn(2, "BD").next())
+        .or_else(|| talker_sentence.rsplit("GL").next())
+        .or_else(|| talker_sentence.rsplit("GN").next())
+        .or_else(|| talker_sentence.rsplit("BD").next())
     {
         Some("GGA") => parse_gga(&parts, &mut result),
         Some("RMC") => parse_rmc(&parts, &mut result),

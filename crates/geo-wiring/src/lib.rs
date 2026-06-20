@@ -46,19 +46,19 @@ pub fn populate_defaults(reg: &mut PluginRegistry) {
     }
     #[cfg(feature = "gee")]
     {
-        let _ = geo_adapter_gee::tools::register_tools(reg);
+        geo_adapter_gee::tools::register_tools(reg);
     }
     #[cfg(feature = "qgis")]
     {
-        let _ = geo_adapter_qgis::tools::register_tools(reg);
+        geo_adapter_qgis::tools::register_tools(reg);
     }
     #[cfg(feature = "cad")]
     {
-        let _ = geo_adapter_cad::tools::register_tools(reg);
+        geo_adapter_cad::tools::register_tools(reg);
     }
     #[cfg(feature = "gdal")]
     {
-        let _ = geo_adapter_cli::tools::register_tools(reg);
+        geo_adapter_cli::tools::register_tools(reg);
     }
     #[cfg(feature = "iot")]
     {

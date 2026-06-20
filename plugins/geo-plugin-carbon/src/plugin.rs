@@ -117,6 +117,7 @@ impl CarbonPlugin {
     }
 
     /// Run a 5-pool carbon scenario (A/R, IFM, Deforestation).
+    #[allow(clippy::too_many_arguments)]
     pub fn calculate_scenario(
         &self,
         scenario: geo_carbon_math::CarbonScenario,

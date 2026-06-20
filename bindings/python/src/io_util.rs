@@ -111,14 +111,14 @@ pub fn generate_carbon_report_md_impl(
     let total = report["total_tco2e"].as_f64().unwrap_or(0.0);
 
     let mut md = String::new();
-    md.push_str(&format!("# 碳核算报告\n\n"));
+    md.push_str("# 碳核算报告\n\n");
     md.push_str(&format!("**项目区域**: {aoi_name}\n"));
     md.push_str(&format!("**审核人**: {auditor}\n"));
     md.push_str(&format!(
         "**生成时间**: {}\n\n",
         chrono::Local::now().format("%Y-%m-%d %H:%M")
     ));
-    md.push_str(&format!("## 总碳排放\n\n"));
+    md.push_str("## 总碳排放\n\n");
     md.push_str(&format!("**总计**: {:.2} tCO₂e\n\n", total));
 
     if let Some(scopes) = report["by_scope"].as_object() {

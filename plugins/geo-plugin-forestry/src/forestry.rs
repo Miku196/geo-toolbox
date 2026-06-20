@@ -592,7 +592,7 @@ pub fn calibrate_growth_model(model: GrowthModel, ages: &[f64], heights: &[f64])
     ModelFit {
         model,
         params: best_params,
-        r_squared: r2.max(0.0).min(1.0),
+        r_squared: r2.clamp(0.0, 1.0),
         rmse,
         aic,
         bic,

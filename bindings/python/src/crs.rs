@@ -35,7 +35,6 @@ impl CrsEngine {
     pub fn transform(&self, from_epsg: u16, to_epsg: u16, x: f64, y: f64) -> PyResult<(f64, f64)> {
         self.registry
             .transform_point(from_epsg, to_epsg, x, y)
-            .map(|(rx, ry)| (rx, ry))
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))
     }
 
@@ -46,7 +45,7 @@ impl CrsEngine {
         to_epsg: u16,
         coords: Vec<f64>,
     ) -> PyResult<Vec<f64>> {
-        if coords.len() % 2 != 0 {
+        if !coords.len().is_multiple_of(2) {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
                 "coords length must be even (x,y pairs)",
             ));

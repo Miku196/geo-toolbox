@@ -196,8 +196,8 @@ pub fn compute_k_factor(
 ) -> f64 {
     let m = (silt_pct + very_fine_sand_pct) * (100.0 - clay_pct);
     let om_factor = (12.0 - om_pct).max(0.0);
-    let s_code = structure_code.min(4).max(1);
-    let p_code = permeability_code.min(6).max(1);
+    let s_code = structure_code.clamp(1, 4);
+    let p_code = permeability_code.clamp(1, 6);
 
     let k = 0.1317
         * (2.1e-4 * m.powf(1.14) * om_factor / 100.0
@@ -487,13 +487,13 @@ pub fn compute_soil_loss(
     cells: usize,
 ) -> Vec<f64> {
     let mut loss = vec![0.0; cells];
-    for i in 0..cells {
+    for (i, l) in loss.iter_mut().enumerate() {
         let r = r_factor.get(i).copied().unwrap_or(0.0);
         let k = k_factor.get(i).copied().unwrap_or(0.0);
         let ls = ls_factor.get(i).copied().unwrap_or(0.0);
         let c = c_factor.get(i).copied().unwrap_or(0.0);
         let p = p_factor.get(i).copied().unwrap_or(0.0);
-        loss[i] = r * k * ls * c * p;
+        *l = r * k * ls * c * p;
     }
     loss
 }
@@ -523,7 +523,7 @@ pub fn compute_musle_sediment(
     cells: usize,
 ) -> Vec<f64> {
     let mut sediment = vec![0.0; cells];
-    for i in 0..cells {
+    for (i, s) in sediment.iter_mut().enumerate() {
         let q = runoff_depth_mm.get(i).copied().unwrap_or(0.0);
         let qp = peak_runoff_rate_mm_h.get(i).copied().unwrap_or(0.0);
         let k = k_factor.get(i).copied().unwrap_or(0.0);
@@ -535,7 +535,7 @@ pub fn compute_musle_sediment(
             continue;
         }
         let energy = (q * qp).powf(0.56);
-        sediment[i] = 11.8 * energy * k * ls * c * p;
+        *s = 11.8 * energy * k * ls * c * p;
     }
     sediment
 }
@@ -552,6 +552,7 @@ pub fn compute_musle_sediment(
 /// * `k_factor_grid` — K 因子栅格（可选标量扩展）
 /// * `ndvi` — NDVI 栅格（用于 C 因子）
 /// * `practice` — 水土保持措施类型
+#[allow(clippy::too_many_arguments)]
 pub fn assess_soil_loss(
     dem: &[f64],
     slope_deg: Option<&[f64]>,

@@ -152,8 +152,8 @@ impl DecisionTree {
             let mut left_idx: Vec<usize> = Vec::new();
             let mut right_idx: Vec<usize> = Vec::new();
 
-            for i in 0..samples.len() {
-                if samples[i][best_feat] < best_thresh {
+            for (i, sample) in samples.iter().enumerate() {
+                if sample[best_feat] < best_thresh {
                     left_idx.push(i);
                 } else {
                     right_idx.push(i);
@@ -428,8 +428,7 @@ pub fn default_training_data(per_class: usize) -> (Vec<Vec<f64>>, Vec<usize>) {
     let mut samples = Vec::with_capacity(per_class * 6);
     let mut labels = Vec::with_capacity(per_class * 6);
 
-    for class in 0..6 {
-        let (c_ndvi, c_ndwi, c_ndbi) = CLASS_CENTROIDS[class];
+    for (class, &(c_ndvi, c_ndwi, c_ndbi)) in CLASS_CENTROIDS.iter().enumerate() {
         for i in 0..per_class {
             // 确定性"噪声"：使用正弦调制避免随机种子
             let noise = (i as f64 * 0.07).sin();
