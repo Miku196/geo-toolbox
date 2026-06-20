@@ -44,3 +44,8 @@ ROADMAP.md
 /*tmp*
 
 progress.md
+
+# evo
+.evo/
+benchmark.py
+gate_test_count.py
