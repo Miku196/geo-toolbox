@@ -26,6 +26,7 @@ pub mod config;
 pub mod ecology;
 pub mod lulc;
 pub mod rusle;
+pub mod sdr;
 pub mod tools;
 
 pub use config::EcologyConfig;
@@ -35,4 +36,7 @@ pub use rusle::{
     compute_k_factor_simple, compute_ls_factor, compute_ls_from_dem, compute_p_factor,
     compute_r_factor, compute_r_factor_simple, compute_slope_from_dem, compute_soil_loss,
     ErosionClass, PracticeType, RusleAssessment,
+};
+pub use sdr::{
+    apply_sdr_to_rusle, compute_sdr, musle_event, musle_return_periods, SdrMethod, SdrResult,
 };

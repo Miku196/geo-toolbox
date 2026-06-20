@@ -8,13 +8,17 @@
 pub mod classify;
 pub mod hotspot;
 pub mod idw;
+pub mod kmeans;
 pub mod moran;
 /// MCP 工具注册 — 导出 5 个空间统计工具到运行时注册表。
+pub mod regression;
 pub mod tools;
 pub mod zonal;
 
 pub use classify::{equal_interval_breaks, jenks, quantile_breaks, JenksResult};
 pub use hotspot::{gistar, queen_weights_self, GiStar};
 pub use idw::{idw_grid, idw_point, IdwResult};
+pub use kmeans::{kmeans, kmeans_2d, KMeansResult};
 pub use moran::{morans_i, queen_weights, rook_weights, MoranI};
+pub use regression::{ols_regression, predict, predict_batch, residuals, OlsResult};
 pub use zonal::{zonal_stats, ZonalResult, ZonalStats};

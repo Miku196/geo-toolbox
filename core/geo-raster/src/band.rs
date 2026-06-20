@@ -99,6 +99,38 @@ pub fn band_threshold(band: &RasterBand, threshold: f64, out_name: &str) -> Rast
     out
 }
 
+/// 计算 NDWI（归一化水体指数）：(Green - NIR) / (Green + NIR)。
+///
+/// 结果裁剪到 [-1, 1]。处理 NoData 和除零（返回 nodata）。
+///
+/// # Panics
+/// 若 `green.len() != nir.len()`。
+pub fn compute_ndwi(green: &[f64], nir: &[f64], nodata: Option<f64>) -> Vec<f64> {
+    assert_eq!(
+        green.len(),
+        nir.len(),
+        "green and nir must have equal length"
+    );
+    let nd = nodata.unwrap_or(f64::NAN);
+    let mut out = vec![nd; green.len()];
+    for i in 0..green.len() {
+        let g = green[i];
+        let n = nir[i];
+        let g_valid = !g.is_nan() && (nd.is_nan() || (g - nd).abs() >= 1e-10);
+        let n_valid = !n.is_nan() && (nd.is_nan() || (n - nd).abs() >= 1e-10);
+        if !g_valid || !n_valid {
+            continue;
+        }
+        let denom = g + n;
+        if denom.abs() < 1e-15 {
+            continue;
+        }
+        let ndwi = (g - n) / denom;
+        out[i] = ndwi.clamp(-1.0, 1.0);
+    }
+    out
+}
+
 fn check_same_size(a: &RasterBand, b: &RasterBand) -> GeoResult<()> {
     if a.rows != b.rows || a.cols != b.cols {
         return Err(GeoError::Validation(format!(
@@ -159,5 +191,59 @@ mod tests {
         assert_eq!(t.get(0, 0), 0.0);
         assert_eq!(t.get(0, 1), 1.0);
         assert_eq!(t.get(0, 2), 1.0);
+    }
+
+    // ── compute_ndwi ──
+
+    #[test]
+    fn test_ndwi_basic() {
+        // (0.6 - 0.2) / (0.6 + 0.2) = 0.4 / 0.8 = 0.5
+        let green = vec![0.6];
+        let nir = vec![0.2];
+        let result = compute_ndwi(&green, &nir, None);
+        assert!((result[0] - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_ndwi_nodata_in_green() {
+        let green = vec![f64::NAN, 0.6];
+        let nir = vec![0.2, 0.2];
+        let result = compute_ndwi(&green, &nir, None);
+        assert!(result[0].is_nan());
+        assert!((result[1] - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_ndwi_nodata_in_nir() {
+        let green = vec![0.6];
+        let nir = vec![f64::NAN];
+        let result = compute_ndwi(&green, &nir, None);
+        assert!(result[0].is_nan());
+    }
+
+    #[test]
+    fn test_ndwi_div_by_zero() {
+        let green = vec![0.0];
+        let nir = vec![0.0];
+        let result = compute_ndwi(&green, &nir, None);
+        assert!(result[0].is_nan());
+    }
+
+    #[test]
+    fn test_ndwi_clamp() {
+        // NIR=0, Green→large value could give >1, but we clamp
+        let green = vec![100.0];
+        let nir = vec![0.0];
+        let result = compute_ndwi(&green, &nir, None);
+        assert!((result[0] - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_ndwi_nodata_value() {
+        let green = vec![-999.0, 0.6];
+        let nir = vec![0.2, -999.0];
+        let result = compute_ndwi(&green, &nir, Some(-999.0));
+        assert!((result[0] + 999.0).abs() < 1e-10 || result[0].is_nan());
+        assert!((result[1] + 999.0).abs() < 1e-10 || result[1].is_nan());
     }
 }

@@ -302,3 +302,43 @@ go pipeline read aoi.geojson | geo pipeline simplify --epsilon 0.005 | geo pipel
 - [x] **benchmark 套件** — criterion (Round 3) — _已完成: 8 crates 全覆盖, 编译通过_
 - [ ] **WASM 发布** — npm publish + TypeScript typings (Phase 5.3)
 - [ ] **QGIS 工具箱 / Jupyter Kernel**
+
+---
+
+## 🆕 插件拓展阶段 (2026-06-20 →)
+
+基于 10/10 插件代码审查的拓展机会分析，详见 [docs/plugin-extension-opportunities.md](docs/plugin-extension-opportunities.md)
+
+### 🔴 第一轮：高 Leverage 拓展
+
+- [ ] **survey: 椭球间坐标转换** — Molodensky + Helmert 七参数 (CGCS2000↔Beijing54)
+- [ ] **ecology: SDR 泥沙输移比** — RUSLE→入河泥沙量
+- [ ] **coastal: 波浪爬高/越浪** — Holman/Stockdon 公式 (风暴潮致灾主因)
+- [ ] **hydro: 单位线汇流** — Snyder/Clark UH (SCS-CN 产流→产汇流完整链)
+- [ ] **agri: DSSAT adapter** — 生成 .WTH/.SOIL/.CUL 输入文件
+
+### 🟡 第二轮：中等协同拓展
+
+- [ ] survey: UTM 支持 + Vincenty 大地线
+- [ ] hydro: TR-55 完整版 + Muskingum 河段演算
+- [ ] ecology: MUSLE 事件版土壤流失
+- [ ] coastal: SLR 海平面上升情景 + CVI 脆弱性指数
+- [ ] energy: 尾流效应 (Jensen/Frandsen) + PVWatts 性能模型
+- [ ] forestry: 立地指数曲线 + 择伐/皆伐模拟
+- [ ] geohazard: Newmark 地震位移法 + 区域稳定性色斑图
+- [ ] carbon: 碳价情景分析 + VCS/GS 额外性
+- [ ] urban: 城市内涝 (管网+SCS) + 15分钟城市可达性
+
+### ⚪ 第三轮：远期领域插件
+
+- [ ] 气象/气候: GCM降尺度 + IDF + SPI/SPEI + Kriging
+- [ ] 地下水: 达西定律 + MODFLOW adapter
+- [ ] 土壤: HWSD查询 + van Genuchten参数
+- [ ] 海洋: 潮汐调和分析 + SWAN波浪
+- [ ] 遥感: 辐射/大气校正 + InSAR形变
+
+### 🔵 基础设施
+
+- [ ] Python bindings 构建验证 + pytest
+- [ ] WASM npm 发布
+- [ ] Jupyter Kernel
