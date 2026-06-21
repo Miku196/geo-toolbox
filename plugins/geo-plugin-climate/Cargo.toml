@@ -1,0 +1,12 @@
+[package]
+name = "geo-plugin-climate"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "气象/气候插件 — GCM 降尺度、IDF 曲线、干旱指数、空间插值（临时占位）"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }

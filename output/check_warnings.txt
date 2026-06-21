@@ -1,0 +1,28 @@
+warning: unused variable: `tr`
+   --> plugins\geo-plugin-hydro\src\unit_hydrograph.rs:253:9
+    |
+253 |     let tr = 1.7 * tp; // recession time
+    |         ^^ help: if this is intentional, prefix it with an underscore: `_tr`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `excess_m`
+   --> plugins\geo-plugin-hydro\src\unit_hydrograph.rs:360:9
+    |
+360 |     let excess_m = rainfall_excess_mm / 1000.0; // convert mm to m for volume
+    |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_excess_m`
+
+warning: unused variable: `o`
+   --> plugins\geo-plugin-hydro\src\unit_hydrograph.rs:395:13
+    |
+395 |         let o = prev_o + c1 * (i - prev_o);
+    |             ^ help: if this is intentional, prefix it with an underscore: `_o`
+
+warning: unused variable: `dt_hours`
+   --> plugins\geo-plugin-hydro\src\unit_hydrograph.rs:448:5
+    |
+448 |     dt_hours: f64,
+    |     ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_dt_hours`
+
+warning: `geo-plugin-hydro` (lib) generated 4 warnings (run `cargo fix --lib -p geo-plugin-hydro` to apply 4 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.18s

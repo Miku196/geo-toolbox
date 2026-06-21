@@ -1,0 +1,854 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+warning: unused import: `geo_core::plugin::PluginCategory`
+ --> core\geo-carbon-math\src\tools.rs:2:5
+  |
+2 | use geo_core::plugin::PluginCategory;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: missing documentation for a struct
+   --> core\geo-carbon-math\src\engine.rs:131:1
+    |
+131 | pub struct CarbonEngine;
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the lint level is defined here
+   --> core\geo-carbon-math\src\lib.rs:29:9
+    |
+ 29 | #![warn(missing_docs)]
+    |         ^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> core\geo-carbon-math\src\engine.rs:134:5
+    |
+134 |     pub fn new() -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> core\geo-carbon-math\src\engine.rs:138:5
+    |
+138 | /     pub fn calculate(
+139 | |         &self,
+140 | |         features: &[GeoFeature],
+141 | |         factors: &[EmissionFactor],
+142 | |         year: u16,
+143 | |     ) -> Result<CarbonReport, String> {
+    | |_____________________________________^
+
+warning: missing documentation for a method
+   --> core\geo-carbon-math\src\engine.rs:352:5
+    |
+352 | /     pub fn calculate_from_geojson(
+353 | |         &self,
+354 | |         geojson_fc: &str,
+355 | |         factors_csv: &str,
+356 | |         year: u16,
+357 | |     ) -> Result<CarbonReport, String> {
+    | |_____________________________________^
+
+warning: missing documentation for a method
+  --> core\geo-carbon-math\src\factor.rs:84:5
+   |
+84 |     pub fn label(&self) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> core\geo-carbon-math\src\pools.rs:278:5
+    |
+278 |     pub fn new(pool: CarbonPool, tco2e_per_ha: f64, uncertainty_pct: f64, source: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> core\geo-carbon-math\src\pools.rs:310:5
+    |
+310 |     pub fn emission_tco2e(&self, _area_ha: f64) -> f64 {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> core\geo-carbon-math\src\pools.rs:463:5
+    |
+463 |     pub fn new(area_ha: f64) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> core\geo-carbon-math\src\pools.rs:569:5
+    |
+569 |     pub fn new(area_ha: f64, methodology: &str, tier: u8) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> core\geo-carbon-math\src\pools.rs:579:5
+    |
+579 |     pub fn add_pool_change(&mut self, change: PoolChange) {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> core\geo-carbon-math\src\pools.rs:584:5
+    |
+584 |     pub fn finalize(&mut self) {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> core\geo-carbon-math\src\report.rs:26:5
+   |
+26 |     pub fn total(&self) -> f64 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> core\geo-carbon-math\src\report.rs:30:5
+   |
+30 |     pub fn is_empty(&self) -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> core\geo-carbon-math\src\scenarios.rs:39:5
+   |
+39 |     pub fn label(&self) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> core\geo-carbon-math\src\scenarios.rs:208:5
+    |
+208 | /     pub fn new(
+209 | |         scenario: CarbonScenario,
+210 | |         area_ha: f64,
+211 | |         before: LandState,
+212 | |         after: LandState,
+213 | |     ) -> Self {
+    | |_____________^
+
+warning: missing documentation for a method
+   --> core\geo-carbon-math\src\scenarios.rs:261:5
+    |
+261 |     pub fn is_net_sink(&self) -> bool {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a function
+ --> core\geo-carbon-math\src\tools.rs:5:1
+  |
+5 | pub fn register_tools(registry: &mut PluginRegistry) {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> core\geo-carbon-math\src\vcs.rs:387:5
+    |
+387 |     pub fn label(&self) -> &'static str {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> core\geo-carbon-math\src\vcs.rs:444:5
+    |
+444 |     pub fn new(scenario: CarbonScenario) -> Option<Self> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `geo-carbon-math` (lib) generated 20 warnings (run `cargo fix --lib -p geo-carbon-math` to apply 1 suggestion)
+warning: unused import: `geo_core::plugin::PluginCategory`
+ --> core\geo-stats\src\tools.rs:2:5
+  |
+2 | use geo_core::plugin::PluginCategory;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: missing documentation for a function
+ --> core\geo-stats\src\tools.rs:5:1
+  |
+5 | pub fn register_tools(registry: &mut PluginRegistry) {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+note: the lint level is defined here
+ --> core\geo-stats\src\lib.rs:6:9
+  |
+6 | #![warn(missing_docs)]
+  |         ^^^^^^^^^^^^
+
+warning: `geo-stats` (lib) generated 2 warnings (run `cargo fix --lib -p geo-stats` to apply 1 suggestion)
+warning: unused import: `geo_core::plugin::PluginCategory`
+ --> core\geo-temporal\src\tools.rs:2:5
+  |
+2 | use geo_core::plugin::PluginCategory;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: missing documentation for a function
+  --> core\geo-temporal\src\tools.rs:5:1
+   |
+ 5 | pub fn register_tools(registry: &mut PluginRegistry) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> core\geo-temporal\src\lib.rs:18:9
+   |
+18 | #![warn(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+warning: function `is_geom_empty` is never used
+   --> adapters\geo-adapter-postgis\src\adapter.rs:311:4
+    |
+311 | fn is_geom_empty(geom: &serde_json::Value) -> bool {
+    |    ^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `geo_core::plugin::PluginCategory`
+ --> core\geo-tile\src\tools.rs:2:5
+  |
+2 | use geo_core::plugin::PluginCategory;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: missing documentation for a function
+  --> core\geo-tile\src\tools.rs:5:1
+   |
+ 5 | pub fn register_tools(registry: &mut PluginRegistry) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> core\geo-tile\src\lib.rs:24:9
+   |
+24 | #![warn(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+warning: `geo-temporal` (lib) generated 2 warnings (run `cargo fix --lib -p geo-temporal` to apply 1 suggestion)
+warning: `geo-adapter-postgis` (lib) generated 1 warning
+warning: `geo-tile` (lib) generated 2 warnings (run `cargo fix --lib -p geo-tile` to apply 1 suggestion)
+warning: value assigned to `y` is never read
+   --> core\geo-report\src\report.rs:59:17
+    |
+ 59 |                 y -= $size * 0.4;
+    |                 ^^^^^^^^^^^^^^^^
+...
+108 |         write_line!("Generated by geo-toolbox v0.1.0", 8.0);
+    |         --------------------------------------------------- in this macro invocation
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+    = note: this warning originates in the macro `write_line` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: `geo-report` (lib) generated 1 warning
+warning: unused import: `GwpVersion`
+ --> core\geo-emission-factors\src\china.rs:1:80
+  |
+1 | use geo_carbon_math::{EmissionFactor, EmissionScope, GasFactor, GreenhouseGas, GwpVersion};
+  |                                                                                ^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `co2`
+  --> core\geo-emission-factors\src\ipcc.rs:20:13
+   |
+20 |         let co2 = fuel.compute_co2(quantity);
+   |             ^^^ help: if this is intentional, prefix it with an underscore: `_co2`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `geo-emission-factors` (lib) generated 2 warnings (run `cargo fix --lib -p geo-emission-factors` to apply 2 suggestions)
+warning: unused import: `geo_core::plugin::PluginCategory`
+ --> plugins\geo-plugin-carbon\src\tools.rs:5:5
+  |
+5 | use geo_core::plugin::PluginCategory;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: function cannot return without recursing
+ --> plugins\geo-plugin-carbon\src\trait_impl.rs:7:5
+  |
+7 |     fn new(config: Self::Config) -> Self {
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+8 |         Cp::new(config)
+  |         --------------- recursive call site
+  |
+  = help: a `loop` may express intention better if this is on purpose
+  = note: `#[warn(unconditional_recursion)]` on by default
+
+warning: variable `H` should have a snake case name
+   --> plugins\geo-plugin-carbon\src\plume.rs:113:13
+    |
+113 |         let H = self.source_height_m;
+    |             ^ help: convert the identifier to snake case: `h`
+    |
+    = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: variable `Q` should have a snake case name
+   --> plugins\geo-plugin-carbon\src\plume.rs:115:13
+    |
+115 |         let Q = self.emission_rate_g_s;
+    |             ^ help: convert the identifier to snake case: `q`
+
+warning: `geo-plugin-carbon` (lib) generated 4 warnings (run `cargo fix --lib -p geo-plugin-carbon` to apply 1 suggestion)
+warning: unused import: `geo_core::plugin::PluginCategory`
+ --> plugins\geo-plugin-ecology\src\tools.rs:3:5
+  |
+3 | use geo_core::plugin::PluginCategory;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `sand_pct`
+   --> plugins\geo-plugin-ecology\src\rusle.rs:178:5
+    |
+178 |     sand_pct: f64,
+    |     ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_sand_pct`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `geo_core::plugin::PluginCategory`
+ --> plugins\geo-plugin-forestry\src\tools.rs:2:5
+  |
+2 | use geo_core::plugin::PluginCategory;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `geo_core::plugin::PluginCategory`
+ --> plugins\geo-plugin-coastal\src\tools.rs:3:5
+  |
+3 | use geo_core::plugin::PluginCategory;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `rows`
+   --> plugins\geo-plugin-coastal\src\coastal.rs:154:9
+    |
+154 |         rows: usize,
+    |         ^^^^ help: if this is intentional, prefix it with an underscore: `_rows`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `cols`
+   --> plugins\geo-plugin-coastal\src\coastal.rs:155:9
+    |
+155 |         cols: usize,
+    |         ^^^^ help: if this is intentional, prefix it with an underscore: `_cols`
+
+warning: variable does not need to be mutable
+   --> plugins\geo-plugin-coastal\src\storm_surge.rs:144:13
+    |
+144 |         let mut cell_area = cell_size_m * cell_size_m;
+    |             ----^^^^^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `fx`
+   --> plugins\geo-plugin-coastal\src\storm_surge.rs:171:17
+    |
+171 |             let fx = params.forward_speed_m_s * bearing_rad.sin();
+    |                 ^^ help: if this is intentional, prefix it with an underscore: `_fx`
+
+warning: unused variable: `fy`
+   --> plugins\geo-plugin-coastal\src\storm_surge.rs:172:17
+    |
+172 |             let fy = params.forward_speed_m_s * bearing_rad.cos();
+    |                 ^^ help: if this is intentional, prefix it with an underscore: `_fy`
+
+warning: unused import: `geo_core::plugin::PluginCategory`
+ --> plugins\geo-plugin-energy\src\tools.rs:2:5
+  |
+2 | use geo_core::plugin::PluginCategory;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> plugins\geo-plugin-energy\src\energy.rs:254:9
+    |
+254 |     let mut t = n;
+    |         ----^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> plugins\geo-plugin-energy\src\energy.rs:275:13
+    |
+275 |         let mut z = n - 1.0;
+    |             ----^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `t`
+   --> plugins\geo-plugin-energy\src\energy.rs:254:9
+    |
+254 |     let mut t = n;
+    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_t`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `g` is never read
+   --> plugins\geo-plugin-energy\src\energy.rs:253:17
+    |
+253 |     let mut g = 1.0;
+    |                 ^^^ this value is reassigned later and never used
+...
+281 |         g = (2.0 * std::f64::consts::PI).sqrt() * t.powf(z + 0.5) * (-t).exp() * x_l;
+    |         ---------------------------------------------------------------------------- `g` is overwritten here before the previous value is read
+    |
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: `geo-plugin-ecology` (lib) generated 2 warnings (run `cargo fix --lib -p geo-plugin-ecology` to apply 2 suggestions)
+warning: `geo-plugin-forestry` (lib) generated 1 warning (run `cargo fix --lib -p geo-plugin-forestry` to apply 1 suggestion)
+warning: `geo-plugin-coastal` (lib) generated 6 warnings (run `cargo fix --lib -p geo-plugin-coastal` to apply 6 suggestions)
+warning: `geo-plugin-energy` (lib) generated 5 warnings (run `cargo fix --lib -p geo-plugin-energy` to apply 4 suggestions)
+warning: unused import: `geo_core::plugin::PluginCategory`
+ --> core\geo-vector\src\tools.rs:2:5
+  |
+2 | use geo_core::plugin::PluginCategory;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `geo_core::plugin::PluginCategory`
+ --> plugins\geo-plugin-hydro\src\tools.rs:3:5
+  |
+3 | use geo_core::plugin::PluginCategory;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `geo_core::plugin::PluginCategory`
+ --> plugins\geo-plugin-urban\src\tools.rs:3:5
+  |
+3 | use geo_core::plugin::PluginCategory;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `geo_core::plugin::PluginCategory`
+ --> plugins\geo-plugin-agri\src\tools.rs:2:5
+  |
+2 | use geo_core::plugin::PluginCategory;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `geo_core::plugin::PluginCategory`
+ --> plugins\geo-plugin-survey\src\tools.rs:3:5
+  |
+3 | use geo_core::plugin::PluginCategory;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `B` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:150:17
+    |
+150 | fn meridian_arc(B: f64, ell: Ellipsoid) -> f64 {
+    |                 ^ help: convert the identifier to snake case: `b`
+    |
+    = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: variable `X` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:173:23
+    |
+173 | fn footpoint_latitude(X: f64, ell: Ellipsoid) -> f64 {
+    |                       ^ help: convert the identifier to snake case (notice the capitalization): `x`
+
+warning: variable `B` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:175:13
+    |
+175 |     let mut B = X / (ell.a() * (1.0 - ell.e2()));
+    |             ^ help: convert the identifier to snake case: `b`
+
+warning: variable `B` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:230:22
+    |
+230 | pub fn gauss_forward(B: f64, L: f64, L0: f64, ell: Ellipsoid) -> (f64, f64) {
+    |                      ^ help: convert the identifier to snake case: `b`
+
+warning: variable `L` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:230:30
+    |
+230 | pub fn gauss_forward(B: f64, L: f64, L0: f64, ell: Ellipsoid) -> (f64, f64) {
+    |                              ^ help: convert the identifier to snake case: `l`
+
+warning: variable `L0` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:230:38
+    |
+230 | pub fn gauss_forward(B: f64, L: f64, L0: f64, ell: Ellipsoid) -> (f64, f64) {
+    |                                      ^^ help: convert the identifier to snake case: `l0`
+
+warning: variable `sinB` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:236:9
+    |
+236 |     let sinB = B.sin();
+    |         ^^^^ help: convert the identifier to snake case: `sin_b`
+
+warning: variable `cosB` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:237:9
+    |
+237 |     let cosB = B.cos();
+    |         ^^^^ help: convert the identifier to snake case: `cos_b`
+
+warning: variable `tanB` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:238:9
+    |
+238 |     let tanB = B.tan();
+    |         ^^^^ help: convert the identifier to snake case: `tan_b`
+
+warning: variable `N` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:246:9
+    |
+246 |     let N = ell.a() / (1.0 - e2 * sinB * sinB).sqrt();
+    |         ^ help: convert the identifier to snake case: `n`
+
+warning: variable `X0` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:249:9
+    |
+249 |     let X0 = meridian_arc(B, ell);
+    |         ^^ help: convert the identifier to snake case (notice the capitalization): `x0`
+
+warning: variable `X` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:264:9
+    |
+264 |     let X = X0 + x_term1 + x_term2 + x_term3;
+    |         ^ help: convert the identifier to snake case (notice the capitalization): `x`
+
+warning: variable `Y` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:272:9
+    |
+272 |     let Y = 500_000.0 + y_term1 + y_term2 + y_term3;
+    |         ^ help: convert the identifier to snake case (notice the capitalization): `y`
+
+warning: variable `X` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:288:22
+    |
+288 | pub fn gauss_inverse(X: f64, Y: f64, L0: f64, ell: Ellipsoid) -> (f64, f64) {
+    |                      ^ help: convert the identifier to snake case (notice the capitalization): `x`
+
+warning: variable `Y` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:288:30
+    |
+288 | pub fn gauss_inverse(X: f64, Y: f64, L0: f64, ell: Ellipsoid) -> (f64, f64) {
+    |                              ^ help: convert the identifier to snake case (notice the capitalization): `y`
+
+warning: variable `L0` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:288:38
+    |
+288 | pub fn gauss_inverse(X: f64, Y: f64, L0: f64, ell: Ellipsoid) -> (f64, f64) {
+    |                                      ^^ help: convert the identifier to snake case: `l0`
+
+warning: variable `Bf` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:296:9
+    |
+296 |     let Bf = footpoint_latitude(X, ell);
+    |         ^^ help: convert the identifier to snake case: `bf`
+
+warning: variable `sinBf` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:298:9
+    |
+298 |     let sinBf = Bf.sin();
+    |         ^^^^^ help: convert the identifier to snake case: `sin_bf`
+
+warning: variable `cosBf` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:299:9
+    |
+299 |     let cosBf = Bf.cos();
+    |         ^^^^^ help: convert the identifier to snake case: `cos_bf`
+
+warning: variable `tanBf` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:300:9
+    |
+300 |     let tanBf = Bf.tan();
+    |         ^^^^^ help: convert the identifier to snake case: `tan_bf`
+
+warning: variable `Nf` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:308:9
+    |
+308 |     let Nf = ell.a() / (1.0 - e2 * sinBf * sinBf).sqrt();
+    |         ^^ help: convert the identifier to snake case: `nf`
+
+warning: variable `Mf` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:311:9
+    |
+311 |     let Mf = ell.a() * (1.0 - e2) / (1.0 - e2 * sinBf * sinBf).powf(1.5);
+    |         ^^ help: convert the identifier to snake case: `mf`
+
+warning: variable `Nf2` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:318:9
+    |
+318 |     let Nf2 = Nf * Nf;
+    |         ^^^ help: convert the identifier to snake case: `nf2`
+
+warning: variable `Nf3` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:319:9
+    |
+319 |     let Nf3 = Nf2 * Nf;
+    |         ^^^ help: convert the identifier to snake case: `nf3`
+
+warning: variable `Nf4` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:320:9
+    |
+320 |     let Nf4 = Nf2 * Nf2;
+    |         ^^^ help: convert the identifier to snake case: `nf4`
+
+warning: variable `Nf5` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:321:9
+    |
+321 |     let Nf5 = Nf4 * Nf;
+    |         ^^^ help: convert the identifier to snake case: `nf5`
+
+warning: variable `MfNf` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:322:9
+    |
+322 |     let MfNf = Mf * Nf;
+    |         ^^^^ help: convert the identifier to snake case: `mf_nf`
+
+warning: variable `B` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:330:9
+    |
+330 |     let B = Bf - b_term1 + b_term2 - b_term3;
+    |         ^ help: convert the identifier to snake case: `b`
+
+warning: variable `L` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:339:9
+    |
+339 |     let L = L0 + l_term1 - l_term2 + l_term3;
+    |         ^ help: convert the identifier to snake case: `l`
+
+warning: variable `X` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:361:5
+    |
+361 |     X: f64,
+    |     ^ help: convert the identifier to snake case (notice the capitalization): `x`
+
+warning: variable `Y` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:362:5
+    |
+362 |     Y: f64,
+    |     ^ help: convert the identifier to snake case (notice the capitalization): `y`
+
+warning: variable `L0_from` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:368:9
+    |
+368 |     let L0_from = central_meridian(from_zone, is_3degree).to_radians();
+    |         ^^^^^^^ help: convert the identifier to snake case: `l0_from`
+
+warning: variable `L0_to` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:369:9
+    |
+369 |     let L0_to = central_meridian(to_zone, is_3degree).to_radians();
+    |         ^^^^^ help: convert the identifier to snake case: `l0_to`
+
+warning: variable `B` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:371:10
+    |
+371 |     let (B, L) = gauss_inverse(X, Y, L0_from, ell);
+    |          ^ help: convert the identifier to snake case: `b`
+
+warning: variable `L` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:371:13
+    |
+371 |     let (B, L) = gauss_inverse(X, Y, L0_from, ell);
+    |             ^ help: convert the identifier to snake case: `l`
+
+warning: variable `X` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:377:5
+    |
+377 |     X: f64,
+    |     ^ help: convert the identifier to snake case (notice the capitalization): `x`
+
+warning: variable `Y` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:378:5
+    |
+378 |     Y: f64,
+    |     ^ help: convert the identifier to snake case (notice the capitalization): `y`
+
+warning: variable `L0_from_deg` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:379:5
+    |
+379 |     L0_from_deg: f64,
+    |     ^^^^^^^^^^^ help: convert the identifier to snake case: `l0_from_deg`
+
+warning: variable `L0_to_deg` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:380:5
+    |
+380 |     L0_to_deg: f64,
+    |     ^^^^^^^^^ help: convert the identifier to snake case: `l0_to_deg`
+
+warning: variable `B` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:383:10
+    |
+383 |     let (B, L) = gauss_inverse(X, Y, L0_from_deg.to_radians(), ell);
+    |          ^ help: convert the identifier to snake case: `b`
+
+warning: variable `L` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:383:13
+    |
+383 |     let (B, L) = gauss_inverse(X, Y, L0_from_deg.to_radians(), ell);
+    |             ^ help: convert the identifier to snake case: `l`
+
+warning: variable `X` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:393:25
+    |
+393 | pub fn auto_detect_zone(X: f64, Y: f64, ell: Ellipsoid) -> Option<(u16, f64, bool)> {
+    |                         ^ help: convert the identifier to snake case (notice the capitalization): `x`
+
+warning: variable `Y` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:393:33
+    |
+393 | pub fn auto_detect_zone(X: f64, Y: f64, ell: Ellipsoid) -> Option<(u16, f64, bool)> {
+    |                                 ^ help: convert the identifier to snake case (notice the capitalization): `y`
+
+warning: variable `B` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:400:14
+    |
+400 |         let (B, L) = gauss_inverse(X, Y, cm.to_radians(), ell);
+    |              ^ help: convert the identifier to snake case: `b`
+
+warning: variable `L` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:400:17
+    |
+400 |         let (B, L) = gauss_inverse(X, Y, cm.to_radians(), ell);
+    |                 ^ help: convert the identifier to snake case: `l`
+
+warning: variable `B` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:411:14
+    |
+411 |         let (B, L) = gauss_inverse(X, Y, cm.to_radians(), ell);
+    |              ^ help: convert the identifier to snake case: `b`
+
+warning: variable `L` should have a snake case name
+   --> plugins\geo-plugin-survey\src\gauss.rs:411:17
+    |
+411 |         let (B, L) = gauss_inverse(X, Y, cm.to_radians(), ell);
+    |                 ^ help: convert the identifier to snake case: `l`
+
+warning: unused import: `DebrisFlowRunout`
+ --> plugins\geo-plugin-geohazard\src\tools.rs:3:24
+  |
+3 | use crate::geohazard::{DebrisFlowRunout, GeohazardPlugin};
+  |                        ^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `geo_core::plugin::PluginCategory`
+ --> plugins\geo-plugin-geohazard\src\tools.rs:5:5
+  |
+5 | use geo_core::plugin::PluginCategory;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `geo_core::plugin::PluginCategory`
+ --> core\geo-index\src\tools.rs:2:5
+  |
+2 | use geo_core::plugin::PluginCategory;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `geo-vector` (lib) generated 1 warning (run `cargo fix --lib -p geo-vector` to apply 1 suggestion)
+warning: `geo-plugin-hydro` (lib) generated 1 warning (run `cargo fix --lib -p geo-plugin-hydro` to apply 1 suggestion)
+warning: `geo-plugin-urban` (lib) generated 1 warning (run `cargo fix --lib -p geo-plugin-urban` to apply 1 suggestion)
+warning: `geo-plugin-agri` (lib) generated 1 warning (run `cargo fix --lib -p geo-plugin-agri` to apply 1 suggestion)
+warning: `geo-plugin-survey` (lib) generated 48 warnings (run `cargo fix --lib -p geo-plugin-survey` to apply 1 suggestion)
+warning: `geo-plugin-geohazard` (lib) generated 2 warnings (run `cargo fix --lib -p geo-plugin-geohazard` to apply 2 suggestions)
+warning: `geo-index` (lib) generated 1 warning (run `cargo fix --lib -p geo-index` to apply 1 suggestion)
+warning: unused `Result` that must be used
+  --> crates\geo-wiring\src\lib.rs:45:9
+   |
+45 |         geo_adapter_postgis::tools::register_tools(reg);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this `Result` may be an `Err` variant, which should be handled
+   = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+help: use `let _ = ...` to ignore the resulting value
+   |
+45 |         let _ = geo_adapter_postgis::tools::register_tools(reg);
+   |         +++++++
+
+warning: `geo-wiring` (lib) generated 1 warning
+    Checking geo-ogc v0.1.0 (E:\geo\geo-toolbox\core\geo-ogc)
+warning: unused variable: `is_uint16`
+   --> examples\dexing-copper\src\main.rs:247:9
+    |
+247 |     let is_uint16 = bits_per_sample.as_ref().and_then(|v| v.first()) == Some(&16) && !is_float;
+    |         ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_is_uint16`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: struct `LandcoverClass` is never constructed
+   --> examples\dexing-copper\src\main.rs:531:8
+    |
+531 | struct LandcoverClass {
+    |        ^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `geo_core::errors::GeoResult`
+  --> crates\geo-cli\src\commands\pipeline.rs:12:5
+   |
+12 | use geo_core::errors::GeoResult;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `registry`
+  --> crates\geo-cli\src\commands\pipeline.rs:21:5
+   |
+21 |     registry: &PluginRegistry,
+   |     ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_registry`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `format`
+  --> crates\geo-cli\src\commands\pipeline.rs:43:38
+   |
+43 | fn read_input(input: Option<String>, format: &str) -> io::Result<String> {
+   |                                      ^^^^^^ help: if this is intentional, prefix it with an underscore: `_format`
+
+warning: unused variable: `from_epsg`
+   --> crates\geo-cli\src\commands\pipeline.rs:248:21
+    |
+248 | fn handle_reproject(from_epsg: u16, to_epsg: u16) -> Result<(), Box<dyn std::error::Error>> {
+    |                     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_from_epsg`
+
+warning: unused variable: `to_epsg`
+   --> crates\geo-cli\src\commands\pipeline.rs:248:37
+    |
+248 | fn handle_reproject(from_epsg: u16, to_epsg: u16) -> Result<(), Box<dyn std::error::Error>> {
+    |                                     ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_to_epsg`
+
+warning: `dexing-copper` (bin "dexing-copper") generated 2 warnings (run `cargo fix --bin "dexing-copper" -p dexing-copper` to apply 1 suggestion)
+warning: `geo-cli` (bin "geo-toolbox") generated 5 warnings (run `cargo fix --bin "geo-toolbox" -p geo-cli` to apply 5 suggestions)
+warning: unused variable: `z`
+   --> core\geo-ogc\src\wmts.rs:179:22
+    |
+179 |     pub fn landcover(z: u32, x: u32, y: u32) -> Vec<u8> {
+    |                      ^ help: if this is intentional, prefix it with an underscore: `_z`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `geo-ogc` (lib) generated 1 warning (run `cargo fix --lib -p geo-ogc` to apply 1 suggestion)
+    Checking geo-server v0.1.0 (E:\geo\geo-toolbox\crates\geo-server)
+error[E0063]: missing field `renderer` in initializer of `WmtsLayer`
+   --> crates\geo-server\src\main.rs:229:19
+    |
+229 |     svc.add_layer(WmtsDef {
+    |                   ^^^^^^^ missing `renderer`
+
+error[E0063]: missing field `renderer` in initializer of `WmtsLayer`
+   --> crates\geo-server\src\main.rs:246:19
+    |
+246 |     svc.add_layer(WmtsDef {
+    |                   ^^^^^^^ missing `renderer`
+
+warning: unused import: `response::IntoResponse`
+  --> crates\geo-server\src\main.rs:10:5
+   |
+10 |     response::IntoResponse,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+For more information about this error, try `rustc --explain E0063`.
+warning: `geo-server` (bin "geo-server") generated 1 warning
+error: could not compile `geo-server` (bin "geo-server") due to 2 previous errors; 1 warning emitted

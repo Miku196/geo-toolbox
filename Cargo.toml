@@ -38,6 +38,8 @@ members = [
     "plugins/geo-plugin-energy",
     "plugins/geo-plugin-forestry",
     "plugins/geo-plugin-coastal",
+    "plugins/geo-plugin-climate",
+    "plugins/geo-plugin-geomorph",
 
     # ── Round 3: Registry ──
     "core/geo-registry",
@@ -53,7 +55,9 @@ members = [
     "adapters/geo-adapter-qgis",
     "adapters/geo-adapter-cad",
     "adapters/geo-adapter-cli",
+    "adapters/geo-adapter-dssat",
     "adapters/geo-adapter-iot",
+    "adapters/geo-adapter-modflow",
 
     # ── Examples ──
     "examples/dexing-copper",
@@ -98,6 +102,7 @@ duckdb       = "1.1"
 tiff         = "0.9"
 rusqlite     = { version = "0.32", features = ["bundled"] }
 futures      = "0.3"
+approx       = "0.5"
 
 [workspace.package]
 version = "0.1.0"

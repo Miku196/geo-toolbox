@@ -9,6 +9,7 @@ pub mod gauss;
 pub mod survey;
 pub mod tools;
 pub mod trait_impl;
+pub mod transform;
 
 pub use config::SurveyConfig;
 pub use survey::SurveyPlugin;

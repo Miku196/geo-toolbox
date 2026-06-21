@@ -1,0 +1,11 @@
+    Checking geo-ogc v0.1.0 (E:\geo\geo-toolbox\core\geo-ogc)
+warning: unused variable: `z`
+   --> core\geo-ogc\src\wmts.rs:179:22
+    |
+179 |     pub fn landcover(z: u32, x: u32, y: u32) -> Vec<u8> {
+    |                      ^ help: if this is intentional, prefix it with an underscore: `_z`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `geo-ogc` (lib) generated 1 warning (run `cargo fix --lib -p geo-ogc` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.58s

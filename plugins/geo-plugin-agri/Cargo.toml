@@ -11,6 +11,7 @@ geo-registry = { path = "../../core/geo-registry" }
 serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true
+geo-adapter-dssat = { path = "../../adapters/geo-adapter-dssat" }
 
 [dev-dependencies]
 tokio = { workspace = true }

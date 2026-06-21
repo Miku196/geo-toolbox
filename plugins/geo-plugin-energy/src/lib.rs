@@ -6,6 +6,8 @@
 #![allow(missing_docs)]
 
 pub mod config;
+pub mod turbine;
+pub mod wake;
 pub mod energy;
 pub mod geothermal;
 pub mod tools;

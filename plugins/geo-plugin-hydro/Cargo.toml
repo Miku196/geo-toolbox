@@ -11,3 +11,7 @@ geo-registry = { path = "../../core/geo-registry" }
 serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true
+geo-adapter-modflow = { path = "../../adapters/geo-adapter-modflow" }
+
+[dev-dependencies]
+approx.workspace = true

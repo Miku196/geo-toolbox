@@ -1,0 +1,118 @@
+
+running 50 tests
+test hydro::tests::test_peak_discharge ... ok
+test hydro::tests::test_flow_accumulation ... ok
+test hydro::tests::test_scs_unit_hydrograph ... ok
+test hydro::tests::test_assess ... ok
+test hydro::tests::test_inundation_analysis ... ok
+test invest::tests::test_assess_carbon_storage_custom ... ok
+test invest::tests::test_assess_water_yield ... ok
+test hydro::tests::test_strahler_order ... ok
+test invest::tests::test_assess_carbon_storage ... ok
+test hydro::tests::test_runoff_coefficient ... ok
+test invest::tests::test_budyko ... ok
+test hydro::tests::test_inundation_simple ... ok
+test invest::tests::test_carbon_pool_total ... ok
+test invest::tests::test_carbon_pools_default ... ok
+test invest::tests::test_invest_assessment ... ok
+test invest::tests::test_omega ... ok
+test invest::tests::test_water_yield_single ... ok
+test invest::tests::test_water_yield_zero_rainfall ... ok
+test scs_cn::tests::test_adjust_cn ... ok
+test scs_cn::tests::test_assess_runoff ... ok
+test scs_cn::tests::test_assess_runoff_dry_vs_wet ... ok
+test scs_cn::tests::test_compute_runoff ... ok
+test scs_cn::tests::test_compute_runoff_grid ... ok
+test scs_cn::tests::test_compute_s ... ok
+test scs_cn::tests::test_different_ia_ratios ... ok
+test scs_cn::tests::test_get_cn_ii ... ok
+test scs_cn::tests::test_soil_group_from_str ... ok
+test unit_hydrograph::tests::test_clark_uh_attenuation_increases_with_k ... ok
+test unit_hydrograph::tests::test_clark_uh_basic ... ok
+test unit_hydrograph::tests::test_clark_uh_volume_conservation ... ok
+test unit_hydrograph::tests::test_clark_uh_zero_area ... ok
+test unit_hydrograph::tests::test_convolve_rainfall_empty ... ok
+test unit_hydrograph::tests::test_convolve_rainfall_simple ... ok
+test unit_hydrograph::tests::test_convolve_rainfall_single_uh ... ok
+test unit_hydrograph::tests::test_interpolate_scs_bounds ... ok
+test unit_hydrograph::tests::test_scs_params_default ... ok
+test unit_hydrograph::tests::test_scs_uh_basic ... ok
+test unit_hydrograph::tests::test_scs_uh_peak_factor_effect ... ok
+test unit_hydrograph::tests::test_scs_uh_volume_conservation ... ok
+test unit_hydrograph::tests::test_scs_uh_zero_area ... ok
+test unit_hydrograph::tests::test_snyder_different_params ... ok
+test unit_hydrograph::tests::test_snyder_params_default ... ok
+test unit_hydrograph::tests::test_snyder_uh_basic ... ok
+test unit_hydrograph::tests::test_snyder_uh_volume_conservation ... ok
+test unit_hydrograph::tests::test_snyder_uh_zero_area ... ok
+test watershed::tests::test_d8_offset ... ok
+test watershed::tests::test_extract_watershed_all_to_center_5x5 ... ok
+test watershed::tests::test_extract_watershed_disconnected ... ok
+test watershed::tests::test_extract_watershed_partial_3x3 ... ok
+test watershed::tests::test_watershed_to_geojson ... ok
+
+successes:
+
+successes:
+    hydro::tests::test_assess
+    hydro::tests::test_flow_accumulation
+    hydro::tests::test_inundation_analysis
+    hydro::tests::test_inundation_simple
+    hydro::tests::test_peak_discharge
+    hydro::tests::test_runoff_coefficient
+    hydro::tests::test_scs_unit_hydrograph
+    hydro::tests::test_strahler_order
+    invest::tests::test_assess_carbon_storage
+    invest::tests::test_assess_carbon_storage_custom
+    invest::tests::test_assess_water_yield
+    invest::tests::test_budyko
+    invest::tests::test_carbon_pool_total
+    invest::tests::test_carbon_pools_default
+    invest::tests::test_invest_assessment
+    invest::tests::test_omega
+    invest::tests::test_water_yield_single
+    invest::tests::test_water_yield_zero_rainfall
+    scs_cn::tests::test_adjust_cn
+    scs_cn::tests::test_assess_runoff
+    scs_cn::tests::test_assess_runoff_dry_vs_wet
+    scs_cn::tests::test_compute_runoff
+    scs_cn::tests::test_compute_runoff_grid
+    scs_cn::tests::test_compute_s
+    scs_cn::tests::test_different_ia_ratios
+    scs_cn::tests::test_get_cn_ii
+    scs_cn::tests::test_soil_group_from_str
+    unit_hydrograph::tests::test_clark_uh_attenuation_increases_with_k
+    unit_hydrograph::tests::test_clark_uh_basic
+    unit_hydrograph::tests::test_clark_uh_volume_conservation
+    unit_hydrograph::tests::test_clark_uh_zero_area
+    unit_hydrograph::tests::test_convolve_rainfall_empty
+    unit_hydrograph::tests::test_convolve_rainfall_simple
+    unit_hydrograph::tests::test_convolve_rainfall_single_uh
+    unit_hydrograph::tests::test_interpolate_scs_bounds
+    unit_hydrograph::tests::test_scs_params_default
+    unit_hydrograph::tests::test_scs_uh_basic
+    unit_hydrograph::tests::test_scs_uh_peak_factor_effect
+    unit_hydrograph::tests::test_scs_uh_volume_conservation
+    unit_hydrograph::tests::test_scs_uh_zero_area
+    unit_hydrograph::tests::test_snyder_different_params
+    unit_hydrograph::tests::test_snyder_params_default
+    unit_hydrograph::tests::test_snyder_uh_basic
+    unit_hydrograph::tests::test_snyder_uh_volume_conservation
+    unit_hydrograph::tests::test_snyder_uh_zero_area
+    watershed::tests::test_d8_offset
+    watershed::tests::test_extract_watershed_all_to_center_5x5
+    watershed::tests::test_extract_watershed_disconnected
+    watershed::tests::test_extract_watershed_partial_3x3
+    watershed::tests::test_watershed_to_geojson
+
+test result: ok. 50 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+successes:
+
+successes:
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

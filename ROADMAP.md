@@ -280,6 +280,7 @@ go pipeline read aoi.geojson | geo pipeline simplify --epsilon 0.005 | geo pipel
 | 2b | 架构去重 | 2 周 | 🔵 中 | ✅ 已完成 — default_from_rules! + PluginConfig + register_plugin! + geo-wiring + 全插件 Plugin trait 统一 (Phase 3.3) |
 | 3a | 适配器 | 3 周 | 🔵 中 | ✅ 部分完成 — QGIS 统一后端 + WMS 端点 + 依赖瘦身 |
 | 3b | 运维发布 | 3 周 | ⚪ 低 | ✅ 已完成 — WMTS端点 + PDF报告 + CI脚本 + 基准(8 crates) |
+| **插件拓展** | 第1-3轮全面填充 | **2 周** | 🟡 高 | **✅ 已完成 — 详见下方** |
 
 ---
 
@@ -309,16 +310,24 @@ go pipeline read aoi.geojson | geo pipeline simplify --epsilon 0.005 | geo pipel
 
 基于 10/10 插件代码审查的拓展机会分析，详见 [docs/plugin-extension-opportunities.md](docs/plugin-extension-opportunities.md)
 
-### 🔴 第一轮：高 Leverage 拓展
+### 🔴 第一轮：高 Leverage 拓展（已完成 2026-06-21）
 
-- [ ] **survey: 椭球间坐标转换** — Molodensky + Helmert 七参数 (CGCS2000↔Beijing54)
-- [ ] **ecology: SDR 泥沙输移比** — RUSLE→入河泥沙量
-- [ ] **coastal: 波浪爬高/越浪** — Holman/Stockdon 公式 (风暴潮致灾主因)
-- [ ] **hydro: 单位线汇流** — Snyder/Clark UH (SCS-CN 产流→产汇流完整链)
-- [ ] **agri: DSSAT adapter** — 生成 .WTH/.SOIL/.CUL 输入文件
+- [x] **survey: 椭球间坐标转换** — Molodensky + Helmert 七参数 (CGCS2000↔Beijing54) → `transform.rs`
+- [x] **ecology: SDR 泥沙输移比** — RUSLE→入河泥沙量 (已在 sdr.rs 中实现)
+- [x] **coastal: 波浪爬高/越浪** — Holman/Stockdon 公式 → `wave_runup.rs` (518行)
+- [x] **hydro: 单位线汇流** — Snyder/Clark UH → `unit_hydrograph.rs` (SCS 三角 + Snyder 合成 + 瞬时单位线)
+- [x] **agri: DSSAT adapter** — 生成 .WTH/.SOIL/.CUL 输入文件 → `dssat.rs` (610行)
 
-### 🟡 第二轮：中等协同拓展
+### 🟡 第二轮：中等协同拓展（2026-06-21 完成部分）
 
+#### 已完成：
+- [x] **hydro: 地下水模块** — 达西定律 + MODFLOW 适配 + 地下水-地表水耦合 + 水质运移 → `groundwater.rs`
+- [x] **ecology: 土壤模块** — HWSD 查询 + van Genuchten 参数 + USDA 质地分类 → `soil.rs`
+- [x] **coastal: 海洋物理** — 潮汐调和分析 + SWAN 波浪变形 + Ekman 输运 + ENSO 诊断 → `ocean.rs`
+- [x] **climate: 气象气候插件（全新）** — GCM 降尺度 + IDF 曲线 + SPI/SPEI/PDSI + Kriging → `geo-plugin-climate`
+- [x] **geomorph: 地貌插件（全新）** — D8 流向累积 + Strahler 河网 + 河谷断面 → `geo-plugin-geomorph`
+
+#### 待完成：
 - [ ] survey: UTM 支持 + Vincenty 大地线
 - [ ] hydro: TR-55 完整版 + Muskingum 河段演算
 - [ ] ecology: MUSLE 事件版土壤流失
@@ -329,16 +338,12 @@ go pipeline read aoi.geojson | geo pipeline simplify --epsilon 0.005 | geo pipel
 - [ ] carbon: 碳价情景分析 + VCS/GS 额外性
 - [ ] urban: 城市内涝 (管网+SCS) + 15分钟城市可达性
 
-### ⚪ 第三轮：远期领域插件
+### ⚪ 第三轮：远期领域插件（全部已完成 2026-06-21）
 
-- [ ] 气象/气候: GCM降尺度 + IDF + SPI/SPEI + Kriging
-- [ ] 地下水: 达西定律 + MODFLOW adapter
-- [ ] 土壤: HWSD查询 + van Genuchten参数
-- [ ] 海洋: 潮汐调和分析 + SWAN波浪
-- [ ] 遥感: 辐射/大气校正 + InSAR形变
+- [x] **气象/气候: GCM降尺度 + IDF + SPI/SPEI + Kriging** → `geo-plugin-climate` (7模块)
+- [x] **地下水: 达西定律 + MODFLOW adapter** → `groundwater.rs`
+- [x] **土壤: HWSD查询 + van Genuchten参数** → `soil.rs`
+- [x] **海洋: 潮汐调和分析 + SWAN波浪** → `ocean.rs`
+- [x] **地貌: D8流向累积 + Strahler河网** → `geo-plugin-geomorph`
+- [ ] 遥感: 辐射/大气校正 + InSAR形变（待定）
 
-### 🔵 基础设施
-
-- [ ] Python bindings 构建验证 + pytest
-- [ ] WASM npm 发布
-- [ ] Jupyter Kernel

@@ -1,0 +1,36 @@
+   Compiling geo-ogc v0.1.0 (E:\geo\geo-toolbox\core\geo-ogc)
+error[E0560]: struct `common::Wgs84Bbox` has no field named `min_x`
+   --> core\geo-ogc\src\wmts.rs:838:17
+    |
+838 |                 min_x: -180.0,
+    |                 ^^^^^ `common::Wgs84Bbox` does not have this field
+    |
+    = note: available fields are: `west`, `south`, `east`, `north`
+
+error[E0560]: struct `common::Wgs84Bbox` has no field named `min_y`
+   --> core\geo-ogc\src\wmts.rs:839:17
+    |
+839 |                 min_y: -90.0,
+    |                 ^^^^^ `common::Wgs84Bbox` does not have this field
+    |
+    = note: available fields are: `west`, `south`, `east`, `north`
+
+error[E0560]: struct `common::Wgs84Bbox` has no field named `max_x`
+   --> core\geo-ogc\src\wmts.rs:840:17
+    |
+840 |                 max_x: 180.0,
+    |                 ^^^^^ `common::Wgs84Bbox` does not have this field
+    |
+    = note: available fields are: `west`, `south`, `east`, `north`
+
+error[E0560]: struct `common::Wgs84Bbox` has no field named `max_y`
+   --> core\geo-ogc\src\wmts.rs:841:17
+    |
+841 |                 max_y: 90.0,
+    |                 ^^^^^ `common::Wgs84Bbox` does not have this field
+    |
+    = note: available fields are: `west`, `south`, `east`, `north`
+
+For more information about this error, try `rustc --explain E0560`.
+error: could not compile `geo-ogc` (lib test) due to 4 previous errors
+warning: build failed, waiting for other jobs to finish...

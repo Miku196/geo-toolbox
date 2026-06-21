@@ -1835,6 +1835,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "geo-adapter-dssat"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "geo-adapter-duckdb"
 version = "0.1.0"
 dependencies = [
@@ -1879,6 +1888,15 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "geo-adapter-modflow"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2096,6 +2114,7 @@ dependencies = [
 name = "geo-plugin-agri"
 version = "0.1.0"
 dependencies = [
+ "geo-adapter-dssat",
  "geo-core",
  "geo-registry",
  "serde",
@@ -2121,9 +2140,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "geo-plugin-climate"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "geo-registry",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "geo-plugin-coastal"
 version = "0.1.0"
 dependencies = [
+ "approx",
  "geo-core",
  "geo-io",
  "geo-raster",
@@ -2140,6 +2170,7 @@ dependencies = [
 name = "geo-plugin-ecology"
 version = "0.1.0"
 dependencies = [
+ "approx",
  "chrono",
  "geo-carbon-math",
  "geo-core",
@@ -2202,9 +2233,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "geo-plugin-geomorph"
+version = "0.8.0"
+dependencies = [
+ "geo-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "geo-plugin-hydro"
 version = "0.1.0"
 dependencies = [
+ "approx",
+ "geo-adapter-modflow",
  "geo-core",
  "geo-registry",
  "serde",

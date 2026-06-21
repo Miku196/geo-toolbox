@@ -1,0 +1,29 @@
+
+running 19 tests
+test hydro::tests::test_scs_unit_hydrograph ... ok
+test unit_hydrograph::tests::test_clark_uh_basic ... ok
+test unit_hydrograph::tests::test_clark_uh_attenuation_increases_with_k ... ok
+test unit_hydrograph::tests::test_clark_uh_volume_conservation ... ok
+test unit_hydrograph::tests::test_convolve_rainfall_empty ... ok
+test unit_hydrograph::tests::test_convolve_rainfall_single_uh ... ok
+test unit_hydrograph::tests::test_interpolate_scs_bounds ... ok
+test unit_hydrograph::tests::test_scs_params_default ... ok
+test unit_hydrograph::tests::test_scs_uh_basic ... ok
+test unit_hydrograph::tests::test_clark_uh_zero_area ... ok
+test unit_hydrograph::tests::test_scs_uh_peak_factor_effect ... ok
+test unit_hydrograph::tests::test_convolve_rainfall_simple ... ok
+test unit_hydrograph::tests::test_scs_uh_volume_conservation ... ok
+test unit_hydrograph::tests::test_scs_uh_zero_area ... ok
+test unit_hydrograph::tests::test_snyder_different_params ... ok
+test unit_hydrograph::tests::test_snyder_params_default ... ok
+test unit_hydrograph::tests::test_snyder_uh_basic ... ok
+test unit_hydrograph::tests::test_snyder_uh_volume_conservation ... ok
+test unit_hydrograph::tests::test_snyder_uh_zero_area ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 31 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

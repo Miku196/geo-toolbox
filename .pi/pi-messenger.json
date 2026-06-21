@@ -1,0 +1,31 @@
+{
+  "orchestratorDefaultsVersion": 2,
+  "crew": {
+    "concurrency": {
+      "workers": 4,
+      "max": 10
+    },
+    "coordination": "moderate",
+    "models": {
+      "worker": "openai-codex/gpt-5.4-mini",
+      "planner": "openai-codex/gpt-5.4-mini",
+      "reviewer": "openai-codex/gpt-5.4-mini",
+      "analyst": "openai-codex/gpt-5.4-mini"
+    },
+    "thinking": {
+      "worker": "high",
+      "planner": "high",
+      "reviewer": "high",
+      "analyst": "medium"
+    },
+    "review": {
+      "enabled": false,
+      "maxIterations": 3
+    },
+    "work": {
+      "maxAttemptsPerTask": 3,
+      "maxWaves": 20
+    },
+    "dependencies": "standard"
+  }
+}

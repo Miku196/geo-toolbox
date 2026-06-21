@@ -1,0 +1,10 @@
+[package]
+name = "geo-plugin-geomorph"
+version = "0.8.0"
+edition = "2021"
+description = "Geomorphology plugin: D8 flow direction/accumulation, Strahler river network, valley cross-section"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+geo-core = { path = "../../core/geo-core" }

@@ -1,0 +1,113 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling geo-ogc v0.1.0 (E:\geo\geo-toolbox\core\geo-ogc)
+error: expected one of `!`, `(`, `.`, `::`, `;`, `<`, `?`, or `}`, found `,`
+   --> core\geo-ogc\src\wmts.rs:167:46
+    |
+167 |                     ((1.0 - t) * 255.0) as u8, ((1.0 - t) * 255.0) as u8, ((1.0 - t) * 255.0) as u8
+    |                                              ^ expected one of 8 possible tokens
+
+warning: unused import: `super::*`
+   --> core\geo-ogc\src\wmts.rs:146:9
+    |
+146 |     use super::*;
+    |         ^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0277]: `(dyn Fn(u32, u32, u32) -> Vec<u8> + Send + Sync + 'static)` doesn't implement `Debug`
+   --> core\geo-ogc\src\wmts.rs:133:5
+    |
+104 | #[derive(Debug, Clone, Serialize, Deserialize)]
+    |          ----- in this derive macro expansion
+...
+133 |     pub renderer: Option<TileRendererFn>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for `(dyn Fn(u32, u32, u32) -> Vec<u8> + Send + Sync + 'static)`
+
+error[E0277]: the trait bound `dyn Fn(u32, u32, u32) -> Vec<u8> + Send + Sync: Clone` is not satisfied
+   --> core\geo-ogc\src\wmts.rs:133:5
+    |
+104 | #[derive(Debug, Clone, Serialize, Deserialize)]
+    |                 ----- in this derive macro expansion
+...
+133 |     pub renderer: Option<TileRendererFn>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `dyn Fn(u32, u32, u32) -> Vec<u8> + Send + Sync`
+    |
+    = note: required for `Box<dyn Fn(u32, u32, u32) -> Vec<u8> + Send + Sync>` to implement `Clone`
+    = note: 1 redundant requirement hidden
+    = note: required for `std::option::Option<Box<dyn Fn(u32, u32, u32) -> Vec<u8> + Send + Sync>>` to implement `Clone`
+help: use parentheses to call this trait object
+    |
+133 |     pub renderer: Option<TileRendererFn>(/* u32 */, /* u32 */, /* u32 */),
+    |                                         +++++++++++++++++++++++++++++++++
+
+error[E0277]: the type `[u8]` cannot be indexed by `u32`
+   --> core\geo-ogc\src\wmts.rs:197:22
+    |
+197 |                 data[idx] = r;
+    |                      ^^^ slice indices are of type `usize` or ranges of `usize`
+    |
+    = help: the trait `SliceIndex<[u8]>` is not implemented for `u32`
+help: `usize` implements trait `SliceIndex<T>`
+   --> /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library\core\src\bstr\traits.rs:197:0
+    |
+    = note: `SliceIndex<ByteStr>`
+   --> /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library\core\src\slice\index.rs:214:0
+    |
+    = note: `SliceIndex<[T]>`
+    = note: required for `Vec<u8>` to implement `std::ops::Index<u32>`
+
+error[E0277]: the type `[u8]` cannot be indexed by `u32`
+   --> core\geo-ogc\src\wmts.rs:198:22
+    |
+198 |                 data[idx + 1] = g;
+    |                      ^^^^^^^ slice indices are of type `usize` or ranges of `usize`
+    |
+    = help: the trait `SliceIndex<[u8]>` is not implemented for `u32`
+help: `usize` implements trait `SliceIndex<T>`
+   --> /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library\core\src\bstr\traits.rs:197:0
+    |
+    = note: `SliceIndex<ByteStr>`
+   --> /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library\core\src\slice\index.rs:214:0
+    |
+    = note: `SliceIndex<[T]>`
+    = note: required for `Vec<u8>` to implement `std::ops::Index<u32>`
+
+error[E0277]: the type `[u8]` cannot be indexed by `u32`
+   --> core\geo-ogc\src\wmts.rs:199:22
+    |
+199 |                 data[idx + 2] = b;
+    |                      ^^^^^^^ slice indices are of type `usize` or ranges of `usize`
+    |
+    = help: the trait `SliceIndex<[u8]>` is not implemented for `u32`
+help: `usize` implements trait `SliceIndex<T>`
+   --> /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library\core\src\bstr\traits.rs:197:0
+    |
+    = note: `SliceIndex<ByteStr>`
+   --> /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library\core\src\slice\index.rs:214:0
+    |
+    = note: `SliceIndex<[T]>`
+    = note: required for `Vec<u8>` to implement `std::ops::Index<u32>`
+
+error[E0277]: the type `[u8]` cannot be indexed by `u32`
+   --> core\geo-ogc\src\wmts.rs:200:22
+    |
+200 |                 data[idx + 3] = 255;
+    |                      ^^^^^^^ slice indices are of type `usize` or ranges of `usize`
+    |
+    = help: the trait `SliceIndex<[u8]>` is not implemented for `u32`
+help: `usize` implements trait `SliceIndex<T>`
+   --> /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library\core\src\bstr\traits.rs:197:0
+    |
+    = note: `SliceIndex<ByteStr>`
+   --> /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library\core\src\slice\index.rs:214:0
+    |
+    = note: `SliceIndex<[T]>`
+    = note: required for `Vec<u8>` to implement `std::ops::Index<u32>`
+
+For more information about this error, try `rustc --explain E0277`.
+warning: `geo-ogc` (lib) generated 1 warning
+error: could not compile `geo-ogc` (lib) due to 7 previous errors; 1 warning emitted
+warning: build failed, waiting for other jobs to finish...
+warning: `geo-ogc` (lib test) generated 1 warning (1 duplicate)
+error: could not compile `geo-ogc` (lib test) due to 7 previous errors; 1 warning emitted

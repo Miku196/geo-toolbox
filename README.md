@@ -49,7 +49,7 @@
 │  │  IO 解析 · 报告模板 · 碳核算公式 · 云原生格式 · OGC   │  │
 │  └───────────────────────────────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────────┤
-│  Layer 2: Plugins（10 crates）— 专业领域，配置驱动           │
+│  Layer 2: Plugins（12 crates）— 专业领域，配置驱动           │
 │  ┌────────┬────────┬────────┬────────┬────────┬────────┐  │
 │  │ 碳核算 │生态修复│ 测绘   │城乡规划│ 水文   │地质灾害│  │
 │  ├────────┼────────┼────────┼────────┼────────┼────────┤  │
@@ -307,7 +307,7 @@ cargo test --workspace
 | `geo-ogc` | OGC 服务 | `WmsService`, `WfsService`, `WpsService` |
 | `geo-registry` | 插件注册 | `PluginRegistry`, `ToolDef`, `register_plugin!` 宏, `generate_mcp_tools()` |
 
-### Layer 2: Plugins — 专业领域插件（7 crates）
+### Layer 2: Plugins — 专业领域插件（12 crates）
 
 每个插件 = `rules.toml`（业务参数）+ 报告模板 + 组装 Core 调用的薄层。
 **插件间禁止互相依赖**，如需共享功能则下沉到 Core。
@@ -1391,6 +1391,52 @@ cargo fmt --all -- --check && cargo clippy && cargo test
 git commit -m "feat: add something"
 git push origin feature/my-feature
 ```
+
+---
+
+## 🧮 算法清单（~360个）
+
+### Core — 纯 Rust 核心库
+
+**栅格**: 坡度(Horn) · 坡向 · 曲率 · TPI · TRI · Hillshade · NDVI · NDWI · 波段代数 · 阈值 · 重采样(Nearest/Cubic/Bilinear) · 镶嵌 · Zonal统计 · GeoTIFF
+
+**矢量**: 点面包含(Ray casting) · 缓冲区 · 相交 · 合并 · 差集 · 裁剪 · Douglas-Peucker简化 · 空间连接 · 自相交检测
+
+**空间统计**: Jenks · 分位数分类 · Moran's I · Gi*热点 · Queen/Rook权重 · IDW插值 · K-means · OLS回归
+
+**时序**: Mann-Kendall · Sen's Slope · 季节性MK · Pettitt断点 · BFAST · 季节分解 · 正态CDF
+
+**索引**: Geohash · H3六边形 · k-ring邻域 · BBox覆盖
+
+**碳核算**: IPCC 5碳库 · 造林/森林经营/毁林场景 · VCS/CCB方法学 · 蒙特卡洛不确定性
+
+**IO/瓦片**: NMEA解析 · GeoJSON · MVT矢量瓦片 · PMTiles · 瓦片索引
+
+### Plugin — 专业领域
+
+**水文**: SCS-CN产流(26种CN表, AMC修正) · InVEST水源涵养(Budyko) · InVEST碳存储(4碳库) · 流域提取 · Strahler分级 · SCS三角单位线 · Snyder合成单位线 · Nash IUH · 卷积汇流 · 达西定律 · Thiem井流 · 河流-含水层交互 · 溶质运移1D · 度日因子融雪 · 雪水当量 · SCS-CN+融雪耦合
+
+**生态**: RUSLE土壤流失(A=RKLSCP) · MFI降雨侵蚀力 · McCool LS因子 · C因子(NDVI) · P因子 · 侵蚀分级 · SDR泥沙输移 · MUSLE暴雨侵蚀 · USDA质地三角 · SCS分组 · van Genuchten参数(12质地) · 水分特征 · HWSD中国土壤 · 随机森林LULC
+
+**气候**: Delta降尺度 · 分位数映射 · IDF曲线(Sherman) · SPI(Gamma MLE) · SPEI · PDSI · Thornthwaite PET · 普通/简单克里金
+
+**地貌**: D8流向(含填洼) · D8累积(简单+快速) · Strahler河网 · 河谷断面
+
+**海岸**: Ekman输运 · 波浪能通量 · SWAN波浪(浅化/折射/破波) · 潮汐调和 · 风暴潮(Holland) · ENSO诊断 · Stockdon爬高 · Holman爬高 · 越浪 · 蓝碳
+
+**能源**: Weibull拟合 · 风能密度 · 风机功率曲线(Betz) · AEP · Jensen尾流 · 风电场效率 · 风切变 · 地热(Fourier) · 输电LCP(Dijkstra)
+
+**地灾**: 信息量模型 · Newmark位移(Jibson) · 安全系数FS · 降雨ID阈值 · 泥石流冲出
+
+**测绘**: GK正反算 · 分带转换 · 椭球识别 · Helmert四/七参数 · 仿射六参数 · 最小二乘拟合
+
+**碳汇**: 5碳库 · 蒙特卡洛 · LCA · 高斯烟羽 · CCER报告
+
+**林业**: 树高生长(Richards/Logistic/...) · 立地指数 · SDI优化
+
+### Adapter — 外部桥接
+
+MODFLOW文件生成 · DSSAT文件生成 · QGIS双后端 · PostGIS/TimescaleDB · GEE · DuckDB · STAC · OSM · CAD · GDAL CLI
 
 ---
 

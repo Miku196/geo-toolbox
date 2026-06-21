@@ -1,8 +1,10 @@
 # geo-toolbox Wiki
 
 > 从零到一：安装、开发、部署全流程指南。
-> 最后更新：2026-06-17
+> > 最后更新：2026-06-21
 
+> 💡 **2026-06 v0.9 更新**：插件深度拓展全面完成 — 新增 2 个插件（climate 气象气候 7 模块、geomorph 地貌 2 模块）+ 5 个旧插件新增模块（groundwater 地下水、ocean 海洋物理、wave_runup 波浪爬高、soil 土壤、unit_hydrograph 单位线、transform 坐标转换、dssat 作物模型）。总计 ~6500 行新代码。详见 [ROADMAP](ROADMAP.md)。
+>
 > 💡 **2026-06 v0.8 更新**：Phase 3.3 Plugin trait 统一 — 全部插件实现 `PluginConfig` + `Default` 配置 + `type Config` 关联类型；DuckDB/STAC 适配器实现 Plugin trait 默认方法。
 >
 > 💡 **2026-06 v0.6 更新**：RUSLE 通用土壤流失方程 (A=R·K·LS·C·P) + SCS-CN 径流曲线数 (26种土地利用CN查表) + InVEST 碳存储(4碳库)+水源涵养(Budyko曲线) + 7个新CLI工具 + 35个新测试。详见 [核心功能使用](#4-核心功能使用)。
@@ -38,15 +40,15 @@
   - [4.14 RUSLE 土壤流失方程](#414-rusle-土壤流失方程)
   - [4.15 SCS-CN 径流曲线数](#415-scs-cn-径流曲线数)
   - [4.16 InVEST 碳存储与水源涵养](#416-invest-碳存储与水源涵养)
-  - [4.17 地热评估](#417-地热评估)
-  - [4.18 输电走廊](#418-输电走廊)
-  - [4.19 高斯烟羽模型](#419-高斯烟羽模型)
-  - [4.20 蓝碳评估](#420-蓝碳评估)
-  - [4.21 风暴潮](#421-风暴潮)
-  - [4.22 地质灾害（FS + Newmark）](#422-地质灾害fs--newmark)
-  - [4.23 测绘工具（高斯-克吕格）](#423-测绘工具高斯-克吕格)
-  - [4.24 农业工具（LAI + 灌溉）](#424-农业工具lai--灌溉)
-  - [4.25 城乡规划工具](#425-城乡规划工具)
+  - [4.17 气象气候：GCM降尺度 + IDF + 干旱指数 + Kriging](#417-气象气候gcm降尺度--idf--干旱指数--kriging)
+  - [4.18 地貌分析：D8流向累积 + Strahler河网](#418-地貌分析d8流向累积--strahler河网)
+  - [4.19 地下水模块：达西定律 + MODFLOW适配](#419-地下水模块达西定律--modflow适配)
+  - [4.20 单位线汇流：SCS三角 + Snyder合成 + IUH](#420-单位线汇流scs三角--snyder合成--iuh)
+  - [4.21 波浪爬高：Stockdon / Mase 公式](#421-波浪爬高stockdon--mase-公式)
+  - [4.22 海洋物理：Ekman输运 + SWAN波浪 + 潮汐调和](#422-海洋物理ekman输运--swan波浪--潮汐调和)
+  - [4.23 土壤模块：USDA质地 + van Genuchten + HWSD](#423-土壤模块usda质地--van-genuchten--hwsd)
+  - [4.24 坐标转换：四参数 + 七参数 + 仿射](#424-坐标转换四参数--七参数--仿射)
+  - [4.25 DSSAT作物模型适配](#425-dssat作物模型适配)
 - [5. 插件开发](#5-插件开发)
   - [5.1 创建插件骨架](#51-创建插件骨架)
   - [5.2 编写配置](#52-编写配置)
@@ -1007,7 +1009,223 @@ let invest = assess_invest(&landuse, &p, &pet, &awc, 5.0, 30.0);
 
 ---
 
-## 5. 插件开发
+## 4.17 气象气候：GCM降尺度 + IDF + 干旱指数 + Kriging
+
+**文件**: `plugins/geo-plugin-climate/`（全新插件，7模块）
+
+### GCM 降尺度 (`gcm.rs`)
+
+两种方法将全球气候模型输出降尺度到站点/栅格：
+
+| 方法 | 函数 | 原理 |
+|------|------|------|
+| Delta 法 | `delta_downscale()` | 未来GCM月均值 − 历史GCM月均值 + 观测值，线性贴合 |
+| 分位数映射 | `quantile_mapping()` | 构建观测与GCM的CDF转换函数，校正分布偏倚 |
+
+```rust
+// 降尺度温度：未来+3°C信号
+let obs = vec![15.0, 16.0, 18.0];
+let gcm_hist = vec![14.5, 15.5, 17.5];
+let gcm_fut = vec![17.5, 18.5, 20.5];
+let downscaled = delta_downscale(&obs, &gcm_hist, &gcm_fut);
+```
+
+### IDF 曲线 (`idf.rs`)
+
+Sherman 公式拟合：
+`i = c / (t + b)^d`
+
+```rust
+let data = vec![
+    IdfRecord { duration_min: 10.0, intensity: 120.0 },
+    IdfRecord { duration_min: 60.0, intensity: 40.0 },
+];
+let params = idf_curve(&data).unwrap();
+let i_30min = idf_return_period(&params, 30.0); // 30分钟降雨强度
+```
+
+### 干旱指数 (`drought.rs`)
+
+| 指数 | 函数 | 时间尺度 |
+|------|------|---------|
+| SPI | `compute_spi()` | 标准化降水指数，月/季/年 |
+| SPEI | `compute_spei()` | 标准化降水蒸散发指数 |
+| PDSI | `compute_pdsi()` | 帕尔默指数，含水分平衡 |
+
+### 克里金插值 (`kriging.rs`)
+
+| 方法 | 函数 |
+|------|------|
+| 普通克里金 | `ordinary_kriging()` — 未知均值，半变异函数拟合 |
+| 简单克里金 | `simple_kriging()` — 已知全局均值 |
+| 半变异函数 | `semivariogram()` — 实验/理论半变异图 |
+
+---
+
+## 4.18 地貌分析：D8流向累积 + Strahler河网
+
+**文件**: `plugins/geo-plugin-geomorph/src/d8.rs`、`river.rs`
+
+### D8 流向 (`d8_flow_direction`)
+
+单流向算法：8方向邻域 + 平面/洼地填充双模式。
+
+| 模式 | 行为 |
+|------|------|
+| 平面 (fill=false) | 原始 DEM，含洼地 |
+| 填洼 (fill=true) | 抬升洼地至最低溢出点（Jenson & Domingue） |
+
+### 流向编码
+
+| 方向 | 代码 |
+|------|:----:|
+| E | 0 |
+| NE | 1 |
+| N | 2 |
+| NW | 3 |
+| W | 4 |
+| SW | 5 |
+| S | 6 |
+| SE | 7 |
+| Pit | 255 |
+
+### 流量累积
+
+两种实现：
+- `d8_flow_accumulation()` — 下游行走法（简单），逐个细胞下游追踪
+- `d8_flow_accumulation_fast()` — 递归+记忆化（高效），O(rows×cols) 一次遍历
+
+### Strahler 河网 (`river.rs`)
+
+`strahler_order()` — 河段分级。`extract_stream_segments()` — 从流向栅格提取连线河段。`valley_cross_section()` — V型/U型断面拟合。
+
+---
+
+## 4.19 地下水模块：达西定律 + MODFLOW适配
+
+**文件**: `plugins/geo-plugin-hydro/src/groundwater.rs`
+
+| 模块 | 函数 | 说明 |
+|------|------|------|
+| 达西渗流 | `darcy_flow()` | Q = KiA，水力传导K、梯度i、截面A |
+| 承压井函数 | `theim_confined()` / `thiem_unconfined()` | Thiem 稳定流降深 |
+| 河流补给 | `river_recharge_gain()` | 河流-含水层交互 (渗漏/补给) |
+| MODFLOW 文件 | `generate_modflow_dis()` / `bas6()` / `lpf()` / `pcg()` | .DIS / .BAS6 / .LPF / .PCG 适配 |
+| 达西速度 | `darcy_velocity()` / `seepage_velocity()` | 达西流速 vs 孔隙实际流速 |
+| 溶质运移 | `advection_dispersion_1d()` | 对流-弥散方程 1D |
+
+---
+
+## 4.20 单位线汇流：SCS三角 + Snyder合成 + IUH
+
+**文件**: `plugins/geo-plugin-hydro/src/unit_hydrograph.rs`
+
+SCS-CN 产流 + 单位线汇流 = 完整洪水过程线。
+
+| 方法 | 函数 | 适用 |
+|------|------|------|
+| SCS 三角单位线 | `scs_triangular_uh()` | 小流域（面积<50km²） |
+| SCS 无因次单位线 | `scs_dimensionless_uh()` | 标准 SCS 曲线（NRCS） |
+| Snyder 合成单位线 | `snyder_synthetic_uh()` | 参数化流域（Ct, Cp 经验参数） |
+| 瞬时单位线 (IUH) | `instantaneous_uh_nash()` | Nash 串联水库模型 |
+| 卷积汇流 | `convolution_hydrograph()` | 净雨×单位线→洪水过程 |
+
+```rust
+let area_km2 = 50.0;
+let uh_scs = scs_triangular_uh(area_km2, 0.5, 0.5);
+let excess_rainfall = vec![10.0, 20.0, 5.0]; // mm
+let flood = convolution_hydrograph(&uh_scs, &excess_rainfall);
+```
+
+---
+
+## 4.21 波浪爬高：Stockdon / Mase 公式
+
+**文件**: `plugins/geo-plugin-coastal/src/wave_runup.rs`
+
+| 公式 | 函数 | 来源 |
+|------|------|------|
+| Stockdon (2006) | `stockdon_runup()` | 有义波高 Hs + 周期 Tp + 坡度 β |
+| Mase (1989) | `mase_runup()` | 基于 Irribarren 数的经验公式 |
+| 平均爬高 | `mean_runup()` | R₂ 统计爬高 (2% exceedance) |
+| 组合评估 | `wave_runup_assessment()` | 多方法综合，含合理性校验 |
+| 越浪 | `wave_overtopping_rate()` | 单位宽度越浪流量 (m³/s/m) |
+
+---
+
+## 4.22 海洋物理：Ekman输运 + SWAN波浪 + 潮汐调和
+
+**文件**: `plugins/geo-plugin-coastal/src/ocean.rs`
+
+| 模块 | 函数 | 说明 |
+|------|------|------|
+| Ekman 输运 | `ekman_transport()` | 风应力驱动的海水输运 |
+| 波浪能通量 | `wave_energy_flux()` | P = E·cg，波功率 (W/m) |
+| SWAN 波浪 | `swan_wave_transformation()` | 向岸波浅化/折射/破波 (Komar-Gaughan) |
+| 波浪增水 | `wave_setup()` | 破波引起的平均水位抬升 |
+| 潮汐分析 | `harmonic_tide()` / `tide_range()` | 天文潮调和 + 大潮小潮范围 |
+| 潮汐基准面 | `chart_datum_correction()` | CD↔MSL 换算 |
+| 风暴潮 | `storm_surge_simple()` | 逆气压 + 风增水 |
+| ENSO 指数 | `nino_34_index()` / `oni_index()` / `enso_diagnosis()` | 厄尔尼诺-南方涛动诊断 |
+
+---
+
+## 4.23 土壤模块：USDA质地 + van Genuchten + HWSD
+
+**文件**: `plugins/geo-plugin-ecology/src/soil.rs`
+
+| 功能 | 函数 | 说明 |
+|------|------|------|
+| 质地分类 | `usda_texture_class()` | USDA三角，12质地砂/粘/粉粒%→类别 |
+| SCS水文分组 | `scs_hydrologic_group()` | 质地→A/B/C/D组 |
+| RUSLE K因子 | `k_factor_estimate()` | 质地→K经验值 (0.02-0.38) |
+| van Genuchten | `van_genuchten_params()` | Carsel & Parrish (1988) 12质地参数 |
+| 有效饱和度 | `effective_saturation()` | Se(h) = 1/(1+(α|h|)^n)^m |
+| 含水量 | `water_content()` | θ(h) = θr + (θs-θr)×Se |
+| 非饱和K | `unsaturated_k()` | Mualem 模型 K(h) = Ks × Kr |
+| HWSD查询 | `hwsd_lookup()` | 中文土壤名→SoilRecord |
+
+内置7种中国土壤参数：红壤、水稻土、黑土、棕壤、褐土、风沙土、荒漠土。
+
+---
+
+## 4.24 坐标转换：四参数 + 七参数 + 仿射
+
+**文件**: `plugins/geo-plugin-survey/src/transform.rs`
+
+| 模型 | 函数 | 说明 |
+|------|------|------|
+| 四参数 | `helmert_4param()` | 平移+旋转+尺度，平面坐标 |
+| 七参数 (Helmert) | `helmert_7param()` | 3平移+3旋转+尺度，椭球间转换 |
+| 仿射变换 | `affine_transform_2d()` / `fit_affine_2d()` | 6参数一般线性，N点最小二乘拟合 |
+| 对点拟合 | `fit_helmert_4param()` | 同名控制点→四参数 |
+
+支持 CGCS2000↔Beijing54↔WGS84 等中国常用基准转换。
+
+---
+
+## 4.25 DSSAT作物模型适配
+
+**文件**: `plugins/geo-plugin-agri/src/dssat.rs`
+
+| 输入文件 | 函数 | 说明 |
+|----------|------|------|
+| .WTH (天气) | `write_wth()` | DSSAT 日气象数据格式 |
+| .SOIL (土壤) | `write_soil_solo()` | 单层土壤文件 |
+| .CUL (品种) | `write_cul()` | 品种参数文件 |
+| .CO2 (CO₂) | `write_co2()` | IPCC 情景 CO₂ 浓度 |
+| .DXF / FILEX | `write_filex()` / `write_filex_section()` | 实验控制文件 |
+
+```rust
+let wth = WthRecord {
+    station: "STATION".into(), year: 2024, julian: 1,
+    solar_rad: 20.0, tmax: 30.0, tmin: 20.0, rain: 0.0,
+};
+let output = write_wth(&[wth], &WthHeader::default());
+```
+
+---
+
 
 以开发一个"矿山风险评估插件"为例，走完整流程。
 
@@ -2649,6 +2867,52 @@ curl "http://localhost:9378/wms?service=WMS&request=GetMap&layers=nlcd&crs=EPSG:
 # 列出所有可用工具
 curl http://localhost:9378/api/tools
 ```
+
+---
+
+## 🧮 算法清单（~360个）
+
+### Core — 纯 Rust 核心库
+
+**栅格**: 坡度(Horn) · 坡向 · 曲率 · TPI · TRI · Hillshade · NDVI · NDWI · 波段代数 · 阈值 · 重采样(Nearest/Cubic/Bilinear) · 镶嵌 · Zonal统计 · GeoTIFF
+
+**矢量**: 点面包含(Ray casting) · 缓冲区 · 相交 · 合并 · 差集 · 裁剪 · Douglas-Peucker简化 · 空间连接 · 自相交检测
+
+**空间统计**: Jenks · 分位数分类 · Moran's I · Gi\*热点 · Queen/Rook权重 · IDW插值 · K-means · OLS回归
+
+**时序**: Mann-Kendall · Sen's Slope · 季节性MK · Pettitt断点 · BFAST · 季节分解 · 正态CDF
+
+**索引**: Geohash · H3六边形 · k-ring邻域 · BBox覆盖
+
+**碳核算**: IPCC 5碳库 · 造林/森林经营/毁林场景 · VCS/CCB方法学 · 蒙特卡洛不确定性
+
+**IO/瓦片**: NMEA解析 · GeoJSON · MVT矢量瓦片 · PMTiles · 瓦片索引
+
+### Plugin — 专业领域
+
+**水文**: SCS-CN产流(26种CN表, AMC修正) · InVEST水源涵养(Budyko) · InVEST碳存储(4碳库) · 流域提取 · Strahler分级 · SCS三角单位线 · Snyder合成单位线 · Nash IUH · 卷积汇流 · 达西定律 · Thiem井流 · 河流-含水层交互 · 溶质运移1D · 度日因子融雪 · 雪水当量 · SCS-CN+融雪耦合
+
+**生态**: RUSLE土壤流失(A=RKLSCP) · MFI降雨侵蚀力 · McCool LS因子 · C因子(NDVI) · P因子 · 侵蚀分级 · SDR泥沙输移 · MUSLE暴雨侵蚀 · USDA质地三角 · SCS分组 · van Genuchten参数(12质地) · 水分特征 · HWSD中国土壤 · 随机森林LULC
+
+**气候**: Delta降尺度 · 分位数映射 · IDF曲线(Sherman) · SPI(Gamma MLE) · SPEI · PDSI · Thornthwaite PET · 普通/简单克里金
+
+**地貌**: D8流向(含填洼) · D8累积(简单+快速) · Strahler河网 · 河谷断面
+
+**海岸**: Ekman输运 · 波浪能通量 · SWAN波浪(浅化/折射/破波) · 潮汐调和 · 风暴潮(Holland) · ENSO诊断 · Stockdon爬高 · Holman爬高 · 越浪 · 蓝碳
+
+**能源**: Weibull拟合 · 风能密度 · 风机功率曲线(Betz) · AEP · Jensen尾流 · 风电场效率 · 风切变 · 地热(Fourier) · 输电LCP(Dijkstra)
+
+**地灾**: 信息量模型 · Newmark位移(Jibson) · 安全系数FS · 降雨ID阈值 · 泥石流冲出
+
+**测绘**: GK正反算 · 分带转换 · 椭球识别 · Helmert四/七参数 · 仿射六参数 · 最小二乘拟合
+
+**碳汇**: 5碳库 · 蒙特卡洛 · LCA · 高斯烟羽 · CCER报告
+
+**林业**: 树高生长(Richards/Logistic/...) · 立地指数 · SDI优化
+
+### Adapter — 外部桥接
+
+MODFLOW文件生成 · DSSAT文件生成 · QGIS双后端 · PostGIS/TimescaleDB · GEE · DuckDB · STAC · OSM · CAD · GDAL CLI
 
 ---
 

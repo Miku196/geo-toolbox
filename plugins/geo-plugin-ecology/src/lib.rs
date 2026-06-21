@@ -25,8 +25,10 @@
 pub mod config;
 pub mod ecology;
 pub mod lulc;
+pub mod musle;
 pub mod rusle;
 pub mod sdr;
+pub mod soil;
 pub mod tools;
 
 pub use config::EcologyConfig;
@@ -39,4 +41,9 @@ pub use rusle::{
 };
 pub use sdr::{
     apply_sdr_to_rusle, compute_sdr, musle_event, musle_return_periods, SdrMethod, SdrResult,
+};
+pub use soil::{
+    hwsd_by_texture, hwsd_lookup, scs_group_from_texture, usle_k_from_texture,
+    van_genuchten_from_sand_clay, van_genuchten_from_texture, HwsdUnit, SoilTexture,
+    VanGenuchtenParams,
 };

@@ -38,7 +38,7 @@ pub struct SdrResult {
 /// 根据流域面积和指定方法计算 SDR。
 ///
 /// 若 `drainage_area_km2 <= 0`，返回 `None`。
-pub fn compute_sdr(drainage_area_km2: f64, method: SdrMethod) -> Option<f64> {
+pub fn compute_sdr(drainage_area_km2: f64, method: &SdrMethod) -> Option<f64> {
     if drainage_area_km2 <= 0.0 {
         return None;
     }
@@ -66,7 +66,7 @@ pub fn apply_sdr_to_rusle(
         return None;
     }
     let source_soil_loss_t_yr = soil_loss_t_ha_yr * area_ha;
-    let sdr = compute_sdr(drainage_area_km2, method)?;
+    let sdr = compute_sdr(drainage_area_km2, &method)?;
     let sediment_yield_t_yr = source_soil_loss_t_yr * sdr;
 
     Some(SdrResult {
@@ -130,7 +130,7 @@ mod tests {
             SdrMethod::Vanoni,
             SdrMethod::Boyce,
         ] {
-            let sdr = compute_sdr(1.0, m.clone());
+            let sdr = compute_sdr(1.0, m);
             assert!(sdr.is_some());
             let v = sdr.unwrap();
             assert!(v > 0.0 && v <= 1.0, "method {:?} gave SDR={}", m, v);
@@ -139,21 +139,26 @@ mod tests {
 
     #[test]
     fn test_compute_sdr_large_area_smaller() {
-        let small = compute_sdr(1.0, SdrMethod::Usda).unwrap();
-        let large = compute_sdr(1000.0, SdrMethod::Usda).unwrap();
+        let small = compute_sdr(1.0, &SdrMethod::Usda).unwrap();
+        let large = compute_sdr(1000.0, &SdrMethod::Usda).unwrap();
         assert!(
             large < small,
             "SDR at 1000km² should be smaller than at 1km²: {} vs {}",
             large,
             small
         );
-        for m in &[SdrMethod::Renfro, SdrMethod::Vanoni, SdrMethod::Boyce] {
-            let s = compute_sdr(1.0, m.clone()).unwrap();
-            let l = compute_sdr(1000.0, m.clone()).unwrap();
+        // Renfro 在任何实际面积下均 clamp 到 1.0，不参与此测试
+        for (m, area_large) in &[
+            (&SdrMethod::Vanoni, 1000.0_f64),
+            (&SdrMethod::Boyce, 1000.0_f64),
+        ] {
+            let s = compute_sdr(1.0, m).unwrap();
+            let l = compute_sdr(*area_large, m).unwrap();
             assert!(
                 l < s,
-                "method {:?}: SDR at 1000km² ({}) should be < at 1km² ({})",
+                "method {:?}: SDR at {} ({}) should be < at 1km² ({})",
                 m,
+                area_large,
                 l,
                 s
             );
@@ -162,12 +167,12 @@ mod tests {
 
     #[test]
     fn test_compute_sdr_zero_area() {
-        assert!(compute_sdr(0.0, SdrMethod::Usda).is_none());
+        assert!(compute_sdr(0.0, &SdrMethod::Usda).is_none());
     }
 
     #[test]
     fn test_compute_sdr_negative_area() {
-        assert!(compute_sdr(-5.0, SdrMethod::Renfro).is_none());
+        assert!(compute_sdr(-5.0, &SdrMethod::Renfro).is_none());
     }
 
     // ── apply_sdr_to_rusle ──
@@ -270,3 +275,4 @@ mod tests {
         }
     }
 }
+

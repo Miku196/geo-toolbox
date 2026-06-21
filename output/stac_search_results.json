@@ -1,0 +1,28 @@
+{
+  "2020": [
+    {
+      "cloud_cover": null,
+      "datetime": null,
+      "id": "S2B_MSIL2A_20200819T024549_R132_T50RNT_20200919T152041"
+    }
+  ],
+  "2025": [
+    {
+      "cloud_cover": null,
+      "datetime": null,
+      "id": "S2C_MSIL2A_20250828T024611_R132_T50RNT_20250828T062913"
+    },
+    {
+      "cloud_cover": null,
+      "datetime": null,
+      "id": "S2B_MSIL2A_20250823T024529_R132_T50RNT_20250823T044830"
+    }
+  ],
+  "aoi": "德兴铜矿及周边生态修复区",
+  "bbox": [
+    117.49,
+    28.95,
+    117.69,
+    29.12
+  ]
+}

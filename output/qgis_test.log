@@ -1,0 +1,22 @@
+
+running 12 tests
+test adapter::tests::test_adapter_creation ... ok
+test adapter::tests::test_rest_adapter_creation ... ok
+test process_runner::tests::test_job_queue_clear ... ok
+test process_runner::tests::test_job_queue_status ... ok
+test process_runner::tests::test_qgis_tool_serialization ... ok
+test grpc_client::tests::test_qgis_job_serialization ... ok
+test process_runner::tests::test_job_queue_progress ... ok
+test process_runner::tests::test_job_queue_reset ... ok
+test process_runner::tests::test_default_config ... ok
+test process_runner::tests::test_job_queue_submit ... ok
+test process_runner::tests::test_parse_output_from_params ... ok
+test grpc_client::tests::test_job_status_deserialize ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

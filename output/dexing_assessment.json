@@ -1,0 +1,21 @@
+{
+  "aoi": "德兴铜矿 (117.49-117.69E, 28.95-29.12N)",
+  "source": "MODIS MOD13Q1 v061 (2000-2025) + GIMMS NDVI3g (1982-2015)",
+  "method": "NASA LP DAAC via ORNL Subset API",
+  "series": {
+    "2000": 0.7392,
+    "2005": 0.7498,
+    "2010": 0.6998,
+    "2015": 0.6905,
+    "2020": 0.7275,
+    "2025": 0.7663
+  },
+  "phases": {
+    "2000-2015_decline": -0.0487,
+    "2015-2025_restoration": 0.0758,
+    "2000-2025_total": 0.027
+  },
+  "restoration_grade": "优秀",
+  "restoration_score": 100,
+  "note": "Earliest MODIS available from 2000 (Terra launch Dec 1999). Pre-2000: GIMMS AVHRR NDVI (8km, 1982+) can extend series to 43 years. LANDSAT (30m, 1984+) for higher resolution."
+}

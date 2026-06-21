@@ -1,0 +1,15 @@
+
+running 4 tests
+test registry::tests::test_register_plugin ... ok
+test registry::tests::test_generate_mcp_resources ... ok
+test registry::tests::test_register_tool_and_generate_mcp ... ok
+test registry::tests::test_generate_mcp_prompts ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test core\geo-registry\src\macros.rs - macros::register_plugin (line 9) ... ignored
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

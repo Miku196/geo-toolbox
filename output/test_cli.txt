@@ -1,0 +1,30 @@
+
+running 13 tests
+test commands::pipeline::tests::test_detect_column ... ok
+test commands::pipeline::tests::test_parse_unsupported_format ... ok
+test mcp::tests::test_initialize_response ... ok
+test commands::pipeline::tests::test_csv_xy_headers ... ok
+test commands::pipeline::tests::test_csv_to_fc ... ok
+test commands::pipeline::tests::test_simplify_simple ... ok
+test mcp::tests::test_mcp_resources_list ... ok
+test commands::pipeline::tests::test_parse_geojson_feature ... ok
+test commands::pipeline::tests::test_parse_geojson_fc ... ok
+test mcp::tests::test_mcp_prompts_list ... ok
+test commands::pipeline::tests::test_fc_to_geojson_roundtrip ... ok
+test commands::pipeline::tests::test_buffer_simple ... FAILED
+test mcp::tests::test_pre_handshake_rejection ... ok
+
+failures:
+
+---- commands::pipeline::tests::test_buffer_simple stdout ----
+
+thread 'commands::pipeline::tests::test_buffer_simple' (10852) panicked at crates\geo-cli\src\commands\pipeline.rs:606:59:
+called `Result::unwrap()` on an `Err` value: "buffer: geo 0.28 removed the buffer algorithm. Install 'geo-buffer' crate or use polyline offset."
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    commands::pipeline::tests::test_buffer_simple
+
+test result: FAILED. 12 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
