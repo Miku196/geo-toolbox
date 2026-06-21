@@ -34,6 +34,7 @@ pub fn generate_nam(model_name: &str, units: &[(&str, usize)]) -> String {
 }
 
 /// 生成 MODFLOW-2005 .DIS 离散化文件。
+#[allow(clippy::too_many_arguments)]
 pub fn generate_dis(
     nlay: usize,
     nrow: usize,

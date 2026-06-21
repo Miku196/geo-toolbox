@@ -1,0 +1,132 @@
+{
+  "//": "============================================================",
+  "//": " geo-toolbox 全局配置文件",
+  "//": " 路径: 项目根目录 config.json",
+  "//": " 加载顺序: config.json → env var override → 代码默认值",
+  "//": "============================================================",
+
+  "mcp_server": {
+    "host": "0.0.0.0",
+    "port": 9378,
+    "max_concurrent": 8,
+    "tool_timeout_secs": 300,
+    "connection_timeout_secs": 3600
+  },
+
+  "adapters": {
+    "postgis": {
+      "//": "PostGIS 数据库连接。支持环境变量 ${PG_URL} 覆写",
+      "enabled": false,
+      "url": "postgres://geo:geo@localhost:5432/geo_toolbox",
+      "max_connections": 20,
+      "min_connections": 2
+    },
+
+    "gee": {
+      "//": "Google Earth Engine 适配器。支持环境变量 ${GEE_PROJECT} 覆写",
+      "enabled": false,
+      "project": "my-gee-project",
+      "service_account": "gee-service@my-project.iam.gserviceaccount.com",
+      "credentials_path": "~/.config/earthengine/private-key.json",
+      "gcs_bucket": "gee-exports",
+      "gcs_prefix": "exports/"
+    },
+
+    "stac": {
+      "//": "STAC API 端点。解析后可通过搜索下载卫星影像",
+      "enabled": true,
+      "endpoint": "https://planetarycomputer.microsoft.com/api/stac/v1",
+      "default_collection": "sentinel-2-l2a",
+      "max_items": 100
+    },
+
+    "osm": {
+      "//": "OpenStreetMap Overpass API",
+      "enabled": true,
+      "endpoint": "https://overpass-api.de/api/interpreter",
+      "timeout_secs": 30
+    },
+
+    "qgis": {
+      "//": "QGIS 处理后端。支持 subprocess 和 rest 两种模式",
+      "enabled": true,
+      "backend": "subprocess",
+      "server_url": "http://localhost:9100",
+      "qgis_process_path": "E:\\Program Files\\QGISQT6 3.40.13\\bin\\qgis_process-qgis-ltr-qt6.bat"
+    },
+
+    "gdal": {
+      "//": "GDAL CLI 适配器。路径为空时从 PATH 查找",
+      "enabled": true,
+      "gdal_translate_path": "gdal_translate",
+      "gdalwarp_path": "gdalwarp",
+      "ogr2ogr_path": "ogr2ogr",
+      "gcs_bucket": "gee-exports",
+      "temp_dir": "/tmp/geo-toolbox"
+    },
+
+    "cad": {
+      "//": "CAD/DXF 输出适配器",
+      "enabled": false,
+      "dxf_template_path": ""
+    },
+
+    "duckdb": {
+      "//": "DuckDB 嵌入式数据库。path 为 null 时使用内存数据库",
+      "enabled": true,
+      "path": null,
+      "tmp_dir": "/tmp/geo-toolbox-duckdb"
+    },
+
+    "iot": {
+      "//": "IoT/MQTT 流式接入",
+      "enabled": false,
+      "mqtt_broker": "localhost",
+      "mqtt_port": 1883,
+      "mqtt_topics": ["geo/sensors/#"],
+      "mqtt_client_id": "geo-toolbox-iot"
+    },
+
+    "dssat": {
+      "//": "DSSAT 作物模型适配器",
+      "enabled": false,
+      "dssat_path": "/opt/dssat/",
+      "temp_dir": "/tmp/geo-toolbox-dssat"
+    },
+
+    "modflow": {
+      "//": "MODFLOW 地下水模型适配器",
+      "enabled": false,
+      "mf6_path": "mf6",
+      "temp_dir": "/tmp/geo-toolbox-modflow"
+    }
+  },
+
+  "plugins": {
+    "carbon": {
+      "default_ecozone": "temperate_broadleaf",
+      "default_soc_ref": 70,
+      "default_source": "IPCC_2019"
+    },
+
+    "geohazard": {
+      "default_soil_density_kn_m3": 20,
+      "default_water_table_ratio": 0.3
+    },
+
+    "coastal": {
+      "default_ambient_pressure_hpa": 1013.0,
+      "default_holland_b": 1.3
+    },
+
+    "agri": {
+      "default_par_mj_m2_day": 20.0
+    }
+  },
+
+  "logging": {
+    "level": "info",
+    "format": "text",
+    "otel_endpoint": null
+  }
+}

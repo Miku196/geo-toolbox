@@ -67,9 +67,7 @@ pub struct CultivarParams {
 pub fn generate_wth(station: &WeatherStation, daily_data: &[DailyWeather]) -> String {
     let mut out = String::new();
     out.push_str(&format!("*WEATHER DATA : {}\n", station.name));
-    out.push_str(&format!(
-        "@ INSI      LAT     LONG  ELEV   TAV   AMP REFHT WNDHT\n"
-    ));
+    out.push_str("@ INSI      LAT     LONG  ELEV   TAV   AMP REFHT WNDHT\n");
     out.push_str(&format!(
         "  {} {:>8.2} {:>8.2} {:>5.0}  -99   -99  2.00  2.00\n",
         &station.wmo_code[..std::cmp::min(4, station.wmo_code.len())],
@@ -99,9 +97,7 @@ pub fn generate_wth(station: &WeatherStation, daily_data: &[DailyWeather]) -> St
 pub fn generate_sol(profile: &SoilProfile) -> String {
     let mut out = String::new();
     out.push_str("*SOILS: Soil Profile Data\n\n");
-    out.push_str(&format!(
-        "@SITE        COUNTRY          LAT     LONG SCS FAMILY\n"
-    ));
+    out.push_str("@SITE        COUNTRY          LAT     LONG SCS FAMILY\n");
     out.push_str(&format!(
         "  {:<12} {:<16} {:>7.2} {:>7.2} -\n",
         profile.soil_id, profile.soil_name, 0.0, 0.0,
@@ -158,7 +154,7 @@ pub fn monthly_to_daily_wth(
     tmin_monthly: &[f64],
     rain_monthly: &[f64],
     latitude: f64,
-    elevation_m: f64,
+    _elevation_m: f64,
 ) -> Vec<DailyWeather> {
     let month_days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     let mut result = Vec::new();
@@ -204,11 +200,10 @@ fn extraterrestrial_radiation(julian: u16, latitude: f64) -> f64 {
     let ws = (-lat_rad.tan() * declination.tan()).acos();
     let dr = 1.0 + 0.033 * (2.0 * std::f64::consts::PI * j / 365.0).cos();
     let gsc = 0.0820; // solar constant MJ/m²/min
-    let ra = (24.0 * 60.0 / std::f64::consts::PI)
+    (24.0 * 60.0 / std::f64::consts::PI)
         * gsc
         * dr
-        * (ws * lat_rad.sin() * declination.sin() + lat_rad.cos() * declination.cos() * ws.sin());
-    ra
+        * (ws * lat_rad.sin() * declination.sin() + lat_rad.cos() * declination.cos() * ws.sin())
 }
 
 /// 从 SCS 土壤分组生成 DSSAT 土壤剖面。

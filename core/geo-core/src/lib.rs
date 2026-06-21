@@ -9,6 +9,7 @@
 //! - CRS registry with built-in common coordinate systems ([`crs::CrsRegistry`])
 //! - Geometry type aliases and validation ([`types`])
 
+pub mod config;
 pub mod crs;
 pub mod errors;
 pub mod guard;

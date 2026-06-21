@@ -3,6 +3,7 @@
 //! Registers all core crates, plugins, and feature-gated adapters
 //! into a PluginRegistry. Both CLI and HTTP server call `populate_defaults()`.
 
+pub use geo_core::config::GeoConfig;
 pub use geo_registry::PluginRegistry;
 
 /// Register all Core + Plugin + lightweight Adapter tools.
@@ -11,7 +12,8 @@ pub use geo_registry::PluginRegistry;
 /// when the corresponding feature flag is active.
 ///
 /// Callers should then add any remaining custom adapters.
-pub fn populate_defaults(reg: &mut PluginRegistry) {
+pub fn populate_defaults(reg: &mut PluginRegistry, config: Option<&GeoConfig>) {
+    let _ = config;
     // ── Core: CRS + Ingest + Spatial ops ──
     geo_io::tools::register_tools(reg);
     geo_carbon_math::tools::register_tools(reg);
@@ -50,6 +52,14 @@ pub fn populate_defaults(reg: &mut PluginRegistry) {
     }
     #[cfg(feature = "qgis")]
     {
+        if let Some(cfg) = config {
+            if cfg.adapters.qgis.enabled {
+                let path = &cfg.adapters.qgis.qgis_process_path;
+                if !path.is_empty() && std::env::var("QGIS_PROCESS_PATH").is_err() {
+                    std::env::set_var("QGIS_PROCESS_PATH", path);
+                }
+            }
+        }
         geo_adapter_qgis::tools::register_tools(reg);
     }
     #[cfg(feature = "cad")]

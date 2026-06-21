@@ -6,6 +6,7 @@ license.workspace = true
 description = "Shared registry wiring for geo-cli and geo-server — registers all plugins and adapters"
 
 [dependencies]
+geo-core = { path = "../../core/geo-core" }
 geo-registry = { path = "../../core/geo-registry", features = ["tokio-runtime"] }
 geo-io = { path = "../../core/geo-io" }
 geo-carbon-math = { path = "../../core/geo-carbon-math" }

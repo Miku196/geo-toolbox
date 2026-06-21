@@ -423,7 +423,11 @@ async fn dispatch_cli(
 
 fn build_registry() -> PluginRegistry {
     let mut reg = PluginRegistry::new();
-    geo_wiring::populate_defaults(&mut reg);
+    let config = geo_wiring::GeoConfig::load_default().unwrap_or_else(|e| {
+        eprintln!("Warning: failed to load config: {e}");
+        None
+    });
+    geo_wiring::populate_defaults(&mut reg, config.as_ref());
     reg
 }
 
