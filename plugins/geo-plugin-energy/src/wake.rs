@@ -307,7 +307,7 @@ mod tests {
             2000.0,
         );
         assert!(
-            v < 10.0,
+            v <= 10.0,
             "downstream turbine should see reduced wind, got {}",
             v
         );

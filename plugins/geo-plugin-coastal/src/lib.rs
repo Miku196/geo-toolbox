@@ -2,7 +2,9 @@
 
 pub mod blue_carbon;
 pub mod coastal;
+pub mod cvi;
 pub mod ocean;
+pub mod slr;
 pub mod storm_surge;
 pub mod tools;
 pub mod trait_impl;

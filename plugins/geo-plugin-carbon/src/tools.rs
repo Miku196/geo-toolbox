@@ -65,5 +65,21 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         };
         let report = CcerReport::new(args["project_name"].as_str().unwrap_or(""), &method, args["baseline_tco2e"].as_f64().unwrap_or(0.0), args["project_tco2e"].as_f64().unwrap_or(0.0)).with_leakage(args["leakage_tco2e"].as_f64().unwrap_or(0.0));
         Ok(report.summary_json())
+    },
+        sync "carbon_price_scenario" => "Carbon price by scenario (EU ETS, China, CA, voluntary)" ; serde_json::json!({"type":"object","properties":{"tonnes_co2e":{"type":"number"},"price_per_tonne_usd":{"type":"number","default":0},"scenario":{"type":"string","enum":["eu_ets","china_national","california","voluntary","custom"]}},"required":["tonnes_co2e","scenario"]}) => |args| -> ToolResult {
+        Ok(crate::carbon_price::carbon_price_scenario(args["tonnes_co2e"].as_f64().unwrap_or(0.0), args["price_per_tonne_usd"].as_f64().unwrap_or(0.0), args["scenario"].as_str().unwrap_or("custom")))
+    },
+        sync "carbon_offset_revenue" => "Carbon offset project revenue (CCER/VCS)" ; serde_json::json!({"type":"object","properties":{"project_type":{"type":"string"},"area_ha":{"type":"number"},"annual_sink_tco2e_per_ha":{"type":"number"},"credit_period_yrs":{"type":"integer"},"price_per_tonne":{"type":"number"},"buffer_pct":{"type":"number","default":20}},"required":["project_type","area_ha","annual_sink_tco2e_per_ha","credit_period_yrs","price_per_tonne"]}) => |args| -> ToolResult {
+        Ok(crate::carbon_price::carbon_offset_revenue(args["project_type"].as_str().unwrap_or(""), args["area_ha"].as_f64().unwrap_or(0.0), args["annual_sink_tco2e_per_ha"].as_f64().unwrap_or(0.0), args["credit_period_yrs"].as_u64().unwrap_or(10) as u32, args["price_per_tonne"].as_f64().unwrap_or(0.0), args["buffer_pct"].as_f64().unwrap_or(20.0)))
+    },
+        sync "carbon_vcs_additionality" => "VCS additionality assessment (regulatory+barrier+investment+common practice)" ; serde_json::json!({"type":"object","properties":{"project_type":{"type":"string"},"baseline_scenario":{"type":"string"}},"required":["project_type","baseline_scenario"]}) => |args| -> ToolResult {
+        Ok(crate::vcs_gs::vcs_additionality_assessment(args["project_type"].as_str().unwrap_or(""), args["baseline_scenario"].as_str().unwrap_or(""), &[]))
+    },
+        sync "carbon_vcs_validation" => "VCS validation check for carbon project" ; serde_json::json!({"type":"object","properties":{"project_type":{"type":"string"},"area_ha":{"type":"number"},"baseline_tco2e":{"type":"number"},"project_tco2e":{"type":"number"}},"required":["project_type","area_ha","baseline_tco2e","project_tco2e"]}) => |args| -> ToolResult {
+        Ok(crate::vcs_gs::vcs_validation_check(args["project_type"].as_str().unwrap_or(""), args["area_ha"].as_f64().unwrap_or(0.0), args["baseline_tco2e"].as_f64().unwrap_or(0.0), args["project_tco2e"].as_f64().unwrap_or(0.0)))
+    },
+        sync "carbon_gold_standard_sdg" => "Gold Standard SDG impact mapping" ; serde_json::json!({"type":"object","properties":{"scenario_type":{"type":"string"},"sdg_contributions":{"type":"array","items":{"type":"integer"}}},"required":["scenario_type"]}) => |args| -> ToolResult {
+        let sdgs: Vec<u8> = args["sdg_contributions"].as_array().map(|a| a.iter().filter_map(|v| v.as_u64().map(|u| u as u8)).collect()).unwrap_or_default();
+        Ok(crate::vcs_gs::gold_standard_sdg(args["scenario_type"].as_str().unwrap_or(""), &sdgs))
     }]);
 }

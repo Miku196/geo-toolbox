@@ -3,7 +3,7 @@ use crate::blue_carbon::BlueCarbonResult;
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
 pub fn register_tools(registry: &mut PluginRegistry) {
-    register_plugin!(registry, "coastal", "Coastal change monitoring: erosion + inundation + storm surge", PluginCategory::Process, [
+    register_plugin!(registry, "coastal", "Coastal change monitoring: erosion + inundation + storm surge + SLR + CVI", PluginCategory::Process, [
         sync "coastal_shoreline" => "Assess shoreline erosion and inundation between two periods" ; serde_json::json!({"type":"object","properties":{"aoi_name":{"type":"string"},"aoi_geojson":{"type":"string"},"dem_data":{"type":"array","items":{"type":"number"}},"ndvi_old":{"type":"array","items":{"type":"number"}},"ndvi_new":{"type":"array","items":{"type":"number"}},"cols":{"type":"integer"},"rows":{"type":"integer"},"baseline_year":{"type":"integer"},"assessment_year":{"type":"integer"},"erosion_threshold_m":{"type":"number"},"nodata":{"type":"number"}},"required":["aoi_name","dem_data","ndvi_old","ndvi_new","cols","rows","baseline_year","assessment_year"]}) => |args| -> ToolResult {
         use geo_raster::RasterBand;
         let nd=args["nodata"].as_f64().unwrap_or(-999.0);let c=args["cols"].as_u64().unwrap_or(1) as usize;let r=args["rows"].as_u64().unwrap_or(1) as usize;
@@ -64,5 +64,49 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let bathy:Vec<f64>=args["bathymetry_m"].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_f64()).collect();
         let surge=crate::CoastalPlugin::new().storm_surge_1d(&params,&dist,&bathy)?;
         Ok(serde_json::json!({ "max_surge_m": surge }))
+    },
+        sync "coastal_slr_scenario" => "IPCC AR6 SLR level for a given scenario and year" ; serde_json::json!({"type":"object","properties":{"scenario":{"type":"string","enum":["SSP1-1.9","SSP1-2.6","SSP2-4.5","SSP3-7.0","SSP5-8.5"]},"year":{"type":"integer","minimum":2020,"maximum":2150}},"required":["scenario","year"]}) => |args| -> ToolResult {
+        let sc=args["scenario"].as_str().unwrap_or("SSP2-4.5");
+        let yr=args["year"].as_u64().unwrap_or(2100) as u16;
+        let level=crate::slr::slr_scenario_level(sc,yr);
+        Ok(serde_json::json!({"scenario":sc,"year":yr,"sea_level_rise_m":(level*100.0).round()/100.0}))
+    },
+        sync "coastal_slr_inundation" => "Bathtub inundation from SLR and DEM" ; serde_json::json!({"type":"object","properties":{"dem":{"type":"array","items":{"type":"number"}},"cols":{"type":"integer"},"rows":{"type":"integer"},"cell_size_m":{"type":"number"},"slr_m":{"type":"number"},"tidal_range_m":{"type":"number"}},"required":["dem","cols","rows","cell_size_m","slr_m"]}) => |args| -> ToolResult {
+        let dem:Vec<f64>=args["dem"].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_f64()).collect();
+        let c=args["cols"].as_u64().unwrap_or(1) as usize;
+        let r=args["rows"].as_u64().unwrap_or(1) as usize;
+        let cs=args["cell_size_m"].as_f64().unwrap_or(30.0);
+        let slr=args["slr_m"].as_f64().unwrap_or(0.5);
+        let tr=args["tidal_range_m"].as_f64().unwrap_or(0.0);
+        let result=crate::slr::slr_inundation_area(&dem,c,r,cs,slr,tr);
+        Ok(result)
+    },
+        sync "coastal_slr_impact" => "Comprehensive SLR impact assessment" ; serde_json::json!({"type":"object","properties":{"dem":{"type":"array","items":{"type":"number"}},"cols":{"type":"integer"},"rows":{"type":"integer"},"cell_size_m":{"type":"number"},"scenario":{"type":"string"},"year":{"type":"integer"}},"required":["dem","cols","rows","cell_size_m","scenario","year"]}) => |args| -> ToolResult {
+        let dem:Vec<f64>=args["dem"].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_f64()).collect();
+        let c=args["cols"].as_u64().unwrap_or(1) as usize;
+        let r=args["rows"].as_u64().unwrap_or(1) as usize;
+        let cs=args["cell_size_m"].as_f64().unwrap_or(30.0);
+        let sc=args["scenario"].as_str().unwrap_or("SSP2-4.5");
+        let yr=args["year"].as_u64().unwrap_or(2100) as u16;
+        let result=crate::slr::slr_coastal_impact(&dem,c,r,cs,sc,yr);
+        Ok(result)
+    },
+        sync "coastal_slr_erosion" => "Bruun Rule erosion from sea level rise" ; serde_json::json!({"type":"object","properties":{"slr_m":{"type":"number"},"shoreline_length_km":{"type":"number"},"beach_slope_pct":{"type":"number"},"closure_depth_m":{"type":"number"}},"required":["slr_m","shoreline_length_km","beach_slope_pct","closure_depth_m"]}) => |args| -> ToolResult {
+        let slr=args["slr_m"].as_f64().unwrap_or(0.5);
+        let len=args["shoreline_length_km"].as_f64().unwrap_or(10.0);
+        let slope=args["beach_slope_pct"].as_f64().unwrap_or(3.0);
+        let cd=args["closure_depth_m"].as_f64().unwrap_or(10.0);
+        let result=crate::slr::slr_erosion_impact(slr,len,slope,cd);
+        Ok(result)
+    },
+        sync "coastal_cvi_calculate" => "Coastal Vulnerability Index (Gornitz 1991)" ; serde_json::json!({"type":"object","properties":{"geomorphology":{"type":"string","enum":["rocky","medium_cliff","low_cliff","cobble_beach","sandy_beach"]},"shoreline_change_m_yr":{"type":"number"},"coastal_slope_pct":{"type":"number"},"slr_mm_yr":{"type":"number"},"wave_height_m":{"type":"number"},"tidal_range_m":{"type":"number"}},"required":["geomorphology","shoreline_change_m_yr","coastal_slope_pct","slr_mm_yr","wave_height_m","tidal_range_m"]}) => |args| -> ToolResult {
+        let geo=args["geomorphology"].as_str().unwrap_or("sandy_beach");
+        let sh=args["shoreline_change_m_yr"].as_f64().unwrap_or(0.0);
+        let sl=args["coastal_slope_pct"].as_f64().unwrap_or(5.0);
+        let sr=args["slr_mm_yr"].as_f64().unwrap_or(3.0);
+        let wh=args["wave_height_m"].as_f64().unwrap_or(1.0);
+        let tr=args["tidal_range_m"].as_f64().unwrap_or(2.0);
+        let result=crate::cvi::cvi_calculate(geo,sh,sl,sr,wh,tr);
+        Ok(result)
     }]);
 }

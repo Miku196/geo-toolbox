@@ -1,4 +1,4 @@
-//! Tool registration — Survey plugin.
+//! Tool registration -?Survey plugin.
 use crate::SurveyPlugin;
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
@@ -35,7 +35,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let vol = p.tin_earthwork(&pts, args["design_elevation"].as_f64().unwrap_or(0.0));
         Ok(serde_json::json!({"volume_m3": vol}))
     },
-        sync "survey_gauss_forward" => "Gauss-Krüger forward: (B,L,L0) → plane (X,Y)" ; serde_json::json!({"type":"object","properties":{"b":{"type":"number"},"l":{"type":"number"},"l0":{"type":"number"},"ellipsoid":{"type":"string","default":"CGCS2000"}},"required":["b","l","l0"]}) => |args| -> ToolResult {
+        sync "survey_gauss_forward" => "Gauss-Krüger forward: (B,L,L0) ?plane (X,Y)" ; serde_json::json!({"type":"object","properties":{"b":{"type":"number"},"l":{"type":"number"},"l0":{"type":"number"},"ellipsoid":{"type":"string","default":"CGCS2000"}},"required":["b","l","l0"]}) => |args| -> ToolResult {
         use crate::gauss::{gauss_forward, Ellipsoid};
         let ell = match args["ellipsoid"].as_str().unwrap_or("CGCS2000") {
             "Xian80" => Ellipsoid::Xian80,
@@ -46,7 +46,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let (x, y) = gauss_forward(args["b"].as_f64().unwrap_or(0.0), args["l"].as_f64().unwrap_or(0.0), args["l0"].as_f64().unwrap_or(0.0), ell);
         Ok(serde_json::json!({"x": x, "y": y}))
     },
-        sync "survey_gauss_inverse" => "Gauss-Krüger inverse: plane (X,Y) → (B,L)" ; serde_json::json!({"type":"object","properties":{"x":{"type":"number"},"y":{"type":"number"},"l0":{"type":"number"},"ellipsoid":{"type":"string","default":"CGCS2000"}},"required":["x","y","l0"]}) => |args| -> ToolResult {
+        sync "survey_gauss_inverse" => "Gauss-Krüger inverse: plane (X,Y) ?(B,L)" ; serde_json::json!({"type":"object","properties":{"x":{"type":"number"},"y":{"type":"number"},"l0":{"type":"number"},"ellipsoid":{"type":"string","default":"CGCS2000"}},"required":["x","y","l0"]}) => |args| -> ToolResult {
         use crate::gauss::{gauss_inverse, Ellipsoid};
         let ell = match args["ellipsoid"].as_str().unwrap_or("CGCS2000") {
             "Xian80" => Ellipsoid::Xian80,
@@ -72,5 +72,28 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         use crate::gauss::zone_info;
         let z = zone_info(args["lon"].as_f64().unwrap_or(0.0));
         Ok(serde_json::json!({"zone_6deg": z.zone6, "cm_6deg": z.central_meridian_6_deg, "zone_3deg": z.zone3, "cm_3deg": z.central_meridian_3_deg}))
+    },
+        sync "survey_utm_zone_info" => "UTM zone info from longitude" ; serde_json::json!({"type":"object","properties":{"lon":{"type":"number"}},"required":["lon"]}) => |args| -> ToolResult {
+        let info = crate::utm::utm_zone_info(args["lon"].as_f64().unwrap_or(0.0));
+        Ok(info)
+    },
+        sync "survey_latlon_to_utm" => "WGS84 lat/lon -> UTM easting/northing" ; serde_json::json!({"type":"object","properties":{"lat":{"type":"number"},"lon":{"type":"number"}},"required":["lat","lon"]}) => |args| -> ToolResult {
+        let (e,n,z,nh) = crate::utm::latlon_to_utm(args["lat"].as_f64().unwrap_or(0.0), args["lon"].as_f64().unwrap_or(0.0));
+        Ok(serde_json::json!({"easting_m": e, "northing_m": n, "zone": z, "north_hemisphere": nh}))
+    },
+        sync "survey_utm_to_latlon" => "UTM easting/northing -> WGS84 lat/lon" ; serde_json::json!({"type":"object","properties":{"easting":{"type":"number"},"northing":{"type":"number"},"zone":{"type":"integer"},"north_hemisphere":{"type":"boolean","default":true}},"required":["easting","northing","zone"]}) => |args| -> ToolResult {
+        let (lat,lon) = crate::utm::utm_to_latlon(args["easting"].as_f64().unwrap_or(0.0), args["northing"].as_f64().unwrap_or(0.0), args["zone"].as_u64().unwrap_or(1) as u8, args["north_hemisphere"].as_bool().unwrap_or(true));
+        Ok(serde_json::json!({"lat": lat, "lon": lon}))
+    },
+        sync "survey_vincenty_inverse" => "Vincenty inverse: distance + azimuth between 2 points (WGS84)" ; serde_json::json!({"type":"object","properties":{"a_lat":{"type":"number"},"a_lon":{"type":"number"},"b_lat":{"type":"number"},"b_lon":{"type":"number"}},"required":["a_lat","a_lon","b_lat","b_lon"]}) => |args| -> ToolResult {
+        Ok(crate::vincenty::vincenty_inverse(args["a_lat"].as_f64().unwrap_or(0.0), args["a_lon"].as_f64().unwrap_or(0.0), args["b_lat"].as_f64().unwrap_or(0.0), args["b_lon"].as_f64().unwrap_or(0.0), 100, 1e-12))
+    },
+        sync "survey_vincenty_direct" => "Vincenty direct: destination point from start + azimuth + distance" ; serde_json::json!({"type":"object","properties":{"lat":{"type":"number"},"lon":{"type":"number"},"azimuth_deg":{"type":"number"},"distance_m":{"type":"number"}},"required":["lat","lon","azimuth_deg","distance_m"]}) => |args| -> ToolResult {
+        let (lat,lon) = crate::vincenty::vincenty_direct(args["lat"].as_f64().unwrap_or(0.0), args["lon"].as_f64().unwrap_or(0.0), args["azimuth_deg"].as_f64().unwrap_or(0.0), args["distance_m"].as_f64().unwrap_or(0.0), 100, 1e-12);
+        Ok(serde_json::json!({"lat": lat, "lon": lon}))
+    },
+        sync "survey_haversine_distance" => "Haversine great-circle distance between 2 points" ; serde_json::json!({"type":"object","properties":{"lat1":{"type":"number"},"lon1":{"type":"number"},"lat2":{"type":"number"},"lon2":{"type":"number"}},"required":["lat1","lon1","lat2","lon2"]}) => |args| -> ToolResult {
+        let d = crate::vincenty::haversine_distance(args["lat1"].as_f64().unwrap_or(0.0), args["lon1"].as_f64().unwrap_or(0.0), args["lat2"].as_f64().unwrap_or(0.0), args["lon2"].as_f64().unwrap_or(0.0));
+        Ok(serde_json::json!({"distance_m": d}))
     }]);
 }

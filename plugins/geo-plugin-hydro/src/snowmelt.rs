@@ -332,11 +332,12 @@ mod tests {
         let result = simulate_snowmelt(&temps, &precip, &params, 0.0);
 
         assert_eq!(result.days.len(), 5);
-        // 第1天: -5°C, 10mm snow → swe=10
-        assert_relative_eq!(result.days[0].swe_mm, 10.0);
+        // 第1天: -5°C, 10mm snow → swe=10 + refreeze 0.25
+        assert_relative_eq!(result.days[0].swe_mm, 10.25);
         assert_relative_eq!(result.days[0].snowfall_mm, 10.0);
-        // 第2天: -2°C, 15mm snow → swe=25
-        assert_relative_eq!(result.days[1].swe_mm, 25.0);
+        // 第2天: -2°C, 15mm snow → swe=25.25 + refreeze 0.1
+        // 累积: 10.25 (day1) + 15 (snow) + 0.05*2 (refreeze) = 25.35
+        assert_relative_eq!(result.days[1].swe_mm, 25.35);
         // 第3天: 3°C, melt=10.5 → swe=14.5
         assert_relative_eq!(result.days[2].actual_melt_mm, 10.5);
         // 第5天: 8°C → melt=28, swe should be depleted

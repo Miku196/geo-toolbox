@@ -2,6 +2,7 @@
 #![allow(missing_docs)]
 pub mod config;
 pub mod geohazard;
+pub mod newmark;
 pub mod rainfall_threshold;
 pub mod tools;
 pub mod trait_impl;

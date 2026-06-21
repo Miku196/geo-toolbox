@@ -2,6 +2,8 @@
 
 pub mod config;
 pub mod forestry;
+pub mod harvest;
+pub mod site_index;
 pub mod tools;
 pub mod trait_impl;
 

@@ -10,6 +10,8 @@ pub mod survey;
 pub mod tools;
 pub mod trait_impl;
 pub mod transform;
+pub mod utm;
+pub mod vincenty;
 
 pub use config::SurveyConfig;
 pub use survey::SurveyPlugin;

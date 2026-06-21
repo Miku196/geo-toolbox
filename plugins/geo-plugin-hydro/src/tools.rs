@@ -87,5 +87,68 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             let geojson = crate::watershed::watershed_to_geojson(&result.cells, ncols, cell_size_m, xmin, ymax);
             Ok(serde_json::json!({"num_cells": result.num_cells, "area_ha": result.area_ha, "geojson": geojson}))
         },
+        // ── TR-55 Urban Hydrology ──
+        sync "hydro_tr55_cn_lookup" => "TR-55 CN lookup by landuse and soil group" ; serde_json::json!({"type":"object","properties":{"landuse":{"type":"string"},"soil_group":{"type":"string","enum":["A","B","C","D"]}},"required":["landuse","soil_group"]}) => |args| -> ToolResult {
+            let lu = args["landuse"].as_str().unwrap_or("woods_good");
+            let sg = args["soil_group"].as_str().unwrap_or("B");
+            let cn = crate::tr55::tr55_cn_lookup(lu, sg);
+            Ok(serde_json::json!({"cn": cn}))
+        },
+        sync "hydro_tr55_sheet_flow" => "TR-55 sheet flow time of concentration" ; serde_json::json!({"type":"object","properties":{"length_m":{"type":"number"},"slope_pct":{"type":"number"},"manning_n":{"type":"number"},"rainfall_2yr_24h_mm":{"type":"number"}},"required":["length_m","slope_pct","manning_n","rainfall_2yr_24h_mm"]}) => |args| -> ToolResult {
+            let tc = crate::tr55::tr55_time_of_concentration_sheet_flow(
+                args["length_m"].as_f64().unwrap_or(0.0),
+                args["slope_pct"].as_f64().unwrap_or(1.0),
+                args["manning_n"].as_f64().unwrap_or(0.011),
+                args["rainfall_2yr_24h_mm"].as_f64().unwrap_or(50.0),
+            );
+            Ok(serde_json::json!({"time_of_concentration_min": (tc * 100.0).round() / 100.0}))
+        },
+        sync "hydro_tr55_shallow_flow" => "TR-55 shallow concentrated flow time" ; serde_json::json!({"type":"object","properties":{"length_m":{"type":"number"},"slope_pct":{"type":"number"},"surface_type":{"type":"string","enum":["paved","unpaved"]}},"required":["length_m","slope_pct"]}) => |args| -> ToolResult {
+            let tc = crate::tr55::tr55_time_of_concentration_shallow_flow(
+                args["length_m"].as_f64().unwrap_or(0.0),
+                args["slope_pct"].as_f64().unwrap_or(1.0),
+                args["surface_type"].as_str().unwrap_or("unpaved"),
+            );
+            Ok(serde_json::json!({"travel_time_min": (tc * 100.0).round() / 100.0}))
+        },
+        sync "hydro_tr55_peak_discharge" => "TR-55 peak discharge (graphical method)" ; serde_json::json!({"type":"object","properties":{"runoff_mm":{"type":"number"},"area_km2":{"type":"number"},"tc_hrs":{"type":"number"},"rainfall_type":{"type":"string","enum":["I","II","III"]}},"required":["runoff_mm","area_km2","tc_hrs"]}) => |args| -> ToolResult {
+            let r = crate::tr55::tr55_peak_discharge(
+                args["runoff_mm"].as_f64().unwrap_or(0.0),
+                args["area_km2"].as_f64().unwrap_or(0.0),
+                args["tc_hrs"].as_f64().unwrap_or(0.5),
+                args["rainfall_type"].as_str().unwrap_or("II"),
+            );
+            Ok(r)
+        },
+        sync "hydro_tr55_assessment" => "Full TR-55 hydrology assessment" ; serde_json::json!({"type":"object","properties":{"landuse":{"type":"array","items":{"type":"string"}},"soil_group":{"type":"array","items":{"type":"string"}},"rainfall_mm":{"type":"number"},"area_km2":{"type":"number"},"flow_lengths":{"type":"array","items":{"type":"number"}},"slopes_pct":{"type":"array","items":{"type":"number"}},"rainfall_type":{"type":"string","default":"II"}},"required":["landuse","soil_group","rainfall_mm","area_km2"]}) => |args| -> ToolResult {
+            let lu: Vec<&str> = args["landuse"].as_array().map(|a| a.iter().filter_map(|v| v.as_str()).collect()).unwrap_or_default();
+            let sg: Vec<&str> = args["soil_group"].as_array().map(|a| a.iter().filter_map(|v| v.as_str()).collect()).unwrap_or_default();
+            let flows: Vec<f64> = args["flow_lengths"].as_array().map(|a| a.iter().filter_map(|v| v.as_f64()).collect()).unwrap_or_default();
+            let slopes: Vec<f64> = args["slopes_pct"].as_array().map(|a| a.iter().filter_map(|v| v.as_f64()).collect()).unwrap_or_default();
+            let r = crate::tr55::tr55_full_assessment(
+                &lu, &sg,
+                args["rainfall_mm"].as_f64().unwrap_or(0.0),
+                args["area_km2"].as_f64().unwrap_or(0.0),
+                &flows, &slopes,
+                args["rainfall_type"].as_str().unwrap_or("II"),
+            );
+            serde_json::to_value(&r).map_err(geo_core::errors::GeoError::Serde)
+        },
+        // ── Muskingum Flood Routing ──
+        sync "hydro_muskingum_route" => "Muskingum flood routing (coefficients + routing)" ; serde_json::json!({"type":"object","properties":{"inflow":{"type":"array","items":{"type":"number"}},"k_hrs":{"type":"number"},"x":{"type":"number","minimum":0,"maximum":0.5},"dt_hrs":{"type":"number"}},"required":["inflow","k_hrs","x","dt_hrs"]}) => |args| -> ToolResult {
+            let inflow: Vec<f64> = args["inflow"].as_array().map(|a| a.iter().filter_map(|v| v.as_f64()).collect()).unwrap_or_default();
+            let outflow = crate::muskingum::muskingum_route(&inflow, args["k_hrs"].as_f64().unwrap_or(1.0), args["x"].as_f64().unwrap_or(0.2), args["dt_hrs"].as_f64().unwrap_or(1.0));
+            Ok(serde_json::json!({"outflow": outflow}))
+        },
+        sync "hydro_muskingum_cunge" => "Muskingum-Cunge routing (rectangular channel)" ; serde_json::json!({"type":"object","properties":{"inflow":{"type":"array","items":{"type":"number"}},"channel_length_m":{"type":"number"},"channel_slope":{"type":"number"},"channel_width_m":{"type":"number"},"manning_n":{"type":"number","default":0.035},"dt_hrs":{"type":"number","default":1}},"required":["inflow","channel_length_m","channel_slope","channel_width_m"]}) => |args| -> ToolResult {
+            let inflow: Vec<f64> = args["inflow"].as_array().map(|a| a.iter().filter_map(|v| v.as_f64()).collect()).unwrap_or_default();
+            let outflow = crate::muskingum::muskingum_cunge_route(&inflow, args["channel_length_m"].as_f64().unwrap_or(1000.0), args["channel_slope"].as_f64().unwrap_or(0.001), args["channel_width_m"].as_f64().unwrap_or(50.0), args["manning_n"].as_f64().unwrap_or(0.035), args["dt_hrs"].as_f64().unwrap_or(1.0));
+            Ok(serde_json::json!({"outflow": outflow}))
+        },
+        sync "hydro_muskingum_attenuation" => "Muskingum flood wave attenuation analysis" ; serde_json::json!({"type":"object","properties":{"inflow":{"type":"array","items":{"type":"number"}},"k_hrs":{"type":"number"},"x":{"type":"number"},"dt_hrs":{"type":"number"}},"required":["inflow","k_hrs","x","dt_hrs"]}) => |args| -> ToolResult {
+            let inflow: Vec<f64> = args["inflow"].as_array().map(|a| a.iter().filter_map(|v| v.as_f64()).collect()).unwrap_or_default();
+            let r = crate::muskingum::attenuation_analysis(&inflow, args["k_hrs"].as_f64().unwrap_or(1.0), args["x"].as_f64().unwrap_or(0.2), args["dt_hrs"].as_f64().unwrap_or(1.0));
+            serde_json::to_value(&r).map_err(geo_core::errors::GeoError::Serde)
+        },
     ]);
 }

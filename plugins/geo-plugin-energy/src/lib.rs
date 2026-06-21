@@ -8,6 +8,7 @@
 pub mod config;
 pub mod energy;
 pub mod geothermal;
+pub mod pvwatts;
 pub mod tools;
 pub mod trait_impl;
 pub mod transmission;
