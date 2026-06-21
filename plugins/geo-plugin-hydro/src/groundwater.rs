@@ -2,7 +2,6 @@
 ///
 /// 补全水文循环最后一环，与 SCS-CN 产流衔接。
 /// 纯 Rust 实现，无外部依赖。
-
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
 
@@ -28,8 +27,17 @@ pub struct DarcyFlow {
 /// 达西定律: v = K · i
 /// K = 渗透系数 (m/s), i = 水力梯度 (Δh/ΔL)
 /// Q = v · A = K · i · A
-pub fn darcy_law(hydraulic_conductivity_ms: f64, head_diff_m: f64, length_m: f64, area_m2: f64) -> DarcyFlow {
-    let gradient = if length_m > 0.0 { head_diff_m / length_m } else { 0.0 };
+pub fn darcy_law(
+    hydraulic_conductivity_ms: f64,
+    head_diff_m: f64,
+    length_m: f64,
+    area_m2: f64,
+) -> DarcyFlow {
+    let gradient = if length_m > 0.0 {
+        head_diff_m / length_m
+    } else {
+        0.0
+    };
     let velocity = hydraulic_conductivity_ms * gradient;
     let flow_rate = velocity * area_m2;
 
@@ -48,16 +56,16 @@ pub fn darcy_law(hydraulic_conductivity_ms: f64, head_diff_m: f64, length_m: f64
 /// 典型渗透系数 K 值 (m/s)。
 pub fn typical_hydraulic_conductivity(material: &str) -> f64 {
     match material.to_lowercase().as_str() {
-        "gravel"      => 1e-2,
+        "gravel" => 1e-2,
         "coarse_sand" => 1e-3,
-        "fine_sand"   => 1e-4,
-        "silt"        => 1e-6,
-        "clay"        => 1e-9,
-        "limestone"   => 1e-6,
-        "sandstone"   => 1e-6,
-        "granite"     => 1e-11,
-        "peat"        => 1e-7,
-        _             => 1e-5, // 默认: 细砂
+        "fine_sand" => 1e-4,
+        "silt" => 1e-6,
+        "clay" => 1e-9,
+        "limestone" => 1e-6,
+        "sandstone" => 1e-6,
+        "granite" => 1e-11,
+        "peat" => 1e-7,
+        _ => 1e-5, // 默认: 细砂
     }
 }
 
@@ -123,11 +131,11 @@ pub fn groundwater_flow_1d(
 // ──────────────────────────────────────────────
 
 pub use geo_adapter_modflow::{
-    generate_nam as generate_modflow_nam,
-    generate_dis as generate_modflow_dis,
-    generate_bas6 as generate_modflow_bas6,
-    generate_lpf as generate_modflow_lpf,
-    ModflowGrid,
+    generate_bas6 as generate_modflow_bas6, generate_dis as generate_modflow_dis,
+    generate_lpf as generate_modflow_lpf, generate_nam as generate_modflow_nam, ModflowGrid,
+    ModflowStressPeriod,
+};
+
 // ──────────────────────────────────────────────
 // 4. 地表水-地下水耦合
 // ──────────────────────────────────────────────
@@ -150,12 +158,7 @@ pub struct CoupledResult {
 /// 简单 SCS-CN 入渗补给。
 /// 产流 = 降雨 - 初损 - 入渗
 /// 补给 = 入渗量 × 补给系数
-pub fn scs_recharge(
-    rainfall_m: f64,
-    cn: f64,
-    recharge_factor: f64,
-    area_m2: f64,
-) -> f64 {
+pub fn scs_recharge(rainfall_m: f64, cn: f64, recharge_factor: f64, area_m2: f64) -> f64 {
     let s = 254.0 * (100.0 / cn - 1.0) / 1000.0; // 潜在滞蓄量 (m)
     let ia = 0.2 * s; // 初损
     let runoff = if rainfall_m > ia {
@@ -199,9 +202,12 @@ pub fn coupled_water_balance(
 ) -> CoupledResult {
     let recharge = scs_recharge(rainfall_m, cn, recharge_factor, area_m2);
     let baseflow = baseflow_exchange(
-        aquifer_head_m, stream_stage_m,
-        streambed_k_ms, streambed_thickness_m,
-        stream_length_m, stream_width_m,
+        aquifer_head_m,
+        stream_stage_m,
+        streambed_k_ms,
+        streambed_thickness_m,
+        stream_length_m,
+        stream_width_m,
     );
     let storage_coeff = specific_yield * area_m2;
     let net = recharge - baseflow;
@@ -226,8 +232,8 @@ pub fn coupled_water_balance(
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_relative_eq;
     use super::*;
+    use approx::assert_relative_eq;
 
     #[test]
     fn test_darcy_law_basic() {
@@ -295,7 +301,9 @@ mod tests {
 
     #[test]
     fn test_coupled_water_balance() {
-        let r = coupled_water_balance(0.05, 75.0, 0.3, 10000.0, 50.0, 48.0, 1e-6, 1.0, 100.0, 10.0, 0.2, 10.0);
+        let r = coupled_water_balance(
+            0.05, 75.0, 0.3, 10000.0, 50.0, 48.0, 1e-6, 1.0, 100.0, 10.0, 0.2, 10.0,
+        );
         assert!(r.recharge_m3_s >= 0.0);
         assert!(r.baseflow_m3_s >= 0.0);
     }

@@ -6,13 +6,13 @@
 #![allow(missing_docs)]
 
 pub mod config;
-pub mod turbine;
-pub mod wake;
 pub mod energy;
 pub mod geothermal;
 pub mod tools;
 pub mod trait_impl;
 pub mod transmission;
+pub mod turbine;
+pub mod wake;
 
 pub use config::EnergyConfig;
 pub use energy::{EnergyPlugin, SolarAssessment, WindAssessment};

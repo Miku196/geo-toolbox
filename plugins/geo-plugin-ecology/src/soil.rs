@@ -2,7 +2,6 @@
 ///
 /// 为 RUSLE (K 因子)、SCS-CN (土壤分组) 提供通用土壤访问层。
 /// 纯 Rust，无外部依赖。
-
 use serde::{Deserialize, Serialize};
 
 // ──────────────────────────────────────────────
@@ -82,7 +81,11 @@ pub fn usda_texture_class(sand_pct: f64, clay_pct: f64, silt_pct: f64) -> SoilTe
     } else if sand >= 52.0 && clay < 20.0 && silt < 50.0 && (sand - clay) > 0.0 {
         if sand >= 70.0 && clay < 15.0 {
             if sand >= 85.0 {
-                if sand >= 90.0 { SoilTexture::Sand } else { SoilTexture::LoamySand }
+                if sand >= 90.0 {
+                    SoilTexture::Sand
+                } else {
+                    SoilTexture::LoamySand
+                }
             } else {
                 SoilTexture::SandyLoam
             }
@@ -98,12 +101,19 @@ pub fn usda_texture_class(sand_pct: f64, clay_pct: f64, silt_pct: f64) -> SoilTe
 }
 
 fn usda_texture_class_fallback(sand: f64, clay: f64, _silt: f64) -> SoilTexture {
-    if sand >= 85.0 { SoilTexture::Sand }
-    else if sand >= 70.0 { SoilTexture::LoamySand }
-    else if sand >= 52.0 { SoilTexture::SandyLoam }
-    else if clay >= 40.0 { SoilTexture::Clay }
-    else if clay >= 27.0 { SoilTexture::ClayLoam }
-    else { SoilTexture::Loam }
+    if sand >= 85.0 {
+        SoilTexture::Sand
+    } else if sand >= 70.0 {
+        SoilTexture::LoamySand
+    } else if sand >= 52.0 {
+        SoilTexture::SandyLoam
+    } else if clay >= 40.0 {
+        SoilTexture::Clay
+    } else if clay >= 27.0 {
+        SoilTexture::ClayLoam
+    } else {
+        SoilTexture::Loam
+    }
 }
 
 /// 土壤质地 → SCS 水文分组 (A/B/C/D)。
@@ -182,8 +192,13 @@ pub fn van_genuchten_params(texture: &SoilTexture) -> VanGenuchtenParams {
     let m = 1.0 - 1.0 / n;
 
     VanGenuchtenParams {
-        theta_s, theta_r, alpha_inv_m: alpha, n, ks_ms: ks,
-        l: 0.5, m,
+        theta_s,
+        theta_r,
+        alpha_inv_m: alpha,
+        n,
+        ks_ms: ks,
+        l: 0.5,
+        m,
     }
 }
 
@@ -248,39 +263,88 @@ pub struct SoilRecord {
 pub fn hwsd_lookup(soil_name: &str) -> Option<SoilRecord> {
     match soil_name.to_lowercase().as_str() {
         "red_soil" | "红壤" => Some(SoilRecord {
-            id: "CN001".into(), texture: SoilTexture::ClayLoam,
-            organic_c_pct: 1.2, clay_pct: 35.0, silt_pct: 30.0, sand_pct: 35.0,
-            bulk_density: 1.3, ph: 5.5, cec: 12.0, depth: 100.0,
+            id: "CN001".into(),
+            texture: SoilTexture::ClayLoam,
+            organic_c_pct: 1.2,
+            clay_pct: 35.0,
+            silt_pct: 30.0,
+            sand_pct: 35.0,
+            bulk_density: 1.3,
+            ph: 5.5,
+            cec: 12.0,
+            depth: 100.0,
         }),
         "cinnamon_soil" | "褐土" => Some(SoilRecord {
-            id: "CN002".into(), texture: SoilTexture::Loam,
-            organic_c_pct: 1.0, clay_pct: 25.0, silt_pct: 35.0, sand_pct: 40.0,
-            bulk_density: 1.35, ph: 7.0, cec: 15.0, depth: 100.0,
+            id: "CN002".into(),
+            texture: SoilTexture::Loam,
+            organic_c_pct: 1.0,
+            clay_pct: 25.0,
+            silt_pct: 35.0,
+            sand_pct: 40.0,
+            bulk_density: 1.35,
+            ph: 7.0,
+            cec: 15.0,
+            depth: 100.0,
         }),
         "black_soil" | "黑土" => Some(SoilRecord {
-            id: "CN003".into(), texture: SoilTexture::SiltLoam,
-            organic_c_pct: 3.5, clay_pct: 30.0, silt_pct: 40.0, sand_pct: 30.0,
-            bulk_density: 1.1, ph: 6.5, cec: 25.0, depth: 100.0,
+            id: "CN003".into(),
+            texture: SoilTexture::SiltLoam,
+            organic_c_pct: 3.5,
+            clay_pct: 30.0,
+            silt_pct: 40.0,
+            sand_pct: 30.0,
+            bulk_density: 1.1,
+            ph: 6.5,
+            cec: 25.0,
+            depth: 100.0,
         }),
         "alluvial_soil" | "潮土" => Some(SoilRecord {
-            id: "CN004".into(), texture: SoilTexture::SiltLoam,
-            organic_c_pct: 1.5, clay_pct: 20.0, silt_pct: 45.0, sand_pct: 35.0,
-            bulk_density: 1.4, ph: 7.5, cec: 10.0, depth: 100.0,
+            id: "CN004".into(),
+            texture: SoilTexture::SiltLoam,
+            organic_c_pct: 1.5,
+            clay_pct: 20.0,
+            silt_pct: 45.0,
+            sand_pct: 35.0,
+            bulk_density: 1.4,
+            ph: 7.5,
+            cec: 10.0,
+            depth: 100.0,
         }),
         "paddy_soil" | "水稻土" => Some(SoilRecord {
-            id: "CN005".into(), texture: SoilTexture::SiltyClayLoam,
-            organic_c_pct: 2.0, clay_pct: 35.0, silt_pct: 40.0, sand_pct: 25.0,
-            bulk_density: 1.2, ph: 6.0, cec: 18.0, depth: 100.0,
+            id: "CN005".into(),
+            texture: SoilTexture::SiltyClayLoam,
+            organic_c_pct: 2.0,
+            clay_pct: 35.0,
+            silt_pct: 40.0,
+            sand_pct: 25.0,
+            bulk_density: 1.2,
+            ph: 6.0,
+            cec: 18.0,
+            depth: 100.0,
         }),
         "loess" | "黄土" => Some(SoilRecord {
-            id: "CN006".into(), texture: SoilTexture::SiltLoam,
-            organic_c_pct: 0.8, clay_pct: 18.0, silt_pct: 55.0, sand_pct: 27.0,
-            bulk_density: 1.4, ph: 8.0, cec: 8.0, depth: 100.0,
+            id: "CN006".into(),
+            texture: SoilTexture::SiltLoam,
+            organic_c_pct: 0.8,
+            clay_pct: 18.0,
+            silt_pct: 55.0,
+            sand_pct: 27.0,
+            bulk_density: 1.4,
+            ph: 8.0,
+            cec: 8.0,
+            depth: 100.0,
         }),
         "desert_soil" | "荒漠土" => Some(SoilRecord {
-            id: "CN007".into(), texture: SoilTexture::SandyLoam,
-            organic_c_pct: 0.3, clay_pct: 10.0, silt_pct: 15.0, sand_pct: 75.0,
-            bulk_density: 1.5, ph: 8.5, cec: 4.0, depth: 100.0,
+            id: "CN007".into(),
+            texture: SoilTexture::SandyLoam,
+            organic_c_pct: 0.3,
+            clay_pct: 10.0,
+            silt_pct: 15.0,
+            sand_pct: 75.0,
+            bulk_density: 1.5,
+            ph: 8.5,
+            cec: 4.0,
+            depth: 100.0,
         }),
         _ => None,
     }
@@ -354,8 +418,8 @@ pub fn van_genuchten_from_sand_clay(
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_relative_eq;
     use super::*;
+    use approx::assert_relative_eq;
 
     #[test]
     fn test_texture_classification() {

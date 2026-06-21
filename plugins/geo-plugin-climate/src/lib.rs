@@ -1,13 +1,15 @@
 pub mod config;
+pub mod drought;
 pub mod gcm;
 pub mod idf;
-pub mod drought;
 pub mod kriging;
-pub mod trait_impl;
 pub mod tools;
+pub mod trait_impl;
 
 pub use config::ClimateConfig;
-pub use gcm::{delta_downscale, quantile_mapping, GcmProjection, DownscaleResult};
+pub use drought::{compute_pdsi, compute_spei, compute_spi, DroughtIndex, SpiResult};
+pub use gcm::{delta_downscale, quantile_mapping, DownscaleResult, GcmProjection};
 pub use idf::{idf_curve, idf_return_period, IdfParams, IdfResult};
-pub use drought::{compute_spi, compute_spei, compute_pdsi, DroughtIndex, SpiResult};
-pub use kriging::{ordinary_kriging, simple_kriging, semivariogram, VariogramModel, KrigingResult, VariogramParams};
+pub use kriging::{
+    ordinary_kriging, semivariogram, simple_kriging, KrigingResult, VariogramModel, VariogramParams,
+};

@@ -1,10 +1,10 @@
-use geo_registry::PluginRegistry;
 use geo_registry::registry::ToolResult;
+use geo_registry::PluginRegistry;
 use serde_json::json;
 
+use crate::drought;
 use crate::gcm;
 use crate::idf;
-use crate::drought;
 use crate::kriging;
 
 /// Register climate plugin tools.

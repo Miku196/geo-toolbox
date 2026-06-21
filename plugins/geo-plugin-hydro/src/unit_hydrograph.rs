@@ -460,7 +460,11 @@ mod tests {
         let result = snyder_uh(100.0, 20.0, 10.0, 50.0, &SnyderParams::default(), 0.5);
         assert!(result.is_some());
         let uh = result.unwrap();
-        assert!(uh.peak_q > 0.0, "Peak Q should be positive, got {}", uh.peak_q);
+        assert!(
+            uh.peak_q > 0.0,
+            "Peak Q should be positive, got {}",
+            uh.peak_q
+        );
         assert!(uh.time_to_peak_h > 0.0);
         assert!(!uh.ordinates.is_empty());
         assert_eq!(uh.method, "snyder");
@@ -477,7 +481,14 @@ mod tests {
         // Volume from ordinates should roughly match input
         let area_km2 = 100.0;
         let excess_mm = 50.0;
-        let result = snyder_uh(area_km2, 20.0, 10.0, excess_mm, &SnyderParams::default(), 0.5);
+        let result = snyder_uh(
+            area_km2,
+            20.0,
+            10.0,
+            excess_mm,
+            &SnyderParams::default(),
+            0.5,
+        );
         assert!(result.is_some());
         let uh = result.unwrap();
 
@@ -506,7 +517,11 @@ mod tests {
         let result = scs_uh(50.0, 2.0, 30.0, &ScsUhParams::default(), 0.25);
         assert!(result.is_some());
         let uh = result.unwrap();
-        assert!(uh.peak_q > 0.0, "Peak Q should be positive, got {}", uh.peak_q);
+        assert!(
+            uh.peak_q > 0.0,
+            "Peak Q should be positive, got {}",
+            uh.peak_q
+        );
         assert!(uh.time_to_peak_h > 0.0);
         assert_eq!(uh.method, "scs");
     }
@@ -545,7 +560,11 @@ mod tests {
         let result = clark_uh(50.0, 2.0, 1.0, 30.0, 0.25);
         assert!(result.is_some());
         let uh = result.unwrap();
-        assert!(uh.peak_q > 0.0, "Peak Q should be positive, got {}", uh.peak_q);
+        assert!(
+            uh.peak_q > 0.0,
+            "Peak Q should be positive, got {}",
+            uh.peak_q
+        );
         assert!(!uh.ordinates.is_empty());
         assert_eq!(uh.method, "clark");
     }
@@ -641,8 +660,15 @@ mod tests {
     #[test]
     fn test_snyder_different_params() {
         // Flat basin (low Ct) vs mountainous (high Ct) — mountainous has longer lag
-        let flat = snyder_uh(100.0, 20.0, 10.0, 50.0, &SnyderParams { ct: 0.7, cp: 0.6 }, 0.5)
-            .unwrap();
+        let flat = snyder_uh(
+            100.0,
+            20.0,
+            10.0,
+            50.0,
+            &SnyderParams { ct: 0.7, cp: 0.6 },
+            0.5,
+        )
+        .unwrap();
         let mountain = snyder_uh(
             100.0,
             20.0,
@@ -665,7 +691,11 @@ mod tests {
     fn test_interpolate_scs_bounds() {
         // At t/tp=0, q/Qp=0
         let q = interpolate_scs(0.0);
-        assert!((q - 0.0).abs() < 1e-6, "At t=0, q/Qp should be 0, got {}", q);
+        assert!(
+            (q - 0.0).abs() < 1e-6,
+            "At t=0, q/Qp should be 0, got {}",
+            q
+        );
 
         // At t/tp=1, q/Qp=1
         let q = interpolate_scs(1.0);
@@ -684,4 +714,3 @@ mod tests {
         );
     }
 }
-

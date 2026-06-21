@@ -21,7 +21,6 @@
 /// watershed hydrology. Transactions of the ASAE, 20(6), 1100-1104.
 /// Williams, J.R. (1975). Sediment-yield prediction with universal equation
 /// using runoff energy factor. ARS-S-40, USDA.
-
 use serde::{Deserialize, Serialize};
 
 // ─── MUSLE 结果 ───
@@ -111,11 +110,7 @@ pub fn assess_musle(
 /// * `runoff_m3` — 径流总量
 /// * `tc_hours` — 汇流时间 (h)
 /// * `rain_distribution` — 暴雨时程分布因子 (SCS Type II ≈ 0.75)
-pub fn estimate_peak_scs_triangular(
-    runoff_m3: f64,
-    tc_hours: f64,
-    rain_distribution: f64,
-) -> f64 {
+pub fn estimate_peak_scs_triangular(runoff_m3: f64, tc_hours: f64, rain_distribution: f64) -> f64 {
     // SCS 三角单位线峰值: qp = 2.083 * A * Q / tp
     // 其中 tp = 0.6 * tc, Q = runoff depth (mm over area)
     // 简化：qp = rain_distribution * runoff_m3 / (tc_hours * 3600.0)
@@ -199,13 +194,13 @@ mod tests {
     fn test_musle_basic() {
         // 小型农业流域典型参数
         let a = musle_soil_loss(
-            5000.0,  // Q = 5000 m³
-            2.5,     // qp = 2.5 m³/s
-            0.25,    // K — silt loam
-            3.0,     // LS — 10% slope, 100m length
-            0.3,     // C — row crops
-            0.5,     // P — contour farming
-            5.0,     // 5 ha
+            5000.0, // Q = 5000 m³
+            2.5,    // qp = 2.5 m³/s
+            0.25,   // K — silt loam
+            3.0,    // LS — 10% slope, 100m length
+            0.3,    // C — row crops
+            0.5,    // P — contour farming
+            5.0,    // 5 ha
         );
         // Williams & Berndt formula: should yield significant loss
         assert!(a > 10.0, "Expected significant soil loss, got {}", a);
@@ -235,20 +230,31 @@ mod tests {
 
     #[test]
     fn test_musle_severity() {
-        assert_eq!(MusleSeverity::from_soil_loss_per_ha(1.0), MusleSeverity::VeryLow);
-        assert_eq!(MusleSeverity::from_soil_loss_per_ha(5.0), MusleSeverity::Low);
-        assert_eq!(MusleSeverity::from_soil_loss_per_ha(30.0), MusleSeverity::Moderate);
-        assert_eq!(MusleSeverity::from_soil_loss_per_ha(80.0), MusleSeverity::High);
-        assert_eq!(MusleSeverity::from_soil_loss_per_ha(200.0), MusleSeverity::VeryHigh);
+        assert_eq!(
+            MusleSeverity::from_soil_loss_per_ha(1.0),
+            MusleSeverity::VeryLow
+        );
+        assert_eq!(
+            MusleSeverity::from_soil_loss_per_ha(5.0),
+            MusleSeverity::Low
+        );
+        assert_eq!(
+            MusleSeverity::from_soil_loss_per_ha(30.0),
+            MusleSeverity::Moderate
+        );
+        assert_eq!(
+            MusleSeverity::from_soil_loss_per_ha(80.0),
+            MusleSeverity::High
+        );
+        assert_eq!(
+            MusleSeverity::from_soil_loss_per_ha(200.0),
+            MusleSeverity::VeryHigh
+        );
     }
 
     #[test]
     fn test_musle_multi_event() {
-        let events = vec![
-            (3000.0, 1.5),
-            (8000.0, 4.0),
-            (2000.0, 1.0),
-        ];
+        let events = vec![(3000.0, 1.5), (8000.0, 4.0), (2000.0, 1.0)];
         let results = musle_event_assessment(&events, 0.25, 2.0, 0.3, 0.5, 5.0);
         assert_eq!(results.len(), 3);
         // Larger event should produce more erosion
@@ -258,11 +264,7 @@ mod tests {
 
     #[test]
     fn test_musle_annual() {
-        let events = vec![
-            (3000.0, 1.5),
-            (8000.0, 4.0),
-            (2000.0, 1.0),
-        ];
+        let events = vec![(3000.0, 1.5), (8000.0, 4.0), (2000.0, 1.0)];
         let avg = musle_annual_average(&events, 0.25, 2.0, 0.3, 0.5, 5.0);
         assert!(avg > 0.0);
     }

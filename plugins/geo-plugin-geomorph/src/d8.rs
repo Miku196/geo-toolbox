@@ -77,11 +77,7 @@ pub fn d8_flow_direction(dem: &[f64], rows: usize, cols: usize) -> FlowDirection
 
 /// Compute D8 flow accumulation from flow directions.
 /// Simple DFS-based: each cell passes +1 to its downstream neighbor.
-pub fn d8_flow_accumulation(
-    flow_dir: &[u8],
-    rows: usize,
-    cols: usize,
-) -> FlowAccumulationResult {
+pub fn d8_flow_accumulation(flow_dir: &[u8], rows: usize, cols: usize) -> FlowAccumulationResult {
     let len = rows * cols;
     let mut acc = vec![0u32; len];
 
@@ -184,7 +180,7 @@ pub fn d8_flow_accumulation_fast(
         }
 
         let mut count = 1u32; // cell itself
-        // Check all 8 neighbors that could flow into this cell
+                              // Check all 8 neighbors that could flow into this cell
         for d in 0..8usize {
             let nr = r + D8_DR[d];
             let nc = c + D8_DC[d];
@@ -216,7 +212,15 @@ pub fn d8_flow_accumulation_fast(
         for c in 0..cols {
             let idx = r * cols + c;
             if !computed[idx] {
-                count_upstream(r as isize, c as isize, rows, cols, flow_dir, &mut acc, &mut computed);
+                count_upstream(
+                    r as isize,
+                    c as isize,
+                    rows,
+                    cols,
+                    flow_dir,
+                    &mut acc,
+                    &mut computed,
+                );
             }
         }
     }
@@ -229,23 +233,14 @@ pub fn d8_flow_accumulation_fast(
 }
 
 /// Identify stream network by thresholding flow accumulation.
-pub fn extract_streams(
-    flow_acc: &[u32],
-    rows: usize,
-    cols: usize,
-    threshold: u32,
-) -> Vec<bool> {
+pub fn extract_streams(flow_acc: &[u32], rows: usize, cols: usize, threshold: u32) -> Vec<bool> {
     flow_acc.iter().map(|&v| v >= threshold).collect()
 }
 
 /// Compute D8 flow direction with pit filling (simple J&D style).
 /// First pass: identify sinks. Second pass: resolve flats.
 /// Simplified: only does basic single-cell pit removal.
-pub fn d8_flow_direction_filled(
-    dem: &[f64],
-    rows: usize,
-    cols: usize,
-) -> FlowDirectionResult {
+pub fn d8_flow_direction_filled(dem: &[f64], rows: usize, cols: usize) -> FlowDirectionResult {
     // Fill single-cell pits: replace cell with minimum of neighbors
     let mut filled = dem.to_vec();
     for r in 0..rows {
@@ -290,11 +285,7 @@ mod tests {
         // DEM: 10 10 10    Flow should be downhill
         //      10  5 10    Center cell drains into...
         //      10 10 10    depends on which neighbor
-        let dem = vec![
-            10.0, 10.0, 10.0,
-            10.0,  5.0, 10.0,
-            10.0, 10.0, 10.0,
-        ];
+        let dem = vec![10.0, 10.0, 10.0, 10.0, 5.0, 10.0, 10.0, 10.0, 10.0];
         let result = d8_flow_direction(&dem, 3, 3);
         // Center cell should drain to a neighbor with lower elevation
         // All neighbors are at 10.0, center at 5.0 → neighbors slope positive
@@ -306,11 +297,7 @@ mod tests {
     fn test_d8_flow_direction_south() {
         // 10 10 10    Top row cells should drain south (dir=2)
         //  5  5  5    Bottom row cells are lower
-        let dem = vec![
-            10.0, 10.0, 10.0,
-            10.0, 10.0, 10.0,
-             5.0,  5.0,  5.0,
-        ];
+        let dem = vec![10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 5.0, 5.0, 5.0];
         let result = d8_flow_direction(&dem, 3, 3);
         // Cell (0,1) = 10.0, south neighbor (1,1) = 10.0 → equal
         // Southeast neighbor (1,2) = 10.0 → equal
@@ -327,11 +314,7 @@ mod tests {
         // Row0:      20    15    20
         // Row1:      10    10    10  → Cell (1,1)=10 has lower neighbors
         // But (0,1)=15. Its lowest neighbor is (1,1)=10, dz=5, dist=1 → slope=5
-        let dem = vec![
-            20.0, 15.0, 20.0,
-            10.0, 10.0, 10.0,
-            10.0, 10.0, 10.0,
-        ];
+        let dem = vec![20.0, 15.0, 20.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0];
         let result = d8_flow_direction(&dem, 3, 3);
         // Cell (0,1) should drain south: direction 2 (S)
         let idx = 0 * 3 + 1;
@@ -375,8 +358,8 @@ mod tests {
         assert!(fast.accumulation[3] > 0, "pit should have accumulation");
         // Both should be non-decreasing towards the pit
         for i in 0..3 {
-            assert!(simple.accumulation[i] <= simple.accumulation[i+1]);
-            assert!(fast.accumulation[i] <= fast.accumulation[i+1]);
+            assert!(simple.accumulation[i] <= simple.accumulation[i + 1]);
+            assert!(fast.accumulation[i] <= fast.accumulation[i + 1]);
         }
     }
 
@@ -394,8 +377,7 @@ mod tests {
     fn test_d8_flow_direction_filled() {
         // Single pit in center
         let dem = vec![
-            10.0, 10.0, 10.0,
-            10.0, 100.0, 10.0,  // center is HIGHER, not a pit
+            10.0, 10.0, 10.0, 10.0, 100.0, 10.0, // center is HIGHER, not a pit
             10.0, 10.0, 10.0,
         ];
         let result = d8_flow_direction_filled(&dem, 3, 3);

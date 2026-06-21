@@ -2,7 +2,6 @@
 ///
 /// 生成 .WTH（天气）/ .SOIL（土壤）/ .CUL（品种）/ .FILEX 等标准输入文件。
 /// 纯 Rust，无外部依赖。
-
 use serde::{Deserialize, Serialize};
 
 /// DSSAT 气象站信息。
@@ -67,10 +66,7 @@ pub struct CultivarParams {
 /// 生成 DSSAT .WTH 天气文件。
 pub fn generate_wth(station: &WeatherStation, daily_data: &[DailyWeather]) -> String {
     let mut out = String::new();
-    out.push_str(&format!(
-        "*WEATHER DATA : {}\n",
-        station.name
-    ));
+    out.push_str(&format!("*WEATHER DATA : {}\n", station.name));
     out.push_str(&format!(
         "@ INSI      LAT     LONG  ELEV   TAV   AMP REFHT WNDHT\n"
     ));
@@ -89,7 +85,11 @@ pub fn generate_wth(station: &WeatherStation, daily_data: &[DailyWeather]) -> St
             day.solar_rad_mj_m2,
             day.tmax_c,
             day.tmin_c,
-            if day.rainfall_mm < 0.0 { -99.0 } else { day.rainfall_mm },
+            if day.rainfall_mm < 0.0 {
+                -99.0
+            } else {
+                day.rainfall_mm
+            },
         ));
     }
     out
@@ -104,10 +104,11 @@ pub fn generate_sol(profile: &SoilProfile) -> String {
     ));
     out.push_str(&format!(
         "  {:<12} {:<16} {:>7.2} {:>7.2} -\n",
-        profile.soil_id, profile.soil_name,
-        0.0, 0.0,
+        profile.soil_id, profile.soil_name, 0.0, 0.0,
     ));
-    out.push_str("@  SLB  SLMH  SLLL  SDUL  SSAT  SRGF  SSKS  SBDM  SLOC  SLCL  SLSI  SLCF  SLNI  SLHW\n");
+    out.push_str(
+        "@  SLB  SLMH  SLLL  SDUL  SSAT  SRGF  SSKS  SBDM  SLOC  SLCL  SLSI  SLCF  SLNI  SLHW\n",
+    );
     for (i, layer) in profile.layers.iter().enumerate() {
         out.push_str(&format!(
             "  {:>3} {:>5.0} {:>5.0} {:>5.0} {:>5.0} {:>5.2} {:>5.1} {:>5.2} {:>5.2} {:>5.0} {:>5.0} {:>5.0} {:>5.3} {:>5.1}\n",
@@ -178,7 +179,9 @@ pub fn monthly_to_daily_wth(
             // Estimate solar radiation from temperature range
             let t_range = tmax - tmin;
             let ext_rad = extraterrestrial_radiation(julian, latitude);
-            let solar_rad = (ext_rad * (1.0 - (t_range * 0.004).min(0.7))).max(0.0).min(ext_rad);
+            let solar_rad = (ext_rad * (1.0 - (t_range * 0.004).min(0.7)))
+                .max(0.0)
+                .min(ext_rad);
             result.push(DailyWeather {
                 julian_day: julian,
                 solar_rad_mj_m2: solar_rad,
@@ -196,11 +199,14 @@ pub fn monthly_to_daily_wth(
 fn extraterrestrial_radiation(julian: u16, latitude: f64) -> f64 {
     let lat_rad = latitude.to_radians();
     let j = julian as f64;
-    let declination = 23.45_f64.to_radians() * ((284.0 + j) * 2.0 * std::f64::consts::PI / 365.0).sin();
+    let declination =
+        23.45_f64.to_radians() * ((284.0 + j) * 2.0 * std::f64::consts::PI / 365.0).sin();
     let ws = (-lat_rad.tan() * declination.tan()).acos();
     let dr = 1.0 + 0.033 * (2.0 * std::f64::consts::PI * j / 365.0).cos();
     let gsc = 0.0820; // solar constant MJ/m²/min
-    let ra = (24.0 * 60.0 / std::f64::consts::PI) * gsc * dr
+    let ra = (24.0 * 60.0 / std::f64::consts::PI)
+        * gsc
+        * dr
         * (ws * lat_rad.sin() * declination.sin() + lat_rad.cos() * declination.cos() * ws.sin());
     ra
 }
@@ -259,12 +265,17 @@ mod tests {
     fn test_generate_wth() {
         let station = WeatherStation {
             name: "Test Station".into(),
-            latitude: 30.0, longitude: 104.0,
-            elevation_m: 500.0, wmo_code: "TEST".into(),
+            latitude: 30.0,
+            longitude: 104.0,
+            elevation_m: 500.0,
+            wmo_code: "TEST".into(),
         };
         let data = vec![DailyWeather {
-            julian_day: 1, solar_rad_mj_m2: 20.0,
-            tmax_c: 30.0, tmin_c: 20.0, rainfall_mm: 0.0,
+            julian_day: 1,
+            solar_rad_mj_m2: 20.0,
+            tmax_c: 30.0,
+            tmin_c: 20.0,
+            rainfall_mm: 0.0,
         }];
         let wth = generate_wth(&station, &data);
         assert!(wth.contains("30.0"));
@@ -274,13 +285,23 @@ mod tests {
     #[test]
     fn test_generate_sol() {
         let profile = SoilProfile {
-            soil_id: "IB001".into(), soil_name: "Test Soil".into(),
+            soil_id: "IB001".into(),
+            soil_name: "Test Soil".into(),
             layers: vec![SoilLayer {
-                depth_cm: 30.0, clay_pct: 20.0, silt_pct: 30.0, sand_pct: 50.0,
-                organic_c_pct: 1.0, bulk_density_g_cm3: 1.3, ph: 6.5,
-                ll: 0.10, dul: 0.25, sat: 0.45, ks: 0.5,
+                depth_cm: 30.0,
+                clay_pct: 20.0,
+                silt_pct: 30.0,
+                sand_pct: 50.0,
+                organic_c_pct: 1.0,
+                bulk_density_g_cm3: 1.3,
+                ph: 6.5,
+                ll: 0.10,
+                dul: 0.25,
+                sat: 0.45,
+                ks: 0.5,
             }],
-            albedo: 0.13, evaporation: 0.50,
+            albedo: 0.13,
+            evaporation: 0.50,
         };
         let sol = generate_sol(&profile);
         assert!(sol.contains("IB001"));
@@ -289,8 +310,14 @@ mod tests {
     #[test]
     fn test_generate_cul() {
         let params = CultivarParams {
-            cultivar_name: "Cultivar1".into(), ecotype: "IB0001".into(),
-            p1: 200.0, p2: 0.0, p5: 600.0, g2: 0.02, g3: 1.0, phint: 100.0,
+            cultivar_name: "Cultivar1".into(),
+            ecotype: "IB0001".into(),
+            p1: 200.0,
+            p2: 0.0,
+            p5: 600.0,
+            g2: 0.02,
+            g3: 1.0,
+            phint: 100.0,
         };
         let cul = generate_cul(&params);
         assert!(cul.contains("Cultivar1"));

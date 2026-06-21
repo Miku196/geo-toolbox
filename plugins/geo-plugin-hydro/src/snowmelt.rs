@@ -20,7 +20,6 @@
 /// Journal of Hydrology, 282(1-4), 104-115.
 /// Anderson, E.A. (1973). National Weather Service River Forecast
 /// System—Snow accumulation and ablation model. NOAA Tech Memo NWS HYDRO-17.
-
 use serde::{Deserialize, Serialize};
 
 // ─── 数据结构 ───
@@ -112,11 +111,7 @@ pub fn degree_day_melt(temp_c: f64, params: &SnowmeltParams) -> f64 {
 }
 
 /// 雨/雪划分：日降水量分解为降雨和降雪。
-pub fn partition_rain_snow(
-    precip_mm: f64,
-    temp_c: f64,
-    t_rain: f64,
-) -> (f64, f64) {
+pub fn partition_rain_snow(precip_mm: f64, temp_c: f64, t_rain: f64) -> (f64, f64) {
     if temp_c >= t_rain {
         (precip_mm, 0.0)
     } else {
@@ -238,10 +233,7 @@ pub fn effective_precipitation(result: &SnowmeltResult) -> Vec<f64> {
 /// 提取有效降水 + 原始降雨的总径流输入序列。
 ///
 /// 用于 SCS-CN 或单位线汇流，将融雪水加入降雨总量中。
-pub fn combined_rainfall_melt(
-    rainfall_daily: &[f64],
-    melt_daily: &[f64],
-) -> Vec<f64> {
+pub fn combined_rainfall_melt(rainfall_daily: &[f64], melt_daily: &[f64]) -> Vec<f64> {
     let n = rainfall_daily.len().min(melt_daily.len());
     let mut combined = Vec::with_capacity(n);
     for i in 0..n {
@@ -316,7 +308,10 @@ mod tests {
 
     #[test]
     fn test_custom_ddf() {
-        let params = SnowmeltParams { ddf: 5.0, ..Default::default() };
+        let params = SnowmeltParams {
+            ddf: 5.0,
+            ..Default::default()
+        };
         assert_relative_eq!(degree_day_melt(3.0, &params), 15.0);
     }
 
@@ -367,7 +362,10 @@ mod tests {
     fn test_effective_precipitation() {
         let temps = vec![5.0, 5.0, 5.0]; // all melt
         let precip = vec![0.0, 0.0, 0.0];
-        let params = SnowmeltParams { ddf: 5.0, ..Default::default() };
+        let params = SnowmeltParams {
+            ddf: 5.0,
+            ..Default::default()
+        };
         let result = simulate_snowmelt(&temps, &precip, &params, 100.0);
         let eff = effective_precipitation(&result);
         assert!(eff.iter().sum::<f64>() > 0.0);

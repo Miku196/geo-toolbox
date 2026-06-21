@@ -12,16 +12,32 @@ impl VariogramModel {
     /// Compute semivariance γ(h) for given distance h.
     pub fn semivariance(&self, h: f64) -> f64 {
         match self {
-            VariogramModel::Spherical { range, sill, nugget } => {
-                if h <= 0.0 { *nugget }
-                else if h >= *range { *sill }
-                else { *nugget + (*sill - *nugget) * (1.5 * h / range - 0.5 * (h / range).powi(3)) }
+            VariogramModel::Spherical {
+                range,
+                sill,
+                nugget,
+            } => {
+                if h <= 0.0 {
+                    *nugget
+                } else if h >= *range {
+                    *sill
+                } else {
+                    *nugget + (*sill - *nugget) * (1.5 * h / range - 0.5 * (h / range).powi(3))
+                }
             }
-            VariogramModel::Exponential { range, sill, nugget } => {
+            VariogramModel::Exponential {
+                range,
+                sill,
+                nugget,
+            } => {
                 let eff_range = range / 3.0; // practical range
                 *nugget + (*sill - *nugget) * (1.0 - (-h / eff_range.max(1e-10)).exp())
             }
-            VariogramModel::Gaussian { range, sill, nugget } => {
+            VariogramModel::Gaussian {
+                range,
+                sill,
+                nugget,
+            } => {
                 let eff_range = range / 3.0f64.sqrt();
                 *nugget + (*sill - *nugget) * (1.0 - (-(h / eff_range.max(1e-10)).powi(2)).exp())
             }
@@ -93,7 +109,11 @@ pub fn fit_variogram(distance_bins: &[f64], semivariance: &[f64]) -> Option<Vari
     let max_semi = semivariance.iter().cloned().fold(0.0f64, f64::max);
     let mut best_error = f64::MAX;
     let mut best_params = VariogramParams {
-        model: VariogramModel::Spherical { range: max_dist, sill: max_semi, nugget: 0.0 },
+        model: VariogramModel::Spherical {
+            range: max_dist,
+            sill: max_semi,
+            nugget: 0.0,
+        },
     };
     // Grid search for spherical model
     for range_frac in [0.2, 0.4, 0.6, 0.8, 1.0] {
@@ -102,7 +122,11 @@ pub fn fit_variogram(distance_bins: &[f64], semivariance: &[f64]) -> Option<Vari
             let sill = max_semi * sill_frac;
             for nugget_frac in [0.0, 0.05, 0.1] {
                 let nugget = max_semi * nugget_frac;
-                let model = VariogramModel::Spherical { range, sill, nugget };
+                let model = VariogramModel::Spherical {
+                    range,
+                    sill,
+                    nugget,
+                };
                 let mut error = 0.0;
                 for i in 0..distance_bins.len() {
                     let pred = model.semivariance(distance_bins[i]);
@@ -132,7 +156,12 @@ pub fn ordinary_kriging(
     let mut variances = vec![f64::NAN; grid_rows * grid_cols];
 
     if n < 2 {
-        return KrigingResult { grid_rows, grid_cols, predictions, variances };
+        return KrigingResult {
+            grid_rows,
+            grid_cols,
+            predictions,
+            variances,
+        };
     }
 
     // Build kriging matrix K (n x n) where K[i,j] = γ(||pi - pj||)
@@ -228,7 +257,12 @@ pub fn ordinary_kriging(
             variances[idx] = var;
         }
     }
-    KrigingResult { grid_rows, grid_cols, predictions, variances }
+    KrigingResult {
+        grid_rows,
+        grid_cols,
+        predictions,
+        variances,
+    }
 }
 
 /// Simple Kriging (known mean = 0).
@@ -256,7 +290,11 @@ mod tests {
 
     #[test]
     fn test_variogram_model_spherical() {
-        let m = VariogramModel::Spherical { range: 10.0, sill: 100.0, nugget: 5.0 };
+        let m = VariogramModel::Spherical {
+            range: 10.0,
+            sill: 100.0,
+            nugget: 5.0,
+        };
         assert!((m.semivariance(0.0) - 5.0).abs() < 1e-10);
         assert!((m.semivariance(20.0) - 100.0).abs() < 1e-10);
         assert!(m.semivariance(5.0) > 5.0);
@@ -265,9 +303,18 @@ mod tests {
     #[test]
     fn test_ordinary_kriging() {
         let pts = vec![(0.0, 0.0, 100.0), (10.0, 0.0, 50.0), (5.0, 10.0, 75.0)];
-        let bbox = BBox { min_x: 0.0, min_y: 0.0, max_x: 10.0, max_y: 10.0 };
+        let bbox = BBox {
+            min_x: 0.0,
+            min_y: 0.0,
+            max_x: 10.0,
+            max_y: 10.0,
+        };
         let v = VariogramParams {
-            model: VariogramModel::Spherical { range: 15.0, sill: 500.0, nugget: 0.0 },
+            model: VariogramModel::Spherical {
+                range: 15.0,
+                sill: 500.0,
+                nugget: 0.0,
+            },
         };
         let result = ordinary_kriging(&pts, &bbox, 5.0, &v);
         assert_eq!(result.grid_rows, 2);
@@ -276,5 +323,3 @@ mod tests {
         assert!(result.predictions.iter().any(|&x| !x.is_nan()));
     }
 }
-
-

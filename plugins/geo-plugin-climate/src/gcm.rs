@@ -25,13 +25,22 @@ pub struct DownscaleResult {
 }
 
 /// Delta method: add temp delta / multiply precip ratio.
-pub fn delta_downscale(obs: &[f64; 12], gcm_hist: &[f64; 12], gcm_proj: &[f64; 12], variable: &str) -> DownscaleResult {
+pub fn delta_downscale(
+    obs: &[f64; 12],
+    gcm_hist: &[f64; 12],
+    gcm_proj: &[f64; 12],
+    variable: &str,
+) -> DownscaleResult {
     let mut monthly_delta = [0.0f64; 12];
     let mut downscaled = [0.0f64; 12];
     let is_precip = variable == "pr" || variable == "precip" || variable == "precipitation";
     for i in 0..12 {
         if is_precip {
-            monthly_delta[i] = if gcm_hist[i] != 0.0 { gcm_proj[i] / gcm_hist[i] } else { 1.0 };
+            monthly_delta[i] = if gcm_hist[i] != 0.0 {
+                gcm_proj[i] / gcm_hist[i]
+            } else {
+                1.0
+            };
             downscaled[i] = obs[i] * monthly_delta[i];
         } else {
             monthly_delta[i] = gcm_proj[i] - gcm_hist[i];

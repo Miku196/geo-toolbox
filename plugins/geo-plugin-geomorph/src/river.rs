@@ -112,8 +112,8 @@ pub fn strahler_order(
         let o = order[i] as usize;
         if o > 0 && o <= max_order {
             count[o] = 1; // we count if at least one cell has this order
-            // Check if this is the start of a new stream segment
-            // (upstream cell has different order or is non-stream)
+                          // Check if this is the start of a new stream segment
+                          // (upstream cell has different order or is non-stream)
             let r = i / cols;
             let c = i % cols;
             let mut is_head = true;
@@ -312,21 +312,17 @@ pub fn extract_stream_segments(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::d8::{d8_flow_direction, d8_flow_accumulation_fast, extract_streams};
+    use crate::d8::{d8_flow_accumulation_fast, d8_flow_direction, extract_streams};
 
     fn make_dem_flat() -> Vec<f64> {
         vec![
-            10.0, 10.0, 10.0, 10.0,
-            10.0, 10.0, 10.0, 10.0,
-            10.0, 10.0, 10.0, 10.0,
+            10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0,
         ]
     }
 
     fn make_dem_slope() -> Vec<f64> {
         vec![
-            20.0, 20.0, 20.0, 20.0,
-            15.0, 15.0, 15.0, 15.0,
-            10.0, 10.0, 10.0, 10.0,
+            20.0, 20.0, 20.0, 20.0, 15.0, 15.0, 15.0, 15.0, 10.0, 10.0, 10.0, 10.0,
         ]
     }
 
@@ -353,7 +349,10 @@ mod tests {
         for c in 0..4 {
             let idx = 0 * 4 + c;
             if stream[idx] {
-                assert!(result.order[idx] >= 1, "top row cell should have order >= 1");
+                assert!(
+                    result.order[idx] >= 1,
+                    "top row cell should have order >= 1"
+                );
             }
         }
     }

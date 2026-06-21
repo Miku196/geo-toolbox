@@ -20,7 +20,6 @@
 ///   cluster efficiency. EWEC '86, 407-410.
 /// Stevens, R.J.A.M., & Meneveau, C. (2014). Flow structure and
 ///   turbulence in wind farms. Annual Review of Fluid Mechanics, 46, 409-429.
-
 use serde::{Deserialize, Serialize};
 
 /// 尾流衰减常数 — 陆上 (Jensen 推荐)
@@ -39,13 +38,7 @@ pub const K_OFFSHORE: f64 = 0.04;
 /// * `rotor_radius_m` — 风轮半径 (m)
 /// * `distance_m` — 下游距离 (m)
 /// * `k` — 尾流衰减常数
-pub fn jensen_wake(
-    v0: f64,
-    ct: f64,
-    rotor_radius_m: f64,
-    distance_m: f64,
-    k: f64,
-) -> f64 {
+pub fn jensen_wake(v0: f64, ct: f64, rotor_radius_m: f64, distance_m: f64, k: f64) -> f64 {
     let deficit = 1.0 - (1.0 - ct).sqrt();
     let wake_radius = rotor_radius_m + k * distance_m;
     let expansion_ratio = (rotor_radius_m / wake_radius).powi(2);
@@ -72,13 +65,7 @@ pub struct WakeProfile {
 }
 
 /// 单机尾流完整剖面。
-pub fn wake_profile(
-    v0: f64,
-    ct: f64,
-    rotor_radius_m: f64,
-    distance_m: f64,
-    k: f64,
-) -> WakeProfile {
+pub fn wake_profile(v0: f64, ct: f64, rotor_radius_m: f64, distance_m: f64, k: f64) -> WakeProfile {
     let v_center = jensen_wake(v0, ct, rotor_radius_m, distance_m, k);
     WakeProfile {
         distance_m,
@@ -203,20 +190,24 @@ pub fn farm_wake_efficiency(
 
     for i in 0..turbines.len() {
         let (_x, _y, _ct, r) = turbines[i];
-        let v_local = cumulative_wake(
-            wind_speed, wind_deg, turbines, i, k, method, spacing_m,
-        );
+        let v_local = cumulative_wake(wind_speed, wind_deg, turbines, i, k, method, spacing_m);
         let a = std::f64::consts::PI * r * r;
         let p = 0.5 * rho * a * cp * v_local.powi(3);
         turbine_powers.push(p);
     }
 
     let total_power: f64 = turbine_powers.iter().sum();
-    let no_wake_power = turbines.len() as f64 * (0.5 * rho * std::f64::consts::PI * {
-        // Use average radius
-        let avg_r: f64 = turbines.iter().map(|t| t.3).sum::<f64>() / turbines.len() as f64;
-        avg_r * avg_r
-    } * cp * wind_speed.powi(3));
+    let no_wake_power = turbines.len() as f64
+        * (0.5
+            * rho
+            * std::f64::consts::PI
+            * {
+                // Use average radius
+                let avg_r: f64 = turbines.iter().map(|t| t.3).sum::<f64>() / turbines.len() as f64;
+                avg_r * avg_r
+            }
+            * cp
+            * wind_speed.powi(3));
 
     let efficiency = if no_wake_power > 0.0 {
         total_power / no_wake_power
@@ -303,11 +294,23 @@ mod tests {
     #[test]
     fn test_cumulative_wake_single() {
         let turbines = vec![
-            (0.0, 0.0, 0.8, 40.0),  // upstream
+            (0.0, 0.0, 0.8, 40.0),   // upstream
             (300.0, 0.0, 0.8, 40.0), // downstream target
         ];
-        let v = cumulative_wake(10.0, 90.0, &turbines, 1, K_ONSIGHT, &WakeSummation::Energy, 2000.0);
-        assert!(v < 10.0, "downstream turbine should see reduced wind, got {}", v);
+        let v = cumulative_wake(
+            10.0,
+            90.0,
+            &turbines,
+            1,
+            K_ONSIGHT,
+            &WakeSummation::Energy,
+            2000.0,
+        );
+        assert!(
+            v < 10.0,
+            "downstream turbine should see reduced wind, got {}",
+            v
+        );
         assert!(v > 6.0);
     }
 
@@ -319,7 +322,14 @@ mod tests {
             (800.0, 0.0, 0.8, 40.0),
         ];
         let (eff, _powers) = farm_wake_efficiency(
-            &turbines, 10.0, 90.0, K_OFFSHORE, &WakeSummation::Energy, 1.225, 0.45, 2000.0,
+            &turbines,
+            10.0,
+            90.0,
+            K_OFFSHORE,
+            &WakeSummation::Energy,
+            1.225,
+            0.45,
+            2000.0,
         );
         // 3机直线阵：效率应在 0.8-0.95 之间
         assert!(eff > 0.7, "efficiency too low: {}", eff);
@@ -332,7 +342,15 @@ mod tests {
             (0.0, 0.0, 0.8, 40.0),
             (5000.0, 0.0, 0.8, 40.0), // far away → no wake
         ];
-        let v = cumulative_wake(10.0, 90.0, &turbines, 1, K_ONSIGHT, &WakeSummation::Energy, 2000.0);
+        let v = cumulative_wake(
+            10.0,
+            90.0,
+            &turbines,
+            1,
+            K_ONSIGHT,
+            &WakeSummation::Energy,
+            2000.0,
+        );
         assert_relative_eq!(v, 10.0, epsilon = 0.1);
     }
 

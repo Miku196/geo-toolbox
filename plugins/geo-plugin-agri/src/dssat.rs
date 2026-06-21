@@ -59,25 +59,23 @@ mod tests {
             evaporation: 0.5,
             runoff: 0.5,
             color: 3,
-            layers: vec![
-                SoilLayer {
-                    depth_bottom_cm: 20.0,
-                    clay_pct: 20.0,
-                    silt_pct: 30.0,
-                    stones_pct: 5.0,
-                    organic_c_pct: 1.2,
-                    bd: 1.35,
-                    ph: 6.5,
-                    cec: 15.0,
-                    bsn: 50.0,
-                    sat: 0.45,
-                    ll: 0.15,
-                    dul: 0.30,
-                    ssks: 0.5,
-                    rv: 0.0,
-                    ssp: 0.0,
-                },
-            ],
+            layers: vec![SoilLayer {
+                depth_bottom_cm: 20.0,
+                clay_pct: 20.0,
+                silt_pct: 30.0,
+                stones_pct: 5.0,
+                organic_c_pct: 1.2,
+                bd: 1.35,
+                ph: 6.5,
+                cec: 15.0,
+                bsn: 50.0,
+                sat: 0.45,
+                ll: 0.15,
+                dul: 0.30,
+                ssks: 0.5,
+                rv: 0.0,
+                ssp: 0.0,
+            }],
         };
         let output = generate_sol(&profile);
         assert!(output.contains("*SOIL")) | assert!(output.contains("CN001"));
@@ -103,7 +101,9 @@ mod tests {
 
     #[test]
     fn test_monthly_to_daily() {
-        let monthly = vec![50.0, 45.0, 80.0, 100.0, 150.0, 200.0, 180.0, 140.0, 100.0, 70.0, 55.0, 40.0];
+        let monthly = vec![
+            50.0, 45.0, 80.0, 100.0, 150.0, 200.0, 180.0, 140.0, 100.0, 70.0, 55.0, 40.0,
+        ];
         let daily = monthly_to_daily_wth(&monthly, 2024, 30.0);
         assert_eq!(daily.len(), 366);
         assert!(!daily.is_empty());
@@ -112,7 +112,14 @@ mod tests {
     #[test]
     fn test_serde_weather() {
         let w = DailyWeather {
-            year: 2024, doy: 150, srad: 20.0, tmax: 35.0, tmin: 25.0, rain: 0.0, wind: Some(3.0), rhum: Some(60.0),
+            year: 2024,
+            doy: 150,
+            srad: 20.0,
+            tmax: 35.0,
+            tmin: 25.0,
+            rain: 0.0,
+            wind: Some(3.0),
+            rhum: Some(60.0),
         };
         let json = serde_json::to_string(&w).unwrap();
         let deser: DailyWeather = serde_json::from_str(&json).unwrap();

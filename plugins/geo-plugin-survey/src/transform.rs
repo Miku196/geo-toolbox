@@ -6,7 +6,6 @@
 ///
 /// Helmert：七参数相似变换（3 平移 + 3 旋转 + 1 尺度），用于
 /// 不同基准间的刚体转换（如 CGCS2000 ↔ Beijing54 的局部参数）。
-
 use crate::gauss::Ellipsoid;
 
 // ──────────────────────────────────────────────
@@ -31,12 +30,13 @@ pub fn standard_molodensky_shift(from: Ellipsoid, to: Ellipsoid) -> Option<Molod
     // 标准三参数来自中国测绘行业经验（Xian80/Beijing54 → WGS84）
     // 反向取负
     match (from, to) {
-        (Ellipsoid::CGCS2000, Ellipsoid::WGS84)
-        | (Ellipsoid::WGS84, Ellipsoid::CGCS2000) => Some(MolodenskyShift {
-            dx: 0.0,
-            dy: 0.0,
-            dz: 0.0,
-        }),
+        (Ellipsoid::CGCS2000, Ellipsoid::WGS84) | (Ellipsoid::WGS84, Ellipsoid::CGCS2000) => {
+            Some(MolodenskyShift {
+                dx: 0.0,
+                dy: 0.0,
+                dz: 0.0,
+            })
+        }
         (Ellipsoid::Xian80, Ellipsoid::WGS84) => Some(MolodenskyShift {
             dx: -20.0,
             dy: 160.0,
@@ -110,25 +110,17 @@ pub fn molodensky_transform(
     let m = a_from * (1.0 - e2_from) / (1.0 - e2_from * sin_lat * sin_lat).powf(1.5);
 
     // Δφ (弧秒)
-    let dphi_sec = (
-        -sin_lat * cos_lon * shift.dx
-        - sin_lat * sin_lon * shift.dy
+    let dphi_sec = (-sin_lat * cos_lon * shift.dx - sin_lat * sin_lon * shift.dy
         + cos_lat * shift.dz
         + (m * e2_from * sin_lat * cos_lat * da) / (1.0 - e2_from)
-        + sin_lat * cos_lat * (m * a_from / b_from) * df
-    ) / (m * SEC_TO_RAD);
+        + sin_lat * cos_lat * (m * a_from / b_from) * df)
+        / (m * SEC_TO_RAD);
 
     // Δλ (弧秒)
-    let dlam_sec = (
-        -sin_lon * shift.dx
-        + cos_lon * shift.dy
-    ) / (n * cos_lat * SEC_TO_RAD);
+    let dlam_sec = (-sin_lon * shift.dx + cos_lon * shift.dy) / (n * cos_lat * SEC_TO_RAD);
 
     // Δh (米)
-    let dh = 
-        cos_lat * cos_lon * shift.dx
-        + cos_lat * sin_lon * shift.dy
-        + sin_lat * shift.dz
+    let dh = cos_lat * cos_lon * shift.dx + cos_lat * sin_lon * shift.dy + sin_lat * shift.dz
         - a_from * (1.0 - e2_from) * da / n
         + (b_from * b_from / a_from) * sin_lat * sin_lat * df * n;
 
@@ -155,7 +147,9 @@ pub fn molodensky_transform_standard(
     }
 
     let shift = standard_molodensky_shift(from, to)?;
-    Some(molodensky_transform(lat_deg, lon_deg, h_m, from, to, &shift))
+    Some(molodensky_transform(
+        lat_deg, lon_deg, h_m, from, to, &shift,
+    ))
 }
 
 /// 通过 WGS84 桥接实现任意两椭球间的坐标转换。
@@ -174,11 +168,19 @@ pub fn molodensky_transform_bridge(
 
     // from → WGS84
     let shift_fw = standard_molodensky_shift(from, Ellipsoid::WGS84)?;
-    let (lat1, lon1, h1) = molodensky_transform(lat_deg, lon_deg, h_m, from, Ellipsoid::WGS84, &shift_fw);
+    let (lat1, lon1, h1) =
+        molodensky_transform(lat_deg, lon_deg, h_m, from, Ellipsoid::WGS84, &shift_fw);
 
     // WGS84 → to
     let shift_wt = standard_molodensky_shift(Ellipsoid::WGS84, to)?;
-    Some(molodensky_transform(lat1, lon1, h1, Ellipsoid::WGS84, to, &shift_wt))
+    Some(molodensky_transform(
+        lat1,
+        lon1,
+        h1,
+        Ellipsoid::WGS84,
+        to,
+        &shift_wt,
+    ))
 }
 
 // ──────────────────────────────────────────────
@@ -275,30 +277,50 @@ pub fn standard_helmert_params(from: Ellipsoid, to: Ellipsoid) -> Option<Helmert
     match (from, to) {
         // CGCS2000 → WGS84: 在 cm 级一致，七参数接近零
         (Ellipsoid::CGCS2000, _) | (_, Ellipsoid::CGCS2000) => Some(HelmertParams {
-            dx: 0.0, dy: 0.0, dz: 0.0,
-            rx_sec: 0.0, ry_sec: 0.0, rz_sec: 0.0,
+            dx: 0.0,
+            dy: 0.0,
+            dz: 0.0,
+            rx_sec: 0.0,
+            ry_sec: 0.0,
+            rz_sec: 0.0,
             s_ppm: 0.0,
         }),
         // Xian80 → WGS84: 中国区域经验值
         (Ellipsoid::Xian80, Ellipsoid::WGS84) => Some(HelmertParams {
-            dx: -20.0, dy: 160.0, dz: 180.0,
-            rx_sec: 0.0, ry_sec: 0.0, rz_sec: 0.0,
+            dx: -20.0,
+            dy: 160.0,
+            dz: 180.0,
+            rx_sec: 0.0,
+            ry_sec: 0.0,
+            rz_sec: 0.0,
             s_ppm: 0.0,
         }),
         (Ellipsoid::WGS84, Ellipsoid::Xian80) => Some(HelmertParams {
-            dx: 20.0, dy: -160.0, dz: -180.0,
-            rx_sec: 0.0, ry_sec: 0.0, rz_sec: 0.0,
+            dx: 20.0,
+            dy: -160.0,
+            dz: -180.0,
+            rx_sec: 0.0,
+            ry_sec: 0.0,
+            rz_sec: 0.0,
             s_ppm: 0.0,
         }),
         // Beijing54 → WGS84: 中国区域经验值
         (Ellipsoid::Beijing54, Ellipsoid::WGS84) => Some(HelmertParams {
-            dx: -10.0, dy: 140.0, dz: 190.0,
-            rx_sec: 0.0, ry_sec: 0.0, rz_sec: 0.0,
+            dx: -10.0,
+            dy: 140.0,
+            dz: 190.0,
+            rx_sec: 0.0,
+            ry_sec: 0.0,
+            rz_sec: 0.0,
             s_ppm: 0.0,
         }),
         (Ellipsoid::WGS84, Ellipsoid::Beijing54) => Some(HelmertParams {
-            dx: 10.0, dy: -140.0, dz: -190.0,
-            rx_sec: 0.0, ry_sec: 0.0, rz_sec: 0.0,
+            dx: 10.0,
+            dy: -140.0,
+            dz: -190.0,
+            rx_sec: 0.0,
+            ry_sec: 0.0,
+            rz_sec: 0.0,
             s_ppm: 0.0,
         }),
         // 其他组合通过 WGS84 桥接
@@ -318,7 +340,9 @@ pub fn helmert_transform_standard(
         return Some((lat_deg, lon_deg, h_m));
     }
     let params = standard_helmert_params(from, to)?;
-    Some(helmert_transform_geodetic(lat_deg, lon_deg, h_m, to, &params))
+    Some(helmert_transform_geodetic(
+        lat_deg, lon_deg, h_m, to, &params,
+    ))
 }
 
 // ──────────────────────────────────────────────
@@ -333,10 +357,9 @@ mod tests {
     fn test_molodensky_wgs84_to_cgcs2000() {
         // WGS84 ↔ CGCS2000: 椭球几乎相同, 只检查平面精度
         // 高度 Molodensky 公式有 df 项引入偏差, 跳过 h 验证
-        let (lat, lon, _h) = molodensky_transform_standard(
-            30.5, 114.3, 50.0,
-            Ellipsoid::WGS84, Ellipsoid::CGCS2000,
-        ).unwrap();
+        let (lat, lon, _h) =
+            molodensky_transform_standard(30.5, 114.3, 50.0, Ellipsoid::WGS84, Ellipsoid::CGCS2000)
+                .unwrap();
         assert!((lat - 30.5).abs() < 1e-6);
         assert!((lon - 114.3).abs() < 1e-10);
     }
@@ -345,28 +368,30 @@ mod tests {
     fn test_molodensky_self() {
         // 相同椭球 → 无变化
         let (lat, lon, h) = molodensky_transform_standard(
-            30.5, 114.3, 50.0,
-            Ellipsoid::CGCS2000, Ellipsoid::CGCS2000,
-        ).unwrap();
+            30.5,
+            114.3,
+            50.0,
+            Ellipsoid::CGCS2000,
+            Ellipsoid::CGCS2000,
+        )
+        .unwrap();
         assert!((lat - 30.5).abs() < 1e-8);
     }
 
     #[test]
     fn test_molodensky_xian80_to_wgs84() {
-        let (lat, _, _) = molodensky_transform_standard(
-            30.0, 110.0, 0.0,
-            Ellipsoid::Xian80, Ellipsoid::WGS84,
-        ).unwrap();
+        let (lat, _, _) =
+            molodensky_transform_standard(30.0, 110.0, 0.0, Ellipsoid::Xian80, Ellipsoid::WGS84)
+                .unwrap();
         // Xian80 坐标转换后纬度应有明显偏移
         assert!((lat - 30.0).abs() > 1e-6);
     }
 
     #[test]
     fn test_helmert_wgs84_to_cgcs2000() {
-        let (lat, lon, h) = helmert_transform_standard(
-            30.5, 114.3, 50.0,
-            Ellipsoid::WGS84, Ellipsoid::CGCS2000,
-        ).unwrap();
+        let (lat, lon, h) =
+            helmert_transform_standard(30.5, 114.3, 50.0, Ellipsoid::WGS84, Ellipsoid::CGCS2000)
+                .unwrap();
         assert!((lat - 30.5).abs() < 1e-6);
         assert!((lon - 114.3).abs() < 1e-6);
     }
@@ -374,10 +399,8 @@ mod tests {
     #[test]
     fn test_bridge_xian80_beijing54() {
         // Xian80 → Beijing54 通过 WGS84 桥接
-        let result = molodensky_transform_bridge(
-            30.0, 110.0, 0.0,
-            Ellipsoid::Xian80, Ellipsoid::Beijing54,
-        );
+        let result =
+            molodensky_transform_bridge(30.0, 110.0, 0.0, Ellipsoid::Xian80, Ellipsoid::Beijing54);
         assert!(result.is_some());
         let (lat, lon, _) = result.unwrap();
         assert!((lat - 30.0).abs() > 1e-6);
@@ -397,10 +420,9 @@ mod tests {
     #[test]
     fn test_helmert_forward_inverse_reversible() {
         // Helmert 变换 + 反向 = 近似恒等
-        let (lat, lon, h) = helmert_transform_standard(
-            30.5, 114.3, 50.0,
-            Ellipsoid::WGS84, Ellipsoid::CGCS2000,
-        ).unwrap();
+        let (lat, lon, h) =
+            helmert_transform_standard(30.5, 114.3, 50.0, Ellipsoid::WGS84, Ellipsoid::CGCS2000)
+                .unwrap();
         // 反向
         let params = standard_helmert_params(Ellipsoid::CGCS2000, Ellipsoid::WGS84).unwrap();
         let (lat2, lon2, h2) = helmert_transform_geodetic(lat, lon, h, Ellipsoid::WGS84, &params);

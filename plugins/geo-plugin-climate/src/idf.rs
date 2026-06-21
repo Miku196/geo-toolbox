@@ -24,8 +24,15 @@ pub fn idf_intensity(duration_min: f64, params: &IdfParams) -> f64 {
 
 /// Generate IDF curve for a list of durations.
 pub fn idf_curve(durations_min: &[f64], params: &IdfParams) -> IdfResult {
-    let intensities: Vec<f64> = durations_min.iter().map(|&t| idf_intensity(t, params)).collect();
-    let depths: Vec<f64> = intensities.iter().zip(durations_min.iter()).map(|(&i, &t)| i * t / 60.0).collect();
+    let intensities: Vec<f64> = durations_min
+        .iter()
+        .map(|&t| idf_intensity(t, params))
+        .collect();
+    let depths: Vec<f64> = intensities
+        .iter()
+        .zip(durations_min.iter())
+        .map(|(&i, &t)| i * t / 60.0)
+        .collect();
     IdfResult {
         return_period_yr: 10.0,
         durations_min: durations_min.to_vec(),
@@ -99,7 +106,11 @@ pub fn idf_fit_params(durations_min: &[f64], intensities_mmh: &[f64]) -> Option<
     if best_r2 < 0.0 {
         return None;
     }
-    Some(IdfParams { a: best_a, b: best_b, c: best_c })
+    Some(IdfParams {
+        a: best_a,
+        b: best_b,
+        c: best_c,
+    })
 }
 
 /// Scale IDF to different return period.
@@ -124,14 +135,22 @@ mod tests {
 
     #[test]
     fn test_idf_intensity() {
-        let p = IdfParams { a: 1000.0, b: 10.0, c: 0.8 };
+        let p = IdfParams {
+            a: 1000.0,
+            b: 10.0,
+            c: 0.8,
+        };
         let i = idf_intensity(30.0, &p);
         assert!(i > 0.0);
     }
 
     #[test]
     fn test_idf_curve() {
-        let p = IdfParams { a: 1000.0, b: 10.0, c: 0.8 };
+        let p = IdfParams {
+            a: 1000.0,
+            b: 10.0,
+            c: 0.8,
+        };
         let result = idf_curve(&[10.0, 30.0, 60.0], &p);
         assert_eq!(result.intensities_mmh.len(), 3);
         assert_eq!(result.depths_mm.len(), 3);
@@ -139,7 +158,11 @@ mod tests {
 
     #[test]
     fn test_idf_fit_params() {
-        let p = IdfParams { a: 500.0, b: 5.0, c: 0.7 };
+        let p = IdfParams {
+            a: 500.0,
+            b: 5.0,
+            c: 0.7,
+        };
         let durations = vec![5.0, 10.0, 20.0, 30.0, 60.0];
         let intensities: Vec<f64> = durations.iter().map(|&t| idf_intensity(t, &p)).collect();
         let fitted = idf_fit_params(&durations, &intensities);
@@ -150,9 +173,12 @@ mod tests {
 
     #[test]
     fn test_idf_return_period() {
-        let p = IdfParams { a: 500.0, b: 5.0, c: 0.7 };
+        let p = IdfParams {
+            a: 500.0,
+            b: 5.0,
+            c: 0.7,
+        };
         let scaled = idf_return_period(&p, 10.0, 100.0, 0.546, 0.459);
         assert!(scaled.a > p.a);
     }
 }
-

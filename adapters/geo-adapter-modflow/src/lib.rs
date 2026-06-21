@@ -2,7 +2,6 @@
 ///
 /// 生成 .NAM / .DIS / .BAS6 / .LPF / .PCG 等标准输入文件。
 /// 纯 Rust，无外部依赖，输出为 String 可直接写入文件。
-
 use serde::{Deserialize, Serialize};
 
 /// MODFLOW 离散化参数。
@@ -36,9 +35,13 @@ pub fn generate_nam(model_name: &str, units: &[(&str, usize)]) -> String {
 
 /// 生成 MODFLOW-2005 .DIS 离散化文件。
 pub fn generate_dis(
-    nlay: usize, nrow: usize, ncol: usize,
-    delr: f64, delc: f64,
-    top: f64, bot: f64,
+    nlay: usize,
+    nrow: usize,
+    ncol: usize,
+    delr: f64,
+    delc: f64,
+    top: f64,
+    bot: f64,
     nper: usize,
 ) -> String {
     use std::fmt::Write;
@@ -72,10 +75,7 @@ pub fn generate_bas6(ibound_val: i32, strt: f64, nrow: usize, ncol: usize) -> St
 }
 
 /// 生成 MODFLOW-2005 .LPF 层属性流文件。
-pub fn generate_lpf(
-    hk: f64, vka: f64, ss: f64, sy: f64,
-    nrow: usize, ncol: usize,
-) -> String {
+pub fn generate_lpf(hk: f64, vka: f64, ss: f64, sy: f64, nrow: usize, ncol: usize) -> String {
     use std::fmt::Write;
     let mut out = String::new();
     writeln!(out, "# LPF file").ok();

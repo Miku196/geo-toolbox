@@ -1,7 +1,6 @@
 /// 海洋物理过程：潮汐调和分析、Ekman 输运、SST/ENSO 指数、简化 SWAN 波浪传播。
 ///
 /// 全部纯 Rust 实现，复用 coastal 插件现有基础设施。
-
 use serde::{Deserialize, Serialize};
 
 // ──────────────────────────────────────────────
@@ -43,14 +42,14 @@ pub struct TidalPrediction {
 /// 4 个主要分潮标准角速度 (°/hr)。
 pub fn constituent_speed(name: &str) -> f64 {
     match name {
-        "M2"  => 28.984104, // 主太阴半日潮
-        "S2"  => 30.000000, // 主太阳半日潮
-        "N2"  => 28.439730, // 椭率太阴半日潮
-        "K1"  => 15.041069, // 太阴太阳全日潮
-        "O1"  => 13.943036, // 主太阴全日潮
-        "P1"  => 14.958931, // 主太阳全日潮
-        "K2"  => 30.082138, // 椭率太阴太阳半日潮
-        "M4"  => 57.968208, // 浅水分潮
+        "M2" => 28.984104,  // 主太阴半日潮
+        "S2" => 30.000000,  // 主太阳半日潮
+        "N2" => 28.439730,  // 椭率太阴半日潮
+        "K1" => 15.041069,  // 太阴太阳全日潮
+        "O1" => 13.943036,  // 主太阴全日潮
+        "P1" => 14.958931,  // 主太阳全日潮
+        "K2" => 30.082138,  // 椭率太阴太阳半日潮
+        "M4" => 57.968208,  // 浅水分潮
         "MS4" => 58.984104, // 浅水分潮
         _ => 0.0,
     }
@@ -58,16 +57,40 @@ pub fn constituent_speed(name: &str) -> f64 {
 
 /// 构建标准分潮列表。
 pub fn standard_constituents(
-    ampl_m2: f64, phase_m2: f64,
-    ampl_s2: f64, phase_s2: f64,
-    ampl_k1: f64, phase_k1: f64,
-    ampl_o1: f64, phase_o1: f64,
+    ampl_m2: f64,
+    phase_m2: f64,
+    ampl_s2: f64,
+    phase_s2: f64,
+    ampl_k1: f64,
+    phase_k1: f64,
+    ampl_o1: f64,
+    phase_o1: f64,
 ) -> Vec<TidalConstituent> {
     vec![
-        TidalConstituent { name: "M2".into(), speed_deg_hr: constituent_speed("M2"), amplitude_m: ampl_m2, phase_deg: phase_m2 },
-        TidalConstituent { name: "S2".into(), speed_deg_hr: constituent_speed("S2"), amplitude_m: ampl_s2, phase_deg: phase_s2 },
-        TidalConstituent { name: "K1".into(), speed_deg_hr: constituent_speed("K1"), amplitude_m: ampl_k1, phase_deg: phase_k1 },
-        TidalConstituent { name: "O1".into(), speed_deg_hr: constituent_speed("O1"), amplitude_m: ampl_o1, phase_deg: phase_o1 },
+        TidalConstituent {
+            name: "M2".into(),
+            speed_deg_hr: constituent_speed("M2"),
+            amplitude_m: ampl_m2,
+            phase_deg: phase_m2,
+        },
+        TidalConstituent {
+            name: "S2".into(),
+            speed_deg_hr: constituent_speed("S2"),
+            amplitude_m: ampl_s2,
+            phase_deg: phase_s2,
+        },
+        TidalConstituent {
+            name: "K1".into(),
+            speed_deg_hr: constituent_speed("K1"),
+            amplitude_m: ampl_k1,
+            phase_deg: phase_k1,
+        },
+        TidalConstituent {
+            name: "O1".into(),
+            speed_deg_hr: constituent_speed("O1"),
+            amplitude_m: ampl_o1,
+            phase_deg: phase_o1,
+        },
     ]
 }
 
@@ -99,7 +122,11 @@ pub fn predict_tide(
     TidalPrediction {
         constituents: constituents.to_vec(),
         predictions,
-        mhws: 0.0, mlws: 0.0, mhwn: 0.0, mlwn: 0.0, msl,
+        mhws: 0.0,
+        mlws: 0.0,
+        mhwn: 0.0,
+        mlwn: 0.0,
+        msl,
     }
 }
 
@@ -109,8 +136,12 @@ pub fn spring_neap_heights(constituents: &[TidalConstituent]) -> (f64, f64) {
     let mut ampl_m2 = 0.0;
     let mut ampl_s2 = 0.0;
     for c in constituents {
-        if c.name == "M2" { ampl_m2 = c.amplitude_m; }
-        if c.name == "S2" { ampl_s2 = c.amplitude_m; }
+        if c.name == "M2" {
+            ampl_m2 = c.amplitude_m;
+        }
+        if c.name == "S2" {
+            ampl_s2 = c.amplitude_m;
+        }
     }
     let spring = ampl_m2 + ampl_s2;
     let neap = (ampl_m2 - ampl_s2).abs();
@@ -119,8 +150,14 @@ pub fn spring_neap_heights(constituents: &[TidalConstituent]) -> (f64, f64) {
 
 /// 潮汐范围统计。
 pub fn tidal_range_stats(predictions: &[(f64, f64)]) -> (f64, f64, f64) {
-    let min = predictions.iter().map(|p| p.1).fold(f64::INFINITY, f64::min);
-    let max = predictions.iter().map(|p| p.1).fold(f64::NEG_INFINITY, f64::max);
+    let min = predictions
+        .iter()
+        .map(|p| p.1)
+        .fold(f64::INFINITY, f64::min);
+    let max = predictions
+        .iter()
+        .map(|p| p.1)
+        .fold(f64::NEG_INFINITY, f64::max);
     (min, max, max - min)
 }
 
@@ -198,8 +235,11 @@ pub fn geostrophic_current(ssh_gradient_x: f64, ssh_gradient_y: f64, lat: f64) -
 
 /// 总表层流 = 地转流 + Ekman 流。
 pub fn total_surface_current(
-    wind_speed_ms: f64, wind_dir_deg: f64,
-    ssh_grad_x: f64, ssh_grad_y: f64, lat: f64,
+    wind_speed_ms: f64,
+    wind_dir_deg: f64,
+    ssh_grad_x: f64,
+    ssh_grad_y: f64,
+    lat: f64,
 ) -> (f64, f64, f64) {
     let (u_e, v_e) = {
         let ek = ekman_transport(wind_speed_ms, wind_dir_deg, lat);
@@ -299,14 +339,16 @@ pub fn soi_estimate(nino34_anomaly: f64) -> f64 {
 pub fn enso_diagnosis(nino34_monthly: &[f64]) -> Vec<EnsoIndex> {
     let oni = oni_index(nino34_monthly);
     let phases = enso_phase(nino34_monthly);
-    nino34_monthly.iter().zip(oni.iter().zip(phases.iter())).map(|(&anom, (&o, p))| {
-        EnsoIndex {
+    nino34_monthly
+        .iter()
+        .zip(oni.iter().zip(phases.iter()))
+        .map(|(&anom, (&o, p))| EnsoIndex {
             nino34_anomaly_c: anom,
             phase: p.clone(),
             oni: o,
             soi_estimate: soi_estimate(anom),
-        }
-    }).collect()
+        })
+        .collect()
 }
 
 // ──────────────────────────────────────────────
@@ -427,7 +469,11 @@ pub fn wave_energy_flux(hs_m: f64, tp_s: f64, depth_m: f64) -> f64 {
     let l0 = g * tp_s.powi(2) / (2.0 * std::f64::consts::PI);
     let c0 = l0 / tp_s;
 
-    let c = if depth_m >= l0 / 2.0 { c0 } else { (g * depth_m).sqrt() };
+    let c = if depth_m >= l0 / 2.0 {
+        c0
+    } else {
+        (g * depth_m).sqrt()
+    };
     let kh = 2.0 * std::f64::consts::PI * depth_m / l0.max(0.1);
     let n = if kh > 0.01 {
         0.5 * (1.0 + 2.0 * kh / (2.0 * kh).sinh())
@@ -445,13 +491,16 @@ pub fn wave_energy_flux(hs_m: f64, tp_s: f64, depth_m: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_relative_eq;
     use super::*;
+    use approx::assert_relative_eq;
 
     #[test]
     fn test_predict_tide_m2_only() {
         let c = vec![TidalConstituent {
-            name: "M2".into(), speed_deg_hr: 28.984104, amplitude_m: 1.0, phase_deg: 0.0,
+            name: "M2".into(),
+            speed_deg_hr: 28.984104,
+            amplitude_m: 1.0,
+            phase_deg: 0.0,
         }];
         let pred = predict_tide(&c, 1.0, 25, 0.0);
         assert_eq!(pred.predictions.len(), 25);

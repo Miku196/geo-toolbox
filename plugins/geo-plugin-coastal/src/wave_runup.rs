@@ -5,7 +5,6 @@
 /// - Stockdon et al. (2006) 波浪爬高公式
 /// - EurOtop (2018) 越浪量公式
 /// - 波生增水（wave setup）简化模型
-
 use serde::{Deserialize, Serialize};
 
 /// 重力加速度 (m/s²)

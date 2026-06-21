@@ -20,7 +20,6 @@
 ///   Wind Energy Handbook (2nd ed.). Wiley.
 /// IEC 61400-12-1: Power performance measurements of electricity
 ///   producing wind turbines.
-
 use serde::{Deserialize, Serialize};
 
 /// 标准空气密度 (海平面, 15°C, 1 atm) kg/m³
