@@ -1,0 +1,12 @@
+[package]
+name = "geo-plugin-remote-sensing"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "遥感影像处理插件 — 辐射校正、大气校正、InSAR 形变监测"
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
+serde.workspace = true
+serde_json.workspace = true

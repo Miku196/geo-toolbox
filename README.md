@@ -69,7 +69,9 @@
 
 核心设计原则：依赖方向严格单向、WASM 数据不出网、Rust 做胶水 Python 做重活、每 crate 独立可测、Feature flags 控制依赖。
 
-> 💡 **2026-06 v0.8 更新**：Phase 3.3 Plugin trait 统一完成 — 全部 10 插件实现 `PluginConfig` trait + `Default` 配置 + `type Config` 关联类型；DuckDB/STAC 适配器实现 Plugin trait 默认方法；tools.rs 统一使用 `Default::default()` 替代 `make_default_config()`；geo-registry 增加 `tokio-runtime` feature 支持。详见 [ROADMAP](ROADMAP.md)。
+> 💡 **2026-06 v0.10 更新**：遥感插件 `geo-plugin-remote-sensing` 全新发布 — 辐射校正 (TOA 辐射亮度/反射率、DOS 大气校正、云检测) + InSAR (相干性、Goldstein 相位解缠、LOS 形变估计) — 6 个 MCP 工具、15 个测试。MUSLE 事件版土壤流失 + Jensen/Frandsen 尾流效应 MCP 工具注册。DSSAT 适配器测试修复。详见 [ROADMAP](ROADMAP.md)。
+>
+> 💡 **2026-06 v0.9 更新**：插件深度拓展全面完成 — 新增 2 个插件 (climate 7 模块, geomorph 2 模块)+ 5 个旧插件新模块 (groundwater, ocean, wave_runup, soil, unit_hydrograph, transform, dssat) ~6500 行
 >
 > 💡 **2026-06 v0.7 更新**：Phase 2 插件深度化补全 — 排放因子数据库 (geo-emission-factors crate, IPCC Tier 1 + 中国省级参数) + 碳插件 EF 集成 + 风暴潮 (Holland 风场, 2D 网格+1D 剖面) + 蓝碳 (红树林/盐沼/海草, IPCC Tier 1) + 地热 (Fourier 热传导, Carnot 效率, LCOE) + 输电走廊 (Dijkstra LCP 8-neighbor) + 高斯烟羽 (Gaussian Plume) + CCER 报告 + 随机森林 LULC + 降雨 ID 阈值 + 流域提取。详见 [ROADMAP](ROADMAP.md)。
 >
@@ -89,7 +91,7 @@
 
 ---
 
-## 🤖 MCP 工具一览（55 tools）
+## 🤖 MCP 工具一览（70+ tools）
 
 geo-toolbox 内置 MCP Server + HTTP API + WMS，所有工具可直接被 AI Agent 调用。全功能编译（`cargo build --release`）后可用以下全部工具：
 
@@ -136,8 +138,21 @@ geo-toolbox 内置 MCP Server + HTTP API + WMS，所有工具可直接被 AI Age
 | `ecology_ndvi_change` | 两期NDVI变化检测 |
 | `ecology_rusle` | RUSLE 土壤流失方程 (A=RKLSCP) | 🆕 |
 | `ecology_rusle_assessment` | RUSLE 完整评估+侵蚀分级 | 🆕 |
+| `ecology_musle_single` | MUSLE 单次暴雨土壤流失 | 🆕 |
+| `ecology_musle_assessment` | MUSLE 多事件评估 | 🆕 |
+| `ecology_musle_annual` | MUSLE 年均土壤流失 | 🆕 |
 | `energy_solar_suitability` | 光伏选址适宜性 |
 | `energy_wind` | Weibull 风能密度评估 | 🆕 |
+| `energy_turbine_power` | 风机功率曲线 (V80/V164/G114) | 🆕 |
+| `energy_turbine_aep` | 年发电量 (Weibull 分布) | 🆕 |
+| `energy_jensen_wake` | Jensen 单机尾流衰减 | 🆕 |
+| `energy_farm_wake_efficiency` | 风电场尾流效率 | 🆕 |
+| `energy_wind_shear` | 风速廓线外推 (log/power law) | 🆕 |
+| `energy_geothermal` | 地热发电潜力 (热流密度) | 🆕 |
+| `energy_geothermal_gradient` | 地热 (温度梯度+导热率) | 🆕 |
+| `energy_transmission_corridor` | 最小成本输电走廊 | 🆕 |
+| `energy_pvwatts_annual` | PVWatts v5 年发电量 | 🆕 |
+| `energy_pvwatts_cell_temp` | Sandia 电池温度模型 | 🆕 |
 | `forestry_carbon_stock` | 林业碳储量变化 |
 | `forestry_site_classify` | 立地等级划分（树高生长曲线） |
 | `forestry_potential_productivity` | 潜在生产力（黄金分割优化SDI） |
@@ -159,6 +174,16 @@ geo-toolbox 内置 MCP Server + HTTP API + WMS，所有工具可直接被 AI Age
 | `agri_yield` | 作物估产 |
 | `agri_soil` | 土壤评级 |
 | `urban_far` | 容积率计算 |
+
+### 遥感影像处理
+| 工具 | 说明 |
+|------|------|
+| `remote_toa_radiance` | TOA 辐射亮度: DN×gain+bias | 🆕 |
+| `remote_full_pipeline` | 完整校正管线: DN→地表反射率 | 🆕 |
+| `remote_cloud_mask` | 云检测 (NDVI+亮度阈值) | 🆕 |
+| `remote_insar_coherence` | InSAR 相干性计算 | 🆕 |
+| `remote_insar_full` | 完整 InSAR 管线: 形变监测 | 🆕 |
+| `remote_insar_displacement_class` | 形变等级分类 | 🆕 |
 
 ### 数据接入
 | 工具 | 说明 | 需要 |
@@ -307,7 +332,7 @@ cargo test --workspace
 | `geo-ogc` | OGC 服务 | `WmsService`, `WfsService`, `WpsService` |
 | `geo-registry` | 插件注册 | `PluginRegistry`, `ToolDef`, `register_plugin!` 宏, `generate_mcp_tools()` |
 
-### Layer 2: Plugins — 专业领域插件（12 crates）
+### Layer 2: Plugins — 专业领域插件（13 crates）
 
 每个插件 = `rules.toml`（业务参数）+ 报告模板 + 组装 Core 调用的薄层。
 **插件间禁止互相依赖**，如需共享功能则下沉到 Core。
@@ -324,6 +349,7 @@ cargo test --workspace
 | `geo-plugin-energy` | 光伏/风电选址 | DEM + 辐射/风速 | 适宜性等级 |
 | `geo-plugin-forestry` | 林业碳汇计量 | 多期NDVI + 样地 | 碳储量 + CCER报告 |
 | `geo-plugin-coastal` | 海岸带变化 | 多期NDVI + DEM | 侵蚀速率 + 淹没 |
+| `geo-plugin-remote-sensing` | 遥感辐射校正+InSAR | DN 波段阵列 | 地表反射率/LOS形变 |
 
 ### Layer 3: Adapters — 外部适配器（9 crates）
 
@@ -1312,7 +1338,7 @@ geo-toolbox/
 │   ├── geo-parquet/         # GeoParquet 读写
 │   ├── geo-ogc/             # WMS/WFS/WPS
 │   └── geo-registry/        # 插件注册中心
-├── plugins/                 # Layer 2: 专业插件（7 crates）
+├── plugins/                 # Layer 2: 专业插件（13 crates）
 │   ├── geo-plugin-energy/   # 新能源选址
 │   ├── geo-plugin-forestry/ # 林业碳汇
 │   ├── geo-plugin-coastal/  # 海岸带

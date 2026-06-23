@@ -53,7 +53,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             let loss = crate::rusle::compute_soil_loss(&r, &k, &ls, &c, &p, cells);
             Ok(serde_json::json!({"soil_loss_grid": loss, "mean_loss": if cells > 0 { loss.iter().sum::<f64>() / cells as f64 } else { 0.0 }}))
         },
-        sync "ecology_rf_lulc" => "Random Forest LULC classification (NDVI, NDWI, NDBI → land cover class)" ; serde_json::json!({"type":"object","properties":{"features":{"type":"array","items":{"type":"array","items":{"type":"number"}}},"num_trees":{"type":"integer","default":10},"max_depth":{"type":"integer","default":5}},"required":["features"]}) => |args| -> ToolResult {
+        sync "ecology_rf_lulc" => "Random Forest LULC classification" ; serde_json::json!({"type":"object","properties":{"features":{"type":"array","items":{"type":"array","items":{"type":"number"}}},"num_trees":{"type":"integer","default":10},"max_depth":{"type":"integer","default":5}},"required":["features"]}) => |args| -> ToolResult {
             let num_trees = args["num_trees"].as_u64().unwrap_or(10) as usize;
             let max_depth = args["max_depth"].as_u64().unwrap_or(5) as usize;
             let features: Vec<Vec<f64>> = args["features"]
@@ -78,6 +78,45 @@ pub fn register_tools(registry: &mut PluginRegistry) {
                 })
             }).collect();
             Ok(serde_json::json!({"predictions": predictions}))
+        },
+        sync "ecology_musle_single" => "MUSLE single storm soil loss (modified USLE for event sediment yield)" ; serde_json::json!({"type":"object","properties":{"runoff_m3":{"type":"number","description":"Storm runoff volume (m³)"},"peak_flow_m3s":{"type":"number","description":"Peak flow rate (m³/s)"},"k_factor":{"type":"number","description":"Soil erodibility factor"},"ls_factor":{"type":"number","default":1.0},"c_factor":{"type":"number","default":0.3},"p_factor":{"type":"number","default":1.0},"area_ha":{"type":"number","description":"Watershed area (ha)"}},"required":["runoff_m3","peak_flow_m3s","k_factor","area_ha"]}) => |args| -> ToolResult {
+            let runoff = args["runoff_m3"].as_f64().unwrap_or(0.0);
+            let peak = args["peak_flow_m3s"].as_f64().unwrap_or(0.0);
+            let k = args["k_factor"].as_f64().unwrap_or(0.0);
+            let ls = args["ls_factor"].as_f64().unwrap_or(1.0);
+            let c = args["c_factor"].as_f64().unwrap_or(0.3);
+            let p = args["p_factor"].as_f64().unwrap_or(1.0);
+            let area = args["area_ha"].as_f64().unwrap_or(1.0);
+            let result = crate::musle::assess_musle(runoff, peak, k, ls, c, p, area);
+            serde_json::to_value(result).map_err(geo_core::errors::GeoError::Serde)
+        },
+        sync "ecology_musle_assessment" => "MUSLE multi-event assessment: compute soil loss for each storm" ; serde_json::json!({"type":"object","properties":{"events":{"type":"array","items":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":2,"description":"[[runoff_m3, peak_flow_m3s], ...]"}},"k_factor":{"type":"number"},"ls_factor":{"type":"number","default":1.0},"c_factor":{"type":"number","default":0.3},"p_factor":{"type":"number","default":1.0},"area_ha":{"type":"number"}},"required":["events","k_factor","area_ha"]}) => |args| -> ToolResult {
+            let k = args["k_factor"].as_f64().unwrap_or(0.0);
+            let ls = args["ls_factor"].as_f64().unwrap_or(1.0);
+            let c = args["c_factor"].as_f64().unwrap_or(0.3);
+            let p = args["p_factor"].as_f64().unwrap_or(1.0);
+            let area = args["area_ha"].as_f64().unwrap_or(1.0);
+            let events: Vec<(f64, f64)> = args["events"]
+                .as_array().unwrap_or(&vec![]).iter()
+                .filter_map(|v| v.as_array().and_then(|a| {
+                    Some((a.get(0)?.as_f64()?, a.get(1)?.as_f64()?))
+                })).collect();
+            let results = crate::musle::musle_event_assessment(&events, k, ls, c, p, area);
+            Ok(serde_json::json!({"events": results}))
+        },
+        sync "ecology_musle_annual" => "MUSLE annual average soil loss from event series" ; serde_json::json!({"type":"object","properties":{"events":{"type":"array","items":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":2}},"k_factor":{"type":"number"},"ls_factor":{"type":"number","default":1.0},"c_factor":{"type":"number","default":0.3},"p_factor":{"type":"number","default":1.0},"area_ha":{"type":"number"}},"required":["events","k_factor","area_ha"]}) => |args| -> ToolResult {
+            let k = args["k_factor"].as_f64().unwrap_or(0.0);
+            let ls = args["ls_factor"].as_f64().unwrap_or(1.0);
+            let c = args["c_factor"].as_f64().unwrap_or(0.3);
+            let p = args["p_factor"].as_f64().unwrap_or(1.0);
+            let area = args["area_ha"].as_f64().unwrap_or(1.0);
+            let events: Vec<(f64, f64)> = args["events"]
+                .as_array().unwrap_or(&vec![]).iter()
+                .filter_map(|v| v.as_array().and_then(|a| {
+                    Some((a.get(0)?.as_f64()?, a.get(1)?.as_f64()?))
+                })).collect();
+            let avg = crate::musle::musle_annual_average(&events, k, ls, c, p, area);
+            Ok(serde_json::json!({"annual_avg_soil_loss_t": avg}))
         },
     ]);
 }

@@ -1,0 +1,19 @@
+[plugin]
+name = "remote-sensing"
+version = "0.1.0"
+description = "遥感影像辐射校正、大气校正、InSAR 形变监测"
+
+[radiometric]
+toa_radiance_gain = [0.1, 0.08, 0.06]
+toa_radiance_bias = [-0.5, -0.3, -0.2]
+sun_elevation_deg = 50.0
+sun_earth_distance_au = 1.0
+dark_object_pct = 0.01
+haze_threshold = 0.1
+cloud_ndvi_threshold = 0.2
+
+[insar]
+coherence_window = 5
+phase_sigma = 0.3
+wavelength_cm = 5.6
+unwrap_tolerance = 0.5

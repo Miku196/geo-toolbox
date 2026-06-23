@@ -35,6 +35,9 @@
 | `geo-plugin-hydro` | 水文分析 |
 | `geo-plugin-agri` | 农业 |
 | `geo-plugin-coastal` | 海岸带 |
+| `geo-plugin-climate` | 气象气候 |
+| `geo-plugin-geomorph` | 地貌 |
+| `geo-plugin-remote-sensing` | 遥感辐射校正+InSAR |
 
 ### Adapter 层 — 外部系统
 | 模块 | 集成对象 |
@@ -80,6 +83,19 @@
 - **simplify / simplify_line** — 线/多边形简化（Douglas-Peucker）
 - **kernel_density / line_density** — 点/线核密度估计
 - **intersect / union_all / clip / difference / sym_difference** — 布尔运算
+
+### 土壤侵蚀 (Soil Erosion)
+- **RusleAssessment** — RUSLE 年均土壤流失评估结果（A=R·K·LS·C·P）
+- **MusleResult** — MUSLE 单次暴雨土壤流失（A=11.8·(Q·qp)^0.56·K·LS·C·P）
+- **ErosionClass** — 侵蚀等级 (Slight/Moderate/High/Severe/VerySevere)
+- **SdrResult** — SDR 泥沙输移比结果
+- **MusleSeverity** — MUSLE 侵蚀严重程度分级
+
+### 遥感 (Remote Sensing)
+- **RadiometricResult** — 辐射校正结果（TOA 辐射亮度/反射率、地表反射率、云掩膜）
+- **InsarResult** — InSAR 相干性、缠绕/解缠相位、LOS 形变
+- **full_radiometric_pipeline** — DN→TOA→地表反射率→云掩膜完整管线
+- **full_insar_pipeline** — 相干性→相位解缠→LOS 形变完整管线
 
 ### 瓦片 (Tiles)
 - **TileSource** — 瓦片源枚举 (OpenStreetMap / Gaode / TianDiTu)

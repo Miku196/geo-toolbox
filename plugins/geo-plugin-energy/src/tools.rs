@@ -61,5 +61,73 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let mt=args["mounting"].as_str().unwrap_or("open_rack");
         let tc=crate::pvwatts::pvwatts_cell_temperature(g,ta,ws,mt);
         Ok(serde_json::json!({"cell_temperature_c":(tc*100.0).round()/100.0}))
-    }]);
+    },
+        sync "energy_turbine_power" => "Turbine power output at given wind speed with air density" ; serde_json::json!({"type":"object","properties":{"wind_speed_ms":{"type":"number"},"altitude_m":{"type":"number","default":0},"turbine":{"type":"string","default":"V80","enum":["V80","V164","G114"]}},"required":["wind_speed_ms"]}) => |args| -> ToolResult {
+        let ws=args["wind_speed_ms"].as_f64().unwrap_or(0.0);
+        let alt=args["altitude_m"].as_f64().unwrap_or(0.0);
+        let rho=crate::turbine::air_density(alt);
+        let params=match args["turbine"].as_str().unwrap_or("V80") {
+            "V164" => crate::turbine::TurbineParams::vestas_v164(),
+            "G114" => crate::turbine::TurbineParams::gamesa_g114(),
+            _ => crate::turbine::TurbineParams::vestas_v80(),
+        };
+        let pc=crate::turbine::power_curve(&params,ws,rho);
+        Ok(serde_json::json!({"actual_power_w":(pc.actual_power_w*100.0).round()/100.0,"betz_power_w":(pc.betz_power_w*100.0).round()/100.0,"capacity_factor":(pc.capacity_factor*10000.0).round()/100.0,"rated_power_kw":params.rated_power_w/1000.0,"cut_in_ms":params.cut_in_v,"cut_out_ms":params.cut_out_v,"air_density":(rho*10000.0).round()/10000.0,"swept_area_m2":pc.swept_area_m2}))
+    },
+        sync "energy_turbine_aep" => "Annual energy from Weibull distribution (k=shape, c=scale)" ; serde_json::json!({"type":"object","properties":{"weibull_k":{"type":"number","default":2.0},"weibull_c":{"type":"number","default":8.0},"altitude_m":{"type":"number","default":0},"turbine":{"type":"string","default":"V80"},"hours_per_year":{"type":"number","default":8760}},"required":["weibull_k","weibull_c"]}) => |args| -> ToolResult {
+        let wk=args["weibull_k"].as_f64().unwrap_or(2.0);
+        let wc=args["weibull_c"].as_f64().unwrap_or(8.0);
+        let alt=args["altitude_m"].as_f64().unwrap_or(0.0);
+        let hpy=args["hours_per_year"].as_f64().unwrap_or(8760.0);
+        let params=match args["turbine"].as_str().unwrap_or("V80") {
+            "V164" => crate::turbine::TurbineParams::vestas_v164(),
+            "G114" => crate::turbine::TurbineParams::gamesa_g114(),
+            _ => crate::turbine::TurbineParams::vestas_v80(),
+        };
+        let rho=crate::turbine::air_density(alt);
+        let kwh=crate::turbine::annual_energy_production(&params,rho,wk,wc,hpy);
+        Ok(serde_json::json!({"aep_kwh":(kwh*100.0).round()/100.0,"aep_mwh":(kwh/1000.0*100.0).round()/100.0}))
+    },
+        sync "energy_jensen_wake" => "Jensen single wake model: downwind wind speed deficit" ; serde_json::json!({"type":"object","properties":{"free_stream_wind_ms":{"type":"number"},"ct":{"type":"number","default":0.8},"rotor_radius_m":{"type":"number","default":40},"distance_m":{"type":"number","description":"Downwind distance from turbine"},"wake_decay_k":{"type":"number","default":0.075}},"required":["free_stream_wind_ms","distance_m"]}) => |args| -> ToolResult {
+        let v0=args["free_stream_wind_ms"].as_f64().unwrap_or(0.0);
+        let ct=args["ct"].as_f64().unwrap_or(0.8);
+        let rr=args["rotor_radius_m"].as_f64().unwrap_or(40.0);
+        let d=args["distance_m"].as_f64().unwrap_or(500.0);
+        let k=args["wake_decay_k"].as_f64().unwrap_or(0.075);
+        let v=crate::wake::jensen_wake(v0,ct,rr,d,k);
+        let r=crate::wake::wake_radius(rr,d,k);
+        let deficit=if v0>0.0{(v0-v)/v0*100.0}else{0.0};
+        Ok(serde_json::json!({"downstream_wind_ms":(v*100.0).round()/100.0,"wake_radius_m":(r*100.0).round()/100.0,"speed_deficit_pct":(deficit*100.0).round()/100.0}))
+    },
+        sync "energy_farm_wake_efficiency" => "Farm-level wake efficiency for wind farm layout" ; serde_json::json!({"type":"object","properties":{"turbine_positions":{"type":"array","items":{"type":"array","items":{"type":"number"},"minItems":4,"maxItems":4,"description":"[[x_m,y_m,ct,radius_m],...]"}},"wind_speed_ms":{"type":"number","default":10},"wind_direction_deg":{"type":"number","default":270},"wake_decay_k":{"type":"number","default":0.075},"rho":{"type":"number","default":1.225},"cp":{"type":"number","default":0.45},"spacing_m":{"type":"number","default":2000}},"required":["turbine_positions"]}) => |args| -> ToolResult {
+        let v0=args["wind_speed_ms"].as_f64().unwrap_or(10.0);
+        let wdir=args["wind_direction_deg"].as_f64().unwrap_or(270.0);
+        let k=args["wake_decay_k"].as_f64().unwrap_or(0.075);
+        let rho=args["rho"].as_f64().unwrap_or(1.225);
+        let cp=args["cp"].as_f64().unwrap_or(0.45);
+        let sp=args["spacing_m"].as_f64().unwrap_or(2000.0);
+        let turbines:Vec<(f64,f64,f64,f64)>=args["turbine_positions"]
+            .as_array().unwrap_or(&vec![]).iter()
+            .filter_map(|v|{let a=v.as_array()?;Some((a.get(0)?.as_f64()?,a.get(1)?.as_f64()?,a.get(2)?.as_f64()?,a.get(3)?.as_f64()?))})
+            .collect();
+        if turbines.is_empty(){return Ok(serde_json::json!({"error":"no turbines"}))}
+        let (eff,powers)=crate::wake::farm_wake_efficiency(&turbines,v0,wdir,k,&crate::wake::WakeSummation::Linear,rho,cp,sp);
+        let powers_json:Vec<serde_json::Value>=powers.iter().map(|p|serde_json::json!((p*100.0).round()/100.0)).collect();
+        Ok(serde_json::json!({"farm_efficiency":(eff*10000.0).round()/100.0,"total_power_w":(powers.iter().sum::<f64>()*100.0).round()/100.0,"turbine_powers":powers_json}))
+    },
+        sync "energy_wind_shear" => "Wind shear: extrapolate wind speed to hub height" ; serde_json::json!({"type":"object","properties":{"wind_speed_ref_ms":{"type":"number"},"height_ref_m":{"type":"number","default":10},"height_hub_m":{"type":"number","default":80},"method":{"type":"string","default":"log","enum":["log","power"]},"roughness_length_m":{"type":"number","default":0.03},"shear_exponent":{"type":"number","default":0.14}},"required":["wind_speed_ref_ms"]}) => |args| -> ToolResult {
+        let v=args["wind_speed_ref_ms"].as_f64().unwrap_or(0.0);
+        let zr=args["height_ref_m"].as_f64().unwrap_or(10.0);
+        let zh=args["height_hub_m"].as_f64().unwrap_or(80.0);
+        let method=args["method"].as_str().unwrap_or("log");
+        let result=if method=="power"{
+            let a=args["shear_exponent"].as_f64().unwrap_or(0.14);
+            crate::turbine::wind_shear_power(v,zr,zh,a)
+        }else{
+            let z0=args["roughness_length_m"].as_f64().unwrap_or(0.03);
+            crate::turbine::wind_shear_log(v,zr,zh,z0)
+        };
+        Ok(serde_json::json!({"wind_speed_hub_ms":(result*100.0).round()/100.0,"method":method}))
+    },
+    ]);
 }

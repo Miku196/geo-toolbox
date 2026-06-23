@@ -40,6 +40,8 @@ members = [
     "plugins/geo-plugin-coastal",
     "plugins/geo-plugin-climate",
     "plugins/geo-plugin-geomorph",
+    "plugins/geo-plugin-remote-sensing",
+
 
     # ── Round 3: Registry ──
     "core/geo-registry",

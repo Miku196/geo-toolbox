@@ -2278,6 +2278,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "geo-plugin-remote-sensing"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "geo-registry",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "geo-plugin-survey"
 version = "0.1.0"
 dependencies = [

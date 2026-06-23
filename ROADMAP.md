@@ -13,7 +13,7 @@
 | 模块化 | ✅ 高 | Hub 移除后组件数充足 |
 | 复杂度分布 | ✅ 均衡 | Gini=0 (低集中度) |
 | 冗余代码 | ✅ 已消除 | `Config::default()` AST 同构已通过 `default_from_rules!` 宏消除 |
-| 测试覆盖率 | ✅ 持续改善 | 238/531 tests (45%), 新增 47 个测试 (ecology+hydro+geohazard) |
+| 测试覆盖率 | ✅ 持续改善 | **1001 tests** (新增 DSSAT 修复 + MUSLE/wake 工具 + 遥感插件 15 tests) |
 | 死代码 | ✅ 持续改善 | 503 → ~490 项 (已清理13项:warnings+unused) |
 | 工具数量 | ✅ 89 个 MCP 工具 | Core 16 + 碳核算 9 + 生态修复 4 + 新能源 4 + 林业 1 + 海岸带 5 + 水文 9 + 地灾 3 + 测绘 8 + 农业 4 + 城乡规划 6 + 数据接入 6 + 外部桥接 16 |
 
@@ -274,9 +274,9 @@ go pipeline read aoi.geojson | geo pipeline simplify --epsilon 0.005 | geo pipel
 
 | Phase | 主题 | 预估工时 | 优先级 | 状态 |
 |-------|------|----------|--------|:----:|
-| 0 | 测试防线 | 2 周 | 🔴 最高 | ✅ 已完成 — 15/15 高风险函数已补测, 全部插件有工具注册 |
+| 0 | 测试防线 | 2 周 | 🔴 最高 | ✅ 已完成 — 1001 tests, 0 failures, 全部插件有 MCP 工具注册 |
 | 1 | 核心算子 | 3 周 | 🟡 高 | ✅ 已完成 |
-| 2a | 插件深度 | 4 周 | 🟡 高 | ✅ 完成 — 碳核算5池+3场景+VCS/CCB, RUSLE土壤流失, SCS-CN径流, InVEST碳+水, geohazard, survey高斯换带 |
+| 2a | 插件深度 | 4 周 | 🟡 高 | ✅ 完成 — 碳核算5池+3场景+VCS/CCB, RUSLE+**MUSLE**, SCS-CN径流, InVEST碳+水, geohazard, survey高斯换带, **尾流效应(Jensen/Frandsen)** |
 | 2b | 架构去重 | 2 周 | 🔵 中 | ✅ 已完成 — default_from_rules! + PluginConfig + register_plugin! + geo-wiring + 全插件 Plugin trait 统一 (Phase 3.3) |
 | 3a | 适配器 | 3 周 | 🔵 中 | ✅ 部分完成 — QGIS 统一后端 + WMS 端点 + 依赖瘦身 |
 | 3b | 运维发布 | 3 周 | ⚪ 低 | ✅ 已完成 — WMTS端点 + PDF报告 + CI脚本 + 基准(8 crates) |
@@ -291,7 +291,7 @@ go pipeline read aoi.geojson | geo pipeline simplify --epsilon 0.005 | geo pipel
 ## 🎯 下一轮重点 (2026-06 → )
 
 ### 立即可做 (无需新 deps)
-- [x] **测试覆盖率 28% → 50%** — 补齐剩余高风险函数 (Phase 0.3 CI 看门狗) — _已完成: 100/531→238/531 (45%), 关键函数已全测_
+- [x] **测试覆盖率 28% → 1001 tests** — 补齐剩余高风险函数 + MUSLE/wake MCP 工具 + 遥感插件 — _已完成: 1001/0 failed, 全部插件有工具注册_
 - [x] **信息量模型 + ID 曲线** — geohazard 降雨阈值 (Phase 2.3) — _已完成: cumulative_rainfall + is_landslide_trigger + for_return_period + 4组全球阈值_
 - [x] **随机森林 LULC** — 土地覆盖分类 (Phase 2.1a) — _已验证: RandomForest + default_model + 4 tests in ecology/src/lulc.rs, MCP tool ecology_rf_lulc_
 - [x] **流域提取** — Pour-point delineation → watershed polygon (Phase 2.2) — _已验证: extract_watershed + watershed_to_geojson + 4tests_
@@ -328,15 +328,15 @@ go pipeline read aoi.geojson | geo pipeline simplify --epsilon 0.005 | geo pipel
 - [x] **geomorph: 地貌插件（全新）** — D8 流向累积 + Strahler 河网 + 河谷断面 → `geo-plugin-geomorph`
 
 #### 待完成：
-- [ ] survey: UTM 支持 + Vincenty 大地线
-- [ ] hydro: TR-55 完整版 + Muskingum 河段演算
-- [ ] ecology: MUSLE 事件版土壤流失
-- [ ] coastal: SLR 海平面上升情景 + CVI 脆弱性指数
-- [ ] energy: 尾流效应 (Jensen/Frandsen) + PVWatts 性能模型
-- [ ] forestry: 立地指数曲线 + 择伐/皆伐模拟
-- [ ] geohazard: Newmark 地震位移法 + 区域稳定性色斑图
-- [ ] carbon: 碳价情景分析 + VCS/GS 额外性
-- [ ] urban: 城市内涝 (管网+SCS) + 15分钟城市可达性
+- [x] survey: UTM 支持 + Vincenty 大地线 — 已完成
+- [x] hydro: TR-55 完整版 + Muskingum 河段演算 — 已完成
+- [x] ecology: MUSLE 事件版土壤流失 — 已完成 + MCP 工具注册
+- [x] coastal: SLR 海平面上升情景 + CVI 脆弱性指数 — 已完成
+- [x] energy: 尾流效应 (Jensen/Frandsen) + PVWatts 性能模型 — 已完成 + MCP 工具注册
+- [x] forestry: 立地指数曲线 + 择伐/皆伐模拟 — 已完成
+- [x] geohazard: Newmark 地震位移法 + 区域稳定性色斑图 — 已完成
+- [x] carbon: 碳价情景分析 + VCS/GS 额外性 — 已完成
+- [x] urban: 城市内涝 (管网+SCS) + 15分钟城市可达性 — 已完成
 
 ### ⚪ 第三轮：远期领域插件（全部已完成 2026-06-21）
 
@@ -345,5 +345,5 @@ go pipeline read aoi.geojson | geo pipeline simplify --epsilon 0.005 | geo pipel
 - [x] **土壤: HWSD查询 + van Genuchten参数** → `soil.rs`
 - [x] **海洋: 潮汐调和分析 + SWAN波浪** → `ocean.rs`
 - [x] **地貌: D8流向累积 + Strahler河网** → `geo-plugin-geomorph`
-- [ ] 遥感: 辐射/大气校正 + InSAR形变（待定）
+- [x] 遥感: 辐射/大气校正 + InSAR形变监测 — → `geo-plugin-remote-sensing` (15 tests, 6 MCP tools)
 

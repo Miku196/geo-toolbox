@@ -1,9 +1,9 @@
 # Progress
 
 ## Status
-✅ ALL 14 FEATURES COMPLETE
+✅ ALL 15 FEATURES COMPLETE (1001 tests, 0 failures)
 
-## 14 Features Across 8 Plugins
+## 15 Features Across 9 Plugins
 
 ### geo-plugin-survey ✅ (33 tests)
 - [x] utm.rs — UTM zone calculation, lat/lon ↔ UTM conversion
@@ -34,9 +34,19 @@
 - [x] cvi.rs — Coastal Vulnerability Index (Gornitz 1991)
 - MCP tools: `coastal_slr_bathtub`, `coastal_slr_inundation`, `coastal_cvi`
 
-### geo-plugin-energy ✅ (43 tests)
-- [x] pvwatts.rs — PVWatts v5 annual energy + Sandia cell temperature
-- MCP tools: `energy_pvwatts_annual`, `energy_pvwatts_cell_temp`
+### geo-plugin-ecology ✅ (67 tests)
+- [x] musle.rs — MUSLE 事件版土壤流失 (assess_musle, event_assessment, annual_average)
+- MCP tools: `ecology_musle_single`, `ecology_musle_assessment`, `ecology_musle_annual`
+
+### geo-plugin-energy ✅ (48 tests)
+- [x] wake.rs — Jensen/Frandsen 尾流效应 (cumulative_wake, farm_wake_efficiency, farm_aep_with_wake)
+- [x] turbine.rs — 风力机功率曲线 (V80/V164/G114 presets, AEP, wind shear)
+- MCP tools: `energy_turbine_power`, `energy_turbine_aep`, `energy_jensen_wake`, `energy_farm_wake_efficiency`, `energy_wind_shear`
+
+### geo-plugin-remote-sensing ✅ (15 tests, NEW)
+- [x] radiometric.rs — TOA 辐射亮度/反射率、DOS 大气校正、云检测
+- [x] insar.rs — 相干性计算、相位解缠 (Goldstein)、LOS 形变估计
+- MCP tools: `remote_toa_radiance`, `remote_full_pipeline`, `remote_cloud_mask`, `remote_insar_coherence`, `remote_insar_full`, `remote_insar_displacement_class`
 
 ### geo-plugin-forestry ✅ (32 tests)
 - [x] site_index.rs — Richards/Logistic site index curves for 6 species

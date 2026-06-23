@@ -3,6 +3,8 @@
 > 从零到一：安装、开发、部署全流程指南。
 > > 最后更新：2026-06-21
 
+> 💡 **2026-06 v0.10 更新**：遥感插件 `geo-plugin-remote-sensing` 全新发布 — 辐射校正 (TOA 辐射亮度/反射率、DOS 大气校正、云检测) + InSAR (相干性、Goldstein 相位解缠、LOS 形变估计)。MUSLE 事件版土壤流失 + Jensen/Frandsen 尾流效应 MCP 工具注册。
+>
 > 💡 **2026-06 v0.9 更新**：插件深度拓展全面完成 — 新增 2 个插件（climate 气象气候 7 模块、geomorph 地貌 2 模块）+ 5 个旧插件新增模块（groundwater 地下水、ocean 海洋物理、wave_runup 波浪爬高、soil 土壤、unit_hydrograph 单位线、transform 坐标转换、dssat 作物模型）。总计 ~6500 行新代码。详见 [ROADMAP](ROADMAP.md)。
 >
 > 💡 **2026-06 v0.8 更新**：Phase 3.3 Plugin trait 统一 — 全部插件实现 `PluginConfig` + `Default` 配置 + `type Config` 关联类型；DuckDB/STAC 适配器实现 Plugin trait 默认方法。
@@ -49,6 +51,8 @@
   - [4.23 土壤模块：USDA质地 + van Genuchten + HWSD](#423-土壤模块usda质地--van-genuchten--hwsd)
   - [4.24 坐标转换：四参数 + 七参数 + 仿射](#424-坐标转换四参数--七参数--仿射)
   - [4.25 DSSAT作物模型适配](#425-dssat作物模型适配)
+  - [4.26 MUSLE 事件版土壤流失](#426-musle-事件版土壤流失)
+  - [4.27 遥感辐射校正与InSAR形变](#427-遥感辐射校正与insar形变)
 - [5. 插件开发](#5-插件开发)
   - [5.1 创建插件骨架](#51-创建插件骨架)
   - [5.2 编写配置](#52-编写配置)
@@ -240,7 +244,7 @@ cargo build --release --features mqtt
 
 ```bash
 cargo test --workspace
-# 预期：167 个测试全部通过
+# 预期：1001 个测试全部通过
 ```
 
 ### Benchmark 基准测试
@@ -285,7 +289,7 @@ geo-toolbox/
 │   ├── geo-ogc/                   # WMS/WFS/WPS 标准
 │   └── geo-registry/              # 插件注册调度中心 + register_plugin! 宏
 │
-├── plugins/                       # 专业领域插件（10 crates）
+├── plugins/                       # 专业领域插件（13 crates）
 │   ├── geo-plugin-carbon/         # 碳核算插件
 │   ├── geo-plugin-ecology/        # 生态修复评估（NDVI + 碳汇 + 报告）
 │   ├── geo-plugin-survey/         # 测绘
@@ -296,6 +300,7 @@ geo-toolbox/
 │   ├── geo-plugin-energy/         # 新能源选址
 │   ├── geo-plugin-forestry/       # 林业碳汇
 │   └── geo-plugin-coastal/        # 海岸带
+│   ├── geo-plugin-remote-sensing/ # 遥感辐射校正+InSAR
 │
 ├── adapters/                      # 外部适配器（9 crates）
 │   ├── geo-adapter-duckdb/        # SQLite 嵌入式
@@ -1226,6 +1231,87 @@ let output = write_wth(&[wth], &WthHeader::default());
 
 ---
 
+
+## 4.26 MUSLE 事件版土壤流失
+
+MUSLE (Modified Universal Soil Loss Equation) 是 RUSLE 的**单次暴雨版**，用径流能量替代降雨侵蚀力因子 R：
+
+`A = 11.8 x (Q x qp)^0.56 x K x LS x C x P`
+
+| 参数 | 说明 | 来源 |
+|------|------|------|
+| Q | 暴雨径流总量 (m3) | SCS-CN 产流 |
+| qp | 洪峰流量 (m3/s) | 单位线或经验公式 |
+| K/LS/C/P | 与 RUSLE 相同因子 | geo-raster/soil 模块 |
+
+### 示例
+
+```rust
+use geo_plugin_ecology::musle::{assess_musle, musle_event_assessment, musle_annual_average};
+
+// 单次暴雨评估
+let result = assess_musle(10000.0, 5.0, 0.28, 2.5, 0.25, 0.6, 10.0);
+println!("土壤流失: {:.1} t", result.soil_loss_t);
+
+// 多事件评估
+let events = vec![(3000.0, 1.5), (8000.0, 4.0), (2000.0, 1.0)];
+let results = musle_event_assessment(&events, 0.25, 2.0, 0.3, 0.5, 5.0);
+
+// 年均土壤流失
+let avg = musle_annual_average(&events, 0.25, 2.0, 0.3, 0.5, 5.0);
+```
+
+### MCP 工具
+
+| 工具 | 输入 | 输出 |
+|------|------|------|
+| ecology_musle_single | runoff_m3, peak_flow_m3s, k_factor, area_ha | MusleResult |
+| ecology_musle_assessment | events[][runoff,peak], k, area_ha | event results[] |
+| ecology_musle_annual | events[][runoff,peak], k, area_ha | annual avg t |
+
+---
+
+## 4.27 遥感辐射校正与InSAR形变
+
+geo-plugin-remote-sensing 提供 DN 到地表反射率全管线 + InSAR 形变监测。
+
+### 辐射校正管线
+
+DN -> TOA 辐射亮度 (L = gain x DN + bias) -> TOA 反射率 -> DOS 大气校正 -> 云掩膜
+
+### 示例
+
+```rust
+use geo_plugin_remote_sensing::radiometric::full_radiometric_pipeline;
+
+let dn = vec![
+    vec![80.0; 100],
+    vec![50.0; 100],
+    vec![200.0; 100],
+];
+let result = full_radiometric_pipeline(
+    &dn, &[0.1, 0.05, 0.04], &[-0.5, -0.1, 0.0],
+    50.0, 1.0, 0.01, 0.2, 1, 2,
+);
+println!("云像素: {}/{}", result.cloud_mask.iter().filter(|&&c|c).count(), result.cloud_mask.len());
+```
+
+### InSAR 形变监测管线
+
+主从 SLC 影像 -> 相干性计算 -> 缠绕相位 -> Goldstein 解缠 -> LOS 形变
+
+### MCP 工具
+
+| 工具 | 说明 |
+|------|------|
+| remote_toa_radiance | TOA 辐射亮度: DN x gain + bias |
+| remote_full_pipeline | 完整校正管线: DN -> 地表反射率 + 云掩膜 |
+| remote_cloud_mask | 云检测 (NDVI + 亮度阈值) |
+| remote_insar_coherence | 主从影像相干性 |
+| remote_insar_full | 完整 InSAR: 相干性 -> 解缠 -> 形变 |
+| remote_insar_displacement_class | 形变等级分类 |
+
+---
 
 以开发一个"矿山风险评估插件"为例，走完整流程。
 
