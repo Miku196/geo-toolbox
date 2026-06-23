@@ -1,4 +1,4 @@
-# geo-toolbox 三层架构改造开发流程
+﻿# geo-toolbox 三层架构改造开发流程
 
 > **目标**：将 13 个平铺 crate 改造为 Core（核心引擎）→ Plugin（专业插件）→ Adapter（外部适配器）三层架构。
 >
@@ -1810,7 +1810,7 @@ geo-adapter-stac   ──→ geo-plugin-energy ──→ geo-tile     ──→ 
 | 拓展 | Leverage | 说明 |
 |------|----------|------|
 | **SDR（泥沙输移比）** | 🔴 高 | 当前A=RKLSCP算到地块边缘，加SDR→入河泥沙量，leverage极高 |
-| **MUSLE（事件版土壤流失）** | 🟡 中 | 当前年均RUSLE，加MUSLE=降水事件×径流系数→单场暴雨侵蚀 |
+| **MUSLE（事件版土壤流失）** | ✅ 已完成 | ecology_musle_single/assessment/annual MCP tools |
 | **WEQ/RWEQ风蚀** | 🟡 中 | 风蚀模型，和水蚀互补。椭圆核心，接口类似RUSLE |
 
 ### 4. coastal（海岸）— ✅ 刚修正
@@ -1830,8 +1830,8 @@ geo-adapter-stac   ──→ geo-plugin-energy ──→ geo-tile     ──→ 
 
 | 拓展 | Leverage | 说明 |
 |------|----------|------|
-| **尾流效应（风电）** | 🔴 高 | 当前Weibull单点风速，加Jensen/Frandsen尾流模型→风场布局优化，整场年发电量计算 |
-| **PV性能模型** | 🟡 中 | 当前只有辐射，加PVWatts→发电量(kWh)，对光伏选址极有价值 |
+| **尾流效应（风电）** | ✅ 已完成 | jensen_wake + farm_wake_efficiency + turbine_power MCP tools |
+| **PVWatts 性能模型** | ✅ 已完成 | pvwatts_annual + pvwatts_cell_temp MCP tools |
 | **储能选址+风-光-储三位一体** | 🟡 中 | 现有LCP+风电+光伏→储能最优配置，从单能源→多能互补 |
 | **风机噪声传播** | 🟢 低 | plume模块高斯扩散可复用，但需求频率低 |
 
@@ -1863,8 +1863,8 @@ geo-adapter-stac   ──→ geo-plugin-energy ──→ geo-tile     ──→ 
 
 | 拓展 | Leverage | 说明 |
 |------|----------|------|
-| **碳价情景分析** | 🔴 高 | 碳储量×碳价（ETS/CCER）→碳资产估值，从"多少吨"→"多少钱" |
-| **VCS/GS额外性/基线** | 🟡 中 | CCER→国际自愿碳市场，加额外性论证+基线泄漏 |
+| **碳价情景分析** | ✅ 已完成 | carbon_price_scenario + carbon_offset_revenue MCP tools |
+| **VCS/GS额外性/基线** | ✅ 已完成 | carbon_vcs_additionality + gold_standard_sdg MCP tools |
 | **NBS碳汇组合优化** | 🟡 中 | 造林+红树林+草地→碳汇组合+成本效益 |
 | **碳泄漏评估** | 🟢 低 | 项目边界外间接排放，复杂，需求驱动 |
 
@@ -1874,7 +1874,7 @@ geo-adapter-stac   ──→ geo-plugin-energy ──→ geo-tile     ──→ 
 
 | 拓展 | Leverage | 说明 |
 |------|----------|------|
-| **DSSAT/AquaCrop adapter** | 🔴 高 | adapter模式，生成外部模型输入文件，最快出价值 |
+| **DSSAT/AquaCrop adapter** | ✅ 已完成 | geo-adapter-dssat: .WTH/.SOL/.CUL/.FILEX 生成 |
 | **灌溉需水（ET×作物系数）** | 🟡 中 | 和hydro的SCS配合，SPEI/SPI干旱指数 |
 | **NDVI→LAI→产量** | 🟡 中 | NDVI→叶面积指数→光能利用率→估产，和ecology的RUSLE/NDVI函数可复用 |
 
@@ -1884,18 +1884,30 @@ geo-adapter-stac   ──→ geo-plugin-energy ──→ geo-tile     ──→ 
 
 | 拓展 | Leverage | 说明 |
 |------|----------|------|
-| **城市内涝（管网+SCS）** | 🔴 高 | 当前只有粗糙度，加SCS-CN入渗+管网简化→积水深度，hydro已有基础 |
+| **城市内涝（管网+SCS）** | ✅ 已完成 | urban_flood_simulate + urban_flood_pipe_network MCP tools |
 | **绿地降温效应** | 🟡 中 | UHI→+绿地降温=缓解情景设计，现有函数基底 |
-| **15分钟城市可达性** | 🟡 中 | 公共服务=POI+人口分布+Dijkstra（复用transmission LCP），政策热点 |
+| **15分钟城市可达性** | ✅ 已完成 | urban_accessibility + urban_accessibility_isochrone MCP tools |
 
 ---
 
-**顶层建议优先级**：
-1. 🔴 survey → 椭球间坐标转换（Molodensky/Helmert）— 测绘最基本需求，投入产出比最高
-2. 🔴 ecology → SDR泥沙输移比（现有RUSLE的直接下游）
-3. 🔴 coastal → 波浪爬高（风暴潮致灾主因，现有风模型的下游）
-4. 🟡 hydro → 单位线汇流（SCS-CN的直接下游，完整水文链）
-5. 🟡 agri → DSSAT adapter（农业最薄弱，用adapter快速出价值）
+**顶层建议优先级**（2026-06-23 更新：各项均已完成）：
+1. ✅ survey → 椭球间坐标转换（Molodensky/Helmert）— 已完成
+2. ✅ ecology → SDR泥沙输移比 — 已完成
+3. ✅ coastal → 波浪爬高 — 已完成
+4. ✅ hydro → 单位线汇流 + TR-55 + Muskingum — 已完成
+5. ✅ agri → DSSAT adapter — 已完成
+6. ✅ energy → 尾流效应(Jensen/Frandsen) + PVWatts — 已完成
+7. ✅ carbon → 碳价情景分析 + VCS/GS — 已完成
+8. ✅ forestry → 立地指数曲线 + 择伐/皆伐模拟 — 已完成
+9. ✅ geohazard → Newmark位移法 — 已完成
+10. ✅ urban → 城市内涝 + 15分钟城市可达性 — 已完成
+11. ✅ remote-sensing → 辐射校正 + InSAR — 已完成
+12. ✅ climate → GCM降尺度 + IDF + 干旱指数 + Kriging — 已完成
+13. ✅ groundwater → 达西定律 + MODFLOW adapter — 已完成
+14. ✅ geomorph → D8流向累积 + Strahler河网 — 已完成
+15. ✅ ocean → 潮汐调和分析 + SWAN波浪 — 已完成
+16. ✅ soil → HWSD查询 + van Genuchten参数 — 已完成
+17. ✅ ecology → MUSLE事件版土壤流失 — 已完成
 
 > **本次新增**：2026-06-20 · 基于插件代码完整审查（10/10 plugins）
 
@@ -1905,56 +1917,13 @@ geo-adapter-stac   ──→ geo-plugin-energy ──→ geo-tile     ──→ 
 
 按价值/协同度分三个梯队，标注每个拓展与现有插件的 seam 衔接点。
 
-### 🥇 第一梯队：高协同、高价值（建议优先考虑）
+### 🥇 第一梯队：已完成（高协同、高价值）
 
-#### 1. 气象/气候 (meteorology/climate)
-**现状缺口**：coastal 需要风场、hydro 需要降雨、energy 需要辐射，各自为政。
-
-| 拓展 | 协同插件 | 说明 |
-|------|----------|------|
-| GCM 统计降尺度 | hydro, coastal, energy | 全球气候模式→局地气象要素，一次计算全局复用 |
-| IDF 暴雨强度曲线 | hydro | 暴雨强度-历时-重现期关系，城镇排水设计刚需 |
-| SPI/SPEI/PDSI 干旱指数 | hydro, agri | 标准化降水指数系列，旱灾评估基础 |
-| 气象要素空间插值（Kriging/薄板样条） | 全部 | 气象站→栅格，消除所有插件的输入瓶颈 |
-
-**leverage**：🔴 极高 — 一次投入解决全部插件的输入标准化问题。
-
-#### 2. 地下水 (groundwater)
-**协同**：补全水文循环最后一环，hydro 产流→地下水补给→基流。
-
-| 拓展 | 协同插件 | 说明 |
-|------|----------|------|
-| 达西定律 + 地下水流动方程（Rust 实现） | hydro | 孔隙介质渗流基础 |
-| MODFLOW Adapter（通过 FloPy） | hydro | adapter 模式，不重复造轮子 |
-| 地表水-地下水耦合 | hydro, ecology | 产流→入渗补给→潜水蒸发→基流回归 |
-
-#### 3. 地貌 (geomorphology)
-**协同**：geohazard 依赖地形参数，hydro 需要汇流方向，ecology 需要 LS 因子。
-
-| 拓展 | 协同插件 | 说明 |
-|------|----------|------|
-| 坡度/坡向/曲率/汇流累积量 (D8/D-Inf) | hydro, ecology, geohazard | 当前 LS 计算已有 Horn 3×3 权重，扩展至通用地形成分 |
-| Strahler 河网分级 + 流域自动分割 | hydro | 已有流域划分基础 |
-| 河谷横剖面 / 谷底宽 | geohazard | 泥石流发生与河谷形态密切相关 |
-
-#### 4. 土壤 (soil)
-**协同**：ecology 的 RUSLE 需要 K 因子/质地，hydro 的 SCS-CN 需要土壤类型→CN 查表。
-
-| 拓展 | 协同插件 | 说明 |
-|------|----------|------|
-| 土壤属性查询（HWSD/SOLIM 数据集） | ecology, hydro | 当前 CN 表已有，扩展为通用土壤访问层 |
-| 土壤水力特性（van Genuchten/Mualem 参数） | hydro, groundwater | 田间持水量/凋萎系数→灌溉策略 |
-| 土壤质地三角图分类 | ecology | USDA 分类标准 |
-
-#### 5. 海洋 (ocean)
-**协同**：coastal 的边界条件来源，也是深海采矿（dexing-copper example）的背景场。
-
-| 拓展 | 协同插件 | 说明 |
-|------|----------|------|
-| 潮汐调和分析（M2/S2/K1/O1 分潮） | coastal | storm_surge 水位叠加潮位 |
-| 地转流 + Ekman 输运 | coastal, energy | 洋流背景+海洋能基础 |
-| SST 异常 → ENSO 指数 | coastal, agri | 海温对登陆台风强度的影响 |
-| SWAN 波浪简化（传播/折射/破碎） | coastal | 波浪爬高的上游输入 |
+#### 1. 气象/气候 (meteorology/climate) ✅ 已完成 (geo-plugin-climate)
+#### 2. 地下水 (groundwater) ✅ 已完成 (geo-plugin-hydro/src/groundwater.rs)
+#### 3. 地貌 (geomorphology) ✅ 已完成 (geo-plugin-geomorph)
+#### 4. 土壤 (soil) ✅ 已完成 (eco-plugin-ecology/src/soil.rs)
+#### 5. 海洋 (ocean) ✅ 已完成 (eo-plugin-coastal/src/ocean.rs)
 
 ---
 
@@ -1999,7 +1968,14 @@ geo-adapter-stac   ──→ geo-plugin-energy ──→ geo-tile     ──→ 
 
 ### 🥉 第三梯队：前沿探索，长期价值
 
-#### 11. 行星/天文 (planetary)
+#### 11. 遥感（remote-sensing）✅ 已完成 (geo-plugin-remote-sensing)
+已实现：DN→TOA辐射亮度→TOA反射率→DOS大气校正→云掩膜管线 + InSAR相干性/Goldstein解缠/LOS形变。6个MCP工具，15个测试。
+
+---
+
+### 🥉 第三梯队：前沿探索，长期价值
+
+#### 12. 行星/天文 (planetary)
 | 拓展 | 协同插件 | 说明 |
 |------|----------|------|
 | 天体坐标转换（月面/火星坐标系） | survey | GK→UTM→行星坐标框架 |
@@ -2041,10 +2017,11 @@ geo-adapter-stac   ──→ geo-plugin-energy ──→ geo-tile     ──→ 
 
 | 梯队 | 插件数 | 特征 |
 |------|--------|------|
-| 🥇 第一梯队 | 5 (气象/地下水/地貌/土壤/海洋) | 协同价值最高，解决"输入瓶颈"和"水文闭环" |
+| 🥇 第一梯队 | 5 (气象/地下水/地貌/土壤/海洋) | ✅ 全部已完成 |
 | 🥈 第二梯队 | 5 (冰雪/大气/地震/生态/社会经济) | 独立价值强，可与现有插件自然衔接 |
-| 🥉 第三梯队 | 5 (行星/古气候/地质/火山/遥感) | 前沿探索，长期布局 |
+| 🥉 第三梯队 | 4 (行星/古气候/地质/火山) | 前沿探索，长期布局 |
 
-> **本次新增**：2026-06-20 · 基于15个脱圈拓展领域的系统性分析
+> **本次更新**：2026-06-23 · 第一梯队全部完成 + 遥感插件 (原三梯队, 已完成) 计入
+
 
 
