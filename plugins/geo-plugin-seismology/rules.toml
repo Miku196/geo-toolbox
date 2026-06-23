@@ -1,0 +1,19 @@
+[plugin]
+name = "seismology"
+version = "0.1.0"
+description = "地震动参数预测、概率地震危险性分析、地震目录统计"
+
+[ground_motion]
+default_site_class = "II"
+pga_coeff_a = 0.35
+pga_coeff_b = 0.05
+pga_coeff_c = 0.01
+pga_site_factor_II = 1.0
+pga_site_factor_III = 1.35
+pga_site_factor_IV = 1.8
+response_damping = 0.05
+
+[psha]
+return_periods = [50, 100, 475, 975, 2475]
+min_magnitude = 4.5
+max_distance_km = 300.0

@@ -1,0 +1,12 @@
+[package]
+name = "geo-plugin-socioeconomic"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "社会经济插件 — 人口空间化、城市GDP估算、土地利用变化CA-Markov模拟、可达性分析"
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
+serde.workspace = true
+serde_json.workspace = true

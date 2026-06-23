@@ -41,6 +41,10 @@ members = [
     "plugins/geo-plugin-climate",
     "plugins/geo-plugin-geomorph",
     "plugins/geo-plugin-remote-sensing",
+    "plugins/geo-plugin-seismology",
+    "plugins/geo-plugin-socioeconomic",
+    "plugins/geo-plugin-cryosphere",
+
 
 
     # ── Round 3: Registry ──

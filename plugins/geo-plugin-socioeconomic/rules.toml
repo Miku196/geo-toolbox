@@ -1,0 +1,18 @@
+[plugin]
+name = "socioeconomic"
+version = "0.1.0"
+description = "社会经济分析：人口空间化、GDP估算、土地变化模拟、可达性"
+
+[population]
+default_cell_area_km2 = 0.01
+nightlight_calibration_factor = 0.5
+wealth_window_size = 3
+
+[landuse]
+transition_iterations = 10
+neighborhood_weight = 0.3
+driver_influence_decay = 0.5
+
+[accessibility]
+max_travel_cost = 120.0
+default_decay_parameter = 0.05

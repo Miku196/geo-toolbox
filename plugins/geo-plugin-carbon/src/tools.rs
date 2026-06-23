@@ -81,5 +81,40 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         sync "carbon_gold_standard_sdg" => "Gold Standard SDG impact mapping" ; serde_json::json!({"type":"object","properties":{"scenario_type":{"type":"string"},"sdg_contributions":{"type":"array","items":{"type":"integer"}}},"required":["scenario_type"]}) => |args| -> ToolResult {
         let sdgs: Vec<u8> = args["sdg_contributions"].as_array().map(|a| a.iter().filter_map(|v| v.as_u64().map(|u| u as u8)).collect()).unwrap_or_default();
         Ok(crate::vcs_gs::gold_standard_sdg(args["scenario_type"].as_str().unwrap_or(""), &sdgs))
-    }]);
+    },
+        sync "carbon_aod_to_pm25" => "Aerosol Optical Depth (550nm) to PM2.5 concentration" ; serde_json::json!({"type":"object","properties":{"aod_550":{"type":"number","description":"AOD at 550nm"},"aod_ratio":{"type":"number","default":0.025,"description":"AOD-to-PM2.5 conversion factor"},"rh_correction":{"type":"number","default":1.0,"description":"Relative humidity hygroscopic growth factor"}},"required":["aod_550"]}) => |args| -> ToolResult {
+        let aod = args["aod_550"].as_f64().unwrap_or(0.0);
+        let ratio = args["aod_ratio"].as_f64().unwrap_or(0.025);
+        let rh = args["rh_correction"].as_f64().unwrap_or(1.0);
+        let pm = crate::plume_ext::aod_to_pm25(aod, ratio, rh);
+        Ok(serde_json::json!({"pm25_ug_m3": (pm * 100.0).round() / 100.0, "aod_550": aod, "aod_ratio": ratio, "rh_correction": rh}))
+    },
+        sync "carbon_aod_to_pm25_pblh" => "AOD to PM2.5 with PBLH vertical correction" ; serde_json::json!({"type":"object","properties":{"aod_550":{"type":"number"},"pblh_m":{"type":"number","description":"Planetary boundary layer height (m)"},"aod_ratio":{"type":"number","default":0.025},"rh_correction":{"type":"number","default":1.0}},"required":["aod_550","pblh_m"]}) => |args| -> ToolResult {
+        let aod = args["aod_550"].as_f64().unwrap_or(0.0);
+        let pblh = args["pblh_m"].as_f64().unwrap_or(1000.0);
+        let ratio = args["aod_ratio"].as_f64().unwrap_or(0.025);
+        let rh = args["rh_correction"].as_f64().unwrap_or(1.0);
+        let pm = crate::plume_ext::aod_to_pm25_with_pblh(aod, pblh, ratio, rh);
+        Ok(serde_json::json!({"pm25_ug_m3": (pm * 100.0).round() / 100.0, "pblh_m": pblh}))
+    },
+        sync "carbon_boundary_layer" => "Atmospheric boundary layer height from wind speed and stability" ; serde_json::json!({"type":"object","properties":{"wind_speed_m_s":{"type":"number"},"roughness_m":{"type":"number","default":0.03},"stability":{"type":"string","enum":["A","B","C","D","E","F"],"default":"D"}},"required":["wind_speed_m_s"]}) => |args| -> ToolResult {
+        use crate::plume::StabilityClass;
+        let stab = match args["stability"].as_str().unwrap_or("D") {
+            "A" => StabilityClass::A, "B" => StabilityClass::B, "C" => StabilityClass::C,
+            "E" => StabilityClass::E, "F" => StabilityClass::F, _ => StabilityClass::D,
+        };
+        let h = crate::plume_ext::atmospheric_boundary_layer_height(
+            args["wind_speed_m_s"].as_f64().unwrap_or(0.0),
+            args["roughness_m"].as_f64().unwrap_or(0.03),
+            stab,
+        );
+        Ok(serde_json::json!({"abl_height_m": (h * 100.0).round() / 100.0, "stability": stab.as_str()}))
+    },
+        sync "carbon_heat_fluxes" => "Turbulent heat fluxes (sensible + latent) from temperature and wind profiles" ; serde_json::json!({"type":"object","properties":{"temp_profile":{"type":"array","items":{"type":"number"},"description":"[T_surface, T_2m, T_10m, T_50m] in C"},"wind_profile":{"type":"array","items":{"type":"number"},"description":"[u_2m, u_10m, u_50m] in m/s"}},"required":["temp_profile","wind_profile"]}) => |args| -> ToolResult {
+        let temp: Vec<f64> = args["temp_profile"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect();
+        let wind: Vec<f64> = args["wind_profile"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect();
+        let (shf, lhf) = crate::plume_ext::turbulent_heat_fluxes(&temp, &wind);
+        Ok(serde_json::json!({"sensible_heat_flux_w_m2": (shf * 100.0).round() / 100.0, "latent_heat_flux_w_m2": (lhf * 100.0).round() / 100.0}))
+    },
+    ]);
 }

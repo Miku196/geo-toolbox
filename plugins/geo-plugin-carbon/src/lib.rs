@@ -11,6 +11,7 @@ pub mod config;
 pub mod lca;
 pub mod plugin;
 pub mod plume;
+pub mod plume_ext;
 pub mod tools;
 pub mod trait_impl;
 pub mod vcs_gs;

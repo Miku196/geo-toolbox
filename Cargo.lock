@@ -2189,6 +2189,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "geo-plugin-cryosphere"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "geo-registry",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "geo-plugin-ecology"
 version = "0.1.0"
 dependencies = [
@@ -2279,6 +2289,26 @@ dependencies = [
 
 [[package]]
 name = "geo-plugin-remote-sensing"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "geo-registry",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "geo-plugin-seismology"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "geo-registry",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "geo-plugin-socioeconomic"
 version = "0.1.0"
 dependencies = [
  "geo-core",

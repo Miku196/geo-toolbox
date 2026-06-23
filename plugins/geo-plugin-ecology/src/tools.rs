@@ -118,5 +118,36 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             let avg = crate::musle::musle_annual_average(&events, k, ls, c, p, area);
             Ok(serde_json::json!({"annual_avg_soil_loss_t": avg}))
         },
+        sync "ecology_habitat_quality" => "InVEST-like habitat quality: degradation + quality from landcover + threats" ; serde_json::json!({"type":"object","properties":{"landcover":{"type":"array","items":{"type":"integer"}},"habitat_suitability":{"type":"array","items":{"type":"number"}},"threat_layers":{"type":"array","items":{"type":"array","items":{"type":"number"}}},"threat_weights":{"type":"array","items":{"type":"number"}},"sensitivity":{"type":"array","items":{"type":"array","items":{"type":"number"}}},"half_saturation_km":{"type":"number","default":5.0},"cell_size_m":{"type":"number","default":30},"cols":{"type":"integer"}},"required":["landcover","habitat_suitability","threat_layers","threat_weights","sensitivity","cols"]}) => |args| -> ToolResult {
+            let lc: Vec<u32> = args["landcover"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_u64().map(|u| u as u32)).collect();
+            let suit: Vec<f64> = args["habitat_suitability"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect();
+            let cols = args["cols"].as_u64().unwrap_or(10) as usize;
+            let hs = args["half_saturation_km"].as_f64().unwrap_or(5.0);
+            let cs = args["cell_size_m"].as_f64().unwrap_or(30.0);
+            let threats: Vec<Vec<f64>> = args["threat_layers"].as_array().unwrap_or(&vec![]).iter().map(|tl| tl.as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect()).collect();
+            let weights: Vec<f64> = args["threat_weights"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect();
+            let sens: Vec<Vec<f64>> = args["sensitivity"].as_array().unwrap_or(&vec![]).iter().map(|r| r.as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect()).collect();
+            let result = crate::habitat::assess_habitat_quality(&lc, &suit, &threats, &weights, &sens, crate::habitat::DecayType::Linear, hs, cs, cols);
+            serde_json::to_value(result).map_err(geo_core::errors::GeoError::Serde)
+        },
+        sync "ecology_species_distribution" => "MaxEnt species distribution: presence points + env layers -> suitability map" ; serde_json::json!({"type":"object","properties":{"env_layers":{"type":"array","items":{"type":"array","items":{"type":"number"}}},"presence_pixels":{"type":"array","items":{"type":"integer"}},"background_pixels":{"type":"array","items":{"type":"integer"}},"regularization":{"type":"number","default":0.1}},"required":["env_layers","presence_pixels","background_pixels"]}) => |args| -> ToolResult {
+            let env: Vec<Vec<f64>> = args["env_layers"].as_array().unwrap_or(&vec![]).iter().map(|l| l.as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect()).collect();
+            let pres: Vec<usize> = args["presence_pixels"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_u64().map(|u| u as usize)).collect();
+            let bg: Vec<usize> = args["background_pixels"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_u64().map(|u| u as usize)).collect();
+            let reg = args["regularization"].as_f64().unwrap_or(0.1);
+            let result = crate::species::maxent_simple(&env, &pres, &bg, reg);
+            serde_json::to_value(result).map_err(geo_core::errors::GeoError::Serde)
+        },
+        sync "ecology_ecoservice" => "Ecosystem services: carbon sequestration, water yield, recreation potential" ; serde_json::json!({"type":"object","properties":{"class_areas_ha":{"type":"array","items":{"type":"number"}},"carbon_densities":{"type":"array","items":{"type":"number"}},"landcover_changes":{"type":"array","items":{"type":"array","items":{"type":"number"}}},"precip_mm":{"type":"number"},"et_mm":{"type":"number"},"landcover_counts":{"type":"array","items":{"type":"integer"}},"accessibility":{"type":"number"}},"required":["class_areas_ha","carbon_densities","landcover_changes","precip_mm","et_mm","landcover_counts","accessibility"]}) => |args| -> ToolResult {
+            let areas: Vec<f64> = args["class_areas_ha"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect();
+            let dens: Vec<f64> = args["carbon_densities"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect();
+            let changes: Vec<Vec<f64>> = args["landcover_changes"].as_array().unwrap_or(&vec![]).iter().map(|r| r.as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect()).collect();
+            let prec = args["precip_mm"].as_f64().unwrap_or(0.0);
+            let et = args["et_mm"].as_f64().unwrap_or(0.0);
+            let counts: Vec<usize> = args["landcover_counts"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_u64().map(|u| u as usize)).collect();
+            let acc = args["accessibility"].as_f64().unwrap_or(0.0);
+            let result = crate::ecoservice::assess_ecosystem_services(&areas, &dens, &changes, prec, et, &counts, acc);
+            serde_json::to_value(result).map_err(geo_core::errors::GeoError::Serde)
+        },
     ]);
 }

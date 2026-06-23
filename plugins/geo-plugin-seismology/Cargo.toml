@@ -1,0 +1,12 @@
+[package]
+name = "geo-plugin-seismology"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "地震插件 — PGA/PGV 衰减关系、PSHA 概率地震危险性分析、地震目录工具"
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
+serde.workspace = true
+serde_json.workspace = true
