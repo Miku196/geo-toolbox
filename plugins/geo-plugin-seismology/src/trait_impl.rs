@@ -1,6 +1,6 @@
-use geo_core::plugin::{Plugin, PluginCategory};
-use geo_core::errors::GeoResult;
 use crate::config::SeismologyConfig;
+use geo_core::errors::GeoResult;
+use geo_core::plugin::{Plugin, PluginCategory};
 
 pub struct SeismologyPlugin {
     pub config: SeismologyConfig,
@@ -23,8 +23,16 @@ impl Plugin for SeismologyPlugin {
         Self { config }
     }
 
-    fn name(&self) -> &str { &self.config.plugin.name }
-    fn version(&self) -> &str { env!("CARGO_PKG_VERSION") }
-    fn description(&self) -> &str { &self.config.plugin.description }
-    fn category(&self) -> PluginCategory { PluginCategory::Process }
+    fn name(&self) -> &str {
+        &self.config.plugin.name
+    }
+    fn version(&self) -> &str {
+        env!("CARGO_PKG_VERSION")
+    }
+    fn description(&self) -> &str {
+        &self.config.plugin.description
+    }
+    fn category(&self) -> PluginCategory {
+        PluginCategory::Process
+    }
 }

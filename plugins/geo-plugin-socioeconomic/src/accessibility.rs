@@ -43,8 +43,13 @@ pub fn travel_time_to_city(
                 u = Some(i);
             }
         }
-        let u = match u { Some(u) => u, None => break };
-        if min_d >= max_cost { break; }
+        let u = match u {
+            Some(u) => u,
+            None => break,
+        };
+        if min_d >= max_cost {
+            break;
+        }
         visited[u] = true;
 
         // 4-邻域
@@ -65,28 +70,28 @@ pub fn travel_time_to_city(
         }
     }
 
-    dist.iter().map(|&d| {
-        if d >= max_cost { None } else { Some(d) }
-    }).collect()
+    dist.iter()
+        .map(|&d| if d >= max_cost { None } else { Some(d) })
+        .collect()
 }
 
 /// 市场潜力（重力模型）:
 /// potential_i = sum_j(P_j / (travel_time_ij^beta))
 /// 简化版: 给定到每个目的点的出行时间列表
-pub fn market_potential(
-    population: &[f64],
-    travel_time: &[f64],
-    decay_parameter: f64,
-) -> f64 {
-    population.iter().zip(travel_time.iter()).map(|(&pop, &tt)| {
-        if tt > 0.0 {
-            pop / tt.powf(decay_parameter)
-        } else if tt == 0.0 {
-            pop * 10.0 // 自身市场 = 人口×10
-        } else {
-            0.0
-        }
-    }).sum()
+pub fn market_potential(population: &[f64], travel_time: &[f64], decay_parameter: f64) -> f64 {
+    population
+        .iter()
+        .zip(travel_time.iter())
+        .map(|(&pop, &tt)| {
+            if tt > 0.0 {
+                pop / tt.powf(decay_parameter)
+            } else if tt == 0.0 {
+                pop * 10.0 // 自身市场 = 人口×10
+            } else {
+                0.0
+            }
+        })
+        .sum()
 }
 
 /// 多起点可达性（如到多个城市的出行时间取最小值）。
@@ -116,20 +121,28 @@ pub fn multi_city_accessibility(
     }
 
     // 市场潜力 = sum over destinations
-    let scores: Vec<f64> = (0..n).map(|i| {
-        let mut potential = 0.0;
-        for (j, &origin) in origins.iter().enumerate() {
-            let tt = travel_time_to_city(origin, cost_surface, max_cost, cols);
-            let pop = city_populations.get(j).copied().unwrap_or(1.0);
-            if let Some(t) = tt.get(i).copied().flatten() {
-                potential += if t > 0.0 { pop / t.powf(decay) } else { pop * 10.0 };
+    let scores: Vec<f64> = (0..n)
+        .map(|i| {
+            let mut potential = 0.0;
+            for (j, &origin) in origins.iter().enumerate() {
+                let tt = travel_time_to_city(origin, cost_surface, max_cost, cols);
+                let pop = city_populations.get(j).copied().unwrap_or(1.0);
+                if let Some(t) = tt.get(i).copied().flatten() {
+                    potential += if t > 0.0 {
+                        pop / t.powf(decay)
+                    } else {
+                        pop * 10.0
+                    };
+                }
             }
-        }
-        potential
-    }).collect();
+            potential
+        })
+        .collect();
 
     let valid_tt: Vec<f64> = min_travel.iter().filter_map(|&t| t).collect();
-    let mean_tt = if valid_tt.is_empty() { None } else {
+    let mean_tt = if valid_tt.is_empty() {
+        None
+    } else {
         Some(valid_tt.iter().sum::<f64>() / valid_tt.len() as f64)
     };
 
@@ -175,10 +188,7 @@ mod tests {
     #[test]
     fn test_multi_city_accessibility() {
         let cost = vec![1.0; 16];
-        let result = multi_city_accessibility(
-            &[0, 15], &cost, 10.0, 4, 0.5,
-            &[5000.0, 3000.0],
-        );
+        let result = multi_city_accessibility(&[0, 15], &cost, 10.0, 4, 0.5, &[5000.0, 3000.0]);
         assert_eq!(result.travel_time_min.len(), 16);
         assert!(result.mean_travel_time.unwrap() > 0.0);
         assert!(!result.accessibility_score.is_empty());

@@ -16,11 +16,7 @@ pub struct CaMarkovResult {
 
 /// 计算两期 LULC 之间的转移概率矩阵。
 /// matrix[from][to] = 转移概率 (0-1)
-pub fn transition_probability(
-    from_lulc: &[u8],
-    to_lulc: &[u8],
-    n_classes: u8,
-) -> Vec<Vec<f64>> {
+pub fn transition_probability(from_lulc: &[u8], to_lulc: &[u8], n_classes: u8) -> Vec<Vec<f64>> {
     let n = n_classes as usize;
     let mut count = vec![vec![0usize; n]; n];
     let mut from_count = vec![0usize; n];
@@ -46,28 +42,29 @@ pub fn transition_probability(
 }
 
 /// 应用转移概率到当前 LULC（单步随机模拟）。
-pub fn apply_transition(
-    current_lulc: &[u8],
-    transition_matrix: &[Vec<f64>],
-    seed: u64,
-) -> Vec<u8> {
+pub fn apply_transition(current_lulc: &[u8], transition_matrix: &[Vec<f64>], seed: u64) -> Vec<u8> {
     use std::collections::hash_map::RandomState;
     let mut rng = simple_rng(seed);
     let n = transition_matrix.len();
-    current_lulc.iter().map(|&cl| {
-        let ci = cl as usize;
-        if ci >= n { return cl; }
-        let probs = &transition_matrix[ci];
-        let r: f64 = rng.next();
-        let mut cum = 0.0;
-        for (j, &p) in probs.iter().enumerate() {
-            cum += p;
-            if r < cum {
-                return j as u8;
+    current_lulc
+        .iter()
+        .map(|&cl| {
+            let ci = cl as usize;
+            if ci >= n {
+                return cl;
             }
-        }
-        cl
-    }).collect()
+            let probs = &transition_matrix[ci];
+            let r: f64 = rng.next();
+            let mut cum = 0.0;
+            for (j, &p) in probs.iter().enumerate() {
+                cum += p;
+                if r < cum {
+                    return j as u8;
+                }
+            }
+            cl
+        })
+        .collect()
 }
 
 /// 简单伪随机数生成器（线性同余）。
@@ -75,13 +72,20 @@ struct SimpleRng {
     state: u64,
 }
 impl SimpleRng {
-    fn new(seed: u64) -> Self { Self { state: seed } }
+    fn new(seed: u64) -> Self {
+        Self { state: seed }
+    }
     fn next(&mut self) -> f64 {
-        self.state = self.state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        self.state = self
+            .state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         (self.state >> 11) as f64 / (1u64 << 53) as f64
     }
 }
-fn simple_rng(seed: u64) -> SimpleRng { SimpleRng::new(seed) }
+fn simple_rng(seed: u64) -> SimpleRng {
+    SimpleRng::new(seed)
+}
 
 /// 结合邻域影响的 CA 单步（摩尔邻域 3×3）。
 pub fn cellular_automata_step(
@@ -103,7 +107,9 @@ pub fn cellular_automata_step(
         let mut neighbor_count = 0;
         for dr in -1..=1 {
             for dc in -1..=1 {
-                if dr == 0 && dc == 0 { continue; }
+                if dr == 0 && dc == 0 {
+                    continue;
+                }
                 let nr = row as isize + dr;
                 let nc = col as isize + dc;
                 if nr >= 0 && nr < rows as isize && nc >= 0 && nc < cols as isize {
@@ -115,16 +121,29 @@ pub fn cellular_automata_step(
                 }
             }
         }
-        let nb_ratio = if neighbor_count > 0 { same_neighbor / neighbor_count as f64 } else { 0.0 };
+        let nb_ratio = if neighbor_count > 0 {
+            same_neighbor / neighbor_count as f64
+        } else {
+            0.0
+        };
 
         // 计算转移概率 = suitability × (1-nb_weight) + nb_ratio × nb_weight
         let cl = current_lulc[i] as usize;
-        if cl >= n_classes { continue; }
+        if cl >= n_classes {
+            continue;
+        }
 
-        let mut scores: Vec<f64> = (0..n_classes).map(|c| {
-            let s = suitability.get(c).and_then(|v| v.get(i)).copied().unwrap_or(0.0);
-            s * (1.0 - neighborhood_weight) + (if c == cl { nb_ratio } else { 0.0 }) * neighborhood_weight
-        }).collect();
+        let mut scores: Vec<f64> = (0..n_classes)
+            .map(|c| {
+                let s = suitability
+                    .get(c)
+                    .and_then(|v| v.get(i))
+                    .copied()
+                    .unwrap_or(0.0);
+                s * (1.0 - neighborhood_weight)
+                    + (if c == cl { nb_ratio } else { 0.0 }) * neighborhood_weight
+            })
+            .collect();
 
         // 选择最高分（含随机扰动）
         let max_score = scores.iter().copied().fold(0.0_f64, f64::max);
@@ -148,7 +167,8 @@ pub fn cellular_automata_step(
 }
 
 fn fast_rng(lulc: &[u8], i: usize) -> f64 {
-    let h = (i as u64).wrapping_mul(2654435761) ^ (lulc.get(i).copied().unwrap_or(0) as u64).wrapping_mul(2246822519);
+    let h = (i as u64).wrapping_mul(2654435761)
+        ^ (lulc.get(i).copied().unwrap_or(0) as u64).wrapping_mul(2246822519);
     (h % 10000) as f64 / 10000.0
 }
 
@@ -167,12 +187,21 @@ pub fn ca_markov_simulate(
 
     // 用 drivers 构建 suitability 叠加 (如果没有driver, 用转移概率)
     let suitability: Vec<Vec<f64>> = if drivers.is_empty() {
-        (0..n_classes).map(|c| {
-            current_lulc.iter().map(|&cl| {
-                let ci = cl as usize;
-                if ci < n_classes { transition_matrix[ci][c] } else { 0.0 }
-            }).collect()
-        }).collect()
+        (0..n_classes)
+            .map(|c| {
+                current_lulc
+                    .iter()
+                    .map(|&cl| {
+                        let ci = cl as usize;
+                        if ci < n_classes {
+                            transition_matrix[ci][c]
+                        } else {
+                            0.0
+                        }
+                    })
+                    .collect()
+            })
+            .collect()
     } else {
         drivers.to_vec()
     };
@@ -185,7 +214,11 @@ pub fn ca_markov_simulate(
         lulc = cellular_automata_step(&lulc, &suitability, neighborhood_weight, cols);
 
         // 计算变化
-        let changed = lulc.iter().zip(current_lulc.iter()).filter(|(new, old)| new != old).count();
+        let changed = lulc
+            .iter()
+            .zip(current_lulc.iter())
+            .filter(|(new, old)| new != old)
+            .count();
         changes_per_step.push(changed);
     }
 
@@ -196,10 +229,15 @@ pub fn ca_markov_simulate(
     let mut class_counts = vec![0usize; n_classes.max(1)];
     for &cl in &lulc {
         let ci = cl as usize;
-        if ci < class_counts.len() { class_counts[ci] += 1; }
+        if ci < class_counts.len() {
+            class_counts[ci] += 1;
+        }
     }
-    let class_area_fractions: Vec<(u8, f64)> = class_counts.iter().enumerate()
-        .map(|(c, &cnt)| (c as u8, cnt as f64 / total)).collect();
+    let class_area_fractions: Vec<(u8, f64)> = class_counts
+        .iter()
+        .enumerate()
+        .map(|(c, &cnt)| (c as u8, cnt as f64 / total))
+        .collect();
 
     CaMarkovResult {
         final_lulc: lulc,
@@ -216,7 +254,7 @@ mod tests {
     #[test]
     fn test_transition_probability_simple() {
         let from = vec![0, 0, 1, 1, 2];
-        let to   = vec![0, 1, 1, 1, 2];
+        let to = vec![0, 1, 1, 1, 2];
         let mat = transition_probability(&from, &to, 3);
         assert!((mat[0][0] - 0.5).abs() < 1e-6);
         assert!((mat[0][1] - 0.5).abs() < 1e-6);
@@ -234,10 +272,12 @@ mod tests {
 
     #[test]
     fn test_ca_step() {
-        let lulc = vec![0u8, 0u8, 1u8, 1u8, 0u8, 0u8, 1u8, 1u8, 0u8, 0u8, 1u8, 1u8, 0u8, 0u8, 1u8, 1u8]; // 4x4 grid
+        let lulc = vec![
+            0u8, 0u8, 1u8, 1u8, 0u8, 0u8, 1u8, 1u8, 0u8, 0u8, 1u8, 1u8, 0u8, 0u8, 1u8, 1u8,
+        ]; // 4x4 grid
         let suitability = vec![
-            vec![0.5; 16],  // class 0
-            vec![0.3; 16],  // class 1
+            vec![0.5; 16], // class 0
+            vec![0.3; 16], // class 1
         ];
         let result = cellular_automata_step(&lulc, &suitability, 0.3, 4);
         assert_eq!(result.len(), 16);
@@ -245,7 +285,9 @@ mod tests {
 
     #[test]
     fn test_ca_markov_simulate() {
-        let lulc = vec![0u8, 0u8, 1u8, 1u8, 0u8, 0u8, 1u8, 1u8, 0u8, 0u8, 1u8, 1u8, 0u8, 0u8, 1u8, 1u8];
+        let lulc = vec![
+            0u8, 0u8, 1u8, 1u8, 0u8, 0u8, 1u8, 1u8, 0u8, 0u8, 1u8, 1u8, 0u8, 0u8, 1u8, 1u8,
+        ];
         let mat = vec![vec![0.8, 0.2], vec![0.3, 0.7]];
         let result = ca_markov_simulate(&lulc, &mat, &[], 5, 0.3, 4);
         assert_eq!(result.final_lulc.len(), 16);

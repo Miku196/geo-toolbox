@@ -71,9 +71,13 @@ pub fn a_from_rate(annual_rate: f64, b: f64, m_min: f64) -> f64 {
 
 /// 给定震级区间内的年发生率。
 pub fn annual_rate_in_interval(annual_rate: f64, b: f64, m_min: f64, m1: f64, m2: f64) -> f64 {
-    if m2 <= m_min { return 0.0; }
+    if m2 <= m_min {
+        return 0.0;
+    }
     let m1c = m1.max(m_min);
-    if m1c >= m2 { return 0.0; }
+    if m1c >= m2 {
+        return 0.0;
+    }
     let beta = b * 2.302585; // ln(10)
     annual_rate * ((-beta * (m1c - m_min)).exp() - (-beta * (m2 - m_min)).exp())
 }
@@ -87,7 +91,9 @@ pub fn psha_exceedance(
     im_value: f64,
     site_class: &str,
 ) -> f64 {
-    if distance_km <= 0.0 { return 0.0; }
+    if distance_km <= 0.0 {
+        return 0.0;
+    }
     let beta = source.b_value * 2.302585;
     // 对震级区间求和 (M_min ~ M_max, 步长 0.1)
     let n_bins = ((source.m_max - source.m_min) / 0.1) as usize;
@@ -95,10 +101,16 @@ pub fn psha_exceedance(
     for i in 0..n_bins {
         let m1 = source.m_min + i as f64 * 0.1;
         let m2 = m1 + 0.1;
-        let rate_m = annual_rate_in_interval(source.annual_rate, source.b_value, source.m_min, m1, m2);
-        if rate_m <= 0.0 { continue; }
-        let median_pga = crate::ground_motion::pga_from_mag_distance((m1 + m2) / 2.0, distance_km, site_class);
-        if median_pga <= 0.0 { continue; }
+        let rate_m =
+            annual_rate_in_interval(source.annual_rate, source.b_value, source.m_min, m1, m2);
+        if rate_m <= 0.0 {
+            continue;
+        }
+        let median_pga =
+            crate::ground_motion::pga_from_mag_distance((m1 + m2) / 2.0, distance_km, site_class);
+        if median_pga <= 0.0 {
+            continue;
+        }
         // 对数正态超越概率 (方差 σ_lnPGA ≈ 0.7)
         let sigma = 0.7;
         let ln_ratio = (im_value / median_pga).ln();
@@ -110,7 +122,12 @@ pub fn psha_exceedance(
 
 /// 标准正态 CDF (近似, 非 stable erf)。
 fn gaussian_cdf(x: f64) -> f64 {
-    0.5 * (1.0 + x.signum() * (1.0 - (-2.0 / std::f64::consts::PI * x * x).exp()).sqrt().min(1.0).max(-1.0))
+    0.5 * (1.0
+        + x.signum()
+            * (1.0 - (-2.0 / std::f64::consts::PI * x * x).exp())
+                .sqrt()
+                .min(1.0)
+                .max(-1.0))
 }
 
 /// 构建完整 PSHA  hazard curve。
@@ -128,7 +145,11 @@ pub fn psha_hazard_curve(
         // 二分法搜索 PGA
         let pga = binary_search_pga(sources, site_lon, site_lat, target_prob, site_class);
         let exceed = if pga > 0.0 { 1.0 / rp } else { 0.0 };
-        curve.push(HazardPoint { return_period_years: rp, pga_g: pga, exceedance_probability: exceed });
+        curve.push(HazardPoint {
+            return_period_years: rp,
+            pga_g: pga,
+            exceedance_probability: exceed,
+        });
     }
     curve
 }
@@ -145,10 +166,13 @@ fn binary_search_pga(
     let mut hi = 2.0;
     for _ in 0..30 {
         let mid = (lo + hi) / 2.0;
-        let total_exceed: f64 = sources.iter().map(|src| {
-            let dist_km = haversine_km(site_lon, site_lat, src.longitude, src.latitude);
-            psha_exceedance(src, dist_km, mid, site_class)
-        }).sum();
+        let total_exceed: f64 = sources
+            .iter()
+            .map(|src| {
+                let dist_km = haversine_km(site_lon, site_lat, src.longitude, src.latitude);
+                psha_exceedance(src, dist_km, mid, site_class)
+            })
+            .sum();
         if total_exceed > target_prob {
             hi = mid;
         } else {
@@ -163,7 +187,8 @@ fn haversine_km(lon1: f64, lat1: f64, lon2: f64, lat2: f64) -> f64 {
     let r = 6371.0;
     let dlat = (lat2 - lat1).to_radians();
     let dlon = (lon2 - lon1).to_radians();
-    let a = (dlat / 2.0).sin().powi(2) + lat1.to_radians().cos() * lat2.to_radians().cos() * (dlon / 2.0).sin().powi(2);
+    let a = (dlat / 2.0).sin().powi(2)
+        + lat1.to_radians().cos() * lat2.to_radians().cos() * (dlon / 2.0).sin().powi(2);
     2.0 * r * a.sqrt().asin()
 }
 
@@ -190,7 +215,11 @@ pub fn uniform_hazard_spectrum(
             } else {
                 pga * 1.5 * 0.4 / period.max(0.4)
             };
-            uhs.push(SpectrumHazardPoint { period_s: period, sa_g: sa.min(5.0), return_period_years: rp });
+            uhs.push(SpectrumHazardPoint {
+                period_s: period,
+                sa_g: sa.min(5.0),
+                return_period_years: rp,
+            });
         }
     }
     uhs
@@ -205,14 +234,21 @@ pub fn deaggregation(
     site_class: &str,
 ) -> Vec<DeaggBin> {
     let mut bins = Vec::new();
-    let total: f64 = sources.iter().map(|src| {
-        let dist = haversine_km(site_lon, site_lat, src.longitude, src.latitude);
-        psha_exceedance(src, dist, pga_g, site_class)
-    }).sum();
+    let total: f64 = sources
+        .iter()
+        .map(|src| {
+            let dist = haversine_km(site_lon, site_lat, src.longitude, src.latitude);
+            psha_exceedance(src, dist, pga_g, site_class)
+        })
+        .sum();
     for src in sources {
         let dist = haversine_km(site_lon, site_lat, src.longitude, src.latitude);
         let exceed = psha_exceedance(src, dist, pga_g, site_class);
-        let pct = if total > 0.0 { exceed / total * 100.0 } else { 0.0 };
+        let pct = if total > 0.0 {
+            exceed / total * 100.0
+        } else {
+            0.0
+        };
         bins.push(DeaggBin {
             source_name: src.name.clone(),
             mag_bin: format!("{:.1}-{:.1}", src.m_min, src.m_max),
@@ -220,7 +256,11 @@ pub fn deaggregation(
             contribution_pct: (pct * 100.0).round() / 100.0,
         });
     }
-    bins.sort_by(|a, b| b.contribution_pct.partial_cmp(&a.contribution_pct).unwrap_or(std::cmp::Ordering::Equal));
+    bins.sort_by(|a, b| {
+        b.contribution_pct
+            .partial_cmp(&a.contribution_pct)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     bins
 }
 

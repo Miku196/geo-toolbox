@@ -57,10 +57,7 @@ pub fn atmospheric_boundary_layer_height(
 ///
 /// # 返回
 /// - `(shf_w_m2, lhf_w_m2)` — 感热通量, 潜热通量
-pub fn turbulent_heat_fluxes(
-    temp_profile: &[f64],
-    wind_profile: &[f64],
-) -> (f64, f64) {
+pub fn turbulent_heat_fluxes(temp_profile: &[f64], wind_profile: &[f64]) -> (f64, f64) {
     if temp_profile.len() < 2 || wind_profile.is_empty() {
         return (0.0, 0.0);
     }
@@ -68,7 +65,7 @@ pub fn turbulent_heat_fluxes(
     let ts = temp_profile[0]; // 地表温度
     let t2 = temp_profile.get(1).copied().unwrap_or(ts); // 2m 气温
     let u10 = wind_profile.get(1).copied().unwrap_or(3.0); // 10m 风速
-    // 通常 u2 = u10 * 0.75 (对数廓线近似)
+                                                           // 通常 u2 = u10 * 0.75 (对数廓线近似)
     let u2 = wind_profile.first().copied().unwrap_or(u10 * 0.75);
 
     // 空气密度 ρ (kg/m³), 近似 1.225 @ 15°C, 温度修正
@@ -115,16 +112,16 @@ pub fn turbulent_heat_fluxes(
 /// # 参考
 /// - Van Donkelaar et al. (2016), Global Estimates of Fine Particulate
 ///   Matter using a Combined Geophysical-Statistical Method
-pub fn aod_to_pm25(
-    aod_550: f64,
-    aod_ratio: f64,
-    rh_correction: f64,
-) -> f64 {
+pub fn aod_to_pm25(aod_550: f64, aod_ratio: f64, rh_correction: f64) -> f64 {
     if aod_550 < 0.0 {
         return 0.0;
     }
     let ratio = if aod_ratio > 0.0 { aod_ratio } else { 0.025 };
-    let rh = if rh_correction > 0.0 { rh_correction } else { 1.0 };
+    let rh = if rh_correction > 0.0 {
+        rh_correction
+    } else {
+        1.0
+    };
     // PM2.5 = AOD × η × f(RH)
     let pm25 = aod_550 * ratio * rh;
     // 地表浓度 (μg/m³), 扣除非气溶胶背景 (2 μg/m³)
@@ -135,17 +132,16 @@ pub fn aod_to_pm25(
 ///
 /// PM2.5 ≈ AOD × (PBLH / 1000)^(-1) × η × f(RH)
 /// 考虑了气溶胶在边界层内的垂直分布。
-pub fn aod_to_pm25_with_pblh(
-    aod_550: f64,
-    pblh_m: f64,
-    aod_ratio: f64,
-    rh_correction: f64,
-) -> f64 {
+pub fn aod_to_pm25_with_pblh(aod_550: f64, pblh_m: f64, aod_ratio: f64, rh_correction: f64) -> f64 {
     if aod_550 < 0.0 || pblh_m <= 0.0 {
         return 0.0;
     }
     let ratio = if aod_ratio > 0.0 { aod_ratio } else { 0.025 };
-    let rh = if rh_correction > 0.0 { rh_correction } else { 1.0 };
+    let rh = if rh_correction > 0.0 {
+        rh_correction
+    } else {
+        1.0
+    };
     // PBLH 越浅，地面浓度越高 (气溶胶压缩在更小体积内)
     let pblh_factor = (1000.0 / pblh_m).clamp(0.5, 3.0);
     let pm25 = aod_550 * ratio * rh * pblh_factor;
@@ -202,7 +198,7 @@ mod tests {
     #[test]
     fn test_turbulent_heat_fluxes_short_profile() {
         let (shf, lhf) = turbulent_heat_fluxes(&[20.0], &[2.0]);
-        assert!((shf - 0.0).abs() < 1e-10);  // only 1 temp point
+        assert!((shf - 0.0).abs() < 1e-10); // only 1 temp point
     }
 
     #[test]

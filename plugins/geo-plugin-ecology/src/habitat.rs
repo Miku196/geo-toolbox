@@ -135,15 +135,31 @@ pub fn assess_habitat_quality(
     cols: usize,
 ) -> InVestHabitatQuality {
     let degradation = habitat_degradation(
-        landcover, threat_layers, threat_weights, sensitivity,
-        decay, half_saturation, cell_size_m, cols,
+        landcover,
+        threat_layers,
+        threat_weights,
+        sensitivity,
+        decay,
+        half_saturation,
+        cell_size_m,
+        cols,
     );
-    let quality = habitat_quality(landcover, habitat_suitability, &degradation, half_saturation, 2.5);
+    let quality = habitat_quality(
+        landcover,
+        habitat_suitability,
+        &degradation,
+        half_saturation,
+        2.5,
+    );
     let mean_q = quality.iter().copied().sum::<f64>() / quality.len().max(1) as f64;
-    let degraded = quality.iter().filter(|&&q| q < 0.5).count() as f64 / quality.len().max(1) as f64;
+    let degraded =
+        quality.iter().filter(|&&q| q < 0.5).count() as f64 / quality.len().max(1) as f64;
     let threat_int: Vec<f64> = (0..landcover.len())
         .map(|i| {
-            threat_layers.iter().map(|tl| tl.get(i).copied().unwrap_or(0.0)).sum()
+            threat_layers
+                .iter()
+                .map(|tl| tl.get(i).copied().unwrap_or(0.0))
+                .sum()
         })
         .collect();
     InVestHabitatQuality {
@@ -165,7 +181,16 @@ mod tests {
         let threats: Vec<Vec<f64>> = vec![vec![0.0; 100]];
         let weights = vec![1.0];
         let sens = vec![vec![1.0]];
-        let deg = habitat_degradation(&lc, &threats, &weights, &sens, DecayType::Linear, 5.0, 30.0, 10);
+        let deg = habitat_degradation(
+            &lc,
+            &threats,
+            &weights,
+            &sens,
+            DecayType::Linear,
+            5.0,
+            30.0,
+            10,
+        );
         assert!(deg.iter().all(|&d| d == 0.0));
     }
 
@@ -179,7 +204,16 @@ mod tests {
         let weights = vec![1.0];
         // sensitivity[lc][threat]: lc=0 is non-habitat, lc=1 is forest with sens=0.8
         let sens = vec![vec![0.0], vec![0.8]];
-        let deg = habitat_degradation(&lc, &threats, &weights, &sens, DecayType::Linear, 10.0, 30.0, 10);
+        let deg = habitat_degradation(
+            &lc,
+            &threats,
+            &weights,
+            &sens,
+            DecayType::Linear,
+            10.0,
+            30.0,
+            10,
+        );
         assert!(deg[50] > 0.0, "deg[50] should be > 0, got {}", deg[50]);
         assert!(deg.iter().any(|&d| d > 0.0));
     }
@@ -210,8 +244,15 @@ mod tests {
         threat[0] = 1.0;
         threat[99] = 1.0;
         let result = assess_habitat_quality(
-            &lc, &suit, &[threat], &[1.0], &[vec![0.0], vec![0.5]],
-            DecayType::Linear, 10.0, 30.0, 10,
+            &lc,
+            &suit,
+            &[threat],
+            &[1.0],
+            &[vec![0.0], vec![0.5]],
+            DecayType::Linear,
+            10.0,
+            30.0,
+            10,
         );
         assert!(result.mean_quality > 0.0);
         assert!(!result.degradation.is_empty());

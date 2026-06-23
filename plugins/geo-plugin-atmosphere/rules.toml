@@ -1,0 +1,29 @@
+[plugin]
+name = "atmosphere"
+version = "0.1.0"
+description = "大气科学与空气质量 — 边界层参数、高斯扩散模型、AOD→PM2.5 反演"
+
+# ── 大气边界层 ──
+[boundary_layer]
+roughness_default = 0.1          # 默认地表粗糙度 (m)
+coriolis_default = 1.0e-4        # 科里奥利参数 (rad/s)
+rho_air = 1.225                  # 空气密度 (kg/m³)
+cp_air = 1005.0                  # 空气定压比热 (J/(kg·K))
+lv_water = 2.5e6                 # 汽化潜热 (J/kg)
+ch_bulk = 0.0011                 # 感热交换系数
+ce_bulk = 0.0012                 # 潜热交换系数
+
+# ── 高斯扩散 ──
+[dispersion]
+default_wind_speed = 3.0         # 默认风速 (m/s)
+default_stability = "D"          # 默认稳定度
+default_source_height = 10.0     # 默认源高 (m)
+
+# ── AOD→PM2.5 反演 ──
+[aod]
+aod550_pm25_ratio = 0.55        # AOD550 → PM2.5 转化系数 (μg/m³/AOD)
+rh_correction_factor = 0.85     # 相对湿度校正
+default_season = "annual"        # 默认季节
+
+[dependencies]
+cores = ["raster", "stats"]

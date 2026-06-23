@@ -44,8 +44,7 @@ members = [
     "plugins/geo-plugin-seismology",
     "plugins/geo-plugin-socioeconomic",
     "plugins/geo-plugin-cryosphere",
-
-
+    "plugins/geo-plugin-atmosphere",
 
     # ── Round 3: Registry ──
     "core/geo-registry",

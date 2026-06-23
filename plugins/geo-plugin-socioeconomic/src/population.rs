@@ -29,14 +29,27 @@ pub fn pop_density_from_landcover(
 ) -> (Vec<f64>, Vec<f64>) {
     let total_weight: f64 = landcover_weights.iter().sum();
     if total_weight <= 0.0 || cell_area_km2 <= 0.0 {
-        return (vec![0.0; landcover_weights.len()], vec![0.0; landcover_weights.len()]);
+        return (
+            vec![0.0; landcover_weights.len()],
+            vec![0.0; landcover_weights.len()],
+        );
     }
     let pop_per_weight = admin_pop / total_weight;
-    let densities: Vec<f64> = landcover_weights.iter().map(|&w| {
-        let pop = w * pop_per_weight;
-        if cell_area_km2 > 0.0 { pop / cell_area_km2 } else { 0.0 }
-    }).collect();
-    let pops: Vec<f64> = landcover_weights.iter().map(|&w| w * pop_per_weight).collect();
+    let densities: Vec<f64> = landcover_weights
+        .iter()
+        .map(|&w| {
+            let pop = w * pop_per_weight;
+            if cell_area_km2 > 0.0 {
+                pop / cell_area_km2
+            } else {
+                0.0
+            }
+        })
+        .collect();
+    let pops: Vec<f64> = landcover_weights
+        .iter()
+        .map(|&w| w * pop_per_weight)
+        .collect();
     (densities, pops)
 }
 
@@ -48,22 +61,25 @@ pub fn nightlight_to_gdp(ntl_values: &[f64], calibration: f64) -> Vec<f64> {
 
 /// 综合财富指数（基于 NTL + 建筑密度 + 路网密度）。
 /// index = w1×ntl_norm + w2×building_norm + w3×road_norm
-pub fn wealth_index(
-    ntl: &[f64],
-    building_density: &[f64],
-    road_density: &[f64],
-) -> Vec<f64> {
-    let n = ntl.len().min(building_density.len()).min(road_density.len());
+pub fn wealth_index(ntl: &[f64], building_density: &[f64], road_density: &[f64]) -> Vec<f64> {
+    let n = ntl
+        .len()
+        .min(building_density.len())
+        .min(road_density.len());
     let normalize = |vals: &[f64]| -> Vec<f64> {
         let max = vals.iter().copied().fold(0.0_f64, f64::max);
-        if max > 0.0 { vals.iter().map(|&v| v / max).collect() } else { vals.to_vec() }
+        if max > 0.0 {
+            vals.iter().map(|&v| v / max).collect()
+        } else {
+            vals.to_vec()
+        }
     };
     let ntl_n = normalize(&ntl[..n]);
     let bld_n = normalize(&building_density[..n]);
     let road_n = normalize(&road_density[..n]);
-    (0..n).map(|i| {
-        (ntl_n[i] * 0.5 + bld_n[i] * 0.3 + road_n[i] * 0.2) * 100.0
-    }).collect()
+    (0..n)
+        .map(|i| (ntl_n[i] * 0.5 + bld_n[i] * 0.3 + road_n[i] * 0.2) * 100.0)
+        .collect()
 }
 
 /// 完整人口空间化管线。
@@ -139,9 +155,13 @@ mod tests {
     #[test]
     fn test_full_population_pipeline() {
         let result = full_population_pipeline(
-            5000.0, &[1.0, 0.5, 0.0], 0.01,
-            Some(&[15.0, 25.0, 5.0]), 0.5,
-            Some(&[0.3, 0.1, 0.0]), Some(&[0.6, 0.2, 0.0]),
+            5000.0,
+            &[1.0, 0.5, 0.0],
+            0.01,
+            Some(&[15.0, 25.0, 5.0]),
+            0.5,
+            Some(&[0.3, 0.1, 0.0]),
+            Some(&[0.6, 0.2, 0.0]),
         );
         assert!((result.total_population - 5000.0).abs() < 1e-6);
         assert!(result.gdp_grid.is_some());

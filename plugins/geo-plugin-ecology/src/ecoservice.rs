@@ -59,9 +59,7 @@ pub fn carbon_sequestration_service(
         }
     }
 
-    let future_stock: f64 = (0..n)
-        .map(|i| future_areas[i] * carbon_densities[i])
-        .sum();
+    let future_stock: f64 = (0..n).map(|i| future_areas[i] * carbon_densities[i]).sum();
 
     future_stock - current_stock
 }
@@ -154,7 +152,7 @@ mod tests {
     fn test_carbon_sequestration_afforestation() {
         let areas = vec![100.0, 0.0]; // cropland -> forest
         let densities = vec![-5.0, -10.0]; // forest sinks more
-        // 10 ha cropland becomes forest
+                                           // 10 ha cropland becomes forest
         let changes = vec![vec![0.0, 10.0], vec![0.0, 0.0]];
         let val = carbon_sequestration_service(&areas, &densities, &changes);
         assert!(val < 0.0); // net sink
@@ -193,8 +191,13 @@ mod tests {
     #[test]
     fn test_assess_full() {
         let result = assess_ecosystem_services(
-            &[50.0, 50.0], &[-5.0, 2.0], &[vec![0.0, 10.0], vec![0.0, 0.0]],
-            1200.0, 500.0, &[50, 50], 0.7,
+            &[50.0, 50.0],
+            &[-5.0, 2.0],
+            &[vec![0.0, 10.0], vec![0.0, 0.0]],
+            1200.0,
+            500.0,
+            &[50, 50],
+            0.7,
         );
         assert!(result.area_ha > 0.0);
         assert!(result.water_yield_m3 > 0.0);

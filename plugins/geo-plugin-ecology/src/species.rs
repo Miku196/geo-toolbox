@@ -40,7 +40,11 @@ pub fn fit_maxent(
     background_values: &[Vec<f64>],
     regularization: f64,
 ) -> Vec<f64> {
-    let n_vars = if let Some(p) = presence_values.first() { p.len() } else { return vec![] };
+    let n_vars = if let Some(p) = presence_values.first() {
+        p.len()
+    } else {
+        return vec![];
+    };
     let n_pres = presence_values.len();
     let n_bg = background_values.len();
 
@@ -59,7 +63,11 @@ pub fn fit_maxent(
 
         // 存在点梯度 (最大化)
         for pv in presence_values {
-            let linear = coeffs[0] + pv.iter().zip(coeffs[1..].iter()).map(|(x, b)| x * b).sum::<f64>();
+            let linear = coeffs[0]
+                + pv.iter()
+                    .zip(coeffs[1..].iter())
+                    .map(|(x, b)| x * b)
+                    .sum::<f64>();
             let prob = 1.0 / (1.0 + (-linear).exp());
             grad[0] += (1.0 - prob) / n_pres as f64;
             for (j, &x) in pv.iter().enumerate() {
@@ -70,7 +78,11 @@ pub fn fit_maxent(
 
         // 背景点梯度 (最小化)
         for bv in background_values {
-            let linear = coeffs[0] + bv.iter().zip(coeffs[1..].iter()).map(|(x, b)| x * b).sum::<f64>();
+            let linear = coeffs[0]
+                + bv.iter()
+                    .zip(coeffs[1..].iter())
+                    .map(|(x, b)| x * b)
+                    .sum::<f64>();
             let prob = 1.0 / (1.0 + (-linear).exp());
             grad[0] -= prob / n_bg as f64;
             for (j, &x) in bv.iter().enumerate() {
@@ -107,17 +119,17 @@ pub fn species_suitability(env_values: &[f64], coefficients: &[f64]) -> f64 {
 }
 
 /// 批量计算栅格适生性。
-pub fn maxent_predict(
-    env_layers: &[Vec<f64>],
-    coefficients: &[f64],
-) -> Vec<f64> {
+pub fn maxent_predict(env_layers: &[Vec<f64>], coefficients: &[f64]) -> Vec<f64> {
     if env_layers.is_empty() {
         return vec![];
     }
     let n = env_layers[0].len();
     (0..n)
         .map(|i| {
-            let vals: Vec<f64> = env_layers.iter().map(|layer| layer.get(i).copied().unwrap_or(0.0)).collect();
+            let vals: Vec<f64> = env_layers
+                .iter()
+                .map(|layer| layer.get(i).copied().unwrap_or(0.0))
+                .collect();
             species_suitability(&vals, coefficients)
         })
         .collect()
@@ -135,13 +147,23 @@ pub fn maxent_simple(
     // 构建存在点特征矩阵
     let presence_values: Vec<Vec<f64>> = presence_pixels
         .iter()
-        .map(|&idx| env_layers.iter().map(|l| l.get(idx).copied().unwrap_or(0.0)).collect())
+        .map(|&idx| {
+            env_layers
+                .iter()
+                .map(|l| l.get(idx).copied().unwrap_or(0.0))
+                .collect()
+        })
         .collect();
 
     // 构建背景点特征矩阵
     let background_values: Vec<Vec<f64>> = background_pixels
         .iter()
-        .map(|&idx| env_layers.iter().map(|l| l.get(idx).copied().unwrap_or(0.0)).collect())
+        .map(|&idx| {
+            env_layers
+                .iter()
+                .map(|l| l.get(idx).copied().unwrap_or(0.0))
+                .collect()
+        })
         .collect();
 
     let coeffs = fit_maxent(&presence_values, &background_values, regularization);
@@ -150,7 +172,11 @@ pub fn maxent_simple(
     let suitability = maxent_predict(env_layers, &coeffs);
     let total = suitability.len().max(1) as f64;
     let high = suitability.iter().filter(|&&v| v > 0.7).count() as f64 / total;
-    let medium = suitability.iter().filter(|&&v| v >= 0.4 && v <= 0.7).count() as f64 / total;
+    let medium = suitability
+        .iter()
+        .filter(|&&v| v >= 0.4 && v <= 0.7)
+        .count() as f64
+        / total;
     let low = suitability.iter().filter(|&&v| v < 0.4).count() as f64 / total;
     let max_s = suitability.iter().copied().fold(0.0_f64, f64::max);
 

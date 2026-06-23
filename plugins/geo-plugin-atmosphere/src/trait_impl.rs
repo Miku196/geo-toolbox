@@ -1,38 +1,41 @@
-//! Plugin trait impl — SocioeconomicPlugin
-use crate::config::SocioeconomicConfig;
 use geo_core::errors::GeoResult;
 use geo_core::plugin::{Plugin, PluginCategory};
 
-pub struct SocioeconomicPlugin {
-    pub config: SocioeconomicConfig,
+use crate::config::AtmosphereConfig;
+
+pub struct AtmospherePlugin {
+    pub config: AtmosphereConfig,
 }
 
-impl SocioeconomicPlugin {
-    pub fn new(config: SocioeconomicConfig) -> Self {
+impl AtmospherePlugin {
+    pub fn new(config: AtmosphereConfig) -> Self {
         Self { config }
     }
 
     pub fn load(_path: &std::path::Path) -> GeoResult<Self> {
-        Ok(Self::new(SocioeconomicConfig::default()))
+        Ok(Self::new(AtmosphereConfig::default()))
     }
 }
 
-impl Plugin for SocioeconomicPlugin {
-    type Config = SocioeconomicConfig;
+impl Plugin for AtmospherePlugin {
+    type Config = AtmosphereConfig;
 
     fn new(config: Self::Config) -> Self {
-        Self { config }
+        Self::new(config)
     }
 
     fn name(&self) -> &str {
         &self.config.plugin.name
     }
+
     fn version(&self) -> &str {
         env!("CARGO_PKG_VERSION")
     }
+
     fn description(&self) -> &str {
         &self.config.plugin.description
     }
+
     fn category(&self) -> PluginCategory {
         PluginCategory::Process
     }

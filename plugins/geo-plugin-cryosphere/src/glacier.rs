@@ -17,7 +17,11 @@ pub fn mass_balance(accumulation_mwe: f64, ablation_mwe: f64, area_km2: f64) -> 
         accumulation_mwe,
         ablation_mwe,
         net_balance_mwe: accumulation_mwe - ablation_mwe,
-        equilibrium_line_altitude_m: if accumulation_mwe > 0.0 { 3000.0 + (ablation_mwe / accumulation_mwe) * 500.0 } else { 0.0 },
+        equilibrium_line_altitude_m: if accumulation_mwe > 0.0 {
+            3000.0 + (ablation_mwe / accumulation_mwe) * 500.0
+        } else {
+            0.0
+        },
         area_km2,
     }
 }

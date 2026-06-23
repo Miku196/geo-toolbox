@@ -1,6 +1,6 @@
 //! Tool registration — Socioeconomic plugin
-use geo_registry::{register_plugin, PluginRegistry};
 use geo_registry::registry::ToolResult;
+use geo_registry::{register_plugin, PluginRegistry};
 
 pub fn register_tools(registry: &mut PluginRegistry) {
     register_plugin!(registry, "socioeconomic", "Socioeconomic analysis: population, GDP, land-use change, accessibility", PluginCategory::Process, [

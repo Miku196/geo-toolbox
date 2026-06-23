@@ -47,14 +47,30 @@ pub struct GroundMotionConfig {
     pub response_damping: f64,
 }
 
-fn default_site_class() -> String { "II".into() }
-fn default_pga_a() -> f64 { 0.35 }
-fn default_pga_b() -> f64 { 0.05 }
-fn default_pga_c() -> f64 { 0.01 }
-fn default_site_ii() -> f64 { 1.0 }
-fn default_site_iii() -> f64 { 1.35 }
-fn default_site_iv() -> f64 { 1.8 }
-fn default_damping() -> f64 { 0.05 }
+fn default_site_class() -> String {
+    "II".into()
+}
+fn default_pga_a() -> f64 {
+    0.35
+}
+fn default_pga_b() -> f64 {
+    0.05
+}
+fn default_pga_c() -> f64 {
+    0.01
+}
+fn default_site_ii() -> f64 {
+    1.0
+}
+fn default_site_iii() -> f64 {
+    1.35
+}
+fn default_site_iv() -> f64 {
+    1.8
+}
+fn default_damping() -> f64 {
+    0.05
+}
 
 impl Default for GroundMotionConfig {
     fn default() -> Self {
@@ -85,9 +101,15 @@ pub struct PshaConfig {
     pub max_distance_km: f64,
 }
 
-fn default_return_periods() -> Vec<f64> { vec![50.0, 100.0, 475.0, 975.0, 2475.0] }
-fn default_min_mag() -> f64 { 4.5 }
-fn default_max_dist() -> f64 { 300.0 }
+fn default_return_periods() -> Vec<f64> {
+    vec![50.0, 100.0, 475.0, 975.0, 2475.0]
+}
+fn default_min_mag() -> f64 {
+    4.5
+}
+fn default_max_dist() -> f64 {
+    300.0
+}
 
 impl Default for PshaConfig {
     fn default() -> Self {

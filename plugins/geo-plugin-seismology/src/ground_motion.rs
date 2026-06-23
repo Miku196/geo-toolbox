@@ -71,44 +71,79 @@ pub fn pgv_from_pga(pga_g: f64, site_class: &str) -> f64 {
 
 /// PGA → 中国地震烈度 (GB/T 17742-2020 简化版)。
 pub fn pga_to_intensity(pga_g: f64) -> u8 {
-    if pga_g >= 0.40 { 12 }
-    else if pga_g >= 0.20 { 11 }
-    else if pga_g >= 0.10 { 10 }
-    else if pga_g >= 0.05 { 9 }
-    else if pga_g >= 0.025 { 8 }
-    else if pga_g >= 0.01 { 7 }
-    else if pga_g >= 0.005 { 6 }
-    else { 5 }
+    if pga_g >= 0.40 {
+        12
+    } else if pga_g >= 0.20 {
+        11
+    } else if pga_g >= 0.10 {
+        10
+    } else if pga_g >= 0.05 {
+        9
+    } else if pga_g >= 0.025 {
+        8
+    } else if pga_g >= 0.01 {
+        7
+    } else if pga_g >= 0.005 {
+        6
+    } else {
+        5
+    }
 }
 
 /// 完整地震动评估。
-pub fn ground_motion_assessment(magnitude: f64, distance_km: f64, site_class: &str) -> GroundMotionResult {
+pub fn ground_motion_assessment(
+    magnitude: f64,
+    distance_km: f64,
+    site_class: &str,
+) -> GroundMotionResult {
     let pga = pga_from_mag_distance(magnitude, distance_km, site_class);
     let pgv = pgv_from_pga(pga, site_class);
     let intensity = pga_to_intensity(pga);
-    GroundMotionResult { pga_g: pga, pgv_cm_s: pgv, intensity, site_class: site_class.to_string(), magnitude, distance_km }
+    GroundMotionResult {
+        pga_g: pga,
+        pgv_cm_s: pgv,
+        intensity,
+        site_class: site_class.to_string(),
+        magnitude,
+        distance_km,
+    }
 }
 
 /// 加速度反应谱 (Newmark-Hall 简化法, GB 50011-2010)。
 pub fn response_spectrum(pga_g: f64, periods: &[f64], damping: f64) -> ResponseSpectrum {
-    let damping_factor = ((0.05 / damping.max(0.001)).powf(0.4) * 0.55 + 0.45).min(1.5).max(0.5);
-    let points: Vec<ResponseSpectrumPoint> = periods.iter().map(|&t| {
-        let sa = if t < 0.1 {
-            pga_g * (1.0 + (damping_factor * 2.5 - 1.0) * t / 0.1)
-        } else if t <= 0.4 {
-            pga_g * damping_factor * 2.5
-        } else {
-            // 下降段: Sa ∝ 1/T
-            pga_g * damping_factor * 2.5 * (0.4 / t.max(0.4))
-        };
-        ResponseSpectrumPoint { period_s: t, sa_g: sa.min(5.0) }
-    }).collect();
-    ResponseSpectrum { points, pga_g, damping }
+    let damping_factor = ((0.05 / damping.max(0.001)).powf(0.4) * 0.55 + 0.45)
+        .min(1.5)
+        .max(0.5);
+    let points: Vec<ResponseSpectrumPoint> = periods
+        .iter()
+        .map(|&t| {
+            let sa = if t < 0.1 {
+                pga_g * (1.0 + (damping_factor * 2.5 - 1.0) * t / 0.1)
+            } else if t <= 0.4 {
+                pga_g * damping_factor * 2.5
+            } else {
+                // 下降段: Sa ∝ 1/T
+                pga_g * damping_factor * 2.5 * (0.4 / t.max(0.4))
+            };
+            ResponseSpectrumPoint {
+                period_s: t,
+                sa_g: sa.min(5.0),
+            }
+        })
+        .collect();
+    ResponseSpectrum {
+        points,
+        pga_g,
+        damping,
+    }
 }
 
 /// 默认周期数组 (0.02-6.0s, 建筑抗震设计常用周期)。
 pub fn default_periods() -> Vec<f64> {
-    vec![0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0]
+    vec![
+        0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.5, 2.0, 3.0, 4.0,
+        5.0, 6.0,
+    ]
 }
 
 #[cfg(test)]
@@ -118,7 +153,11 @@ mod tests {
     #[test]
     fn test_pga_from_mag_distance() {
         let pga = pga_from_mag_distance(7.0, 30.0, "II");
-        assert!(pga > 0.01 && pga < 2.0, "PGA={} should be reasonable for M7@30km II", pga);
+        assert!(
+            pga > 0.01 && pga < 2.0,
+            "PGA={} should be reasonable for M7@30km II",
+            pga
+        );
     }
 
     #[test]
@@ -138,7 +177,11 @@ mod tests {
     #[test]
     fn test_pgv_from_pga() {
         let pgv = pgv_from_pga(0.2, "II");
-        assert!(pgv > 10.0 && pgv < 100.0, "PGV={} should be reasonable", pgv);
+        assert!(
+            pgv > 10.0 && pgv < 100.0,
+            "PGV={} should be reasonable",
+            pgv
+        );
     }
 
     #[test]

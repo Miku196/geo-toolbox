@@ -8,7 +8,9 @@ pub struct CryospherePlugin {
 }
 
 impl CryospherePlugin {
-    pub fn new(config: CryosphereConfig) -> Self { Self { config } }
+    pub fn new(config: CryosphereConfig) -> Self {
+        Self { config }
+    }
     pub fn load(_path: &std::path::Path) -> GeoResult<Self> {
         Ok(Self::new(CryosphereConfig::default()))
     }
@@ -16,9 +18,19 @@ impl CryospherePlugin {
 
 impl Plugin for CryospherePlugin {
     type Config = CryosphereConfig;
-    fn new(config: Self::Config) -> Self { Self { config } }
-    fn name(&self) -> &str { &self.config.plugin.name }
-    fn version(&self) -> &str { env!("CARGO_PKG_VERSION") }
-    fn description(&self) -> &str { &self.config.plugin.description }
-    fn category(&self) -> PluginCategory { PluginCategory::Process }
+    fn new(config: Self::Config) -> Self {
+        Self { config }
+    }
+    fn name(&self) -> &str {
+        &self.config.plugin.name
+    }
+    fn version(&self) -> &str {
+        env!("CARGO_PKG_VERSION")
+    }
+    fn description(&self) -> &str {
+        &self.config.plugin.description
+    }
+    fn category(&self) -> PluginCategory {
+        PluginCategory::Process
+    }
 }

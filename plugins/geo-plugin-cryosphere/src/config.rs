@@ -16,9 +16,15 @@ pub struct CryosphereConfig {
     pub ice_density: f64,
 }
 
-fn default_ddf() -> f64 { 3.5 }
-fn default_rain_snow() -> f64 { 1.0 }
-fn default_ice_density() -> f64 { 917.0 }
+fn default_ddf() -> f64 {
+    3.5
+}
+fn default_rain_snow() -> f64 {
+    1.0
+}
+fn default_ice_density() -> f64 {
+    917.0
+}
 
 impl Default for CryosphereConfig {
     fn default() -> Self {

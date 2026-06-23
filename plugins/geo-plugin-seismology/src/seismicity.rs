@@ -30,33 +30,59 @@ pub fn gutenberg_richter(a: f64, b: f64, m_min: f64, m_max: f64, step: f64) -> V
 
 /// Poisson 概率: P(N≥1 in t years) = 1 - exp(-λ*t)
 pub fn poisson_probability(annual_rate: f64, time_years: f64) -> f64 {
-    if annual_rate <= 0.0 { return 0.0; }
+    if annual_rate <= 0.0 {
+        return 0.0;
+    }
     1.0 - (-annual_rate * time_years).exp()
 }
 
 /// b 值极大似然估计 (Aki 1965): b = log10(e) / (M_mean - M_min)
 pub fn b_value_mle(magnitudes: &[f64], min_mag: f64) -> f64 {
-    if magnitudes.is_empty() { return 0.0; }
-    let filtered: Vec<f64> = magnitudes.iter().copied().filter(|&m| m >= min_mag).collect();
-    if filtered.len() < 2 { return 0.0; }
+    if magnitudes.is_empty() {
+        return 0.0;
+    }
+    let filtered: Vec<f64> = magnitudes
+        .iter()
+        .copied()
+        .filter(|&m| m >= min_mag)
+        .collect();
+    if filtered.len() < 2 {
+        return 0.0;
+    }
     let mean_m = filtered.iter().sum::<f64>() / filtered.len() as f64;
-    if mean_m <= min_mag { return 1.0; }
+    if mean_m <= min_mag {
+        return 1.0;
+    }
     (std::f64::consts::LOG10_E) / (mean_m - min_mag)
 }
 
 /// a 值从 b 值 + 发生率计算: a = log10(N_total) + b * M_min
 pub fn a_value_from_b(b: f64, total_events: f64, min_mag: f64, time_span_years: f64) -> f64 {
-    if time_span_years <= 0.0 || total_events <= 0.0 { return 0.0; }
+    if time_span_years <= 0.0 || total_events <= 0.0 {
+        return 0.0;
+    }
     let annual_rate = total_events / time_span_years;
     annual_rate.log10() + b * min_mag
 }
 
 /// 完整地震目录统计。
-pub fn seismicity_analysis(magnitudes: &[f64], min_mag: f64, time_span_years: f64) -> SeismicityResult {
-    let total: Vec<f64> = magnitudes.iter().copied().filter(|&m| m >= min_mag).collect();
+pub fn seismicity_analysis(
+    magnitudes: &[f64],
+    min_mag: f64,
+    time_span_years: f64,
+) -> SeismicityResult {
+    let total: Vec<f64> = magnitudes
+        .iter()
+        .copied()
+        .filter(|&m| m >= min_mag)
+        .collect();
     let b = b_value_mle(magnitudes, min_mag);
     let a = a_value_from_b(b, total.len() as f64, min_mag, time_span_years);
-    let annual_rate = if time_span_years > 0.0 { total.len() as f64 / time_span_years } else { 0.0 };
+    let annual_rate = if time_span_years > 0.0 {
+        total.len() as f64 / time_span_years
+    } else {
+        0.0
+    };
     SeismicityResult {
         event_count: total.len(),
         min_completeness_mag: min_mag,
@@ -68,7 +94,11 @@ pub fn seismicity_analysis(magnitudes: &[f64], min_mag: f64, time_span_years: f6
 
 /// 地震复发间隔: Tr = 1 / λ (year)
 pub fn recurrence_interval(annual_rate: f64) -> f64 {
-    if annual_rate <= 0.0 { f64::INFINITY } else { 1.0 / annual_rate }
+    if annual_rate <= 0.0 {
+        f64::INFINITY
+    } else {
+        1.0 / annual_rate
+    }
 }
 
 /// 给定时间段内至少发生一次 M≥m 的概率。
@@ -103,7 +133,9 @@ mod tests {
 
     #[test]
     fn test_seismicity_analysis() {
-        let mags: Vec<f64> = (0..200).map(|i| 2.0 + (i as f64).sin().abs() * 5.0).collect();
+        let mags: Vec<f64> = (0..200)
+            .map(|i| 2.0 + (i as f64).sin().abs() * 5.0)
+            .collect();
         let result = seismicity_analysis(&mags, 3.0, 50.0);
         assert!(result.event_count > 0);
         assert!(result.b_value_mle > 0.0);

@@ -28,9 +28,15 @@ pub struct PopulationConfig {
     pub wealth_window_size: usize,
 }
 
-fn default_cell_area() -> f64 { 0.01 }
-fn default_ntl_cal() -> f64 { 0.5 }
-fn default_win() -> usize { 3 }
+fn default_cell_area() -> f64 {
+    0.01
+}
+fn default_ntl_cal() -> f64 {
+    0.5
+}
+fn default_win() -> usize {
+    3
+}
 
 impl Default for PopulationConfig {
     fn default() -> Self {
@@ -52,9 +58,15 @@ pub struct LanduseConfig {
     pub driver_influence_decay: f64,
 }
 
-fn default_iter() -> usize { 10 }
-fn default_nb() -> f64 { 0.3 }
-fn default_decay() -> f64 { 0.5 }
+fn default_iter() -> usize {
+    10
+}
+fn default_nb() -> f64 {
+    0.3
+}
+fn default_decay() -> f64 {
+    0.5
+}
 
 impl Default for LanduseConfig {
     fn default() -> Self {
@@ -74,8 +86,12 @@ pub struct AccessibilityConfig {
     pub default_decay_parameter: f64,
 }
 
-fn default_max_cost() -> f64 { 120.0 }
-fn default_decay_param() -> f64 { 0.05 }
+fn default_max_cost() -> f64 {
+    120.0
+}
+fn default_decay_param() -> f64 {
+    0.05
+}
 
 impl Default for AccessibilityConfig {
     fn default() -> Self {
