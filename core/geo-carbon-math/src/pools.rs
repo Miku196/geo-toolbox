@@ -846,4 +846,13 @@ mod tests {
         assert!(change.is_net_sink());
         assert!((change.intensity_tco2e_ha() - -300.0).abs() < 0.01);
     }
+
+    #[test]
+    fn test_default_uncertainty_pct_all_pools() {
+        assert!((CarbonPool::AGB.default_uncertainty_pct() - 30.0).abs() < 0.01);
+        assert!((CarbonPool::BGB.default_uncertainty_pct() - 30.0).abs() < 0.01);
+        assert!((CarbonPool::Deadwood.default_uncertainty_pct() - 90.0).abs() < 0.01);
+        assert!((CarbonPool::Litter.default_uncertainty_pct() - 60.0).abs() < 0.01);
+        assert!((CarbonPool::SOC.default_uncertainty_pct() - 50.0).abs() < 0.01);
+    }
 }

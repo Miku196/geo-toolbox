@@ -437,4 +437,16 @@ mod tests {
         assert!(q0 > q2);
         // Ia=0 时 Q = P²/(P+S) ≈ 47.9 对 CN=70
     }
+
+    #[test]
+    fn test_cn_ii_for_landuse_known_values() {
+        assert_eq!(cn_ii_for_landuse("urban"), [89.0, 92.0, 94.0, 95.0]);
+        assert_eq!(cn_ii_for_landuse("森林"), [30.0, 55.0, 70.0, 77.0]);
+        assert_eq!(cn_ii_for_landuse("优质牧草"), [39.0, 61.0, 74.0, 80.0]);
+        assert_eq!(cn_ii_for_landuse("道路"), [98.0, 98.0, 98.0, 98.0]);
+        assert_eq!(cn_ii_for_landuse("耕地"), [67.0, 78.0, 85.0, 89.0]);
+        assert_eq!(cn_ii_for_landuse("unknown_xyz"), [67.0, 78.0, 85.0, 89.0]);
+        assert_eq!(cn_ii_for_landuse("forest_good"), [30.0, 55.0, 70.0, 77.0]);
+        assert_eq!(cn_ii_for_landuse("paved"), [98.0, 98.0, 98.0, 98.0]);
+    }
 }

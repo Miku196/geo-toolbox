@@ -18,6 +18,15 @@ import sys
 import os
 from pathlib import Path
 from datetime import datetime
+from typing import Any
+
+from _report_utils import (
+    register_chinese_font,
+    build_pdf_styles,
+    make_pdf_cover,
+    make_pdf_toc,
+    create_pdf_doc,
+)
 
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8')
@@ -29,8 +38,12 @@ OUTPUT_DIR = PROJECT_ROOT / "output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ─── 1. 加载 USGS 地震数据 ─────────────────────────
-def load_usgs_data():
-    """加载 USGS 地震数据"""
+def load_usgs_data() -> tuple[Any, Any]:
+    """加载 USGS 地震数据。
+
+    Returns:
+        (gdf_m4, gdf_m3) 两个 GeoDataFrame 的元组。
+    """
     import geopandas as gpd
     from shapely.geometry import Point
     
@@ -55,8 +68,8 @@ def load_usgs_data():
     
     return gdf_m4, gdf_m3
 
-def load_china_boundary():
-    """加载中国边界"""
+def load_china_boundary() -> Any:
+    """加载中国边界。"""
     import geopandas as gpd
     # 优先用示例自带简化边界，fallback 到 Natural Earth
     ne_admin = DATA_DIR / "ne_10m_admin_0_countries" / "ne_10m_admin_0_countries.shp"
@@ -69,10 +82,11 @@ def load_china_boundary():
     return china
 
 # ─── 2. 中国地震带模型 ─────────────────────────────
-def get_seismic_zones():
-    """中国主要地震带 (基于GB 18306-2015 中国地震动参数区划图)
-    
-    返回地震带边界框和风险等级
+def get_seismic_zones() -> list[dict[str, Any]]:
+    """中国主要地震带 (基于GB 18306-2015 中国地震动参数区划图)。
+
+    Returns:
+        地震带列表，每项包含 name, bbox, level, desc, pga 字段。
     """
     zones = [
         # 南北地震带 (中国最重要地震带)
@@ -159,7 +173,8 @@ def build_seismic_risk_grid(china, gdf_m4, zones):
     gdf_risk = gpd.GeoDataFrame(grid_cells, crs="EPSG:4326")
     return gdf_risk
 
-def calc_cell_risk(lon, lat, gdf_m4, zones):
+def calc_cell_risk(lon: float, lat: float, gdf_m4: Any, zones: list[dict]) -> float:
+    """计算单个网格的地震风险得分。"""
     """计算单格网地震风险得分"""
     import numpy as np
     
@@ -190,7 +205,7 @@ def calc_cell_risk(lon, lat, gdf_m4, zones):
     
     return min(1.0, max(0.0, risk))
 
-def classify_seismic_risk(score):
+def classify_seismic_risk(score: float) -> str:
     if score >= 0.6:
         return "极高风险"
     elif score >= 0.35:
@@ -203,7 +218,7 @@ def classify_seismic_risk(score):
         return "极低风险"
 
 # ─── 4. 统计 ───────────────────────────────────────
-def generate_stats(gdf_risk):
+def generate_stats(gdf_risk: Any) -> dict[str, Any]:
     import numpy as np
     
     gdf_proj = gdf_risk.to_crs("EPSG:3405")
@@ -481,36 +496,36 @@ def generate_pdf(gdf_risk, gdf_m4, china, zones, stats, map_paths):
     
     styles = getSampleStyleSheet()
     
-    title_style = ParagraphStyle('T', parent=styles['Title'], fontName=cn_font,
+    styles['title'] = ParagraphStyle('T', parent=styles['Title'], fontName=cn_font,
                                 fontSize=22, leading=30, alignment=TA_CENTER, spaceAfter=20)
-    h1_style = ParagraphStyle('H1', parent=styles['Heading1'], fontName=cn_font,
+    styles['h1'] = ParagraphStyle('H1', parent=styles['Heading1'], fontName=cn_font,
                              fontSize=16, leading=22, spaceBefore=20, spaceAfter=10)
-    h2_style = ParagraphStyle('H2', parent=styles['Heading2'], fontName=cn_font,
+    styles['h2'] = ParagraphStyle('H2', parent=styles['Heading2'], fontName=cn_font,
                              fontSize=13, leading=18, spaceBefore=15, spaceAfter=8)
     body_style = ParagraphStyle('B', parent=styles['Normal'], fontName=cn_font,
                                fontSize=10, leading=16, alignment=TA_JUSTIFY)
-    center_style = ParagraphStyle('C', parent=body_style, alignment=TA_CENTER)
+    styles['center'] = ParagraphStyle('C', parent=body_style, alignment=TA_CENTER)
     
     story = []
     
     # 封面
     story.append(Spacer(1, 3*cm))
-    story.append(Paragraph("2026年中国地震活动", title_style))
-    story.append(Paragraph("区域图与风险评估报告", title_style))
+    story.append(Paragraph("2026年中国地震活动", styles['title']))
+    story.append(Paragraph("区域图与风险评估报告", styles['title']))
     story.append(Spacer(1, 1*cm))
     story.append(Paragraph("China Seismic Activity Assessment — 2026",
                           ParagraphStyle('E', parent=body_style, alignment=TA_CENTER, fontSize=12)))
     story.append(Spacer(1, 2*cm))
     story.append(Paragraph(f"评估日期: {datetime.now().strftime('%Y年%m月%d日')}",
-                          ParagraphStyle('D', parent=center_style, fontSize=11)))
+                          ParagraphStyle('D', parent=styles['center'], fontSize=11)))
     story.append(Paragraph("数据来源: USGS Earthquake Catalog / GB 18306-2015",
-                          ParagraphStyle('S', parent=center_style, fontSize=10, textColor=grey)))
+                          ParagraphStyle('S', parent=styles['center'], fontSize=10, textColor=grey)))
     story.append(Paragraph("工具链: Camoufox (数据采集) + geo-toolbox (CRS) + Python GIS",
-                          ParagraphStyle('S2', parent=center_style, fontSize=10, textColor=grey)))
+                          ParagraphStyle('S2', parent=styles['center'], fontSize=10, textColor=grey)))
     story.append(PageBreak())
     
     # 目录
-    story.append(Paragraph("目录", h1_style))
+    story.append(Paragraph("目录", styles['h1']))
     toc = ["1. 概述与方法", "2. 数据来源", "3. 中国主要地震带", "4. 2026年地震活动统计",
            "5. 全国地震风险 GIS 地图", "6. 重点区域放大图", "7. 高风险区详细评估", "8. 结论与建议"]
     for t in toc:
@@ -518,7 +533,7 @@ def generate_pdf(gdf_risk, gdf_m4, china, zones, stats, map_paths):
     story.append(PageBreak())
     
     # 1. 概述
-    story.append(Paragraph("1. 概述与方法", h1_style))
+    story.append(Paragraph("1. 概述与方法", styles['h1']))
     story.append(Paragraph(
         "本报告基于USGS (United States Geological Survey) 全球地震目录2026年1月至6月的实时监测数据，"
         "结合中国地震动参数区划图(GB 18306-2015)的13条主要地震带划分，对中国进行0.25°×0.25°网格的"
@@ -534,7 +549,7 @@ def generate_pdf(gdf_risk, gdf_m4, china, zones, stats, map_paths):
     story.append(PageBreak())
     
     # 2. 数据来源
-    story.append(Paragraph("2. 数据来源", h1_style))
+    story.append(Paragraph("2. 数据来源", styles['h1']))
     ds = [
         ["数据项", "来源", "说明"],
         ["地震事件", "USGS FDSN Event API", "2026-01-01 ~ 2026-06-08, M3+"],
@@ -558,7 +573,7 @@ def generate_pdf(gdf_risk, gdf_m4, china, zones, stats, map_paths):
     story.append(PageBreak())
     
     # 3. 地震带
-    story.append(Paragraph("3. 中国主要地震带", h1_style))
+    story.append(Paragraph("3. 中国主要地震带", styles['h1']))
     
     zone_data = [["地震带名称", "风险等级", "PGA", "描述", "历史大震"]]
     for z in zones:
@@ -584,7 +599,7 @@ def generate_pdf(gdf_risk, gdf_m4, china, zones, stats, map_paths):
     story.append(PageBreak())
     
     # 4. 地震活动统计
-    story.append(Paragraph("4. 2026年地震活动统计", h1_style))
+    story.append(Paragraph("4. 2026年地震活动统计", styles['h1']))
     
     mag_bins = {"M3.0-3.9": len(gdf_m4[gdf_m4['mag'] < 4]),
                 "M4.0-4.9": len(gdf_m4[(gdf_m4['mag'] >= 4) & (gdf_m4['mag'] < 5)]),
@@ -624,7 +639,7 @@ def generate_pdf(gdf_risk, gdf_m4, china, zones, stats, map_paths):
     story.append(PageBreak())
     
     # 5. 风险统计
-    story.append(Paragraph("5. 地震风险空间统计", h1_style))
+    story.append(Paragraph("5. 地震风险空间统计", styles['h1']))
     
     risk_data = [["风险等级", "网格数", "面积(万km²)", "占比"]]
     for lvl in ["极高风险", "高风险", "中风险", "低风险", "极低风险"]:
@@ -647,26 +662,26 @@ def generate_pdf(gdf_risk, gdf_m4, china, zones, stats, map_paths):
     story.append(PageBreak())
     
     # 6. GIS 地图
-    story.append(Paragraph("6. 全国地震风险 GIS 地图", h1_style))
+    story.append(Paragraph("6. 全国地震风险 GIS 地图", styles['h1']))
     if len(map_paths) >= 1:
         story.append(Image(str(map_paths[0]), width=16*cm, height=14*cm))
     story.append(PageBreak())
     
     # 7. 区域图
-    story.append(Paragraph("7. 四大高风险区放大图", h1_style))
+    story.append(Paragraph("7. 四大高风险区放大图", styles['h1']))
     if len(map_paths) >= 2:
         story.append(Image(str(map_paths[1]), width=16*cm, height=14.5*cm))
     story.append(PageBreak())
     
     # 8. 统计图
-    story.append(Paragraph("8. 统计分析图表", h1_style))
+    story.append(Paragraph("8. 统计分析图表", styles['h1']))
     if len(map_paths) >= 3:
         story.append(Image(str(map_paths[2]), width=16*cm, height=5.5*cm))
     story.append(PageBreak())
     
     # 9. 结论
-    story.append(Paragraph("9. 结论与建议", h1_style))
-    story.append(Paragraph("主要结论:", h2_style))
+    story.append(Paragraph("9. 结论与建议", styles['h1']))
+    story.append(Paragraph("主要结论:", styles['h2']))
     conclusions = [
         f"1. 2026年上半年中国地震活动以M3-M4级为主，整体活动水平与常年持平，"
         f"未发生M7+大震。南北地震带中段(川西)和天山地震带活动最为活跃。",
@@ -685,7 +700,7 @@ def generate_pdf(gdf_risk, gdf_m4, china, zones, stats, map_paths):
         story.append(Spacer(1, 0.1*cm))
     
     story.append(Spacer(1, 0.3*cm))
-    story.append(Paragraph("建议:", h2_style))
+    story.append(Paragraph("建议:", styles['h2']))
     recs = [
         "• 加强南北地震带和天山地震带的地震监测站网密度",
         "• 推进地震预警系统在京津冀、成渝、粤港澳大湾区的全面覆盖",
@@ -698,18 +713,18 @@ def generate_pdf(gdf_risk, gdf_m4, china, zones, stats, map_paths):
         story.append(Spacer(1, 0.05*cm))
     
     story.append(Spacer(1, 1*cm))
-    story.append(Paragraph("— 报告完 —", ParagraphStyle('END', parent=center_style, fontSize=11)))
+    story.append(Paragraph("— 报告完 —", ParagraphStyle('END', parent=styles['center'], fontSize=11)))
     story.append(Spacer(1, 0.3*cm))
     story.append(Paragraph(f"生成: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | "
                           f"工具链: Camoufox + geo-toolbox + Python GIS",
-                          ParagraphStyle('F', parent=center_style, fontSize=8, textColor=grey)))
+                          ParagraphStyle('F', parent=styles['center'], fontSize=8, textColor=grey)))
     
     doc.build(story)
     print(f"  ✓ PDF: {pdf_path}")
     return pdf_path
 
 # ─── GeoJSON 导出 ──────────────────────────────────
-def export_geojson(gdf_risk):
+def export_geojson(gdf_risk: Any) -> Path:
     print("\n📦 导出 GeoJSON...")
     high = gdf_risk[gdf_risk["risk_level"].isin(["极高风险", "高风险"])].copy()
     hp = OUTPUT_DIR / "china_seismic_high_risk_2026.geojson"
@@ -720,7 +735,8 @@ def export_geojson(gdf_risk):
 # ─── geo-toolbox 集成 ─────────────────────────────
 GEO_TOOLBOX = PROJECT_ROOT.parent.parent / "target" / "debug" / "geo-toolbox.exe"
 
-def run_geo_toolbox(args: list) -> str:
+def run_geo_toolbox(args: list[str]) -> str:
+    """调用 geo-toolbox CLI。"""
     """调用 geo-toolbox CLI"""
     import subprocess
     cmd = [str(GEO_TOOLBOX)] + args
@@ -729,7 +745,7 @@ def run_geo_toolbox(args: list) -> str:
         print(f"  ⚠ geo-toolbox error: {result.stderr}")
     return result.stdout.strip()
 
-def geo_toolbox_crs_validation(gdf_m4):
+def geo_toolbox_crs_validation(gdf_m4: Any) -> None:
     """使用 geo-toolbox 进行 CRS 验证和坐标变换"""
     import pyproj
     from pyproj import Transformer
@@ -779,7 +795,7 @@ def geo_toolbox_crs_validation(gdf_m4):
     
     print("  ✓ geo-toolbox CRS 验证完成 (crs list + 坐标变换)")
 
-def geo_toolbox_geojson_export(gdf_risk):
+def geo_toolbox_geojson_export(gdf_risk: Any) -> None:
     """使用 geo-toolbox output 导出 GeoJSON"""
     # geo-toolbox 的 output geojson 需要 SQL 源，这里用 Python 导出后用 geo-toolbox 验证
     # 实际场景中 geo-toolbox 可直接从 PostGIS 查询导出
@@ -788,7 +804,7 @@ def geo_toolbox_geojson_export(gdf_risk):
     print(f"  可用输出格式: {', '.join(['GeoJSON','Excel','DXF','Report'])}")
 
 # ─── 主函数 ───────────────────────────────────────
-def main():
+def main() -> int:
     print("=" * 70)
     print("  中国 2026 年地震活动区域图与风险评估")
     print("  China Seismic Activity Assessment — 2026")

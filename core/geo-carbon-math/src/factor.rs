@@ -1029,4 +1029,51 @@ mod tests {
             assert!(!gas.formula().is_empty());
         }
     }
+
+    #[test]
+    fn test_parse_emission_factor_row_simple() {
+        // Build a minimal column index and record
+        let headers: Vec<String> = vec!["category", "factor_value", "source"]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
+        let cols = parse_csv_columns(&headers).unwrap();
+        let rec = csv::StringRecord::from(vec!["forest", "-5.0", "IPCC_2019"]);
+        let ef = parse_emission_factor_row(&rec, &cols).unwrap();
+        assert_eq!(ef.category, "forest");
+        assert_eq!(ef.factor_value, -5.0);
+        assert_eq!(ef.source, "IPCC_2019");
+        assert!(ef.is_sink());
+    }
+
+    #[test]
+    fn test_parse_emission_factor_row_with_gases() {
+        let headers: Vec<String> = vec![
+            "category",
+            "factor_value",
+            "source",
+            "gas_co2_factor",
+            "gas_ch4_factor",
+        ]
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
+        let cols = parse_csv_columns(&headers).unwrap();
+        let rec = csv::StringRecord::from(vec!["wetland", "0.0", "IPCC_2006", "10.0", "2.5"]);
+        let ef = parse_emission_factor_row(&rec, &cols).unwrap();
+        assert_eq!(ef.category, "wetland");
+        assert!(!ef.gas_factors.is_empty());
+    }
+
+    #[test]
+    fn test_parse_emission_factor_row_with_scope() {
+        let headers: Vec<String> = vec!["category", "factor_value", "source", "scope"]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
+        let cols = parse_csv_columns(&headers).unwrap();
+        let rec = csv::StringRecord::from(vec!["cropland", "3.0", "IPCC", "scope1"]);
+        let ef = parse_emission_factor_row(&rec, &cols).unwrap();
+        assert_eq!(ef.scope, Some(EmissionScope::Scope1));
+    }
 }

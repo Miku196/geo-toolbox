@@ -20,6 +20,15 @@ import sys
 import os
 from pathlib import Path
 from datetime import datetime
+from typing import Any
+
+from _report_utils import (
+    register_chinese_font,
+    build_pdf_styles,
+    make_pdf_cover,
+    make_pdf_toc,
+    create_pdf_doc,
+)
 
 # Fix Windows encoding issues
 if sys.platform == 'win32':
@@ -40,8 +49,8 @@ NE_LAKES = DATA_DIR / "ne_10m_lakes"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ─── 1. geo-toolbox CRS 变换 ─────────────────────────
-def run_geo_toolbox(args: list) -> str:
-    """调用 geo-toolbox CLI"""
+def run_geo_toolbox(args: list[str]) -> str:
+    """调用 geo-toolbox CLI。"""
     cmd = [str(GEO_TOOLBOX)] + args
     print(f"  [geo-toolbox] {' '.join(args)}")
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
@@ -49,16 +58,20 @@ def run_geo_toolbox(args: list) -> str:
         print(f"  ⚠ geo-toolbox error: {result.stderr}")
     return result.stdout.strip()
 
-def transform_coord(lon: float, lat: float, from_epsg: int = 4326, to_epsg: int = 3857):
-    """使用 pyproj 进行坐标变换 (geo-toolbox 编译需要 proj feature)"""
+def transform_coord(lon: float, lat: float, from_epsg: int = 4326, to_epsg: int = 3857) -> tuple[float, float]:
+    """使用 pyproj 进行坐标变换 (geo-toolbox 编译需要 proj feature)。"""
     from pyproj import Transformer
     transformer = Transformer.from_crs(f"EPSG:{from_epsg}", f"EPSG:{to_epsg}", always_xy=True)
     x, y = transformer.transform(lon, lat)
     return x, y
 
 # ─── 2. 数据加载 ─────────────────────────────────────
-def load_data():
-    """加载 Natural Earth 数据"""
+def load_data() -> tuple[Any, Any, Any]:
+    """加载 Natural Earth 数据。
+
+    Returns:
+        (china, rivers, lakes) 三个 GeoDataFrame 的元组。
+    """
     import geopandas as gpd
     
     print("\n📂 加载 Natural Earth 数据...")
@@ -78,8 +91,8 @@ def load_data():
     
     return china, rivers, lakes
 
-def clip_to_china(gdf, china_boundary):
-    """裁剪数据到中国范围 - 在 WGS84 下进行空间筛选和裁剪"""
+def clip_to_china(gdf: Any, china_boundary: Any) -> Any:
+    """裁剪数据到中国范围 - 在 WGS84 下进行空间筛选和裁剪。"""
     import geopandas as gpd
     from shapely.geometry import box
     
@@ -251,8 +264,8 @@ def build_flood_risk_model(china, rivers, lakes):
         }
     }
 
-def calculate_cell_risk(lon, lat, flood_prone_basins, climate_hotspots):
-    """计算单个网格的风险得分"""
+def calculate_cell_risk(lon: float, lat: float, flood_prone_basins: list[dict], climate_hotspots: list[dict]) -> float:
+    """计算单个网格的风险得分。"""
     import numpy as np
     
     risk = 0.0
@@ -293,7 +306,7 @@ def calculate_cell_risk(lon, lat, flood_prone_basins, climate_hotspots):
     
     return min(1.0, max(0.0, risk))
 
-def classify_risk(score):
+def classify_risk(score: float) -> str:
     """风险分级"""
     if score >= 0.7:
         return "极高风险"
@@ -307,7 +320,7 @@ def classify_risk(score):
         return "极低风险"
 
 # ─── 4. 统计报告 ─────────────────────────────────────
-def generate_statistics(risk_data):
+def generate_statistics(risk_data: dict) -> tuple[dict[str, Any], list[str]]:
     """生成洪水风险统计数据"""
     import numpy as np
     
@@ -336,8 +349,12 @@ def generate_statistics(risk_data):
     return stats, gdf
 
 # ─── 5. GIS 地图生成 ─────────────────────────────────
-def create_flood_risk_map(risk_data, china, rivers, lakes):
-    """绘制中国洪水风险 GIS 地图"""
+def create_flood_risk_map(risk_data: dict, china: Any, rivers: Any, lakes: Any) -> list[Path]:
+    """绘制中国洪水风险 GIS 地图。
+
+    Returns:
+        生成的地图文件路径列表 [主图, 区域图, 统计图]。
+    """
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -634,95 +651,48 @@ def create_flood_risk_map(risk_data, china, rivers, lakes):
     return [map_path, region_map_path, stats_path]
 
 # ─── 6. PDF 报告生成 ─────────────────────────────────
-def generate_pdf_report(risk_data, stats, china, map_paths):
-    """生成 PDF 报告"""
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import cm, mm
+def generate_pdf_report(risk_data: dict, stats: dict, china: Any, map_paths: list[Path]) -> Path:
+    """生成 PDF 报告。"""
     from reportlab.lib.colors import HexColor, white, black, grey
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
-    from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Image, 
+    from reportlab.platypus import (Paragraph, Spacer, Image,
                                      Table, TableStyle, PageBreak, KeepTogether)
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.pdfbase.cidfonts import UnicodeCIDFont
     
     print("\n📄 生成 PDF 报告...")
     
     pdf_path = OUTPUT_DIR / "中国2026年洪水高风险区评估报告.pdf"
     
-    doc = SimpleDocTemplate(
-        str(pdf_path),
-        pagesize=A4,
-        rightMargin=2*cm,
-        leftMargin=2*cm,
-        topMargin=2*cm,
-        bottomMargin=2*cm
-    )
-    
-    # 注册中文字体
-    try:
-        pdfmetrics.registerFont(UnicodeCIDFont('STSong-Light'))
-        cn_font = 'STSong-Light'
-    except:
-        cn_font = 'Helvetica'
-    
-    styles = getSampleStyleSheet()
-    
-    title_style = ParagraphStyle(
-        'CNTitle', parent=styles['Title'],
-        fontName=cn_font, fontSize=22, leading=30,
-        alignment=TA_CENTER, spaceAfter=20
-    )
-    h1_style = ParagraphStyle(
-        'CNH1', parent=styles['Heading1'],
-        fontName=cn_font, fontSize=16, leading=22,
-        spaceBefore=20, spaceAfter=10
-    )
-    h2_style = ParagraphStyle(
-        'CNH2', parent=styles['Heading2'],
-        fontName=cn_font, fontSize=13, leading=18,
-        spaceBefore=15, spaceAfter=8
-    )
-    body_style = ParagraphStyle(
-        'CNBody', parent=styles['Normal'],
-        fontName=cn_font, fontSize=10, leading=16,
-        alignment=TA_JUSTIFY
-    )
+    doc = create_pdf_doc(str(pdf_path))
+    cn_font = register_chinese_font()
+    styles = build_pdf_styles(cn_font)
+    body_style = styles['body']
     
     # 构建报告内容
-    story = []
+    story: list = []
     
     # ── 封面 ──
-    story.append(Spacer(1, 3*cm))
-    story.append(Paragraph("中国 2026 年洪水高风险区", title_style))
-    story.append(Paragraph("GIS 评估报告", title_style))
-    story.append(Spacer(1, 1*cm))
-    story.append(Paragraph("Flood High-Risk Zone Assessment of China — 2026 Projection", 
-                          ParagraphStyle('ENSub', parent=body_style, alignment=TA_CENTER, fontSize=12)))
-    story.append(Spacer(1, 2*cm))
-    story.append(Paragraph(f"评估日期: {datetime.now().strftime('%Y年%m月%d日')}", 
-                          ParagraphStyle('Date', parent=body_style, alignment=TA_CENTER, fontSize=11)))
-    story.append(Paragraph("制图工具: geo-toolbox (Rust) + Python GIS", 
-                          ParagraphStyle('Tools', parent=body_style, alignment=TA_CENTER, fontSize=11)))
-    story.append(Paragraph("数据来源: Natural Earth 10m / CMIP6 SSP5-8.5 / Dartmouth Flood Observatory", 
-                          ParagraphStyle('Source', parent=body_style, alignment=TA_CENTER, fontSize=10, textColor=grey)))
+    make_pdf_cover(
+        story,
+        title_lines=["中国 2026 年洪水高风险区", "GIS 评估报告"],
+        subtitle="Flood High-Risk Zone Assessment of China — 2026 Projection",
+        date_text=datetime.now().strftime('%Y年%m月%d日'),
+        source_text="数据来源: Natural Earth 10m / CMIP6 SSP5-8.5 / Dartmouth Flood Observatory",
+        tool_text="制图工具: geo-toolbox (Rust) + Python GIS",
+        styles=styles,
+    )
     story.append(PageBreak())
     
     # ── 目录 ──
-    story.append(Paragraph("目录", h1_style))
-    story.append(Paragraph("1. 概述与方法", body_style))
-    story.append(Paragraph("2. 数据来源与处理", body_style))
-    story.append(Paragraph("3. 风险评估模型", body_style))
-    story.append(Paragraph("4. 全国洪水风险 GIS 地图", body_style))
-    story.append(Paragraph("5. 重点区域放大图", body_style))
-    story.append(Paragraph("6. 风险统计分析", body_style))
-    story.append(Paragraph("7. 高风险流域详细评估", body_style))
-    story.append(Paragraph("8. 结论与建议", body_style))
+    make_pdf_toc(story, [
+        "1. 概述与方法", "2. 数据来源与处理", "3. 风险评估模型",
+        "4. 全国洪水风险 GIS 地图", "5. 重点区域放大图",
+        "6. 风险统计分析", "7. 高风险流域详细评估", "8. 结论与建议",
+    ], styles)
     story.append(PageBreak())
     
     # ── 1. 概述 ──
-    story.append(Paragraph("1. 概述与方法", h1_style))
+    story.append(Paragraph("1. 概述与方法", styles['h1']))
     story.append(Paragraph(
         "本报告基于多源地理空间数据，对中国 2026 年洪水高风险区进行综合评估与空间制图。"
         "评估采用多准则决策分析方法 (MCDA)，综合考虑河流水系分布、历史洪水记录、地形地貌、"
@@ -738,7 +708,7 @@ def generate_pdf_report(risk_data, stats, china, map_paths):
     story.append(Spacer(1, 0.5*cm))
     
     # ── 2. 数据来源 ──
-    story.append(Paragraph("2. 数据来源与处理", h1_style))
+    story.append(Paragraph("2. 数据来源与处理", styles['h1']))
     
     data_sources = [
         ["数据项", "来源", "分辨率/比例尺", "说明"],
@@ -769,8 +739,8 @@ def generate_pdf_report(risk_data, stats, china, map_paths):
     story.append(PageBreak())
     
     # ── 3. 风险评估模型 ──
-    story.append(Paragraph("3. 风险评估模型", h1_style))
-    story.append(Paragraph("3.1 风险因子与权重", h2_style))
+    story.append(Paragraph("3. 风险评估模型", styles['h1']))
+    story.append(Paragraph("3.1 风险因子与权重", styles['h2']))
     
     factors = [
         ["风险因子", "权重", "数据来源", "说明"],
@@ -796,7 +766,7 @@ def generate_pdf_report(risk_data, stats, china, map_paths):
     story.append(tbl2)
     story.append(Spacer(1, 0.5*cm))
     
-    story.append(Paragraph("3.2 风险等级划分", h2_style))
+    story.append(Paragraph("3.2 风险等级划分", styles['h2']))
     risk_levels = [
         ["风险等级", "得分范围", "颜色", "说明"],
         ["极高风险", "≥ 0.70", "深红 #d73027", "严重洪水威胁, 需最高优先级防御"],
@@ -826,7 +796,7 @@ def generate_pdf_report(risk_data, stats, china, map_paths):
     story.append(PageBreak())
     
     # ── 4. 全国洪水风险 GIS 地图 ──
-    story.append(Paragraph("4. 全国洪水风险 GIS 地图", h1_style))
+    story.append(Paragraph("4. 全国洪水风险 GIS 地图", styles['h1']))
     story.append(Paragraph(
         "下图展示了中国 2026 年洪水高风险区的空间分布。风险等级从极低（蓝色）到极高（深红色），"
         "网格分辨率为 0.25°×0.25°（约 28km）。图中同时标注了主要河流水系和重点洪水易发流域。",
@@ -842,7 +812,7 @@ def generate_pdf_report(risk_data, stats, china, map_paths):
     story.append(PageBreak())
     
     # ── 5. 重点区域放大图 ──
-    story.append(Paragraph("5. 重点区域放大图", h1_style))
+    story.append(Paragraph("5. 重点区域放大图", styles['h1']))
     story.append(Paragraph(
         "以下四幅放大图展示了中国四大洪水高风险区的详细信息。"
         "这些区域集中了中国 80% 以上的洪水灾害损失。",
@@ -857,7 +827,7 @@ def generate_pdf_report(risk_data, stats, china, map_paths):
     story.append(PageBreak())
     
     # ── 6. 风险统计分析 ──
-    story.append(Paragraph("6. 风险统计分析", h1_style))
+    story.append(Paragraph("6. 风险统计分析", styles['h1']))
     
     if len(map_paths) >= 3:
         img_stats = Image(str(map_paths[2]), width=16*cm, height=5.5*cm)
@@ -911,7 +881,7 @@ def generate_pdf_report(risk_data, stats, china, map_paths):
     story.append(PageBreak())
     
     # ── 7. 高风险流域详细评估 ──
-    story.append(Paragraph("7. 高风险流域详细评估", h1_style))
+    story.append(Paragraph("7. 高风险流域详细评估", styles['h1']))
     
     basins_detail = [
         {
@@ -965,7 +935,7 @@ def generate_pdf_report(risk_data, stats, china, map_paths):
     ]
     
     for i, basin in enumerate(basins_detail):
-        story.append(Paragraph(f"7.{i+1} {basin['name']}", h2_style))
+        story.append(Paragraph(f"7.{i+1} {basin['name']}", styles['h2']))
         basin_data = [
             ["指标", "内容"],
             ["风险等级", basin["risk"]],
@@ -991,8 +961,8 @@ def generate_pdf_report(risk_data, stats, china, map_paths):
     story.append(PageBreak())
     
     # ── 8. 结论与建议 ──
-    story.append(Paragraph("8. 结论与建议", h1_style))
-    story.append(Paragraph("8.1 主要结论", h2_style))
+    story.append(Paragraph("8. 结论与建议", styles['h1']))
+    story.append(Paragraph("8.1 主要结论", styles['h2']))
     
     conclusions = [
         f"1. 2026 年中国洪水高风险区（含极高和高风险）面积约 {stats['极高风险']['area_10k_km2'] + stats['高风险']['area_10k_km2']:.1f} 万 km²，"
@@ -1015,7 +985,7 @@ def generate_pdf_report(risk_data, stats, china, map_paths):
         story.append(Spacer(1, 0.1*cm))
     
     story.append(Spacer(1, 0.3*cm))
-    story.append(Paragraph("8.2 政策建议", h2_style))
+    story.append(Paragraph("8.2 政策建议", styles['h2']))
     
     recommendations = [
         "• 加强长江、珠江、淮河等流域的堤防建设和行蓄洪区管理",
@@ -1043,7 +1013,7 @@ def generate_pdf_report(risk_data, stats, china, map_paths):
     return pdf_path
 
 # ─── 7. GeoJSON 导出 ────────────────────────────────
-def export_geojson(risk_data, china):
+def export_geojson(risk_data: dict, china: Any) -> Path:
     """导出洪水风险区为 GeoJSON"""
     print("\n📦 导出 GeoJSON...")
     import geopandas as gpd
@@ -1067,7 +1037,7 @@ def export_geojson(risk_data, china):
     return geojson_path
 
 # ─── 8. 使用 geo-toolbox 进行 CRS 验证 ─────────────
-def validate_with_geo_toolbox():
+def validate_with_geo_toolbox() -> dict[str, Any]:
     """使用 geo-toolbox 验证关键坐标点
     
     geo-toolbox 工具调用:
@@ -1113,7 +1083,7 @@ def validate_with_geo_toolbox():
     print("  ✓ geo-toolbox CRS 验证完成 (crs list + 21 次坐标变换)")
 
 # ─── 主函数 ─────────────────────────────────────────
-def main():
+def main() -> int:
     print("=" * 70)
     print("  中国 2026 年洪水高风险区 GIS 评估管线")
     print("  China Flood High-Risk Zone Assessment — 2026 Projection")

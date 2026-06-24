@@ -4,10 +4,9 @@
 //! Rust geo-types and Python shapely geometries. For raster data, uses
 //! numpy ndarray flat bytes with shape/dtype metadata.
 
-#[cfg(feature = "python")]
-// use tracing::info;
 use crate::geometry::{geometry_to_shapely, shapely_to_geometry};
 use crate::raster::{geo_raster_to_numpy, numpy_to_geo_raster};
+
 use geo_core::errors::GeoResult;
 use geo_core::plugin::{Plugin, PluginCategory};
 #[cfg(feature = "python")]

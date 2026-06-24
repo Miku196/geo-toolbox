@@ -489,4 +489,37 @@ mod tests {
         let vg2: VanGenuchtenParams = serde_json::from_str(&json).unwrap();
         assert!((vg.ks_ms - vg2.ks_ms).abs() < 1e-10);
     }
+
+    #[test]
+    fn test_usda_texture_fallback_boundaries() {
+        assert_eq!(
+            usda_texture_class_fallback(90.0, 5.0, 5.0),
+            SoilTexture::Sand
+        );
+        assert_eq!(
+            usda_texture_class_fallback(75.0, 5.0, 20.0),
+            SoilTexture::LoamySand
+        );
+        assert_eq!(
+            usda_texture_class_fallback(60.0, 10.0, 30.0),
+            SoilTexture::SandyLoam
+        );
+        assert_eq!(
+            usda_texture_class_fallback(50.0, 45.0, 5.0),
+            SoilTexture::Clay
+        );
+        assert_eq!(
+            usda_texture_class_fallback(30.0, 30.0, 40.0),
+            SoilTexture::ClayLoam
+        );
+        assert_eq!(
+            usda_texture_class_fallback(30.0, 20.0, 50.0),
+            SoilTexture::Loam
+        );
+        // sand < 52%, clay < 40%, clay < 27% → Loam
+        assert_eq!(
+            usda_texture_class_fallback(30.0, 20.0, 50.0),
+            SoilTexture::Loam
+        );
+    }
 }

@@ -63,18 +63,20 @@ pub fn quantile_mapping(obs: &[f64], gcm_hist: &[f64], gcm_proj: &[f64]) -> Vec<
     }
     // Build sorted obs and gcm_hist
     let mut obs_sorted: Vec<(usize, f64)> = obs.iter().copied().enumerate().collect();
-    obs_sorted.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+    obs_sorted.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
     let obs_vals: Vec<f64> = obs_sorted.iter().map(|x| x.1).collect();
 
     let mut hist_sorted: Vec<(usize, f64)> = gcm_hist.iter().copied().enumerate().collect();
-    hist_sorted.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+    hist_sorted.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
     let hist_vals: Vec<f64> = hist_sorted.iter().map(|x| x.1).collect();
 
     // For each projection value, find its quantile in gcm_hist, map to obs
     let mut corrected = Vec::with_capacity(gcm_proj.len());
     for &proj_val in gcm_proj {
         // Find position in hist_vals via binary search
-        let pos = match hist_vals.binary_search_by(|v| v.partial_cmp(&proj_val).unwrap()) {
+        let pos = match hist_vals
+            .binary_search_by(|v| v.partial_cmp(&proj_val).unwrap_or(std::cmp::Ordering::Less))
+        {
             Ok(p) => p,
             Err(p) => p.min(hist_vals.len().saturating_sub(1)),
         };

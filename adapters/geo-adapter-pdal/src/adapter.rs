@@ -68,7 +68,7 @@ impl PdalAdapter {
             "pipeline": [
                 { "type": "readers.las", "filename": input_path },
                 { "type": "writers.geojson",
-                  "filename": temp_file.path().to_str().unwrap() }
+                  "filename": temp_file.path().to_str().ok_or_else(|| geo_core::GeoError::Validation("temp path not valid UTF-8".into()))? }
             ]
         });
         self.exec_pipeline(&pipeline)?;
@@ -80,7 +80,12 @@ impl PdalAdapter {
             .map_err(|e| geo_core::GeoError::Validation(format!("pipeline serialize: {e}")))?;
         let temp_file = tempfile::NamedTempFile::new().map_err(geo_core::GeoError::Io)?;
         std::fs::write(temp_file.path(), &pipeline_str).map_err(geo_core::GeoError::Io)?;
-        self.exec(&["pipeline", temp_file.path().to_str().unwrap()])
+        self.exec(&[
+            "pipeline",
+            temp_file.path().to_str().ok_or_else(|| {
+                geo_core::GeoError::Validation("temp path not valid UTF-8".into())
+            })?,
+        ])
     }
 
     pub fn merge(&self, inputs: &[&str], output: &str) -> GeoResult<String> {

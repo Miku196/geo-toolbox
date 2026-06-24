@@ -37,8 +37,16 @@ def load_factors(path: Path, source: str = "IPCC_2019") -> dict:
 
 # ── 碳收支计算 ──────────────────────────────────
 
-def calc_carbon_budget(transitions: list, factors: dict) -> dict:
-    """计算单个开发区的碳收支"""
+def calc_carbon_budget(transitions: list[dict], factors: dict[tuple[str, str], float]) -> dict[str, float | list[dict]]:
+    """计算单个开发区的碳收支。
+
+    Args:
+        transitions: 土地利用转换记录列表。
+        factors: 排放因子表 {(category, subcategory): value}。
+
+    Returns:
+        包含 stock_loss, ongoing_emission, remaining_sink, net_budget, detail 的字典。
+    """
     stock_loss = 0.0      # 碳储量损失 (一次性, tCO₂)
     ongoing_emission = 0.0 # 持续排放 (每年, tCO₂/yr)
     remaining_sink = 0.0   # 剩余碳汇 (每年, tCO₂/yr)
@@ -114,7 +122,8 @@ def calc_carbon_budget(transitions: list, factors: dict) -> dict:
 
 # ── 读取土地覆被变化数据 ─────────────────────────
 
-def load_transitions(path: Path) -> dict:
+def load_transitions(path: Path) -> dict[str, list[dict]]:
+    """加载开发区转换数据。"""
     """按开发区组织土地覆被变化数据"""
     zones = defaultdict(list)
     with open(path, encoding="utf-8") as f:
@@ -124,7 +133,8 @@ def load_transitions(path: Path) -> dict:
 
 # ── 加载 AOI 元数据 ─────────────────────────────
 
-def load_zone_meta(geojson_path: Path) -> dict:
+def load_zone_meta(geojson_path: Path) -> dict[str, str]:
+    """从 GeoJSON 加载开发区元数据。"""
     """从 GeoJSON 读取开发区元数据"""
     with open(geojson_path, encoding="utf-8") as f:
         data = json.load(f)

@@ -1,6 +1,7 @@
 //! Integration tests for geo-adapter-pdal.
 
 use geo_adapter_pdal::PdalAdapter;
+use geo_core::plugin::Plugin;
 
 #[test]
 fn test_adapter_construction() {

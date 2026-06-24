@@ -15,12 +15,24 @@ OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 GEO_TOOLBOX = Path(__file__).resolve().parent.parent.parent
 
 def b64_image(path: Path) -> str:
+    """将图片文件编码为 base64 字符串。"""
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode()
 
 def generate_html(report_type: str, title: str, maps: list[Path],
-                  geojson: Path = None, stats: dict = None):
-    """生成自包含 HTML 报告"""
+                  geojson: Path | None = None, stats: dict | None = None) -> Path:
+    """生成自包含 HTML 报告。
+
+    Args:
+        report_type: 报告类型标识 ("seismic" / "flood")。
+        title: 报告标题。
+        maps: PNG 地图文件路径列表。
+        geojson: 可选 GeoJSON 数据文件路径。
+        stats: 可选统计数据字典。
+
+    Returns:
+        生成的 HTML 文件路径。
+    """
     
     map_b64 = {}
     for mp in maps:

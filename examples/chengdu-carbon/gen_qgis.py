@@ -16,8 +16,12 @@ QGIS_BIN = "qgis_process"  # 或 "C:/Program Files/QGIS 3.34/bin/qgis_process-qg
 
 # ── 生成 QGIS 项目文件 (.qgs) ──────────────────────
 
-def gen_qgis_project():
-    """生成最小可用的 QGIS 项目 XML"""
+def gen_qgis_project() -> Path:
+    """生成最小可用的 QGIS 项目 XML 文件。
+
+    Returns:
+        生成的 .qgs 文件路径。
+    """
     zones_path = (DATA_DIR / "chengdu-zones.geojson").as_posix()
     
     qgs = f"""<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
@@ -121,7 +125,12 @@ def gen_qgis_project():
 
 # ── 生成 qgis_process 批处理脚本 ──────────────────
 
-def gen_qgis_process_scripts():
+def gen_qgis_process_scripts() -> Path:
+    """生成 qgis_process 批处理脚本。
+
+    Returns:
+        生成的脚本文件路径。
+    """
     """生成可用于 qgis_process 的批处理命令"""
     
     scripts = []
@@ -215,7 +224,12 @@ geo-toolbox process qgis batch \\
 
 # ── 生成 ArcGIS/MapLibre 样式 ─────────────────────
 
-def gen_style_json():
+def gen_style_json() -> Path:
+    """生成 QGIS 样式 JSON 文件。
+
+    Returns:
+        生成的样式文件路径。
+    """
     """生成 MapLibre/DeckGL 样式 (用于 Web 地图)"""
     style = {
         "version": 8,

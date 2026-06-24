@@ -221,4 +221,27 @@ mod tests {
         assert_eq!(result.pixel_count, 0);
         assert_eq!(result.mean, 0.0);
     }
+
+    #[test]
+    fn test_zonalstats_compute_direct() {
+        let data = vec![0.1, 0.3, 0.6, 0.8, 0.5, 0.4, 0.3, 0.2, 0.6];
+        let bbox = BBox::new(0.0, 0.0, 3.0, 3.0);
+        let zs = ZonalStats {
+            data: &data,
+            rows: 3,
+            cols: 3,
+            nodata: -999.0,
+            bbox,
+        };
+        let result = zs.compute(&zs.bbox.clone(), "full").unwrap();
+        assert_eq!(result.pixel_count, 9);
+        assert_eq!(result.zone_name, "full");
+        assert!((result.mean - 0.422222).abs() < 0.01);
+        assert!((result.min - 0.1).abs() < 0.01);
+        assert!((result.max - 0.8).abs() < 0.01);
+        assert!((result.sum - 3.8).abs() < 0.01);
+        // healthy_ratio and degraded_ratio check
+        assert!(result.healthy_ratio.is_some());
+        assert!(result.degraded_ratio.is_some());
+    }
 }

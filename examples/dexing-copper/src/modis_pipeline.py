@@ -7,7 +7,8 @@ from pathlib import Path
 OUT = Path("output")
 OUT.mkdir(parents=True, exist_ok=True)
 
-def fetch(year, ds, de):
+def fetch(year: int, ds: int, de: int) -> dict:
+    """从 ORNL API 下载 MOD13Q1 NDVI 数据。"""
     u = f"https://modis.ornl.gov/rst/api/v1/MOD13Q1/subset?latitude=29.035&longitude=117.59&band=250m_16_days_NDVI&startDate=A{year}{ds}&endDate=A{year}{de}&kmAboveBelow=10&kmLeftRight=10"
     r = subprocess.run(["curl", "-s", "--max-time", "30", "-A", "geo-toolbox/1.0", u], capture_output=True, text=True)
     if r.returncode != 0:
@@ -22,7 +23,8 @@ s20 = len(d20.get("subset",[]))
 s25 = len(d25.get("subset",[]))
 print(f"  2020: {len(d20)} steps, 2025: {len(d25)} steps")
 
-def mean_ndvi(data, n=81*81):
+def mean_ndvi(data: dict, n: int = 81*81) -> float:
+    """计算所有有效像素的平均 NDVI。"""
     vals = []
     for e in data.get("subset", []):
         for v in map(int, e["data"][:n]):
@@ -175,3 +177,8 @@ dxf_lines.extend(["0\nENDSEC", "0\nEOF"])
 (OUT / "dexing_restoration_zones.dxf").write_text("\n".join(dxf_lines), encoding="ascii")
 print(f"[4] DXF -> {OUT}/dexing_restoration_zones.dxf")
 print("DONE")
+
+
+if __name__ == "__main__":
+    print("RUN: main logic here")
+

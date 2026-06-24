@@ -321,4 +321,29 @@ mod tests {
         // p5 < p95
         assert!(report.p5 <= report.p95);
     }
+
+    #[test]
+    fn test_build_factors_with_default_config() {
+        let config: CarbonConfig = toml::from_str(
+            r#"
+            [plugin]
+            name = "carbon"
+            version = "0.1.0"
+            description = "test"
+        "#,
+        )
+        .unwrap();
+        let plugin = CarbonPlugin::load(config);
+        let (factors, source) = plugin.build_factors(100.0);
+        assert_eq!(factors.len(), 7);
+        assert!(!source.is_empty());
+        let classes: Vec<&str> = factors.iter().map(|f| f.category.as_str()).collect();
+        assert!(classes.contains(&"forest"));
+        assert!(classes.contains(&"grassland"));
+        assert!(classes.contains(&"wetland"));
+        assert!(classes.contains(&"cropland"));
+        assert!(classes.contains(&"built_up"));
+        assert!(classes.contains(&"water"));
+        assert!(classes.contains(&"bare"));
+    }
 }

@@ -1,6 +1,7 @@
 //! Integration tests for geo-adapter-pygeoapi.
 
 use geo_adapter_pygeoapi::PyGeoAdapter;
+use geo_core::plugin::Plugin;
 
 /// Verify adapter construction and Plugin trait implementation.
 #[test]

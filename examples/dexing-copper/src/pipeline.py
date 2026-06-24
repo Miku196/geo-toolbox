@@ -9,7 +9,8 @@ OUT = Path("E:/geo/geo-toolbox/output")
 OUT.mkdir(parents=True, exist_ok=True)
 
 # 1. 从 ORNL API 下载 MOD13Q1 NDVI (250m, 16天合成)
-def fetch_modis(year, doy_start, doy_end):
+def fetch_modis(year: int, doy_start: int, doy_end: int) -> dict:
+    """从 ORNL API 下载 MOD13Q1 NDVI 数据。"""
     url = f"https://modis.ornl.gov/rst/api/v1/MOD13Q1/subset?latitude=29.035&longitude=117.59&band=250m_16_days_NDVI&startDate=A{year}{doy_start}&endDate=A{year}{doy_end}&kmAboveBelow=10&kmLeftRight=10"
     with urllib.request.urlopen(url, timeout=30) as resp:
         return json.loads(resp.read().decode())
@@ -23,7 +24,12 @@ print(f"  2020: {len(d2020)} 时间步, {len(d2020[0]['data']) if d2020 else 0} 
 print(f"  2025: {len(d2025)} 时间步")
 
 # 2. 解析 NDVI: 多时相取中值
-def composite(data, grid_size=81):
+def composite(data: list[dict], grid_size: int = 81) -> tuple[list[float], list[str]]:
+    """多时相 NDVI 取中值合成。
+
+    Returns:
+        (ndvi_out, dates) 元组。
+    """
     n = grid_size * grid_size
     ndvi_sum, ndvi_cnt = [0.0]*n, [0]*n
     dates = []
@@ -51,7 +57,8 @@ print(f"  2020 NDVI 均值: {sum(ndvi_2020)/len([x for x in ndvi_2020 if x>-0.1]
 print(f"  2025 NDVI 均值: {sum(ndvi_2025)/len([x for x in ndvi_2025 if x>-0.1]):.4f}")
 
 # 3. 生成报告
-def gen_reports():
+def gen_reports() -> None:
+    """生成 HTML 报告、JSON 和 DXF 输出文件。"""
     ndvi20_mean = sum(ndvi_2020)/len(ndvi_2020)
     ndvi25_mean = sum(ndvi_2025)/len(ndvi_2025)
     change = ndvi25_mean - ndvi20_mean
@@ -179,3 +186,8 @@ tr:nth-child(even){{background:#f8f9fa}}
     print(f"  ✓ HTML 报告 → {OUT/'德兴铜矿生态修复评估报告.html'}")
 
     #
+
+
+if __name__ == "__main__":
+    print("RUN: gen_reports()")
+
