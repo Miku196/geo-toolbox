@@ -6,7 +6,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         sync "energy_solar_suitability" => "Assess solar site suitability from DEM + radiation" ; serde_json::json!({"type":"object","properties":{"aoi_name":{"type":"string"},"aoi_geojson":{"type":"string"},"dem_data":{"type":"array","items":{"type":"number"}},"radiation_data":{"type":"array","items":{"type":"number"}},"cols":{"type":"integer"},"rows":{"type":"integer"},"nodata":{"type":"number"}},"required":["aoi_name","aoi_geojson","dem_data","radiation_data","cols","rows"]}) => |args| -> ToolResult {
         use geo_raster::RasterBand;
         let nd=args["nodata"].as_f64().unwrap_or(-999.0); let c=args["cols"].as_u64().unwrap_or(1) as usize; let r=args["rows"].as_u64().unwrap_or(1) as usize;
-        let mk=|k:&str,l:&str|{let v:Vec<f64>=args[k].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_f64()).collect();RasterBand::new(l,c,r,v,nd)};
+        let mk=|k:&str,l:&str|{let v:Vec<f64>=args[k].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|x|x.as_f64()).collect();RasterBand::new(l,c,r,v,nd)};
         let result=crate::EnergyPlugin::new(Default::default()).assess_solar(args["aoi_name"].as_str().unwrap_or(""),args["aoi_geojson"].as_str().unwrap_or(""),&mk("dem_data","dem"),&mk("radiation_data","rad"))?;
         serde_json::to_value(result).map_err(geo_core::GeoError::Serde)
     },
@@ -26,7 +26,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         serde_json::to_value(result).map_err(geo_core::GeoError::Serde)
     },
         sync "energy_transmission_corridor" => "Least-cost path for power transmission corridor" ; serde_json::json!({"type":"object","properties":{"name":{"type":"string"},"source_name":{"type":"string"},"sink_name":{"type":"string"},"cost_surface":{"type":"array","items":{"type":"number"}},"nrows":{"type":"integer"},"ncols":{"type":"integer"},"start_idx":{"type":"integer"},"end_idx":{"type":"integer"},"cell_size_m":{"type":"number"},"corridor_width_m":{"type":"number"}},"required":["name","cost_surface","nrows","ncols","start_idx","end_idx"]}) => |args| -> ToolResult {
-        let cs:Vec<f64>=args["cost_surface"].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_f64()).collect();
+        let cs:Vec<f64>=args["cost_surface"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|x|x.as_f64()).collect();
         let nr=args["nrows"].as_u64().unwrap_or(1) as usize;
         let nc=args["ncols"].as_u64().unwrap_or(1) as usize;
         let si=args["start_idx"].as_u64().unwrap_or(0) as usize;
@@ -42,10 +42,10 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         serde_json::to_value(result).map_err(geo_core::GeoError::Serde)
     },
         sync "energy_pvwatts_annual" => "PVWatts v5 annual energy estimation" ; serde_json::json!({"type":"object","properties":{"monthly_poa":{"type":"array","items":{"type":"number"}},"module_capacity_kw":{"type":"number"},"monthly_temp":{"type":"array","items":{"type":"number"}},"monthly_wind":{"type":"array","items":{"type":"number"}},"mounting":{"type":"string","enum":["open_rack","roof_mount","insulated"]},"inverter_eff":{"type":"number"},"dc_ac_ratio":{"type":"number"},"temp_coeff":{"type":"number"},"losses_pct":{"type":"number"}},"required":["monthly_poa","module_capacity_kw"]}) => |args| -> ToolResult {
-        let poa:Vec<f64>=args["monthly_poa"].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_f64()).collect();
+        let poa:Vec<f64>=args["monthly_poa"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|x|x.as_f64()).collect();
         let cap=args["module_capacity_kw"].as_f64().unwrap_or(1.0);
-        let tmp:Vec<f64>=args["monthly_temp"].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_f64()).collect();
-        let wnd:Vec<f64>=args["monthly_wind"].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_f64()).collect();
+        let tmp:Vec<f64>=args["monthly_temp"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|x|x.as_f64()).collect();
+        let wnd:Vec<f64>=args["monthly_wind"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|x|x.as_f64()).collect();
         let mt=args["mounting"].as_str().unwrap_or("open_rack");
         let ie=args["inverter_eff"].as_f64().unwrap_or(0.96);
         let dar=args["dc_ac_ratio"].as_f64().unwrap_or(1.1);
@@ -107,7 +107,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let cp=args["cp"].as_f64().unwrap_or(0.45);
         let sp=args["spacing_m"].as_f64().unwrap_or(2000.0);
         let turbines:Vec<(f64,f64,f64,f64)>=args["turbine_positions"]
-            .as_array().unwrap_or(&vec![]).iter()
+            .as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter()
             .filter_map(|v|{let a=v.as_array()?;Some((a.get(0)?.as_f64()?,a.get(1)?.as_f64()?,a.get(2)?.as_f64()?,a.get(3)?.as_f64()?))})
             .collect();
         if turbines.is_empty(){return Ok(serde_json::json!({"error":"no turbines"}))}

@@ -22,7 +22,7 @@ pub fn latlon_to_utm(lat: f64, lon: f64) -> (f64, f64, u8, bool) {
     let zone = utm_zone_from_lon(lon);
     let cm = utm_central_meridian(zone).to_radians();
     let phi = lat.to_radians();
-    let lam = lon.to_radians();
+    let _lam = lon.to_radians();
     let north = lat >= 0.0;
 
     let ecc_sq = 2.0 * WGS84_F - WGS84_F * WGS84_F; // e²
@@ -38,7 +38,7 @@ pub fn latlon_to_utm(lat: f64, lon: f64) -> (f64, f64, u8, bool) {
     let a = (lon.to_radians() - cm) * cos_phi;
 
     // 子午线弧长 M
-    let e = ecc_sq.sqrt();
+    let _e = ecc_sq.sqrt();
     let m = WGS84_A
         * ((1.0
             - ecc_sq / 4.0

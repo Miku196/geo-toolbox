@@ -1,0 +1,24 @@
+[package]
+name = "geo-adapter-pygeoapi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "PyO3 FFI adapter — zero-copy geometry interchange between Rust geo-types and Python shapely/rasterio/xarray"
+
+[features]
+default = []
+python = ["pyo3", "numpy"]
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-io = { path = "../../core/geo-io" }
+geo-raster = { path = "../../core/geo-raster" }
+geo-vector = { path = "../../core/geo-vector" }
+pyo3 = { version = "0.23", optional = true, features = ["extension-module"] }
+numpy = { version = "0.23", optional = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+geo = { workspace = true }
+geo-types = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

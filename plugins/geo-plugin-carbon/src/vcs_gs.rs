@@ -6,12 +6,10 @@ pub fn vcs_additionality_assessment(
     baseline_scenario: &str,
     additionality_evidence: &[&str],
 ) -> serde_json::Value {
-    let regulatory = additionality_evidence.iter().any(|e| *e == "regulatory");
-    let barrier = additionality_evidence.iter().any(|e| *e == "barrier");
-    let investment = additionality_evidence.iter().any(|e| *e == "investment");
-    let common_practice = additionality_evidence
-        .iter()
-        .any(|e| *e == "common_practice");
+    let regulatory = additionality_evidence.contains(&"regulatory");
+    let barrier = additionality_evidence.contains(&"barrier");
+    let investment = additionality_evidence.contains(&"investment");
+    let common_practice = additionality_evidence.contains(&"common_practice");
 
     let overall_pass = regulatory && barrier && investment && common_practice;
     let score = if overall_pass {
@@ -70,7 +68,7 @@ pub fn gold_standard_sdg(scenario_type: &str, sdg_contributions: &[u8]) -> serde
 /// VCS 缓冲池扣减率。
 ///
 /// 按项目类型和风险等级返回缓冲扣减百分比。
-pub fn vcs_buffer_calculation(annual_tco2e: f64, project_type: &str, risk_class: &str) -> f64 {
+pub fn vcs_buffer_calculation(_annual_tco2e: f64, project_type: &str, risk_class: &str) -> f64 {
     let base_buffer = match project_type {
         "ARR" | "afforestation" | "reforestation" => 20.0,
         "IFM" | "forest_management" => 15.0,

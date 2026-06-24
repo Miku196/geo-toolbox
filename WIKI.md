@@ -1,8 +1,10 @@
 # geo-toolbox Wiki
 
 > 从零到一：安装、开发、部署全流程指南。
-> > 最后更新：2026-06-21
+> > 最后更新：2026-06-24
 
+> 💡 **2026-06 v0.11 更新**：Round 3 生态破圈全部落地 — pygeoapi PyO3 FFI 适配器 (Rust↔shapely 零拷贝) + PDAL LiDAR 适配器 + 3 fuzz 目标 (GeoJSON/NMEA/WKT) + WASM 浏览器生态 (MapLibre GL JS 插件 + ObservableHQ 笔记本)
+>
 > 💡 **2026-06 v0.10 更新**：遥感插件 `geo-plugin-remote-sensing` 全新发布 — 辐射校正 (TOA 辐射亮度/反射率、DOS 大气校正、云检测) + InSAR (相干性、Goldstein 相位解缠、LOS 形变估计)。MUSLE 事件版土壤流失 + Jensen/Frandsen 尾流效应 MCP 工具注册。
 >
 > 💡 **2026-06 v0.9 更新**：插件深度拓展全面完成 — 新增 2 个插件（climate 气象气候 7 模块、geomorph 地貌 2 模块）+ 5 个旧插件新增模块（groundwater 地下水、ocean 海洋物理、wave_runup 波浪爬高、soil 土壤、unit_hydrograph 单位线、transform 坐标转换、dssat 作物模型）。总计 ~6500 行新代码。详见 [ROADMAP](ROADMAP.md)。

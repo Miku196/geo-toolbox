@@ -5,8 +5,8 @@ use geo_registry::{register_plugin, PluginRegistry};
 pub fn register_tools(registry: &mut PluginRegistry) {
     register_plugin!(registry, "cryosphere", "Cryosphere: snowmelt, glacier mass balance, permafrost", PluginCategory::Process, [
         sync "cryo_swe_simulate" => "Snow Water Equivalent simulation from precipitation + temperature" ; serde_json::json!({"type":"object","properties":{"precip_mm":{"type":"array","items":{"type":"number"}},"temp_c":{"type":"array","items":{"type":"number"}},"dd_factor":{"type":"number","default":3.0},"rain_snow_c":{"type":"number","default":0.0}},"required":["precip_mm","temp_c"]}) => |args| -> ToolResult {
-            let p: Vec<f64> = args["precip_mm"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect();
-            let t: Vec<f64> = args["temp_c"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect();
+            let p: Vec<f64> = args["precip_mm"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|v| v.as_f64()).collect();
+            let t: Vec<f64> = args["temp_c"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|v| v.as_f64()).collect();
             let ddf = args["dd_factor"].as_f64().unwrap_or(3.0);
             let rst = args["rain_snow_c"].as_f64().unwrap_or(0.0);
             let r = crate::swe::simulate_swe(&p, &t, ddf, rst);
@@ -27,7 +27,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             Ok(serde_json::json!({"active_layer_thickness_cm": (alt*100.0).round()/100.0}))
         },
         sync "cryo_freeze_thaw_index" => "Freezing/Thawing degree days from daily temps" ; serde_json::json!({"type":"object","properties":{"daily_temp_c":{"type":"array","items":{"type":"number"}}},"required":["daily_temp_c"]}) => |args| -> ToolResult {
-            let t: Vec<f64> = args["daily_temp_c"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect();
+            let t: Vec<f64> = args["daily_temp_c"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|v| v.as_f64()).collect();
             let fi = crate::permafrost::freeze_thaw_index(&t);
             Ok(serde_json::json!({"freezing_index": (fi.freezing_index*100.0).round()/100.0, "thawing_index": (fi.thawing_index*100.0).round()/100.0}))
         },

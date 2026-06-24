@@ -37,7 +37,7 @@ pub fn atmospheric_boundary_layer_height(
     };
 
     // 粗糙度修正: 粗糙地表增加机械湍流
-    let z0_factor = 1.0 + 0.2 * (roughness_m / 0.1).min(1.0).max(0.0);
+    let z0_factor = 1.0 + 0.2 * (roughness_m / 0.1).clamp(0.0, 1.0);
 
     let h = base * ws_factor * z0_factor;
     h.clamp(50.0, 2500.0)

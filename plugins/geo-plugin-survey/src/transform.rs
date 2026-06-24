@@ -250,7 +250,7 @@ pub fn helmert_transform_geodetic(
     loop {
         let sin_lat2 = lat2.sin();
         let n2 = a / (1.0 - e2 * sin_lat2 * sin_lat2).sqrt();
-        let lat_new = (z2 / (p * (1.0 - e2 * n2 / (n2 + 0.0)))).atan();
+        let _lat_new = (z2 / (p * (1.0 - e2 * n2 / (n2 + 0.0)))).atan();
         // 更准确：
         let lat_new2 = (z2 + e2 * n2 * sin_lat2) / p;
         let lat_new2 = lat_new2.atan();

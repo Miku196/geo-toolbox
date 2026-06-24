@@ -343,10 +343,10 @@ fn decode_i64(s: &str) -> Option<i64> {
     if s.is_empty() {
         return None;
     }
-    let (sign, digits) = if s.starts_with('-') {
-        (-1_i64, &s[1..])
-    } else if s.starts_with('+') {
-        (1, &s[1..])
+    let (sign, digits) = if let Some(stripped) = s.strip_prefix('-') {
+        (-1_i64, stripped)
+    } else if let Some(stripped) = s.strip_prefix('+') {
+        (1, stripped)
     } else {
         (1, s)
     };
@@ -398,8 +398,7 @@ pub fn h3_grid_disk(
     // BFS outwards from center. Only expand neighbors for steps < max_steps.
     let mut visited = std::collections::HashSet::new();
     let mut result = Vec::new();
-    let mut frontier = Vec::new();
-    frontier.push(center);
+    let mut frontier = vec![center];
     visited.insert((center.i, center.j));
 
     for step in 0..=max_steps {

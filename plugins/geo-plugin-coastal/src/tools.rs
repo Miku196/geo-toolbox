@@ -7,7 +7,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         sync "coastal_shoreline" => "Assess shoreline erosion and inundation between two periods" ; serde_json::json!({"type":"object","properties":{"aoi_name":{"type":"string"},"aoi_geojson":{"type":"string"},"dem_data":{"type":"array","items":{"type":"number"}},"ndvi_old":{"type":"array","items":{"type":"number"}},"ndvi_new":{"type":"array","items":{"type":"number"}},"cols":{"type":"integer"},"rows":{"type":"integer"},"baseline_year":{"type":"integer"},"assessment_year":{"type":"integer"},"erosion_threshold_m":{"type":"number"},"nodata":{"type":"number"}},"required":["aoi_name","dem_data","ndvi_old","ndvi_new","cols","rows","baseline_year","assessment_year"]}) => |args| -> ToolResult {
         use geo_raster::RasterBand;
         let nd=args["nodata"].as_f64().unwrap_or(-999.0);let c=args["cols"].as_u64().unwrap_or(1) as usize;let r=args["rows"].as_u64().unwrap_or(1) as usize;
-        let mk=|k:&str,l:&str|{let v:Vec<f64>=args[k].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_f64()).collect();RasterBand::new(l,c,r,v,nd)};
+        let mk=|k:&str,l:&str|{let v:Vec<f64>=args[k].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|x|x.as_f64()).collect();RasterBand::new(l,c,r,v,nd)};
         let report=crate::CoastalPlugin::new().assess_shoreline(args["aoi_name"].as_str().unwrap_or(""),args["aoi_geojson"].as_str().unwrap_or(""),&mk("dem_data","dem"),&mk("ndvi_old","o"),&mk("ndvi_new","n"),args["baseline_year"].as_u64().unwrap_or(2015) as u16,args["assessment_year"].as_u64().unwrap_or(2025) as u16,args["erosion_threshold_m"].as_f64().unwrap_or(1.0))?;
         serde_json::to_value(report).map_err(geo_core::GeoError::Serde)
     },
@@ -22,13 +22,13 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             forward_bearing_deg:args["forward_bearing_deg"].as_f64().unwrap_or(0.0),
             holland_b:args["holland_b"].as_f64().unwrap_or(1.3),
         };
-        let dem:Vec<f64>=args["dem"].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_f64()).collect();
+        let dem:Vec<f64>=args["dem"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|x|x.as_f64()).collect();
         let rows=args["rows"].as_u64().unwrap_or(1) as usize;
         let cols=args["cols"].as_u64().unwrap_or(1) as usize;
         let cell_size_m=args["cell_size_m"].as_f64().unwrap_or(1000.0);
         let ul_lat=args["ul_lat"].as_f64().unwrap_or(30.0);
         let ul_lon=args["ul_lon"].as_f64().unwrap_or(120.0);
-        let land_mask:Vec<bool>=args["land_mask"].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_bool()).collect();
+        let land_mask:Vec<bool>=args["land_mask"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|x|x.as_bool()).collect();
         let result=crate::CoastalPlugin::new().storm_surge(&params,&dem,rows,cols,cell_size_m,&land_mask,ul_lat,ul_lon)?;
         serde_json::to_value(result).map_err(geo_core::GeoError::Serde)
     },
@@ -40,7 +40,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         serde_json::to_value(r).map_err(geo_core::GeoError::Serde)
     },
         sync "coastal_blue_carbon_aggregate" => "Aggregate multiple blue carbon assessments" ; serde_json::json!({"type":"object","properties":{"items":{"type":"array","items":{"type":"object","properties":{"ecosystem":{"type":"string","enum":["mangrove","salt_marsh","seagrass"]},"area_ha":{"type":"number"},"soil_factor":{"type":"number"}},"required":["ecosystem","area_ha"]}}},"required":["items"]}) => |args| -> ToolResult {
-        let items: Vec<BlueCarbonResult> = args["items"].as_array().unwrap_or(&vec![]).iter().map(|v| {
+        let items: Vec<BlueCarbonResult> = args["items"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().map(|v| {
             let eco=v["ecosystem"].as_str().unwrap_or("mangrove");
             let area=v["area_ha"].as_f64().unwrap_or(1.0);
             let sf=v["soil_factor"].as_f64().unwrap_or(1.0);
@@ -60,8 +60,8 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             forward_bearing_deg:args["forward_bearing_deg"].as_f64().unwrap_or(0.0),
             holland_b:args["holland_b"].as_f64().unwrap_or(1.3),
         };
-        let dist:Vec<f64>=args["coast_distance_km"].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_f64()).collect();
-        let bathy:Vec<f64>=args["bathymetry_m"].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_f64()).collect();
+        let dist:Vec<f64>=args["coast_distance_km"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|x|x.as_f64()).collect();
+        let bathy:Vec<f64>=args["bathymetry_m"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|x|x.as_f64()).collect();
         let surge=crate::CoastalPlugin::new().storm_surge_1d(&params,&dist,&bathy)?;
         Ok(serde_json::json!({ "max_surge_m": surge }))
     },
@@ -72,7 +72,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         Ok(serde_json::json!({"scenario":sc,"year":yr,"sea_level_rise_m":(level*100.0).round()/100.0}))
     },
         sync "coastal_slr_inundation" => "Bathtub inundation from SLR and DEM" ; serde_json::json!({"type":"object","properties":{"dem":{"type":"array","items":{"type":"number"}},"cols":{"type":"integer"},"rows":{"type":"integer"},"cell_size_m":{"type":"number"},"slr_m":{"type":"number"},"tidal_range_m":{"type":"number"}},"required":["dem","cols","rows","cell_size_m","slr_m"]}) => |args| -> ToolResult {
-        let dem:Vec<f64>=args["dem"].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_f64()).collect();
+        let dem:Vec<f64>=args["dem"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|x|x.as_f64()).collect();
         let c=args["cols"].as_u64().unwrap_or(1) as usize;
         let r=args["rows"].as_u64().unwrap_or(1) as usize;
         let cs=args["cell_size_m"].as_f64().unwrap_or(30.0);
@@ -82,7 +82,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         Ok(result)
     },
         sync "coastal_slr_impact" => "Comprehensive SLR impact assessment" ; serde_json::json!({"type":"object","properties":{"dem":{"type":"array","items":{"type":"number"}},"cols":{"type":"integer"},"rows":{"type":"integer"},"cell_size_m":{"type":"number"},"scenario":{"type":"string"},"year":{"type":"integer"}},"required":["dem","cols","rows","cell_size_m","scenario","year"]}) => |args| -> ToolResult {
-        let dem:Vec<f64>=args["dem"].as_array().unwrap_or(&vec![]).iter().filter_map(|x|x.as_f64()).collect();
+        let dem:Vec<f64>=args["dem"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|x|x.as_f64()).collect();
         let c=args["cols"].as_u64().unwrap_or(1) as usize;
         let r=args["rows"].as_u64().unwrap_or(1) as usize;
         let cs=args["cell_size_m"].as_f64().unwrap_or(30.0);

@@ -33,7 +33,7 @@ pub fn vincenty_inverse(
     let mut cos_lam = 0.0;
     let mut sin_sigma = 0.0;
     let mut cos_sigma = 0.0;
-    let mut sin_alpha = 0.0;
+    let mut sin_alpha;
     let mut cos_sq_alpha = 0.0;
     let mut cos2_sigma_m = 0.0;
     let mut sigma = 0.0;

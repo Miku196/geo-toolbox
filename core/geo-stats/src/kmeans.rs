@@ -98,7 +98,7 @@ pub fn kmeans(
         return None;
     }
     // 验证所有点维度一致
-    for (i, pt) in data.iter().enumerate() {
+    for pt in data.iter() {
         if pt.len() != dim {
             return None;
         }
@@ -201,7 +201,7 @@ pub fn kmeans(
         // 处理空簇：用距全局质心最远的点重新初始化
         if counts.contains(&0) {
             // 计算全局质心
-            let global_centroid: Vec<f64> = (0..dim)
+            let _global_centroid: Vec<f64> = (0..dim)
                 .map(|d| data.iter().map(|pt| pt[d]).sum::<f64>() / n as f64)
                 .collect();
             for j in 0..k {
@@ -226,8 +226,8 @@ pub fn kmeans(
         for j in 0..k {
             if counts[j] > 0 {
                 let inv = 1.0 / counts[j] as f64;
-                for d in 0..dim {
-                    new_centroids[j][d] *= inv;
+                for item in new_centroids[j].iter_mut().take(dim) {
+                    *item *= inv;
                 }
             }
         }

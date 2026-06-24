@@ -32,7 +32,8 @@ impl ProcessPlugin for ForestryPlugin {
         let mk = |k: &str| {
             let v: Vec<f64> = p[k]
                 .as_array()
-                .unwrap_or(&vec![])
+                .map(|a| a.as_slice())
+                .unwrap_or(&[])
                 .iter()
                 .filter_map(|x| x.as_f64())
                 .collect();

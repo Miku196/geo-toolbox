@@ -1,0 +1,15 @@
+[plugin]
+name = "geology"
+version = "0.1.0"
+description = "地质/构造 — 地层建模、断层/褶皱几何、岩性分类"
+
+[stratigraphy]
+default_layer_thickness = 50.0
+default_interpolation = "linear"
+
+[structures]
+default_dip_degrees = 45.0
+default_strike_degrees = 0.0
+
+[dependencies]
+cores = []

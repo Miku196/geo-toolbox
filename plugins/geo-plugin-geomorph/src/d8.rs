@@ -53,7 +53,11 @@ pub fn d8_flow_direction(dem: &[f64], rows: usize, cols: usize) -> FlowDirection
 
                 let dz = z - nz;
                 // diagonal distance = sqrt(2), orthogonal = 1
-                let dist = if d % 2 == 1 { 1.41421356 } else { 1.0 };
+                let dist = if d % 2 == 1 {
+                    std::f64::consts::SQRT_2
+                } else {
+                    1.0
+                };
                 let slope = dz / dist;
                 if slope > max_slope {
                     max_slope = slope;
@@ -233,7 +237,7 @@ pub fn d8_flow_accumulation_fast(
 }
 
 /// Identify stream network by thresholding flow accumulation.
-pub fn extract_streams(flow_acc: &[u32], rows: usize, cols: usize, threshold: u32) -> Vec<bool> {
+pub fn extract_streams(flow_acc: &[u32], _rows: usize, _cols: usize, threshold: u32) -> Vec<bool> {
     flow_acc.iter().map(|&v| v >= threshold).collect()
 }
 

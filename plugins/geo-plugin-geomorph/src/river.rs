@@ -125,8 +125,8 @@ pub fn strahler_order(
                     if stream_mask[pi] && flow_dir[pi] < 8 {
                         // Check if this neighbor flows into us
                         let nd = flow_dir[pi] as usize;
-                        let npr = pr + crate::d8::D8_DR[nd] as isize;
-                        let npc = pc + crate::d8::D8_DC[nd] as isize;
+                        let npr = pr + crate::d8::D8_DR[nd];
+                        let npc = pc + crate::d8::D8_DC[nd];
                         if npr as usize == r && npc as usize == c {
                             // This upstream neighbor has same order → not a head
                             if order[pi] == order[i] {
@@ -156,7 +156,7 @@ pub fn strahler_order(
 /// Extracts a transect across a DEM at given channel location, perpendicular to flow.
 pub fn valley_cross_section(
     dem: &[f64],
-    dem_rows: usize,
+    _dem_rows: usize,
     dem_cols: usize,
     channel_row: usize,
     channel_col: usize,
@@ -168,18 +168,14 @@ pub fn valley_cross_section(
     let mut channel_idx = half_width; // default: center
 
     // Extract E-W transect through the channel point
-    let left = if channel_col >= half_width {
-        channel_col - half_width
-    } else {
-        0
-    };
+    let left = channel_col.saturating_sub(half_width);
     let right = (channel_col + half_width).min(dem_cols - 1);
 
     let mut min_elev = f64::MAX;
     for c in left..=right {
         let idx = channel_row * dem_cols + c;
         let z = dem[idx];
-        dist.push((c as f64 - channel_col as f64));
+        dist.push(c as f64 - channel_col as f64);
         elev.push(z);
         if z < min_elev {
             min_elev = z;
@@ -255,8 +251,8 @@ pub fn extract_stream_segments(
                 let pi = pr as usize * cols + pc as usize;
                 if stream_mask[pi] && flow_dir[pi] < 8 {
                     let nd = flow_dir[pi] as usize;
-                    let npr = pr + crate::d8::D8_DR[nd] as isize;
-                    let npc = pc + crate::d8::D8_DC[nd] as isize;
+                    let npr = pr + crate::d8::D8_DR[nd];
+                    let npc = pc + crate::d8::D8_DC[nd];
                     if npr as usize == r && npc as usize == c {
                         has_upstream = true;
                         break;

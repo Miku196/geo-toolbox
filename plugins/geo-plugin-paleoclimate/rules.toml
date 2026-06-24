@@ -1,0 +1,15 @@
+[plugin]
+name = "paleoclimate"
+version = "0.1.0"
+description = "古气候/古地理 — 冰期海平面重建、古海岸线、代用指标"
+
+[sea_level]
+default_isostatic_frac = 0.3
+eustatic_max_lgm_m = -125.0
+
+[proxies]
+default_d18o_sst_slope = -4.5
+default_ch4_temp_gradient = 0.055
+
+[dependencies]
+cores = []

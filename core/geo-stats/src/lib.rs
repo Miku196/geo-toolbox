@@ -12,6 +12,7 @@ pub mod kmeans;
 pub mod moran;
 /// MCP 工具注册 — 导出 5 个空间统计工具到运行时注册表。
 pub mod regression;
+/// MCP tool registration.
 pub mod tools;
 pub mod zonal;
 

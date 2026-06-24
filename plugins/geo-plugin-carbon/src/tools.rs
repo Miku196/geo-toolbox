@@ -111,8 +111,8 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         Ok(serde_json::json!({"abl_height_m": (h * 100.0).round() / 100.0, "stability": stab.as_str()}))
     },
         sync "carbon_heat_fluxes" => "Turbulent heat fluxes (sensible + latent) from temperature and wind profiles" ; serde_json::json!({"type":"object","properties":{"temp_profile":{"type":"array","items":{"type":"number"},"description":"[T_surface, T_2m, T_10m, T_50m] in C"},"wind_profile":{"type":"array","items":{"type":"number"},"description":"[u_2m, u_10m, u_50m] in m/s"}},"required":["temp_profile","wind_profile"]}) => |args| -> ToolResult {
-        let temp: Vec<f64> = args["temp_profile"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect();
-        let wind: Vec<f64> = args["wind_profile"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect();
+        let temp: Vec<f64> = args["temp_profile"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|v| v.as_f64()).collect();
+        let wind: Vec<f64> = args["wind_profile"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|v| v.as_f64()).collect();
         let (shf, lhf) = crate::plume_ext::turbulent_heat_fluxes(&temp, &wind);
         Ok(serde_json::json!({"sensible_heat_flux_w_m2": (shf * 100.0).round() / 100.0, "latent_heat_flux_w_m2": (lhf * 100.0).round() / 100.0}))
     },

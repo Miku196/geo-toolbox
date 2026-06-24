@@ -1,8 +1,0 @@
-{
-  "settings": {
-    "idleTimeout": 10,
-    "toolPrefix": "server",
-    "directTools": false
-  },
-  "mcpServers": {}
-}

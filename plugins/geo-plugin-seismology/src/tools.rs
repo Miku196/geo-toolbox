@@ -47,7 +47,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             serde_json::to_value(bins).map_err(geo_core::errors::GeoError::Serde)
         },
         sync "seismicity_catalog" => "G-R analysis from earthquake catalog magnitudes" ; serde_json::json!({"type":"object","properties":{"magnitudes":{"type":"array","items":{"type":"number"}},"min_mag":{"type":"number","default":3.0},"time_span_years":{"type":"number","default":50.0}},"required":["magnitudes"]}) => |args| -> ToolResult {
-            let mags: Vec<f64> = args["magnitudes"].as_array().unwrap_or(&vec![]).iter().filter_map(|v| v.as_f64()).collect();
+            let mags: Vec<f64> = args["magnitudes"].as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter().filter_map(|v| v.as_f64()).collect();
             let min_mag = args["min_mag"].as_f64().unwrap_or(3.0);
             let years = args["time_span_years"].as_f64().unwrap_or(50.0);
             let result = crate::seismicity::seismicity_analysis(&mags, min_mag, years);

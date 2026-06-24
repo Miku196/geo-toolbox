@@ -1934,6 +1934,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "geo-adapter-pdal"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "geo-io",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "geo-adapter-postgis"
 version = "0.1.0"
 dependencies = [
@@ -1947,6 +1961,24 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "geo-adapter-pygeoapi"
+version = "0.1.0"
+dependencies = [
+ "geo",
+ "geo-core",
+ "geo-io",
+ "geo-raster",
+ "geo-types",
+ "geo-vector",
+ "numpy",
+ "pyo3",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tracing",
 ]
 
 [[package]]
@@ -2277,6 +2309,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "geo-plugin-geology"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "geo-registry",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
 name = "geo-plugin-geomorph"
 version = "0.8.0"
 dependencies = [
@@ -2291,6 +2334,28 @@ version = "0.1.0"
 dependencies = [
  "approx",
  "geo-adapter-modflow",
+ "geo-core",
+ "geo-registry",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
+name = "geo-plugin-paleoclimate"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "geo-registry",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
+name = "geo-plugin-planetary"
+version = "0.1.0"
+dependencies = [
  "geo-core",
  "geo-registry",
  "serde",
@@ -2341,6 +2406,17 @@ dependencies = [
 
 [[package]]
 name = "geo-plugin-urban"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "geo-registry",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
+name = "geo-plugin-volcanology"
 version = "0.1.0"
 dependencies = [
  "geo-core",
@@ -3946,6 +4022,21 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
+]
+
+[[package]]
+name = "numpy"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b94caae805f998a07d33af06e6a3891e38556051b8045c615470a71590e13e78"
+dependencies = [
+ "libc",
+ "ndarray",
+ "num-complex",
+ "num-integer",
+ "num-traits 0.2.19",
+ "pyo3",
+ "rustc-hash 2.1.2",
 ]
 
 [[package]]

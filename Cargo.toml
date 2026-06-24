@@ -1,5 +1,6 @@
 [workspace]
 resolver = "2"
+exclude = ["fuzz"]
 members = [
     # ── 原有 crate ──
     "core/geo-core",
@@ -45,6 +46,10 @@ members = [
     "plugins/geo-plugin-socioeconomic",
     "plugins/geo-plugin-cryosphere",
     "plugins/geo-plugin-atmosphere",
+    "plugins/geo-plugin-planetary",
+    "plugins/geo-plugin-paleoclimate",
+    "plugins/geo-plugin-geology",
+    "plugins/geo-plugin-volcanology",
 
     # ── Round 3: Registry ──
     "core/geo-registry",
@@ -63,6 +68,8 @@ members = [
     "adapters/geo-adapter-dssat",
     "adapters/geo-adapter-iot",
     "adapters/geo-adapter-modflow",
+    "adapters/geo-adapter-pygeoapi",
+    "adapters/geo-adapter-pdal",
 
     # ── Examples ──
     "examples/dexing-copper",

@@ -1,0 +1,13 @@
+[package]
+name = "geo-plugin-geology"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "地质/构造插件 — 地层三维建模、断层/褶皱几何、岩性分类"
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true

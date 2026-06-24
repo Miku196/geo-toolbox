@@ -1,0 +1,14 @@
+[plugin]
+name = "planetary"
+version = "0.1.0"
+description = "行星/天文 — 天体坐标转换、太阳位置、地外辐射"
+
+[coordinates]
+default_lunar_frame = "MeanEarthPole"
+default_mars_frame = "Mars2000"
+
+[solar]
+solar_constant_wm2 = 1361.0
+
+[dependencies]
+cores = []

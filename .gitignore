@@ -25,3 +25,6 @@ temp/
 # TokenSave semantic graph data
 .tokensave/
 nul
+
+fuzz/target/
+fuzz/Cargo.lock

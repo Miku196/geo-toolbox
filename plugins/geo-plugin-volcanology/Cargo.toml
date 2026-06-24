@@ -1,0 +1,13 @@
+[package]
+name = "geo-plugin-volcanology"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "火山插件 — 火山灰扩散、熔岩流路径、火山灾害区划"
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true

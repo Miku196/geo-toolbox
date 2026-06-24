@@ -1,7 +1,9 @@
 # 🗺️ Geo-Toolbox 开发路线图
 
-> 基于代码库健康度分析 (Quality Signal: 10000/10000, Coverage: 28%)  
-> 生成时间: 2026-06-14 &nbsp; · &nbsp; 上次更新: 2026-06-18
+> **v0.11 完成 (2026-06-24)**：Round 3 生态破圈全部落地 — pygeoapi FFI 适配器 + PDAL LiDAR 适配器 + 3 个 fuzz 目标 + 浏览器生态 (MapLibre GL JS 插件 + ObservableHQ 笔记本示例)。workspace 编译通过。
+>
+> 基于代码库健康度分析 (Quality Signal: 10000/10000)  
+> 生成时间: 2026-06-14 &nbsp; · &nbsp; 上次更新: 2026-06-24
 
 ---
 

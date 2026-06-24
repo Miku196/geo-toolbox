@@ -1697,7 +1697,7 @@ geo-adapter-stac   ──→ geo-plugin-energy ──→ geo-tile     ──→ 
 
 ---
 
-## Round 3：生态破圈 🔄 (进行中)
+## Round 3：生态破圈 ✅ (v0.11 完成)
 
 **目标**：通过 Python bindings 和 gRPC 服务总线让非 Rust 用户也能用，同时补齐大数据和 AI 场景。
 
@@ -1977,33 +1977,41 @@ geo-adapter-stac   ──→ geo-plugin-energy ──→ geo-tile     ──→ 
 
 ### 🥉 第三梯队：前沿探索，长期价值
 
-#### 12. 行星/天文 (planetary)
+#### 12. 行星/天文 (planetary) ✅ 已完成
 | 拓展 | 协同插件 | 说明 |
 |------|----------|------|
 | 天体坐标转换（月面/火星坐标系） | survey | GK→UTM→行星坐标框架 |
 | 太阳位置（高度角/方位角） | energy, urban | 光伏效率+日照阴影 |
 | 地外辐射 | energy | 晴空辐射的基础 |
 
-#### 12. 古气候/古地理 (paleo)
+> **2026-06-24**: `geo-plugin-planetary` 新建完毕 (coordinates.rs + solar.rs), 11 tests
+
+#### 12. 古气候/古地理 (paleo) ✅ 已完成
 | 拓展 | 协同插件 | 说明 |
 |------|----------|------|
 | 冰期-间冰期海平面重建 | coastal | 长期 SLR 背景 |
 | 古海岸线恢复 | coastal | 第四纪海侵/海退 |
 | 孢粉/冰芯代用指标反演 | forestry, coastal | 古植被/古温度 |
 
-#### 13. 地质/构造 (geology)
+> **2026-06-24**: `geo-plugin-paleoclimate` 新建完毕 (sea_level.rs + paleocoastline.rs + proxies.rs), 13 tests
+
+#### 13. 地质/构造 (geology) ✅ 已完成
 | 拓展 | 协同插件 | 说明 |
 |------|----------|------|
 | 地层结构三维建模 | geohazard | 滑坡滑动面约束 |
 | 断层/褶皱几何 | geohazard | 地震活动带评估 |
 | 岩性分类 | geohazard | 地质图→岩性类型→FS 参数 |
 
-#### 14. 火山 (volcanology)
+> **2026-06-24**: `geo-plugin-geology` 新建完毕 (stratigraphy.rs + structures.rs + lithology.rs), 13 tests
+
+#### 14. 火山 (volcanology) ✅ 已完成
 | 拓展 | 协同插件 | 说明 |
 |------|----------|------|
 | 火山灰扩散（高斯烟羽变体+沉降速度） | carbon | 复用 plume 核心 |
 | 熔岩流路径（Dijkstra 变体） | transmission | 复用 LCP 核心 |
 | 火山灾害区划 | geohazard | 综合灾害管理 |
+
+> **2026-06-24**: `geo-plugin-volcanology` 新建完毕 (ash_dispersion.rs + lava_flow.rs + hazard_zoning.rs), 14 tests
 
 #### 15. 测量/遥感 (remote sensing)
 | 拓展 | 协同插件 | 说明 |
@@ -2021,9 +2029,9 @@ geo-adapter-stac   ──→ geo-plugin-energy ──→ geo-tile     ──→ 
 |------|--------|------|
 | 🥇 第一梯队 | 5 (气象/地下水/地貌/土壤/海洋) | ✅ 全部已完成 |
 | 🥈 第二梯队 | 5 (冰雪/大气/地震/生态/社会经济) | ✅ 全部已完成 |
-| 🥉 第三梯队 | 4 (行星/古气候/地质/火山) | 前沿探索，长期布局 |
+| 🥉 第三梯队 | 4 (行星/古气候/地质/火山) | ✅ 全部已完成 |
 
-> **本次更新**：2026-06-24 · 第二梯队全部完成 (atmosphere 新建)，三层 Plugin 层补齐至 11 个插件
+> **本次更新**：2026-06-24 · 第三梯队全部完成 (planetary/paleoclimate/geology/volcanology)，Plugin 层补齐至 21 个插件
 
 
 

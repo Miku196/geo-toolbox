@@ -1,0 +1,33 @@
+{
+  "name": "maplibre-gl-geo-toolbox",
+  "version": "0.1.0",
+  "description": "MapLibre GL JS plugin — browser-side geospatial processing powered by geo-toolbox WASM",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "type": "module",
+  "files": [
+    "src/",
+    "dist/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "wasm-pack build ../../crates/geo-wasm --release --target web --out-dir ./pkg",
+    "dev": "vite examples"
+  },
+  "keywords": [
+    "maplibre",
+    "geospatial",
+    "wasm",
+    "rust",
+    "gis",
+    "geo-toolbox"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "maplibre-gl": ">=4.0.0"
+  },
+  "devDependencies": {
+    "maplibre-gl": "^4.0.0",
+    "vite": "^5.0.0"
+  }
+}
