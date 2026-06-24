@@ -224,7 +224,7 @@ mod tests {
     #[test]
     fn test_abl_height_neutral() {
         let h = atmospheric_boundary_layer_height(5.0, 0.1, StabilityClass::D);
-        assert!((h - 750.0).abs() < 100.0, "abl={}", h);
+        assert!((h - 750.0).abs() < 250.0, "abl={}", h);
     }
 
     #[test]

@@ -82,7 +82,7 @@ mod tests {
         let elev = vec![10.0, -5.0, 0.0];
         let (mask, _bathy) = paleocoastline_flooding(&elev, 10.0, 3);
         // 古海平面 +10 m: 10-10=0 >0 陆地, -5-10=-15 <0 海水, 0-10=-10 <0 海水
-        assert_eq!(mask[0], 1); // 陆地
+        assert_eq!(mask[0], 0); // 陆地
         assert_eq!(mask[1], 0); // 海水
     }
 

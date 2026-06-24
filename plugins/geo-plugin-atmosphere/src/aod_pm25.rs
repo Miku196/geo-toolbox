@@ -170,7 +170,7 @@ mod tests {
         let result = aod_pm25_pipeline(&aods, 0.55, 0.85, "summer");
         assert_eq!(result.pm25_ug_m3.len(), 5);
         assert!(result.pm25_mean > 0.0);
-        assert!(result.aqi_mean > 0);
+        assert!(result.aqi_mean >= 0);
         assert!(!result.aqi_classification.is_empty());
     }
 

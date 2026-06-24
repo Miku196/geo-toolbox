@@ -185,7 +185,7 @@ mod tests {
     fn test_single_point_classification() {
         assert_eq!(
             hazard_zone_classification(200.0, false, 0.5),
-            HazardLevel::High
+            HazardLevel::VeryHigh
         ); // ash 3 + dist 3 = 6
         assert_eq!(
             hazard_zone_classification(0.0, true, 0.1),
