@@ -1,0 +1,19 @@
+{
+  "name": "geo-wasm-demo",
+  "private": true,
+  "scripts": {
+    "build": "wasm-pack build --target web --out-dir pkg && cp examples/demo.html pkg/",
+    "build:release": "wasm-pack build --target web --out-dir pkg --release && cp examples/demo.html pkg/",
+    "test": "cargo test --target wasm32-unknown-unknown -p geo-wasm --no-run && wasm-bindgen-test-runner target/wasm32-unknown-unknown/debug/deps/web-*.wasm",
+    "test:firefox": "cargo test --target wasm32-unknown-unknown -p geo-wasm --no-run && wasm-bindgen-test-runner --firefox target/wasm32-unknown-unknown/debug/deps/web-*.wasm",
+    "test:pack": "wasm-pack test --headless --chrome crates/geo-wasm",
+    "serve": "npx -y serve pkg -l 8080 -C",
+    "dev": "npm run build && npm run serve",
+    "lint": "cargo clippy --target wasm32-unknown-unknown -p geo-wasm",
+    "clean": "rm -rf pkg target crates/geo-wasm/target crates/geo-wasm/pkg",
+    "ci": "npm run lint && npm run build:release && npm run test"
+  },
+  "devDependencies": {
+    "serve": "^14.2.0"
+  }
+}

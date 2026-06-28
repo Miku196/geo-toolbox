@@ -1,8 +1,7 @@
-use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
 
-use crate::paleocoastline::{coastline_shift, paleocoastline_flooding};
+use crate::paleocoastline::paleocoastline_flooding;
 use crate::proxies::proxy_temperature;
 use crate::sea_level::sea_level_reconstruction;
 
@@ -13,7 +12,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             let curve_arr = args["eustatic_curve"].as_array().map(|a| a.as_slice()).unwrap_or(&[]);
             let curve: Vec<(f64,f64)> = curve_arr.iter().filter_map(|c| {
                 let a = c.as_array()?;
-                Some((a.get(0)?.as_f64()?, a.get(1)?.as_f64()?))
+                Some((a.first()?.as_f64()?, a.get(1)?.as_f64()?))
             }).collect();
             let iso = args["isostatic_frac"].as_f64().unwrap_or(0.3);
             let r = sea_level_reconstruction(&ages, &curve, iso);

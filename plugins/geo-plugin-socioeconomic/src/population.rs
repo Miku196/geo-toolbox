@@ -89,8 +89,8 @@ pub fn full_population_pipeline(
     cell_area_km2: f64,
     ntl: Option<&[f64]>,
     calibration: f64,
-    building_density: Option<&[f64]>,
-    road_density: Option<&[f64]>,
+    _building_density: Option<&[f64]>,
+    _road_density: Option<&[f64]>,
 ) -> PopulationResult {
     let (densities, pops) = pop_density_from_landcover(admin_pop, landcover_weights, cell_area_km2);
     let max_density = densities.iter().copied().fold(0.0_f64, f64::max);

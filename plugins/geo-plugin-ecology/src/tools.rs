@@ -99,7 +99,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             let events: Vec<(f64, f64)> = args["events"]
                 .as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter()
                 .filter_map(|v| v.as_array().and_then(|a| {
-                    Some((a.get(0)?.as_f64()?, a.get(1)?.as_f64()?))
+                    Some((a.first()?.as_f64()?, a.get(1)?.as_f64()?))
                 })).collect();
             let results = crate::musle::musle_event_assessment(&events, k, ls, c, p, area);
             Ok(serde_json::json!({"events": results}))
@@ -113,7 +113,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
             let events: Vec<(f64, f64)> = args["events"]
                 .as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter()
                 .filter_map(|v| v.as_array().and_then(|a| {
-                    Some((a.get(0)?.as_f64()?, a.get(1)?.as_f64()?))
+                    Some((a.first()?.as_f64()?, a.get(1)?.as_f64()?))
                 })).collect();
             let avg = crate::musle::musle_annual_average(&events, k, ls, c, p, area);
             Ok(serde_json::json!({"annual_avg_soil_loss_t": avg}))

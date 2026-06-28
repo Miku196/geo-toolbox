@@ -159,7 +159,7 @@ pub fn simulate_snowmelt(
 
         // 潜在融雪
         let potential_melt = degree_day_melt(temp, params);
-        let mut actual_melt = potential_melt.min(swe);
+        let actual_melt = potential_melt.min(swe);
 
         // 再冻结：液态水在负温时重新冻结
         let mut refreeze = 0.0;

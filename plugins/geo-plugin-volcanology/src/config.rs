@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use geo_core::plugin::{PluginConfig, PluginMeta};
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +16,7 @@ pub struct VolcanologyConfig {
     #[serde(default = "default_effusion_rate")]
     pub effusion_rate_m3s: f64,
     #[serde(default = "default_viscosity")]
+    #[allow(non_snake_case)]
     pub lava_viscosity_Pa_s: f64,
     #[serde(default = "default_slope")]
     pub default_slope_degrees: f64,

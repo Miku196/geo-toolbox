@@ -61,7 +61,7 @@ pub fn dos_correction(
     toa_ref: &[Vec<f64>],
     dark_pct: f64,
     gain: &[f64],
-    bias: &[f64],
+    _bias: &[f64],
 ) -> (Vec<Vec<f64>>, Vec<f64>, Vec<usize>) {
     let n_bands = toa_ref.len();
     if n_bands == 0 {

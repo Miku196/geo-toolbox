@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>geo-toolbox — 碳汇计算 Demo</title>
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; overflow: hidden; }
+    #map { width: 100vw; height: 100vh; }
+
+    /* ── Control panel ── */
+    #panel {
+      position: absolute; top: 10px; left: 10px; z-index: 10;
+      background: rgba(255,255,255,0.95); border-radius: 8px;
+      padding: 12px 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      min-width: 280px; max-width: 340px;
+    }
+    #panel h2 {
+      font-size: 1.1rem; margin-bottom: 8px;
+      border-bottom: 2px solid #4caf50; padding-bottom: 4px;
+    }
+    #panel label {
+      display: block; margin-top: 8px; font-size: 0.85rem; color: #555;
+    }
+    #panel select, #panel button {
+      width: 100%; padding: 8px 10px; margin-top: 4px;
+      border: 1px solid #ccc; border-radius: 4px; font-size: 0.9rem;
+    }
+    #panel select { background: #fff; }
+    #panel button {
+      cursor: pointer; font-weight: 600; border: none; color: #fff;
+      transition: background 0.2s;
+    }
+    .btn-draw  { background: #4caf50; }
+    .btn-draw:hover  { background: #388e3c; }
+    .btn-draw.active { background: #f44336; }
+    .btn-calc  { background: #2196f3; }
+    .btn-calc:hover  { background: #1565c0; }
+    .btn-calc:disabled { background: #9e9e9e; cursor: not-allowed; }
+
+    /* ── Results panel ── */
+    #results {
+      margin-top: 10px; padding: 10px; background: #f5f5f5;
+      border-radius: 6px; font-size: 0.85rem; display: none;
+      max-height: 250px; overflow-y: auto;
+    }
+    #results table { width: 100%; border-collapse: collapse; }
+    #results th, #results td { padding: 4px 6px; text-align: right; border-bottom: 1px solid #ddd; }
+    #results th:first-child, #results td:first-child { text-align: left; }
+    #results .total { font-weight: 700; color: #4caf50; }
+
+    /* ── Status bar ── */
+    #status {
+      position: absolute; bottom: 10px; left: 10px; z-index: 10;
+      background: rgba(0,0,0,0.7); color: #fff; padding: 4px 10px;
+      border-radius: 4px; font-size: 0.8rem; display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="panel">
+    <h2>🌍 geo-toolbox 碳汇计算</h2>
+    <label for="landcover">地类选择</label>
+    <select id="landcover">
+      <option value="forest" selected>🌲 林地 (forest)</option>
+      <option value="grassland">🌿 草地 (grassland)</option>
+      <option value="cropland">🌾 农田 (cropland)</option>
+      <option value="wetland">💧 湿地 (wetland)</option>
+      <option value="settlement">🏘 建设用地 (settlement)</option>
+    </select>
+
+    <button id="btn-draw" class="btn-draw">✏️ 绘制 AOI</button>
+    <button id="btn-calc" class="btn-calc" disabled>📊 计算碳汇</button>
+
+    <div id="results"></div>
+  </div>
+
+  <div id="status">初始化中…</div>
+
+  <script type="module">
+    import { GeoMaplibrePlugin } from '../src/index.js';
+
+    // ── Init map ──
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        sources: {
+          osm: {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '© OpenStreetMap contributors',
+          },
+        },
+        layers: [{ id: 'osm-layer', type: 'raster', source: 'osm' }],
+      },
+      center: [104.0, 30.5],
+      zoom: 5,
+    });
+
+    const statusEl = document.getElementById('status');
+    const btnDraw  = document.getElementById('btn-draw');
+    const btnCalc  = document.getElementById('btn-calc');
+    const selectLc = document.getElementById('landcover');
+    const results  = document.getElementById('results');
+
+    let plugin;
+    let drawnAoi  = null;
+    let drawing   = false;
+
+    function setStatus(msg) {
+      statusEl.textContent = msg;
+      statusEl.style.display = msg ? 'block' : 'none';
+    }
+
+    // ── Plugin init ──
+    map.on('load', async () => {
+      setStatus('正在加载 WASM 引擎…');
+      plugin = new GeoMaplibrePlugin(map, { wasmPath: '../pkg/geo_wasm.js' });
+      try {
+        await plugin.init();
+        setStatus('✅ WASM 引擎就绪');
+        setTimeout(() => setStatus(''), 2000);
+        btnCalc.disabled = false;
+      } catch (e) {
+        setStatus('❌ WASM 加载失败 — 请先运行 npm run build');
+        console.error(e);
+      }
+    });
+
+    // ── Draw toggle ──
+    btnDraw.addEventListener('click', () => {
+      if (!plugin) return;
+      if (!drawing) {
+        plugin.enableDrawing();
+        drawTrue(true);
+        setStatus('点击地图添加顶点，双击/右键/Enter 闭合，Esc 取消');
+      } else {
+        plugin.disableDrawing();
+        drawTrue(false);
+        setStatus('');
+      }
+    });
+
+    function drawTrue(on) {
+      drawing = on;
+      btnDraw.textContent = on ? '❌ 取消绘制' : '✏️ 绘制 AOI';
+      btnDraw.classList.toggle('active', on);
+    }
+
+    // ── Receive drawn AOI ──
+    map.on('aoi-drawn', (e) => {
+      drawnAoi = e.aoi;
+      drawTrue(false);
+      setStatus('AOI 已绘制 ✓ — 点击"计算碳汇"');
+      btnCalc.disabled = false;
+
+      // Highlight the drawn polygon on the map
+      if (map.getSource('__aoi_highlight')) {
+        map.getSource('__aoi_highlight').setData(e.aoi);
+      } else {
+        map.addSource('__aoi_highlight', { type: 'geojson', data: e.aoi });
+        map.addLayer({
+          id: '__aoi_highlight_fill',
+          type: 'fill',
+          source: '__aoi_highlight',
+          paint: { 'fill-color': '#4caf50', 'fill-opacity': 0.25 },
+        });
+        map.addLayer({
+          id: '__aoi_highlight_line',
+          type: 'line',
+          source: '__aoi_highlight',
+          paint: { 'line-color': '#4caf50', 'line-width': 2 },
+        });
+      }
+
+      // Lazy remove drawing preview layers (disableDrawing was called inside handler)
+      try { map.removeLayer('__geo_draw_preview_vertices'); } catch (_) {}
+      try { map.removeLayer('__geo_draw_preview_line'); }    catch (_) {}
+      try { map.removeSource('__geo_draw_preview'); }        catch (_) {}
+    });
+
+    // ── Compute carbon ──
+    btnCalc.addEventListener('click', async () => {
+      if (!drawnAoi || !plugin) return;
+      const landcover = selectLc.value;
+
+      setStatus('正在计算碳汇…');
+      btnCalc.disabled = true;
+
+      try {
+        const result = await plugin.computeCarbonSink(drawnAoi, { landcover });
+
+        const total = result.totalSink_tco2_yr;
+        const area  = result.aoiArea_ha;
+        const perHa = area > 0 ? (total / area) : 0;
+
+        let html = `<table>
+          <tr><th>指标</th><th>值</th></tr>
+          <tr><td>AOI 面积</td><td>${area.toFixed(2)} ha</td></tr>
+          <tr><td>地类</td><td>${landcover}</td></tr>
+          <tr><td>年份</td><td>${result.year}</td></tr>
+          <tr class="total"><td>年碳汇总量</td><td>${total.toFixed(2)} tCO₂e / yr</td></tr>
+          <tr><td>单位面积碳汇</td><td>${perHa.toFixed(2)} tCO₂e / ha / yr</td></tr>
+        </table>`;
+
+        if (result.breakdown && result.breakdown.length) {
+          html += '<p style="margin-top:6px;font-size:0.8rem;">明细：</p><table>';
+          for (const b of result.breakdown) {
+            html += `<tr><td>${b.category ?? landcover}</td><td>${b.tco2e?.toFixed(2) ?? b.sink_tco2_yr?.toFixed(2) ?? '—'} tCO₂e</td></tr>`;
+          }
+          html += '</table>';
+        }
+
+        results.innerHTML = html;
+        results.style.display = 'block';
+        setStatus('✅ 计算完成');
+      } catch (e) {
+        setStatus('❌ 计算失败: ' + e.message);
+        console.error(e);
+      } finally {
+        btnCalc.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

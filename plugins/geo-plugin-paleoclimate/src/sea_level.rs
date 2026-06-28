@@ -51,7 +51,7 @@ pub fn sea_level_reconstruction(
 }
 
 /// LGM (21 ka) 到现在的简化古海平面网格。
-pub fn lgm_sea_level_map(current_elevation_m: &[f64], cols: usize) -> Vec<f64> {
+pub fn lgm_sea_level_map(current_elevation_m: &[f64], _cols: usize) -> Vec<f64> {
     // LGM 全球海平面约 -125 m；将当前低于 -125 m 的单元标记为当时陆地
     current_elevation_m
         .iter()

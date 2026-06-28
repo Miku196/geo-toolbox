@@ -108,7 +108,7 @@ pub fn volcanic_hazard_zoning(
             _ => 5,
         };
         zones[i] = level;
-        if level >= 1 && level <= 5 {
+        if (1..=5).contains(&level) {
             areas[(level - 1) as usize] += cell_area_km2;
         }
     }

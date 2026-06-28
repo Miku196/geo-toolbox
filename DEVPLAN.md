@@ -1729,8 +1729,35 @@ geo-adapter-stac   ──→ geo-plugin-energy ──→ geo-tile     ──→ 
 
 | 方向 | 具体方案 |
 |------|---------|
-| MapLibre GL JS 插件 | `maplibre-gl-geo-toolbox` — WASM 空间运算注入浏览器渲染管线 |
+| MapLibre GL JS 插件 | `maplibre-gl-geo-toolbox` — WASM 空间运算注入浏览器渲染管线（✅ 2026-06-28 完成绑定补齐） |
 | ObservableHQ 模块 | `import { CrsEngine, CarbonEngine } from "geo-wasm"` |
+
+#### MapLibre 绑定已实现方法 (817 行)
+
+| 类别 | 方法 |
+|------|------|
+| CRS | `transformLayer()` — 调用 `crs.transformPoint()` |
+| 碳核算 | `computeCarbonSink()` — 调用 `carbon.calculateWithJsonFactors()` |
+| NDVI | `computeNdvi()` / `ndviDifference()` — 调用 `wasm.computeNdvi()` |
+| Geohash | `geohashEncode/Decode/Neighbors()` / `bboxToGeohashes()` — 4 方法 |
+| 矢量 | `computeBuffer/Intersect/unionAll()` — 3 方法 |
+| 空间 | `computeArea/Bbox/Centroid()` / `simplify/convexHull()` — 5 方法 |
+| 栅格 | `bandMath/Threshold()` / `resample/computeZonalStats()` — 4 方法 |
+| 瓦片 | `addMvtSource()` / `addFillLayer()` — 调用 `tile.encodeMvt()` |
+| 绘图 | `enableDrawing/disableDrawing()` — 自由绘制多边形 |
+
+#### WASM 架构模式 (2026-06-28 重构)
+
+```
+  JS (index.js)        WASM 壳              Core (原生可测)
+  ─────────────       ──────────            ───────────────
+  computeNdvi()   →   computeNdvi()    →    compute_ndvi_inner() → GeoResult<T>
+                       .map_err(JsValue)     (纯 Rust, 无 JsValue)
+```
+
+- 14/15 模块采用 `_inner` + `GeoResult<T>` 模式
+- `storage.rs` 排除（IndexedDB/web_sys，用 `#[cfg(target_arch = "wasm32")]`）
+- 27/27 测试原生通过（之前 JsValue::from_str 在 x86_64 上 panic）
 
 ---
 
@@ -1769,9 +1796,9 @@ geo-adapter-stac   ──→ geo-plugin-energy ──→ geo-tile     ──→ 
 
 ---
 
-> **路线图版本**：v1.3
-> **制定日期**：2026-06-11 &nbsp; · &nbsp; **上次更新**：2026-06-16
-> **下次评审**：流域提取 + 降雨阈值 ID 曲线 完成后
+> **路线图版本**：v1.4
+> **制定日期**：2026-06-11 &nbsp; · &nbsp; **上次更新**：2026-06-28
+> **下次评审**：MapLibre 示例页面 + NPM 发布准备
 
 
 ---
@@ -2032,6 +2059,8 @@ geo-adapter-stac   ──→ geo-plugin-energy ──→ geo-tile     ──→ 
 | 🥉 第三梯队 | 4 (行星/古气候/地质/火山) | ✅ 全部已完成 |
 
 > **本次更新**：2026-06-24 · 第三梯队全部完成 (planetary/paleoclimate/geology/volcanology)，Plugin 层补齐至 21 个插件
+>
+> **v1.4 更新 (2026-06-28)**：WASM 架构重构 — 14/15 模块 `_inner`+`GeoResult<T>` 模式，27/27 测试原生通过。MapLibre 绑定补齐 5 组 (geohash/vector/spatial/raster/ndvi)，index.js 511→817 行。19 warnings 清零。文档更新 (DEVPLAN v1.4, progress.md)。
 
 
 

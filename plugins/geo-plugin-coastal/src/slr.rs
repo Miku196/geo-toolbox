@@ -3,8 +3,6 @@
 //! Includes: scenario-based SLR projection, bathtub inundation mapping,
 //! Bruun Rule erosion impact.
 
-use serde::{Deserialize, Serialize};
-
 /// IPCC AR6 SLR data points (meters above 2000 baseline).
 struct SlrDataPoint {
     year: u16,

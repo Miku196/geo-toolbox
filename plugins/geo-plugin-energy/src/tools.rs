@@ -108,7 +108,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let sp=args["spacing_m"].as_f64().unwrap_or(2000.0);
         let turbines:Vec<(f64,f64,f64,f64)>=args["turbine_positions"]
             .as_array().map(|a| a.as_slice()).unwrap_or(&[]).iter()
-            .filter_map(|v|{let a=v.as_array()?;Some((a.get(0)?.as_f64()?,a.get(1)?.as_f64()?,a.get(2)?.as_f64()?,a.get(3)?.as_f64()?))})
+            .filter_map(|v|{let a=v.as_array()?;Some((a.first()?.as_f64()?,a.get(1)?.as_f64()?,a.get(2)?.as_f64()?,a.get(3)?.as_f64()?))})
             .collect();
         if turbines.is_empty(){return Ok(serde_json::json!({"error":"no turbines"}))}
         let (eff,powers)=crate::wake::farm_wake_efficiency(&turbines,v0,wdir,k,&crate::wake::WakeSummation::Linear,rho,cp,sp);

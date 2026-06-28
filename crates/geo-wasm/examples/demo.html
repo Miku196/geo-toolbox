@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>geo-toolbox WASM Demo</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+header{background:#1e293b;border-bottom:1px solid #334155;padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
+header h1{font-size:18px;color:#38bdf8}
+header .version{font-size:12px;color:#64748b}
+nav{background:#1e293b;border-bottom:1px solid #334155;display:flex;overflow-x:auto;padding:0 12px}
+nav button{background:0;border:0;color:#94a3b8;cursor:pointer;font-size:13px;padding:10px 16px;white-space:nowrap;border-bottom:2px solid transparent;transition:all .15s}
+nav button:hover{color:#e2e8f0}
+nav button.active{color:#38bdf8;border-bottom-color:#38bdf8}
+main{padding:20px 24px;max-width:1200px;margin:0 auto}
+.panel{display:none}
+.panel.active{display:block}
+.section{margin-bottom:24px}
+.section h2{font-size:16px;color:#38bdf8;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+.row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.row label{font-size:12px;color:#94a3b8;display:flex;flex-direction:column;gap:4px}
+.row input,.row select,.row textarea{background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:6px 10px;border-radius:4px;font-size:13px;font-family:inherit}
+.row input:focus,.row select:focus,.row textarea:focus{outline:none;border-color:#38bdf8}
+.row textarea{min-width:300px;min-height:80px;resize:vertical}
+.btn{background:#1d4ed8;color:#fff;border:0;padding:8px 16px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:500;transition:background .15s}
+.btn:hover{background:#2563eb}
+.btn-sm{padding:4px 10px;font-size:12px}
+.output{background:#0f172a;border:1px solid #334155;border-radius:6px;padding:16px;margin-top:12px;max-height:400px;overflow:auto;font-family:'JetBrains Mono','Fira Code',monospace;font-size:12px;white-space:pre-wrap;word-break:break-all}
+.output.error{color:#f87171;border-color:#7f1d1d}
+.output.success{color:#86efac}
+.output.info{color:#94a3b8}
+.status{font-size:11px;color:#64748b;margin-left:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.card{background:#1e293b;border:1px solid #334155;border-radius:6px;padding:16px}
+.card h3{font-size:14px;color:#38bdf8;margin-bottom:8px}
+.card p{font-size:12px;color:#94a3b8;margin-bottom:8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🌍 geo-toolbox WASM</h1>
+  <span class="version" id="version">loading...</span>
+</header>
+<nav id="tabs">
+  <button data-panel="crs" class="active">CRS 坐标转换</button>
+  <button data-panel="geohash">Geohash</button>
+  <button data-panel="ingest">NMEA 解析</button>
+  <button data-panel="spatial">空间分析</button>
+  <button data-panel="vector">矢量运算</button>
+  <button data-panel="raster">栅格运算</button>
+  <button data-panel="carbon">碳核算</button>
+  <button data-panel="tile">瓦片工具</button>
+  <button data-panel="storage">IndexedDB 存储</button>
+  <button data-panel="output">导出工具</button>
+  <button data-panel="utils">系统信息</button>
+</nav>
+<main>
+  <!-- CRS Panel -->
+  <div id="panel-crs" class="panel active">
+    <div class="section">
+      <h2>坐标转换</h2>
+      <div class="row">
+        <label>源 EPSG <input id="crs-from" value="4326" type="number"></label>
+        <label>目标 EPSG <input id="crs-to" value="3857" type="number"></label>
+        <label>X (经度) <input id="crs-x" value="116.397" type="number" step="any"></label>
+        <label>Y (纬度) <input id="crs-y" value="39.908" type="number" step="any"></label>
+        <button class="btn" onclick="runCrsTransform()">转换</button>
+      </div>
+      <div class="output" id="crs-output">点击转换查看结果...</div>
+    </div>
+    <div class="section">
+      <h2>批量转换 (WGS84→GCJ02)</h2>
+      <div class="row">
+        <label>坐标列表 (x1,y1,x2,y2,...) <textarea id="crs-batch">116.397,39.908,121.473,31.230</textarea></label>
+        <button class="btn" onclick="runCrsBatch()">批量转换</button>
+      </div>
+      <div class="output" id="crs-batch-output"></div>
+    </div>
+    <div class="section">
+      <h2>已注册坐标系</h2>
+      <button class="btn" onclick="listCrs()">列出所有</button>
+      <div class="output" id="crs-list-output"></div>
+    </div>
+  </div>
+
+  <!-- Geohash Panel -->
+  <div id="panel-geohash" class="panel">
+    <div class="section">
+      <h2>编码</h2>
+      <div class="row">
+        <label>经度 <input id="gh-lon" value="116.397" type="number" step="any"></label>
+        <label>纬度 <input id="gh-lat" value="39.908" type="number" step="any"></label>
+        <label>精度 <input id="gh-prec" value="7" type="number" min="1" max="12"></label>
+        <button class="btn" onclick="runGeohashEncode()">编码</button>
+      </div>
+      <div class="output" id="gh-encode-output"></div>
+    </div>
+    <div class="section">
+      <h2>解码</h2>
+      <div class="row">
+        <label>Geohash <input id="gh-hash" value="wx4g0bm" style="width:200px"></label>
+        <button class="btn" onclick="runGeohashDecode()">解码</button>
+      </div>
+      <div class="output" id="gh-decode-output"></div>
+    </div>
+    <div class="section">
+      <h2>邻居</h2>
+      <div class="row">
+        <label>Geohash <input id="gh-neighbor-hash" value="wx4g0bm" style="width:200px"></label>
+        <button class="btn" onclick="runGeohashNeighbors()">查询邻居</button>
+      </div>
+      <div class="output" id="gh-neighbors-output"></div>
+    </div>
+    <div class="section">
+      <h2>Bbox → Geohashes</h2>
+      <div class="row">
+        <label>W <input id="gh-bbox-w" value="116.3" type="number" step="any"></label>
+        <label>S <input id="gh-bbox-s" value="39.8" type="number" step="any"></label>
+        <label>E <input id="gh-bbox-e" value="116.5" type="number" step="any"></label>
+        <label>N <input id="gh-bbox-n" value="40.0" type="number" step="any"></label>
+        <label>精度 <input id="gh-bbox-prec" value="5" type="number" min="1" max="12"></label>
+        <button class="btn" onclick="runBboxToGeohashes()">查询</button>
+      </div>
+      <div class="output" id="gh-bbox-output"></div>
+    </div>
+  </div>
+
+  <!-- Ingest Panel -->
+  <div id="panel-ingest" class="panel">
+    <div class="section">
+      <h2>NMEA 单句解析</h2>
+      <div class="row">
+        <label>NMEA 语句 <input id="nmea-single" value="$GPGGA,092750.000,5321.6802,N,00630.3372,W,1,8,1.03,61.7,M,55.2,M,,*76" style="width:100%"></label>
+        <button class="btn" onclick="runParseNmea()">解析</button>
+      </div>
+      <div class="output" id="nmea-output"></div>
+    </div>
+    <div class="section">
+      <h2>NMEA 批量解析</h2>
+      <div class="row">
+        <label>多行 NMEA <textarea id="nmea-batch">$GPGGA,092750.000,5321.6802,N,00630.3372,W,1,8,1.03,61.7,M,55.2,M,,*76
+$GPRMC,092750.000,A,5321.6802,N,00630.3372,W,0.02,31.66,260624,,,A*43</textarea></label>
+        <button class="btn" onclick="runParseNmeaBatch()">批量解析</button>
+      </div>
+      <div class="output" id="nmea-batch-output"></div>
+    </div>
+    <div class="section">
+      <h2>验证</h2>
+      <div class="row">
+        <button class="btn" onclick="runValidateGpsFix()">验证 GPS 定位 (HDOP=1.03, Sats=8)</button>
+        <button class="btn" onclick="runValidateSensorReading()">验证传感器 (温度 25°C)</button>
+        <button class="btn" onclick="runValidateCoord()">验证坐标 (116.397, 39.908)</button>
+      </div>
+      <div class="output" id="validate-output"></div>
+    </div>
+  </div>
+
+  <!-- Spatial Panel -->
+  <div id="panel-spatial" class="panel">
+    <div class="section">
+      <h2>几何分析 (北京故宫附近)</h2>
+      <div class="row">
+        <label>GeoJSON 几何 <textarea id="spatial-geom">{"type":"Polygon","coordinates":[[[116.390,39.910],[116.400,39.910],[116.400,39.920],[116.390,39.920],[116.390,39.910]]]}</textarea></label>
+        <button class="btn" onclick="runSpatial('area')">面积</button>
+        <button class="btn" onclick="runSpatial('bbox')">包围盒</button>
+        <button class="btn" onclick="runSpatial('centroid')">质心</button>
+        <button class="btn" onclick="runSpatial('simplify')">简化 (ε=0.001)</button>
+        <button class="btn" onclick="runSpatial('convex_hull')">凸包</button>
+      </div>
+      <div class="output" id="spatial-output"></div>
+    </div>
+  </div>
+
+  <!-- Vector Panel -->
+  <div id="panel-vector" class="panel">
+    <div class="section">
+      <h2>缓冲区</h2>
+      <div class="row">
+        <label>几何 <textarea id="vec-geom">{"type":"Polygon","coordinates":[[[116.390,39.910],[116.400,39.910],[116.400,39.920],[116.390,39.920],[116.390,39.910]]]}</textarea></label>
+        <label>距离 (度) <input id="vec-dist" value="0.005" type="number" step="any"></label>
+        <label>模式 <select id="vec-mode"><option>round</option><option>flat</option></select></label>
+        <button class="btn" onclick="runBuffer()">计算缓冲区</button>
+      </div>
+      <div class="output" id="vec-buffer-output"></div>
+    </div>
+    <div class="section">
+      <h2>相交</h2>
+      <div class="row">
+        <label>几何 A <textarea id="vec-a">{"type":"Polygon","coordinates":[[[116.390,39.910],[116.405,39.910],[116.405,39.925],[116.390,39.925],[116.390,39.910]]]}</textarea></label>
+        <label>几何 B <textarea id="vec-b">{"type":"Polygon","coordinates":[[[116.395,39.905],[116.410,39.905],[116.410,39.920],[116.395,39.920],[116.395,39.905]]]}</textarea></label>
+        <button class="btn" onclick="runIntersect()">计算相交</button>
+      </div>
+      <div class="output" id="vec-intersect-output"></div>
+    </div>
+    <div class="section">
+      <h2>合并</h2>
+      <button class="btn" onclick="runUnionAll()">合并上面两个多边形</button>
+      <div class="output" id="vec-union-output"></div>
+    </div>
+  </div>
+
+  <!-- Raster Panel -->
+  <div id="panel-raster" class="panel">
+    <div class="section">
+      <h2>NDVI 计算 (3x3 像素)</h2>
+      <button class="btn" onclick="runNdvi()">计算 NDVI</button>
+      <div class="output" id="raster-ndvi-output"></div>
+    </div>
+    <div class="section">
+      <h2>NDVI 变化检测</h2>
+      <button class="btn" onclick="runNdviDiff()">计算变化</button>
+      <div class="output" id="raster-diff-output"></div>
+    </div>
+    <div class="section">
+      <h2>波段运算</h2>
+      <div class="row">
+        <button class="btn btn-sm" onclick="runBandOp('add')">+</button>
+        <button class="btn btn-sm" onclick="runBandOp('sub')">-</button>
+        <button class="btn btn-sm" onclick="runBandOp('mul')">×</button>
+        <button class="btn btn-sm" onclick="runBandOp('div')">÷</button>
+        <button class="btn btn-sm" onclick="runBandOp('thresh')">阈值</button>
+        <button class="btn btn-sm" onclick="runResample()">重采样 3x3→6x6</button>
+        <button class="btn btn-sm" onclick="runZonalStats()">分区统计</button>
+      </div>
+      <div class="output" id="raster-op-output"></div>
+    </div>
+  </div>
+
+  <!-- Carbon Panel -->
+  <div id="panel-carbon" class="panel">
+    <div class="section">
+      <h2>碳核算</h2>
+      <div class="row">
+        <label>GeoJSON 地块 <textarea id="carbon-geojson">{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"class":"forest"},"geometry":{"type":"Polygon","coordinates":[[[116.39,39.91],[116.40,39.91],[116.40,39.92],[116.39,39.92],[116.39,39.91]]]}},{"type":"Feature","properties":{"class":"grassland"},"geometry":{"type":"Polygon","coordinates":[[[116.38,39.91],[116.39,39.91],[116.39,39.92],[116.38,39.92],[116.38,39.91]]]}}]}</textarea></label>
+      </div>
+      <div class="row">
+        <label>排放因子 CSV <textarea id="carbon-csv">category,factor_value,source
+forest,-5.2,IPCC
+grassland,-1.8,IPCC</textarea></label>
+      </div>
+      <div class="row">
+        <label>年份 <input id="carbon-year" value="2024" type="number"></label>
+        <button class="btn" onclick="runCarbonCalculate()">计算</button>
+        <button class="btn" onclick="runCarbonJson()">JSON 因子</button>
+      </div>
+      <div class="output" id="carbon-output"></div>
+    </div>
+  </div>
+
+  <!-- Tile Panel -->
+  <div id="panel-tile" class="panel">
+    <div class="section">
+      <h2>经纬度→瓦片</h2>
+      <div class="row">
+        <label>经度 <input id="tile-lon" value="116.397" type="number" step="any"></label>
+        <label>纬度 <input id="tile-lat" value="39.908" type="number" step="any"></label>
+        <label>缩放 <input id="tile-zoom" value="12" type="number" min="1" max="20"></label>
+        <button class="btn" onclick="runLatlonToTile()">转换</button>
+      </div>
+      <div class="output" id="tile-coord-output"></div>
+    </div>
+    <div class="section">
+      <h2>瓦片 URL</h2>
+      <button class="btn" onclick="runTileUrl()">获取 OSM & 高德 URL</button>
+      <div class="output" id="tile-url-output"></div>
+    </div>
+  </div>
+
+  <!-- Storage Panel -->
+  <div id="panel-storage" class="panel">
+    <div class="section">
+      <h2>IndexedDB 存储 (GeoStore)</h2>
+      <p style="color:#94a3b8;font-size:12px;margin-bottom:12px">需要先初始化数据库</p>
+      <div class="row">
+        <button class="btn" onclick="storageInit()">初始化</button>
+        <button class="btn" onclick="storagePut()">存入要素</button>
+        <button class="btn" onclick="storageGet()">读取要素</button>
+        <button class="btn" onclick="storageGetAll()">获取全部</button>
+        <button class="btn" onclick="storageCount()">计数</button>
+        <button class="btn" onclick="storageDelete()">删除要素</button>
+        <button class="btn" onclick="storageClear()">清空</button>
+      </div>
+      <div class="output" id="storage-output">点击初始化开始...</div>
+    </div>
+  </div>
+
+  <!-- Output Panel -->
+  <div id="panel-output" class="panel">
+    <div class="section">
+      <h2>导出</h2>
+      <div class="row">
+        <button class="btn" onclick="runExportGeoJson()">导出 GeoJSON</button>
+        <button class="btn" onclick="runCsvToJson()">CSV → JSON</button>
+        <button class="btn" onclick="runExportCarbonReport()">导出碳报告</button>
+        <button class="btn" onclick="runExportExcel()">导出 Excel</button>
+      </div>
+      <div class="output" id="export-output"></div>
+    </div>
+  </div>
+
+  <!-- Utils Panel -->
+  <div id="panel-utils" class="panel">
+    <div class="section">
+      <h2>系统信息</h2>
+      <div class="grid" id="utils-grid">
+        <div class="card">
+          <h3>版本</h3>
+          <p id="util-version">...</p>
+        </div>
+        <div class="card">
+          <h3>构建信息</h3>
+          <p id="util-build">...</p>
+        </div>
+        <div class="card">
+          <h3>内存统计</h3>
+          <p id="util-memory">...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+import init, * as geo from './geo_wasm.js';
+
+// --- Init ---
+let engine = null; // CrsEngine singleton
+let carbon = null; // CarbonEngine singleton
+let tile = null;   // TileEngine singleton
+let store = null;  // GeoStore singleton
+let storeReady = false;
+
+function assertInit() {
+  if (!engine) engine = new geo.CrsEngine();
+  if (!carbon) carbon = new geo.CarbonEngine();
+  if (!tile)  tile  = new geo.TileEngine();
+}
+
+async function initWasm() {
+  await init();
+  geo.initPanicHook();
+  assertInit();
+  document.getElementById('version').textContent = 'v' + geo.getVersion();
+  console.log('geo-toolbox WASM ready:', geo.getBuildInfo());
+}
+
+// --- Helpers ---
+function $id(id) { return document.getElementById(id); }
+function setOut(id, text, cls) {
+  const el = $id(id);
+  el.textContent = typeof text === 'string' ? text : JSON.stringify(text, null, 2);
+  el.className = 'output ' + (cls || 'info');
+}
+function setOutError(id, e) { setOut(id, 'Error: ' + (e.message || e), 'error'); }
+
+// --- CRS ---
+window.runCrsTransform = () => {
+  try { assertInit(); const r = engine.transform(+$id('crs-from').value, +$id('crs-to').value, +$id('crs-x').value, +$id('crs-y').value); setOut('crs-output', `Output: [${r[0].toFixed(4)}, ${r[1].toFixed(4)}]`, 'success'); } catch(e) { setOutError('crs-output', e); }
+};
+window.runCrsBatch = () => {
+  try { assertInit(); const nums = $id('crs-batch').value.split(',').map(Number); const r = engine.transformBatch(4326, 9000, new Float64Array(nums)); const pairs = []; for (let i=0; i<r.length; i+=2) pairs.push(`(${r[i].toFixed(6)}, ${r[i+1].toFixed(6)})`); setOut('crs-batch-output', pairs.join('\n'), 'success'); } catch(e) { setOutError('crs-batch-output', e); }
+};
+window.listCrs = () => {
+  try { assertInit(); setOut('crs-list-output', JSON.parse(engine.listAll()), 'success'); } catch(e) { setOutError('crs-list-output', e); }
+};
+
+// --- Geohash ---
+window.runGeohashEncode = () => {
+  try { setOut('gh-encode-output', geo.geohashEncode(+$id('gh-lon').value, +$id('gh-lat').value, +$id('gh-prec').value), 'success'); } catch(e) { setOutError('gh-encode-output', e); }
+};
+window.runGeohashDecode = () => {
+  try { setOut('gh-decode-output', JSON.parse(geo.geohashDecode($id('gh-hash').value)), 'success'); } catch(e) { setOutError('gh-decode-output', e); }
+};
+window.runGeohashNeighbors = () => {
+  try { setOut('gh-neighbors-output', JSON.parse(geo.geohashNeighbors($id('gh-neighbor-hash').value)), 'success'); } catch(e) { setOutError('gh-neighbors-output', e); }
+};
+window.runBboxToGeohashes = () => {
+  try { const r = geo.bboxToGeohashes(+$id('gh-bbox-w').value,+$id('gh-bbox-s').value,+$id('gh-bbox-e').value,+$id('gh-bbox-n').value,+$id('gh-bbox-prec').value); setOut('gh-bbox-output', JSON.parse(r), 'success'); } catch(e) { setOutError('gh-bbox-output', e); }
+};
+
+// --- Ingest ---
+window.runParseNmea = () => {
+  try { setOut('nmea-output', geo.parseNmea($id('nmea-single').value), 'success'); } catch(e) { setOutError('nmea-output', e); }
+};
+window.runParseNmeaBatch = () => {
+  try { setOut('nmea-batch-output', geo.parseNmeaBatch($id('nmea-batch').value), 'success'); } catch(e) { setOutError('nmea-batch-output', e); }
+};
+window.runValidateGpsFix = () => {
+  try { setOut('validate-output', geo.validateGpsFix(1.03, 8), 'success'); } catch(e) { setOutError('validate-output', e); }
+};
+window.runValidateSensorReading = () => {
+  try { setOut('validate-output', geo.validateSensorReading('temperature', 25), 'success'); } catch(e) { setOutError('validate-output', e); }
+};
+window.runValidateCoord = () => {
+  try { setOut('validate-output', geo.validateCoord(116.397, 39.908), 'success'); } catch(e) { setOutError('validate-output', e); }
+};
+
+// --- Spatial ---
+window.runSpatial = (op) => {
+  try {
+    const geom = $id('spatial-geom').value;
+    const map = { area: geo.computeArea, bbox: geo.computeBbox, centroid: geo.computeCentroid, simplify:()=>geo.simplifyGeometry(geom,0.001), convex_hull: geo.convexHull };
+    setOut('spatial-output', JSON.parse(map[op](geom)), 'success');
+  } catch(e) { setOutError('spatial-output', e); }
+};
+
+// --- Vector ---
+window.runBuffer = () => {
+  try { const r = geo.computeBuffer($id('vec-geom').value, +$id('vec-dist').value, $id('vec-mode').value); setOut('vec-buffer-output', JSON.parse(r), 'success'); } catch(e) { setOutError('vec-buffer-output', e); }
+};
+window.runIntersect = () => {
+  try { const r = geo.computeIntersect($id('vec-a').value, $id('vec-b').value); setOut('vec-intersect-output', JSON.parse(r), 'success'); } catch(e) { setOutError('vec-intersect-output', e); }
+};
+window.runUnionAll = () => {
+  try { const polys = JSON.stringify([JSON.parse($id('vec-a').value), JSON.parse($id('vec-b').value)]); const r = geo.unionAll(polys); setOut('vec-union-output', JSON.parse(r), 'success'); } catch(e) { setOutError('vec-union-output', e); }
+};
+
+// --- Raster ---
+function sampleBand3x3() {
+  return { data: new Float64Array([0.1, 0.3, 0.5, 0.2, 0.4, 0.6, 0.3, 0.5, 0.7]), rows:3, cols:3 };
+}
+window.runNdvi = () => {
+  try { const red=new Float64Array([0.1,0.12,0.14,0.11,0.13,0.15,0.12,0.14,0.16]); const nir=new Float64Array([0.4,0.45,0.5,0.42,0.48,0.55,0.44,0.5,0.58]); setOut('raster-ndvi-output', JSON.parse(geo.computeNdvi(red,nir,3,3)), 'success'); } catch(e) { setOutError('raster-ndvi-output', e); }
+};
+window.runNdviDiff = () => {
+  try { const prev=new Float64Array([0.6,0.65,0.7,0.62,0.68,0.72,0.64,0.7,0.75]); const curr=new Float64Array([0.55,0.6,0.68,0.58,0.63,0.7,0.6,0.66,0.72]); setOut('raster-diff-output', JSON.parse(geo.ndviDifference(prev,3,3,curr,3,3)), 'success'); } catch(e) { setOutError('raster-diff-output', e); }
+};
+window.runBandOp = (op) => {
+  try { const a=sampleBand3x3(), b=sampleBand3x3(); const f={add:geo.bandAdd,sub:geo.bandSub,mul:geo.bandMul,div:geo.bandDiv}[op]; if(f){ setOut('raster-op-output',JSON.parse(f(a.data,a.rows,a.cols,b.data,b.rows,b.cols)),'success'); } else { setOut('raster-op-output',JSON.parse(geo.bandThreshold(a.data,a.rows,a.cols,0.4)),'success'); } } catch(e) { setOutError('raster-op-output', e); }
+};
+window.runResample = () => {
+  try { const a=sampleBand3x3(); setOut('raster-op-output',JSON.stringify(Array.from(geo.resampleNearest(a.data,a.rows,a.cols,6,6))),'success'); } catch(e) { setOutError('raster-op-output', e); }
+};
+window.runZonalStats = () => {
+  try { const values=new Float64Array([1,2,3,4,5,6,7,8,9]); const zones=new Uint32Array([0,1,0,1,0,1,0,1,0]); setOut('raster-op-output',JSON.parse(geo.computeZonalStats(values,zones,2)),'success'); } catch(e) { setOutError('raster-op-output', e); }
+};
+
+// --- Carbon ---
+window.runCarbonCalculate = () => {
+  try { assertInit(); const r = carbon.calculate($id('carbon-geojson').value, $id('carbon-csv').value, +$id('carbon-year').value); setOut('carbon-output', JSON.parse(r), 'success'); } catch(e) { setOutError('carbon-output', e); }
+};
+window.runCarbonJson = () => {
+  try { assertInit(); const factors = JSON.stringify([{category:'forest',factor_value:-5.2,source:'IPCC'},{category:'grassland',factor_value:-1.8,source:'IPCC'}]); const r = carbon.calculateWithJsonFactors($id('carbon-geojson').value, factors, +$id('carbon-year').value); setOut('carbon-output', JSON.parse(r), 'success'); } catch(e) { setOutError('carbon-output', e); }
+};
+
+// --- Tile ---
+window.runLatlonToTile = () => {
+  try { assertInit(); const tc = geo.latlon_to_tile(+$id('tile-lon').value, +$id('tile-lat').value, +$id('tile-zoom').value); setOut('tile-coord-output', `Tile: x=${tc.x}, y=${tc.y}, z=${tc.z} (${Array.from(tile.tileBounds(tc.x,tc.y,tc.z)).map(v=>v.toFixed(6)).join(', ')})`, 'success'); } catch(e) { setOutError('tile-coord-output', e); }
+};
+window.runTileUrl = () => {
+  try { assertInit(); const tc = tile.latlonToTile(+$id('tile-lon').value, +$id('tile-lat').value, +$id('tile-zoom').value); setOut('tile-url-output', `OSM: ${geo.tile_url_osm(tc.x,tc.y,tc.z)}\n高德: ${geo.tile_url_gaode(tc.x,tc.y,tc.z)}`, 'success'); } catch(e) { setOutError('tile-url-output', e); }
+};
+
+// --- Storage ---
+window.storageInit = async () => {
+  try { if (!store) store = new geo.GeoStore('geo-toolbox-demo'); await store.init(); storeReady = true; setOut('storage-output', 'IndexedDB 初始化成功!', 'success'); } catch(e) { setOutError('storage-output', e); }
+};
+window.storagePut = async () => {
+  if(!storeReady){setOut('storage-output','请先初始化','error');return}
+  try { const feat = JSON.stringify({type:'Feature',properties:{name:'Test'},geometry:{type:'Point',coordinates:[116.397,39.908]}}); await store.putFeature('test-1', feat); setOut('storage-output', '要素 test-1 已存入', 'success'); } catch(e) { setOutError('storage-output', e); }
+};
+window.storageGet = async () => {
+  if(!storeReady){setOut('storage-output','请先初始化','error');return}
+  try { const r = await store.getFeature('test-1'); setOut('storage-output', r, 'success'); } catch(e) { setOutError('storage-output', e); }
+};
+window.storageGetAll = async () => {
+  if(!storeReady){setOut('storage-output','请先初始化','error');return}
+  try { const r = await store.getAllFeatures(); setOut('storage-output', JSON.parse(r), 'success'); } catch(e) { setOutError('storage-output', e); }
+};
+window.storageCount = async () => {
+  if(!storeReady){setOut('storage-output','请先初始化','error');return}
+  try { const r = await store.count(); setOut('storage-output', `共 ${r} 条记录`, 'success'); } catch(e) { setOutError('storage-output', e); }
+};
+window.storageDelete = async () => {
+  if(!storeReady){setOut('storage-output','请先初始化','error');return}
+  try { await store.deleteFeature('test-1'); setOut('storage-output', 'test-1 已删除', 'success'); } catch(e) { setOutError('storage-output', e); }
+};
+window.storageClear = async () => {
+  if(!storeReady){setOut('storage-output','请先初始化','error');return}
+  try { await store.clearAll(); setOut('storage-output', '数据库已清空', 'success'); } catch(e) { setOutError('storage-output', e); }
+};
+
+// --- Export ---
+window.runExportGeoJson = () => {
+  try { const fc = JSON.stringify([{type:'Feature',properties:{name:'POI'},geometry:{type:'Point',coordinates:[116.39,39.91]}}]); setOut('export-output', JSON.parse(geo.exportGeoJson(fc)), 'success'); } catch(e) { setOutError('export-output', e); }
+};
+window.runCsvToJson = () => {
+  try { setOut('export-output', JSON.parse(geo.csvToJson('name,lat,lon\n天安门,39.908,116.397')), 'success'); } catch(e) { setOutError('export-output', e); }
+};
+window.runExportCarbonReport = () => {
+  try { const report = JSON.stringify({total_emissions:-125.3,breakdown:[{category:'forest',emissions:-104.0},{category:'grassland',emissions:-21.3}]}); setOut('export-output', geo.exportCarbonReport(report,'北京故宫','审计员'), 'success'); } catch(e) { setOutError('export-output', e); }
+};
+window.runExportExcel = () => {
+  try { const cols = JSON.stringify(['类别','排放量']); const rows = JSON.stringify([['森林',-104],['草地',-21.3]]); const data = geo.exportExcel(cols, rows, '碳核算'); const blob = new Blob([data], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='carbon_report.xlsx'; a.click(); URL.revokeObjectURL(url); setOut('export-output', 'Excel 已下载!', 'success'); } catch(e) { setOutError('export-output', e); }
+};
+
+// --- Utils ---
+function loadUtils() {
+  try { $id('util-version').textContent = geo.getVersion(); $id('util-build').textContent = geo.getBuildInfo(); $id('util-memory').textContent = geo.getMemoryStats(); } catch(e) { console.error(e); }
+}
+
+// --- Tab switching ---
+document.getElementById('tabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-panel]');
+  if (!btn) return;
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('panel-' + btn.dataset.panel);
+  if (panel) { panel.classList.add('active'); if (btn.dataset.panel === 'utils') loadUtils(); }
+});
+
+// --- Boot ---
+initWasm().then(() => loadUtils()).catch(e => {
+  document.getElementById('version').textContent = 'LOAD FAILED';
+  console.error('WASM init failed:', e);
+});
+</script>
+</body>
+</html>

@@ -245,7 +245,7 @@ pub fn ordinary_kriging(
                 }
             }
             // Extract weights (last column)
-            let mut weights: Vec<f64> = (0..rows).map(|i| mat[i * cols + m]).collect();
+            let weights: Vec<f64> = (0..rows).map(|i| mat[i * cols + m]).collect();
             // Prediction = Σ w_i * z_i
             let pred: f64 = (0..n).map(|i| weights[i] * points[i].2).sum();
             // Kriging variance = Σ w_i * γ(pi, p0) + λ

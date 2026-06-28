@@ -1,11 +1,9 @@
-use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
 
-use crate::lithology::{classify_lithology, lithology_from_code};
-use crate::stratigraphy::{stratigraphic_column, stratigraphic_model_3d, LayerDefinition};
+use crate::lithology::classify_lithology;
+use crate::stratigraphy::{stratigraphic_model_3d, LayerDefinition};
 use crate::structures::{fault_plane_geometry, fold_geometry, structure_attitude};
-
 pub fn register_tools(registry: &mut PluginRegistry) {
     register_plugin!(registry, "geology", "Geology: stratigraphic 3D modeling, fault/fold geometry, lithology classification", PluginCategory::Process, [
         sync "geo_stratigraphy" => "3D stratigraphic model from DEM and layer definitions" ; serde_json::json!({"type":"object","properties":{"dem":{"type":"array","items":{"type":"number"}},"layers":{"type":"array","items":{"type":"object","properties":{"name":{"type":"string"},"top_depth_m":{"type":"number"},"base_depth_m":{"type":"number"},"lithology_code":{"type":"string"},"density_kgm3":{"type":"number"}},"required":["name","top_depth_m","base_depth_m","lithology_code"]}},"cols":{"type":"integer"}},"required":["dem","layers","cols"]}) => |args| -> ToolResult {

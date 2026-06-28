@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
@@ -68,6 +70,7 @@ impl Ord for CostNode {
 /// - effusion_rate_m3s: 喷发速率
 /// - viscosity_Pa_s: 熔岩粘度
 /// - rows, cols
+#[allow(non_snake_case)]
 pub fn lava_flow_path(
     dem: &[f64],
     vent_row: usize,
@@ -190,6 +193,7 @@ pub fn lava_flow_path(
 }
 
 /// 简化熔岩流模拟 (返回模拟结果)。
+#[allow(non_snake_case)]
 pub fn lava_flow_simulation(
     dem: &[f64],
     vent_row: usize,

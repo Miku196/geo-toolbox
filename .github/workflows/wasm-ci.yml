@@ -1,0 +1,234 @@
+name: WASM CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'crates/geo-wasm/**'
+      - 'core/geo-core/**'
+      - 'core/geo-carbon-math/**'
+      - 'core/geo-raster/**'
+      - 'core/geo-io/**'
+      - 'core/geo-vector/**'
+      - 'core/geo-parquet/**'
+      - 'core/geo-stats/**'
+      - 'core/geo-ogc/**'
+      - '.github/workflows/wasm-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'crates/geo-wasm/**'
+      - 'core/geo-core/**'
+      - 'core/geo-carbon-math/**'
+      - 'core/geo-raster/**'
+      - 'core/geo-io/**'
+      - 'core/geo-vector/**'
+      - 'core/geo-parquet/**'
+      - 'core/geo-stats/**'
+      - 'core/geo-ogc/**'
+      - '.github/workflows/wasm-ci.yml'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  WASM_PACK_CACHE: ~/.wasm-pack
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Stage 1: Build check (fast, no browser needed) ──
+  wasm-build:
+    name: Build WASM (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-wasm-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-wasm-cargo-registry-
+
+      - name: Cache cargo build (wasm target)
+        uses: actions/cache@v4
+        with:
+          path: |
+            target
+            crates/geo-wasm/target
+          key: ${{ runner.os }}-wasm-cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-wasm-cargo-build-
+
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@wasm-pack
+
+      - name: Check native compile (core crates only)
+        run: |
+          cargo check -p geo-core -p geo-carbon-math -p geo-raster -p geo-vector -p geo-parquet -p geo-stats -p geo-io -p geo-ogc --no-default-features
+
+      - name: Build WASM (geo-wasm)
+        run: |
+          wasm-pack build --target web --out-dir pkg crates/geo-wasm
+
+      - name: Verify WASM output
+        run: |
+          test -f crates/geo-wasm/pkg/geo_wasm_bg.wasm  || (echo "Missing .wasm" && exit 1)
+          test -f crates/geo-wasm/pkg/geo_wasm.js       || (echo "Missing .js" && exit 1)
+          test -f crates/geo-wasm/pkg/geo_wasm.d.ts     || (echo "Missing .d.ts" && exit 1)
+          echo "=== WASM size ==="
+          ls -lh crates/geo-wasm/pkg/geo_wasm_bg.wasm
+
+      - name: Check WASM size regression
+        if: github.event_name == 'pull_request'
+        run: |
+          SIZE=$(stat -c%s crates/geo-wasm/pkg/geo_wasm_bg.wasm 2>/dev/null || stat -f%z crates/geo-wasm/pkg/geo_wasm_bg.wasm)
+          SIZE_MB=$((SIZE / 1024 / 1024))
+          echo "WASM binary: ${SIZE_MB} MB"
+          if [ "$SIZE_MB" -gt 10 ]; then
+            echo "⚠️  WASM binary >10MB — consider optimizing"
+          fi
+
+  # ── Stage 2: Browser tests (Chrome headless) ──
+  wasm-test:
+    name: Test WASM (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: wasm-build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-wasm-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-wasm-cargo-registry-
+
+      - name: Cache cargo build (wasm target)
+        uses: actions/cache@v4
+        with:
+          path: |
+            target
+            crates/geo-wasm/target
+          key: ${{ runner.os }}-wasm-cargo-build-test-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-wasm-cargo-build-test-
+
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@wasm-pack
+
+      - name: Setup Chrome (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq chromium-browser chromium-chromedriver 2>/dev/null || true
+          which chromium-browser && export CHROMEDRIVER=$(which chromedriver) || true
+          echo "CHROMEDRIVER=$(which chromedriver 2>/dev/null || echo '')" >> $GITHUB_ENV
+
+      - name: Setup Chrome (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install googlechrome chromedriver -y --no-progress 2>/dev/null || true
+          echo "CHROMEDRIVER=C:/ProgramData/chocolatey/bin/chromedriver.exe" >> $GITHUB_ENV
+
+      - name: Run WASM tests
+        run: |
+          # Build test wasm first
+          cargo test --target wasm32-unknown-unknown -p geo-wasm --no-run 2>&1
+          # Run with wasm-bindgen-test-runner (more reliable than wasm-pack test for CI)
+          for wasm in target/wasm32-unknown-unknown/debug/deps/web-*.wasm; do
+            [ -f "$wasm" ] && wasm-bindgen-test-runner "$wasm" 2>&1 | tee /tmp/wasm-test-output.txt
+          done
+          # Fallback: try wasm-pack test if no wasm found
+          if [ ! -f /tmp/wasm-test-output.txt ]; then
+            wasm-pack test --headless --chrome crates/geo-wasm 2>&1 | tee /tmp/wasm-test-output.txt
+          fi
+
+      - name: Test summary
+        if: always()
+        run: |
+          echo "=== Test Results ==="
+          if [ -f /tmp/wasm-test-output.txt ]; then
+            grep -E "(test result|FAILED|running)" /tmp/wasm-test-output.txt || true
+            PASSED=$(grep -c "ok" /tmp/wasm-test-output.txt 2>/dev/null || echo "0")
+            FAILED=$(grep -c "FAILED" /tmp/wasm-test-output.txt 2>/dev/null || echo "0")
+            echo "Passed: $PASSED | Failed: $FAILED"
+          fi
+        shell: bash
+
+  # ── Stage 3: Demo build verify ──
+  wasm-demo:
+    name: Verify Demo
+    runs-on: ubuntu-latest
+    needs: wasm-build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ubuntu-latest-wasm-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ubuntu-latest-wasm-cargo-registry-
+
+      - name: Cache cargo build (wasm target)
+        uses: actions/cache@v4
+        with:
+          path: |
+            target
+            crates/geo-wasm/target
+          key: ubuntu-latest-wasm-cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: ubuntu-latest-wasm-cargo-build-
+
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@wasm-pack
+
+      - name: Build with demo
+        run: |
+          wasm-pack build --target web --out-dir pkg crates/geo-wasm
+          cp crates/geo-wasm/examples/demo.html crates/geo-wasm/pkg/
+
+      - name: Validate demo HTML
+        run: |
+          test -f crates/geo-wasm/pkg/demo.html || (echo "Missing demo.html" && exit 1)
+          echo "✅ demo.html present ($(wc -c < crates/geo-wasm/pkg/demo.html) bytes)"
+          
+          # Verify demo.html references the correct wasm module
+          grep -q "geo_wasm\.js" crates/geo-wasm/pkg/demo.html && echo "✅ demo imports correct module"
+
+      - name: Upload WASM artifacts
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: geo-wasm-pkg
+          path: crates/geo-wasm/pkg/
+          retention-days: 7

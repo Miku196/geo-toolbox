@@ -3,8 +3,6 @@
 //! Site index = dominant height at a reference age (typically 20 years).
 //! Supports multiple height-growth models and species-specific lookups.
 
-use std::f64::consts::E;
-
 /// Richards growth model: H = a * (1 - exp(-b * age))^c
 pub fn site_index_richards(age: f64, a: f64, b: f64, c: f64) -> f64 {
     if age <= 0.0 || a <= 0.0 {

@@ -67,7 +67,7 @@ pub fn musle_soil_loss(
     ls: f64,
     c: f64,
     p: f64,
-    area_ha: f64,
+    _area_ha: f64,
 ) -> f64 {
     let energy_factor = (runoff_m3 * peak_flow_m3s).powf(0.56);
     11.8 * energy_factor * k * ls * c * p

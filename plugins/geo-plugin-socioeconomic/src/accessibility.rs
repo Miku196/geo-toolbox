@@ -108,7 +108,7 @@ pub fn multi_city_accessibility(
     for (i, &origin) in origins.iter().enumerate() {
         let tt = travel_time_to_city(origin, cost_surface, max_cost, cols);
         // 只优化起点自身及周围的出行时间
-        let pop = city_populations.get(i).copied().unwrap_or(1.0);
+        let _pop = city_populations.get(i).copied().unwrap_or(1.0);
         for j in 0..n {
             if let Some(t) = tt[j] {
                 match min_travel[j] {

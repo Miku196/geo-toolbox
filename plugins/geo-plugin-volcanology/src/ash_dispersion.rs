@@ -21,6 +21,7 @@ pub struct AshDispersionResult {
 }
 
 /// 颗粒沉降速度 (Stokes 定律)。
+#[allow(non_snake_case)]
 pub fn settling_velocity(
     particle_diameter_m: f64,
     particle_density_kgm3: f64,

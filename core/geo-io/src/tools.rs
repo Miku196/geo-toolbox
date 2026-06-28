@@ -1,7 +1,9 @@
 //! Tool registration — CRS + Ingest tools (mixed sync/async).
 use geo_core::plugin::PluginCategory;
+#[cfg(feature = "tokio-fs")]
+use geo_registry::register_async_tools;
 use geo_registry::registry::ToolResult;
-use geo_registry::{register_async_tools, register_plugin, register_sync_tools, PluginRegistry};
+use geo_registry::{register_plugin, register_sync_tools, PluginRegistry};
 pub fn register_tools(registry: &mut PluginRegistry) {
     register_plugin!(registry, "crs", "CRS coordinate reference system registry", PluginCategory::Process, [
         sync "crs_list" => "List all registered coordinate reference systems" ; serde_json::json!({"type":"object","properties":{"category":{"type":"string"}},"required":[]}) => |args| -> ToolResult {
@@ -38,28 +40,31 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         if !(-90.0..=90.0).contains(&lat) { issues.push("lat out of range [-90,90]"); }
         Ok(serde_json::json!({"valid":valid,"lon":lon,"lat":lat,"issues":issues}))
     }]);
-    register_async_tools!(registry, "ingest", [
-        "ingest_camofox" => "Parse a CamoFox JSON file and return records" ; serde_json::json!({"type":"object","properties":{"file":{"type":"string"}},"required":["file"]}) => |args| Box::pin(async move {
-        let file = args["file"].as_str().unwrap_or("");
-        let content = tokio::fs::read_to_string(file).await.map_err(geo_core::GeoError::from)?;
-        let (_rows, result) = crate::camofox::parse_camofox_file(&content, file).map_err(|e| geo_core::GeoError::Other(e.to_string()))?;
-        Ok(serde_json::json!({"accepted":result.accepted,"rejected":result.rejected,"file":file}))
-    }),
-        "ingest_nmea" => "Parse an NMEA GPS log file and return fixes" ; serde_json::json!({"type":"object","properties":{"file":{"type":"string"}},"required":["file"]}) => |args| Box::pin(async move {
-        let file = args["file"].as_str().unwrap_or("");
-        let content = tokio::fs::read_to_string(file).await.map_err(geo_core::GeoError::from)?;
-        let mut fixes = 0u32;
-        let mut records: Vec<serde_json::Value> = Vec::new();
-        for line in content.lines().filter(|l| !l.trim().is_empty()) {
-            if let Ok(msg) = crate::nmea::parse_nmea_line(line.trim()) {
-                use crate::nmea::NmeaMessage;
-                match msg {
-                    NmeaMessage::Gga(fix) => { records.push(serde_json::json!({"type":"GGA","time":fix.time,"lat":fix.lat,"lng":fix.lng,"quality":fix.quality,"satellites":fix.satellites})); fixes += 1; }
-                    NmeaMessage::Rmc(rmc) => { records.push(serde_json::json!({"type":"RMC","time":rmc.time,"lat":rmc.lat,"lng":rmc.lng,"speed_knots":rmc.speed_knots})); fixes += 1; }
-                    _ => {}
+    #[cfg(feature = "tokio-fs")]
+    {
+        register_async_tools!(registry, "ingest", [
+            "ingest_camofox" => "Parse a CamoFox JSON file and return records" ; serde_json::json!({"type":"object","properties":{"file":{"type":"string"}},"required":["file"]}) => |args| Box::pin(async move {
+            let file = args["file"].as_str().unwrap_or("");
+            let content = tokio::fs::read_to_string(file).await.map_err(geo_core::GeoError::from)?;
+            let (_rows, result) = crate::camofox::parse_camofox_file(&content, file).map_err(|e| geo_core::GeoError::Other(e.to_string()))?;
+            Ok(serde_json::json!({"accepted":result.accepted,"rejected":result.rejected,"file":file}))
+        }),
+            "ingest_nmea" => "Parse an NMEA GPS log file and return fixes" ; serde_json::json!({"type":"object","properties":{"file":{"type":"string"}},"required":["file"]}) => |args| Box::pin(async move {
+            let file = args["file"].as_str().unwrap_or("");
+            let content = tokio::fs::read_to_string(file).await.map_err(geo_core::GeoError::from)?;
+            let mut fixes = 0u32;
+            let mut records: Vec<serde_json::Value> = Vec::new();
+            for line in content.lines().filter(|l| !l.trim().is_empty()) {
+                if let Ok(msg) = crate::nmea::parse_nmea_line(line.trim()) {
+                    use crate::nmea::NmeaMessage;
+                    match msg {
+                        NmeaMessage::Gga(fix) => { records.push(serde_json::json!({"type":"GGA","time":fix.time,"lat":fix.lat,"lng":fix.lng,"quality":fix.quality,"satellites":fix.satellites})); fixes += 1; }
+                        NmeaMessage::Rmc(rmc) => { records.push(serde_json::json!({"type":"RMC","time":rmc.time,"lat":rmc.lat,"lng":rmc.lng,"speed_knots":rmc.speed_knots})); fixes += 1; }
+                        _ => {}
+                    }
                 }
             }
-        }
-        Ok(serde_json::json!({"total_fixes":fixes,"records":records.iter().take(10).cloned().collect::<Vec<_>>()}))
-    })]);
+            Ok(serde_json::json!({"total_fixes":fixes,"records":records.iter().take(10).cloned().collect::<Vec<_>>()}))
+        })]);
+    }
 }

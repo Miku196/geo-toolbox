@@ -62,21 +62,21 @@ pub fn usda_texture_class(sand_pct: f64, clay_pct: f64, silt_pct: f64) -> SoilTe
         SoilTexture::SiltyClay
     } else if clay >= 35.0 && sand > 45.0 {
         SoilTexture::SandyClay
-    } else if clay >= 27.0 && clay < 40.0 && sand <= 45.0 && sand >= 20.0 && silt <= 28.0 {
+    } else if (27.0..40.0).contains(&clay) && (20.0..=45.0).contains(&sand) && silt <= 28.0 {
         // Actually this needs the USDA triangle logic
         // Use simpler lookup with points
-        if sand >= 20.0 && sand <= 45.0 && clay >= 27.0 && clay < 40.0 {
+        if (20.0..=45.0).contains(&sand) && (27.0..40.0).contains(&clay) {
             SoilTexture::ClayLoam
         } else {
             usda_texture_class_fallback(sand, clay, silt)
         }
-    } else if clay >= 27.0 && clay < 40.0 && silt >= 28.0 && sand <= 45.0 {
+    } else if (27.0..40.0).contains(&clay) && silt >= 28.0 && sand <= 45.0 {
         SoilTexture::SiltyClayLoam
-    } else if clay >= 20.0 && clay < 35.0 && sand > 45.0 && silt < 28.0 {
+    } else if (20.0..35.0).contains(&clay) && sand > 45.0 && silt < 28.0 {
         SoilTexture::SandyClayLoam
-    } else if clay >= 7.0 && clay < 27.0 && silt >= 28.0 && silt <= 50.0 && sand <= 52.0 {
+    } else if (7.0..27.0).contains(&clay) && (28.0..=50.0).contains(&silt) && sand <= 52.0 {
         SoilTexture::Loam
-    } else if silt >= 50.0 && clay >= 12.0 && clay < 27.0 {
+    } else if silt >= 50.0 && (12.0..27.0).contains(&clay) {
         SoilTexture::SiltLoam
     } else if sand >= 52.0 && clay < 20.0 && silt < 50.0 && (sand - clay) > 0.0 {
         if sand >= 70.0 && clay < 15.0 {
@@ -371,7 +371,7 @@ pub fn scs_group_from_texture(texture: &SoilTexture) -> &'static str {
 /// USLE K-factor estimate from soil texture.
 pub fn usle_k_from_texture(
     sand_pct: f64,
-    silt_pct: f64,
+    _silt_pct: f64,
     clay_pct: f64,
     organic_matter_pct: f64,
 ) -> f64 {

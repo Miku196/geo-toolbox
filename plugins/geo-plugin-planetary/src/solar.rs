@@ -51,7 +51,7 @@ pub fn solar_elevation_azimuth(
     let sin_alt = lat.sin() * dec.sin() + lat.cos() * dec.cos() * h.cos();
     let elevation = sin_alt.asin();
 
-    let cos_az = (dec.sin() - lat.sin() * elevation.sin()) / (lat.cos() * elevation.cos());
+    let _cos_az = (dec.sin() - lat.sin() * elevation.sin()) / (lat.cos() * elevation.cos());
     let azimuth = (-h)
         .sin()
         .atan2(h.cos() * lat.sin() - dec.cos().recip() * lat.cos() * dec.sin());

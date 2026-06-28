@@ -53,7 +53,7 @@ pub fn true_thickness(apparent_thickness_m: f64, dip_deg: f64) -> f64 {
 }
 
 /// 由走向/倾角推算倾向。
-pub fn dip_direction(strike_deg: f64, dip_deg: f64, dip_quadrant: &str) -> f64 {
+pub fn dip_direction(strike_deg: f64, _dip_deg: f64, dip_quadrant: &str) -> f64 {
     match dip_quadrant {
         "NW" => (strike_deg + 90.0).rem_euclid(360.0),
         "NE" => (strike_deg + 270.0).rem_euclid(360.0),
@@ -72,7 +72,7 @@ pub fn fault_plane_geometry(
     length_km: f64,
     fault_type: &str,
 ) -> FaultGeometry {
-    let dd = dip_direction(strike_deg, dip_deg, "SE");
+    let _dd = dip_direction(strike_deg, dip_deg, "SE");
     FaultGeometry {
         name: name.into(),
         strike_deg,

@@ -3,7 +3,6 @@
 /// 补全水文循环最后一环，与 SCS-CN 产流衔接。
 /// 纯 Rust 实现，无外部依赖。
 use serde::{Deserialize, Serialize};
-use std::fmt::Write;
 
 // ──────────────────────────────────────────────
 // 1. 达西定律 + 渗流
@@ -198,7 +197,7 @@ pub fn coupled_water_balance(
     stream_length_m: f64,
     stream_width_m: f64,
     specific_yield: f64,
-    aquifer_thickness_m: f64,
+    _aquifer_thickness_m: f64,
 ) -> CoupledResult {
     let recharge = scs_recharge(rainfall_m, cn, recharge_factor, area_m2);
     let baseflow = baseflow_exchange(

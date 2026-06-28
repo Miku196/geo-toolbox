@@ -43,7 +43,6 @@ pub fn transition_probability(from_lulc: &[u8], to_lulc: &[u8], n_classes: u8) -
 
 /// 应用转移概率到当前 LULC（单步随机模拟）。
 pub fn apply_transition(current_lulc: &[u8], transition_matrix: &[Vec<f64>], seed: u64) -> Vec<u8> {
-    use std::collections::hash_map::RandomState;
     let mut rng = simple_rng(seed);
     let n = transition_matrix.len();
     current_lulc
@@ -133,7 +132,7 @@ pub fn cellular_automata_step(
             continue;
         }
 
-        let mut scores: Vec<f64> = (0..n_classes)
+        let scores: Vec<f64> = (0..n_classes)
             .map(|c| {
                 let s = suitability
                     .get(c)

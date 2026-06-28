@@ -70,9 +70,9 @@ pub fn stratigraphic_column(
 /// - base_layer: 地层定义
 /// - cols
 pub fn stratigraphic_model_3d(
-    dem: &[f64],
+    _dem: &[f64],
     layer_defs: &[LayerDefinition],
-    cols: usize,
+    _cols: usize,
 ) -> StratigraphicModel {
     let n_layers = layer_defs.len();
     let total_depth = layer_defs

@@ -30,7 +30,7 @@ pub fn coherence(master: &[f64], slave: &[f64], window: usize) -> Vec<f64> {
             let mut sum_s2 = 0.0;
             let mut sum_ms = 0.0;
             let mut count = 0;
-            let start = if i >= half { i - half } else { 0 };
+            let start = i.saturating_sub(half);
             let end = (i + half + 1).min(n);
             for j in start..end {
                 let m = master[j];

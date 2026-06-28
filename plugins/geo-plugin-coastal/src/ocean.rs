@@ -321,7 +321,7 @@ pub fn oni_index(nino34_monthly: &[f64]) -> Vec<f64> {
     let mut result = Vec::with_capacity(n);
     // Padding: first 2 months use available data
     for i in 0..n {
-        let start = if i < 2 { 0 } else { i - 2 };
+        let start = i.saturating_sub(2);
         let count = i - start + 1;
         let sum: f64 = nino34_monthly[start..=i].iter().sum();
         result.push(sum / count as f64);
@@ -414,13 +414,13 @@ pub fn swan_wave_transformation(params: &SwanParams, depth_shore_m: f64) -> Swan
     let break_depth = hb / gamma;
 
     // 折射
-    let theta0 = params.wave_direction_deg.to_radians();
+    let _theta0 = params.wave_direction_deg.to_radians();
 
     // 浅水参数 (近似到破波点)
     let depth_effective = depth_shore_m.max(0.5);
 
     // 浅化: 波速近似
-    let kh = if depth_effective > l0 {
+    let _kh = if depth_effective > l0 {
         // 深水
         3.0 // phase is effectively deep
     } else {

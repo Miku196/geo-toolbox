@@ -219,7 +219,7 @@ pub fn scs_uh(
     }
 
     let tp = 0.6 * tc_hours; // time to peak
-    let tr = 1.7 * tp; // recession time
+    let _tr = 1.7 * tp; // recession time
     let tb = 2.67 * tp; // total base time
 
     // Peak discharge: convert from US standard units
@@ -246,7 +246,7 @@ pub fn scs_uh(
         } else if t_over_tp <= 5.0 {
             // Tail extension using exponential decay
             let base = interpolate_scs(3.0);
-            let decay = (-1.0 * (t_over_tp - 3.0)).exp();
+            let decay = (-(t_over_tp - 3.0)).exp();
             base * decay
         } else {
             0.0
@@ -327,12 +327,12 @@ pub fn clark_uh(
     }
 
     let tc_sec = tc_hours * 3600.0;
-    let dt_sec = dt_hours * 3600.0;
+    let _dt_sec = dt_hours * 3600.0;
     let n_time_steps = (tc_hours / dt_hours).ceil() as usize;
     let n_time_steps = n_time_steps.max(1);
 
     // Total volume of 1 cm excess over basin (m³)
-    let unit_volume_m3 = area_km2 * 1_000_000.0 * 0.01;
+    let _unit_volume_m3 = area_km2 * 1_000_000.0 * 0.01;
 
     // Clark method: linear time-area relationship
     // A(t) = A_total * min(t/Tc, 1)
@@ -407,7 +407,7 @@ pub fn clark_uh(
 pub fn convolve_rainfall(
     uh_ordinates: &[f64],
     excess_hyetograph: &[f64],
-    dt_hours: f64,
+    _dt_hours: f64,
 ) -> Vec<f64> {
     if uh_ordinates.is_empty() || excess_hyetograph.is_empty() {
         return vec![];

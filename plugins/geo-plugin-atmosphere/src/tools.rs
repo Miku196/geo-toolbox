@@ -1,5 +1,4 @@
 //! Tool registration — Atmosphere plugin
-use geo_core::plugin::PluginCategory;
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
 

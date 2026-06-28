@@ -94,7 +94,7 @@ pub fn psha_exceedance(
     if distance_km <= 0.0 {
         return 0.0;
     }
-    let beta = source.b_value * 2.302585;
+    let _beta = source.b_value * 2.302585;
     // 对震级区间求和 (M_min ~ M_max, 步长 0.1)
     let n_bins = ((source.m_max - source.m_min) / 0.1) as usize;
     let mut total_rate = 0.0;
@@ -199,7 +199,7 @@ pub fn uniform_hazard_spectrum(
     site_lat: f64,
     return_periods: &[f64],
     periods: &[f64],
-    damping: f64,
+    _damping: f64,
     site_class: &str,
 ) -> Vec<SpectrumHazardPoint> {
     let mut uhs = Vec::new();

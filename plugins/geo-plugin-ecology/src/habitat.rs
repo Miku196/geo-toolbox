@@ -48,7 +48,7 @@ pub fn habitat_degradation(
 ) -> Vec<f64> {
     let n = landcover.len();
     let n_threats = threat_layers.len();
-    let rows = n / cols;
+    let _rows = n / cols;
     let total_weight: f64 = threat_weights.iter().sum();
     let cell_km = cell_size_m / 1000.0;
 

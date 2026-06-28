@@ -200,7 +200,7 @@ pub fn tr55_time_of_concentration_channel_flow(
 }
 
 /// Generic travel time from flow length, slope, and velocity.
-pub fn tr55_travel_time(flow_length_m: f64, slope_pct: f64, velocity_m_s: f64) -> f64 {
+pub fn tr55_travel_time(flow_length_m: f64, _slope_pct: f64, velocity_m_s: f64) -> f64 {
     if velocity_m_s < 1e-10 {
         return 999.0;
     }

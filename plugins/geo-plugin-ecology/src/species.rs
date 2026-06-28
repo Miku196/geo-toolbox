@@ -59,7 +59,7 @@ pub fn fit_maxent(
 
     for _ in 0..n_iter {
         let mut grad = vec![0.0; n_vars + 1];
-        let mut total_loss = 0.0;
+        let mut _total_loss = 0.0;
 
         // 存在点梯度 (最大化)
         for pv in presence_values {
@@ -73,7 +73,7 @@ pub fn fit_maxent(
             for (j, &x) in pv.iter().enumerate() {
                 grad[j + 1] += (1.0 - prob) * x / n_pres as f64;
             }
-            total_loss += (prob.max(1e-10)).ln();
+            _total_loss += (prob.max(1e-10)).ln();
         }
 
         // 背景点梯度 (最小化)
@@ -142,7 +142,7 @@ pub fn maxent_simple(
     background_pixels: &[usize],
     regularization: f64,
 ) -> SpeciesSuitability {
-    let n_vars = env_layers.len();
+    let _n_vars = env_layers.len();
 
     // 构建存在点特征矩阵
     let presence_values: Vec<Vec<f64>> = presence_pixels
@@ -174,7 +174,7 @@ pub fn maxent_simple(
     let high = suitability.iter().filter(|&&v| v > 0.7).count() as f64 / total;
     let medium = suitability
         .iter()
-        .filter(|&&v| v >= 0.4 && v <= 0.7)
+        .filter(|&&v| (0.4..=0.7).contains(&v))
         .count() as f64
         / total;
     let low = suitability.iter().filter(|&&v| v < 0.4).count() as f64 / total;
