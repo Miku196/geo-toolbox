@@ -18,6 +18,10 @@ node_modules/
 .idea/
 *.iml
 *.tmp
+*.pyd
+*.pdb
+bindings/python/geo_toolbox/_geo_toolbox.*.pyd
+
 *.temp
 temp/
 *.TEMPeco_test.txt
@@ -28,3 +32,4 @@ nul
 
 fuzz/target/
 fuzz/Cargo.lock
+.venv/

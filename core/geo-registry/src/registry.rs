@@ -411,4 +411,61 @@ mod tests {
         assert_eq!(tool["type"], "object");
         assert!(tool["properties"]["name"].is_object());
     }
+
+    #[test]
+    fn test_dispatch_sync_success() {
+        let mut reg = PluginRegistry::new();
+        reg.register(PluginMeta {
+            name: "test".into(),
+            version: "0.1.0".into(),
+            description: "test".into(),
+            category: geo_core::plugin::PluginCategory::Process,
+            healthy: true,
+            extra: serde_json::json!({}),
+        });
+        reg.register_tool_sync(
+            "test",
+            ToolDef {
+                name: "sync_echo".into(),
+                description: "Echo sync".into(),
+                input_schema: serde_json::json!({"type":"object","properties":{},"required":[]}),
+            },
+            |args| Ok(serde_json::json!({"echo": args})),
+        );
+        let result = reg
+            .dispatch_sync("sync_echo", serde_json::json!({"x": 42}))
+            .unwrap();
+        assert_eq!(result["echo"]["x"], 42);
+    }
+
+    #[test]
+    fn test_dispatch_sync_unknown_tool() {
+        let reg = PluginRegistry::new();
+        let result = reg.dispatch_sync("nonexistent", serde_json::json!({}));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_dispatch_sync_handler_error() {
+        let mut reg = PluginRegistry::new();
+        reg.register(PluginMeta {
+            name: "test".into(),
+            version: "0.1.0".into(),
+            description: "test".into(),
+            category: geo_core::plugin::PluginCategory::Process,
+            healthy: true,
+            extra: serde_json::json!({}),
+        });
+        reg.register_tool_sync(
+            "test",
+            ToolDef {
+                name: "failing_tool".into(),
+                description: "Always fails".into(),
+                input_schema: serde_json::json!({"type":"object","properties":{},"required":[]}),
+            },
+            |_args| Err(GeoError::Other("intentional failure".into())),
+        );
+        let result = reg.dispatch_sync("failing_tool", serde_json::json!({}));
+        assert!(result.is_err());
+    }
 }

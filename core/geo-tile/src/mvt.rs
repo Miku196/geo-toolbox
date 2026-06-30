@@ -608,4 +608,78 @@ mod tests {
         assert_eq!(zigzag(1, 0), 2);
         assert_eq!(zigzag(-2, 0), 3);
     }
+
+    #[test]
+    fn test_feature_from_geojson_multipolygon() {
+        let encoder = MvtEncoder::new(4096);
+        let feature = serde_json::json!({
+            "type": "Feature",
+            "properties": {"name": "multi"},
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [[[[104.0,30.5],[104.1,30.5],[104.1,30.6],[104.0,30.6],[104.0,30.5]]],
+                                 [[[104.2,30.5],[104.3,30.5],[104.3,30.6],[104.2,30.6],[104.2,30.5]]]]
+            }
+        });
+        let mvt_feature = encoder.feature_from_geojson(&feature, 3270, 1671, 12);
+        assert!(mvt_feature.is_ok());
+        let f = mvt_feature.unwrap();
+        assert_eq!(f.geom_type, GeomType::Polygon);
+        assert!(!f.geometry.is_empty());
+    }
+
+    #[test]
+    fn test_feature_from_geojson_no_properties() {
+        let encoder = MvtEncoder::new(4096);
+        let feature = serde_json::json!({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [104.06, 30.57]}
+        });
+        let mvt_feature = encoder.feature_from_geojson(&feature, 3270, 1671, 12);
+        assert!(mvt_feature.is_ok());
+        let f = mvt_feature.unwrap();
+        assert!(f.tags.is_empty());
+        assert_eq!(f.geom_type, GeomType::Point);
+    }
+
+    #[test]
+    fn test_feature_from_geojson_multiline() {
+        let encoder = MvtEncoder::new(4096);
+        let feature = serde_json::json!({
+            "type": "Feature",
+            "properties": {"highway": "primary"},
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [[[104.0,30.5],[104.1,30.55]],[[104.1,30.55],[104.15,30.6]]]
+            }
+        });
+        let mvt_feature = encoder.feature_from_geojson(&feature, 3270, 1671, 12);
+        assert!(mvt_feature.is_ok());
+        assert_eq!(mvt_feature.unwrap().geom_type, GeomType::Linestring);
+    }
+
+    #[test]
+    fn test_encode_multiple_layers() {
+        let encoder = MvtEncoder::new(4096);
+        let features1 = vec![serde_json::json!({
+            "type": "Feature",
+            "properties": {"name": "layer1"},
+            "geometry": {"type": "Point", "coordinates": [104.06, 30.57]}
+        })];
+        let features2 = vec![serde_json::json!({
+            "type": "Feature",
+            "properties": {"name": "layer2"},
+            "geometry": {"type": "Point", "coordinates": [104.07, 30.58]}
+        })];
+        let bytes1 = encoder
+            .encode_tile("roads", &features1, 3270, 1671, 12)
+            .unwrap();
+        let bytes2 = encoder
+            .encode_tile("pois", &features2, 3270, 1671, 12)
+            .unwrap();
+        assert!(!bytes1.is_empty());
+        assert!(!bytes2.is_empty());
+        assert!(bytes1.len() > 10);
+        assert!(bytes2.len() > 10);
+    }
 }

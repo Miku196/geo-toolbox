@@ -1076,4 +1076,55 @@ mod tests {
         let ef = parse_emission_factor_row(&rec, &cols).unwrap();
         assert_eq!(ef.scope, Some(EmissionScope::Scope1));
     }
+
+    // ── GreenhouseGas::meta (via name/formula) ──
+
+    #[test]
+    fn test_greenhouse_gas_name_all_variants() {
+        let cases = [
+            (GreenhouseGas::CO2, "Carbon dioxide"),
+            (GreenhouseGas::CH4, "Methane"),
+            (GreenhouseGas::N2O, "Nitrous oxide"),
+            (GreenhouseGas::HFCs, "Hydrofluorocarbons"),
+            (GreenhouseGas::PFCs, "Perfluorocarbons"),
+            (GreenhouseGas::SF6, "Sulfur hexafluoride"),
+            (GreenhouseGas::NF3, "Nitrogen trifluoride"),
+        ];
+        for (gas, expected) in &cases {
+            assert_eq!(gas.name(), *expected, "Wrong name for {:?}", gas);
+        }
+    }
+
+    #[test]
+    fn test_greenhouse_gas_formula_all_variants() {
+        let cases = [
+            (GreenhouseGas::CO2, "CO₂"),
+            (GreenhouseGas::CH4, "CH₄"),
+            (GreenhouseGas::N2O, "N₂O"),
+            (GreenhouseGas::HFCs, "HFCs"),
+            (GreenhouseGas::PFCs, "PFCs"),
+            (GreenhouseGas::SF6, "SF₆"),
+            (GreenhouseGas::NF3, "NF₃"),
+        ];
+        for (gas, expected) in &cases {
+            assert_eq!(gas.formula(), *expected, "Wrong formula for {:?}", gas);
+        }
+    }
+
+    #[test]
+    fn test_greenhouse_gas_name_not_empty() {
+        // All greenhouse gas names must be non-empty
+        for gas in &[
+            GreenhouseGas::CO2,
+            GreenhouseGas::CH4,
+            GreenhouseGas::N2O,
+            GreenhouseGas::HFCs,
+            GreenhouseGas::PFCs,
+            GreenhouseGas::SF6,
+            GreenhouseGas::NF3,
+        ] {
+            assert!(!gas.name().is_empty(), "{:?} has empty name", gas);
+            assert!(!gas.formula().is_empty(), "{:?} has empty formula", gas);
+        }
+    }
 }

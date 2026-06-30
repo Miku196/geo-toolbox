@@ -7,8 +7,16 @@ mod crs;
 mod geohash;
 mod ingest;
 mod io_util;
+mod registry;
+pub(crate) mod report;
 mod spatial;
+pub(crate) mod stats;
+pub(crate) mod temporal;
 mod tile;
+
+use report::{report_carbon, report_render};
+use stats::{gistar, idw_grid, jenks_classify, morans_i, zonal_stats};
+use temporal::temporal_trend;
 
 use pyo3::prelude::*;
 #[allow(unused_imports)]
@@ -201,6 +209,10 @@ fn tile_url(source: &str, x: u32, y: u32, zoom: u8) -> PyResult<String> {
 /// Top-level Python module registration.
 #[pymodule]
 fn _geo_toolbox(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    // ── Unified dispatch (all 89 tools via geo.call()) ──
+    m.add_class::<registry::Geo>()?;
+
+    // ── Legacy class-based APIs ──
     m.add_class::<CrsEngine>()?;
     m.add_class::<CarbonEngine>()?;
     m.add_class::<MvtEncoder>()?;
@@ -225,6 +237,21 @@ fn _geo_toolbox(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(geohash_encode, m)?)?;
     m.add_function(wrap_pyfunction!(geohash_decode, m)?)?;
     m.add_function(wrap_pyfunction!(geohash_neighbors, m)?)?;
+
+    // ── Stats ──
+    m.add_function(wrap_pyfunction!(zonal_stats, m)?)?;
+    m.add_function(wrap_pyfunction!(morans_i, m)?)?;
+    m.add_function(wrap_pyfunction!(gistar, m)?)?;
+    m.add_function(wrap_pyfunction!(idw_grid, m)?)?;
+    m.add_function(wrap_pyfunction!(jenks_classify, m)?)?;
+
+    // ── Temporal ──
+    m.add_function(wrap_pyfunction!(temporal_trend, m)?)?;
+
+    // ── Report ──
+    m.add_function(wrap_pyfunction!(report_carbon, m)?)?;
+    m.add_function(wrap_pyfunction!(report_render, m)?)?;
+
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
 
     Ok(())

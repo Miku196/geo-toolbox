@@ -1,6 +1,6 @@
 [package]
 name = "geo-wasm"
-version.workspace = true
+version = "0.2.0"
 description = "WebAssembly bindings for geo-toolbox — browser-side geospatial processing without data leaving the user's machine"
 edition.workspace = true
 license.workspace = true

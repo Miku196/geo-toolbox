@@ -222,4 +222,102 @@ mod tests {
         let hits = qt.query(&BBox::new(5.0, 5.0, 25.0, 25.0));
         assert!(hits.len() >= 4);
     }
+
+    // ── build (via load) ──
+
+    #[test]
+    fn test_quadtree_empty() {
+        let mut qt = Quadtree::new();
+        qt.load(vec![]);
+        assert_eq!(qt.len(), 0);
+        assert!(qt.query(&BBox::new(0.0, 0.0, 10.0, 10.0)).is_empty());
+    }
+
+    #[test]
+    fn test_quadtree_single_at_origin() {
+        let bboxes = vec![BBox::new(0.0, 0.0, 1.0, 1.0)];
+        let mut qt = Quadtree::new();
+        qt.load(bboxes);
+        assert_eq!(qt.len(), 1);
+        // Exact hit
+        assert_eq!(qt.query(&BBox::new(0.0, 0.0, 1.0, 1.0)), vec![0]);
+        // No hit
+        assert!(qt.query(&BBox::new(100.0, 100.0, 101.0, 101.0)).is_empty());
+    }
+
+    #[test]
+    fn test_quadtree_idempotent_load() {
+        let bboxes = vec![BBox::new(0.0, 0.0, 10.0, 10.0)];
+        let mut qt = Quadtree::new();
+        qt.load(bboxes.clone());
+        let r1 = qt.query(&BBox::new(5.0, 5.0, 6.0, 6.0));
+        qt.load(bboxes);
+        let r2 = qt.query(&BBox::new(5.0, 5.0, 6.0, 6.0));
+        assert_eq!(r1, r2);
+        assert_eq!(qt.len(), 1);
+    }
+
+    #[test]
+    fn test_quadtree_overlapping_bboxes() {
+        // Two identical bboxes
+        let bboxes = vec![
+            BBox::new(0.0, 0.0, 10.0, 10.0),
+            BBox::new(0.0, 0.0, 10.0, 10.0),
+        ];
+        let mut qt = Quadtree::new();
+        qt.load(bboxes);
+        assert_eq!(qt.len(), 2);
+        // Query should return both indices
+        let hits = qt.query(&BBox::new(5.0, 5.0, 6.0, 6.0));
+        assert_eq!(hits.len(), 2);
+    }
+
+    #[test]
+    fn test_quadtree_many_items_shallow() {
+        // Many small items within a small area — should not overflow
+        let mut bboxes = Vec::new();
+        for i in 0..50 {
+            bboxes.push(BBox::new(i as f64, 0.0, i as f64 + 1.0, 1.0));
+        }
+        let mut qt = Quadtree::new().with_max_per_node(5).with_max_depth(10);
+        qt.load(bboxes);
+        assert_eq!(qt.len(), 50);
+        // Query that covers everything
+        let hits = qt.query(&BBox::new(0.0, -1.0, 50.0, 2.0));
+        assert_eq!(hits.len(), 50);
+    }
+
+    #[test]
+    fn test_quadtree_world_bboxes() {
+        // Many small items in different regions to force quadtree splitting
+        let mut bboxes = Vec::new();
+        // Add 30 items in China (to fill a child node)
+        for i in 0..30 {
+            bboxes.push(BBox::new(
+                116.0 + (i as f64) * 0.01,
+                39.8,
+                116.0 + (i as f64) * 0.01 + 0.01,
+                40.0,
+            ));
+        }
+        // Add 30 items in USA
+        for i in 0..30 {
+            bboxes.push(BBox::new(
+                -100.0 + (i as f64) * 0.01,
+                35.0,
+                -100.0 + (i as f64) * 0.01 + 0.01,
+                36.0,
+            ));
+        }
+        let mut qt = Quadtree::new().with_max_per_node(8);
+        qt.load(bboxes);
+        assert_eq!(qt.len(), 60);
+        // Query Beijing area should return only China items (indices 0-29)
+        let hits = qt.query(&BBox::new(116.0, 39.0, 117.0, 41.0));
+        assert!(hits.len() > 0, "Should find some items");
+        // All hits should be from China (indices 0-29)
+        for &idx in &hits {
+            assert!(idx < 30, "Index {idx} is not in China range (0-29)");
+        }
+    }
 }

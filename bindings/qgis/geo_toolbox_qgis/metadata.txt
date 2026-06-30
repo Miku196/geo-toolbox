@@ -1,0 +1,21 @@
+[general]
+name=Geo Toolbox
+qgisMinimumVersion=3.22
+description=Geo-toolbox QGIS plugin — carbon math, CRS transforms, spatial ops, tile utils
+version=0.1.0
+author=geo-toolbox contributors
+email=dev@geo-toolbox.org
+about=Browser-side geospatial processing toolkit for QGIS. Perform CRS transformations, calculate carbon sequestration, compute spatial operations (area, buffer, centroid, simplify), and work with tiles — all powered by a pure-Rust backend compiled to native Python via PyO3.
+
+repository=https://github.com/geo-toolbox/geo-toolbox
+tracker=https://github.com/geo-toolbox/geo-toolbox/issues
+homepage=https://geo-toolbox.org
+
+tags=geospatial, carbon, crs, tiles, spatial, geohash, wasm, rust, gis
+
+hasProcessingProvider=no
+experimental=False
+deprecated=False
+
+# Geo-toolbox Python package is required
+# Install: pip install geo-toolbox

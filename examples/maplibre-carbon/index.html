@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>geo-toolbox · MapLibre Carbon Demo</title>
+<script src="https://unpkg.com/maplibre-gl@4.6.0/dist/maplibre-gl.js"></script>
+<link href="https://unpkg.com/maplibre-gl@4.6.0/dist/maplibre-gl.css" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #f8f9fb;
+    --surface: #fff;
+    --fg: #1a1a2e;
+    --muted: #6b7280;
+    --accent: #0ea5e9;
+    --success: #10b981;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --border: #e5e7eb;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    height: 100vh;
+    overflow: hidden;
+  }
+  .app { display: flex; height: 100vh; }
+  .sidebar {
+    width: 380px;
+    min-width: 380px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    z-index: 10;
+  }
+  .map-wrap { flex: 1; position: relative; }
+  #map { position: absolute; inset: 0; }
+
+  .sidebar-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sidebar-header h1 .ver {
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--accent);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 99px;
+    letter-spacing: 0.02em;
+  }
+  .sidebar-header p {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  .panel { padding: 16px 24px; border-bottom: 1px solid var(--border); }
+  .panel-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .draw-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 16px;
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--fg);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.01em;
+  }
+  .draw-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .draw-btn.active {
+    border-style: solid;
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, #fff);
+  }
+  .draw-btn svg { flex-shrink: 0; }
+
+  select, .select-styled {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    font-size: 14px;
+    color: var(--fg);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' stroke='%236b7280' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
+
+  .btn-primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 11px 20px;
+    border: 0;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-primary:hover { filter: brightness(1.05); }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: none;
+  }
+
+  .result-card {
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-top: 8px;
+  }
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 14px;
+  }
+  .result-row + .result-row { border-top: 1px solid var(--border); }
+  .result-val {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .result-val.pos { color: var(--success); }
+  .result-val.neg { color: var(--danger); }
+
+  .loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .err-msg {
+    padding: 12px;
+    border-radius: var(--radius);
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: var(--danger);
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  .downloads {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .downloads button {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--fg);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+  }
+  .downloads button:hover { border-color: var(--accent); }
+
+  .drawing-hint {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 99px;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+    z-index: 100;
+    transition: opacity 0.2s;
+  }
+  .drawing-hint.hidden { opacity: 0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h1>🌏 geo-toolbox <span class="ver">v0.2</span></h1>
+      <p>绘制 AOI → 计算碳汇/碳排放 · 浏览器端 WASM</p>
+    </div>
+
+    <!-- Step 1: Draw AOI -->
+    <div class="panel">
+      <div class="panel-label">① 绘制兴趣区</div>
+      <button class="draw-btn" id="drawBtn">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 2l4 4M2 2h4M2 2v4M13 2l4 4M13 2h4M13 2v4M2 13l4-4M2 13h4M2 13v-4M13 13l4-4M13 13h4M13 13v-4"/>
+        </svg>
+        <span id="drawLabel">在地图上自由绘制多边形</span>
+      </button>
+      <div id="areaInfo" style="margin-top:8px;font-size:12px;color:var(--muted);display:none"></div>
+    </div>
+
+    <!-- Step 2: Land Class -->
+    <div class="panel">
+      <div class="panel-label">② 土地覆盖类型</div>
+      <select id="landClass">
+        <optgroup label="森林">
+          <option value="forest_tropical_rainforest">热带雨林</option>
+          <option value="forest_tropical_moist_deciduous">热带湿润落叶林</option>
+          <option value="forest_tropical_dry">热带干旱林</option>
+          <option value="forest_temperate_coniferous" selected>温带针叶林</option>
+          <option value="forest_temperate_broadleaf">温带阔叶林</option>
+          <option value="forest_boreal">北方寒带林</option>
+        </optgroup>
+        <optgroup label="草地">
+          <option value="grassland_tropical">热带草原</option>
+          <option value="grassland_temperate">温带草原</option>
+        </optgroup>
+        <optgroup label="农田">
+          <option value="cropland_annual">一年生农田</option>
+          <option value="cropland_perennial">多年生农田</option>
+          <option value="cropland_rice_paddy">水稻田</option>
+        </optgroup>
+        <optgroup label="湿地">
+          <option value="wetland_peat">泥炭地</option>
+          <option value="wetland_mangrove">红树林</option>
+          <option value="wetland_freshwater">淡水湿地</option>
+        </optgroup>
+        <optgroup label="其他">
+          <option value="settlement_urban">城市建成区</option>
+          <option value="settlement_rural">乡村聚落</option>
+          <option value="water_body">水体</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <!-- Step 3: Year -->
+    <div class="panel">
+      <div class="panel-label">③ 评估年份</div>
+      <select id="year">
+        <option value="2020">2020</option>
+        <option value="2021">2021</option>
+        <option value="2022">2022</option>
+        <option value="2023" selected>2023</option>
+        <option value="2024">2024</option>
+        <option value="2025">2025</option>
+        <option value="2030">2030（预测）</option>
+      </select>
+    </div>
+
+    <!-- Action -->
+    <div class="panel">
+      <button class="btn-primary" id="calcBtn" disabled>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="8" cy="8" r="6"/><path d="M8 4v8M4 8h8"/>
+        </svg>
+        计算碳储量
+      </button>
+    </div>
+
+    <!-- Results -->
+    <div class="panel" id="resultsPanel" style="display:none">
+      <div class="panel-label">④ 碳核算报告</div>
+      <div id="resultContent"></div>
+      <div class="downloads" id="downloads" style="display:none">
+        <button id="dlMarkdown">📝 Markdown</button>
+        <button id="dlJson">📊 JSON</button>
+        <button id="dlXlsx">📋 XLSX</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="drawing-hint hidden" id="drawHint">点击地图开始绘制 · 双击闭合多边形</div>
+  </div>
+</div>
+
+<script type="module">
+// ─── IPCC Tier 1 默认因子 (tC/ha) ──────────────────────────
+const IPCC_FACTORS = {
+  forest_tropical_rainforest:     { agb: 120, bgb: 29, soc: 90, deadwood: 5.5, litter: 2.1 },
+  forest_tropical_moist_deciduous:{ agb: 100, bgb: 24, soc: 80, deadwood: 4.8, litter: 1.9 },
+  forest_tropical_dry:            { agb:  60, bgb: 14, soc: 60, deadwood: 3.0, litter: 1.5 },
+  forest_temperate_coniferous:    { agb:  90, bgb: 22, soc: 95, deadwood: 8.0, litter: 5.0 },
+  forest_temperate_broadleaf:     { agb:  80, bgb: 20, soc: 85, deadwood: 6.0, litter: 3.5 },
+  forest_boreal:                  { agb:  50, bgb: 12, soc: 120,d eadwood: 4.0, litter: 8.0 },
+  grassland_tropical:             { agb:   5, bgb: 10, soc: 70, deadwood: 0,   litter: 0.5 },
+  grassland_temperate:            { agb:   3, bgb:  7, soc: 80, deadwood: 0,   litter: 0.3 },
+  cropland_annual:                { agb:   2, bgb:  1, soc: 50, deadwood: 0,   litter: 0.1 },
+  cropland_perennial:             { agb:  10, bgb:  4, soc: 55, deadwood: 0,   litter: 0.3 },
+  cropland_rice_paddy:            { agb:   3, bgb:  1, soc: 60, deadwood: 0,   litter: 0.1 },
+  wetland_peat:                   { agb:   2, bgb:  2, soc: 200,d eadwood: 0.5, litter: 5.0 },
+  wetland_mangrove:               { agb:  90, bgb: 40, soc: 150,d eadwood: 4.0, litter: 3.0 },
+  wetland_freshwater:             { agb:   5, bgb:  5, soc: 100,d eadwood: 1.0, litter: 2.0 },
+  settlement_urban:               { agb:   1, bgb:  0, soc: 30, deadwood: 0,   litter: 0 },
+  settlement_rural:               { agb:   2, bgb:  1, soc: 40, deadwood: 0,   litter: 0 },
+  water_body:                     { agb:   0, bgb:  0, soc:  0, deadwood: 0,   litter: 0 },
+};
+
+// ─── Carbon calculation (pure JS — WASM-ported logic) ─────
+const TC_TO_TCO2E = 44 / 12;
+
+function calcCarbonStock(areaHa, landClassKey) {
+  const f = IPCC_FACTORS[landClassKey] || IPCC_FACTORS.forest_temperate_coniferous;
+  const agb_tc   = f.agb * areaHa;
+  const bgb_tc   = f.bgb * areaHa;
+  const soc_tc   = f.soc * areaHa;
+  const dead_tc  = f.deadwood * areaHa;
+  const litter_tc= f.litter * areaHa;
+  const total_tc = agb_tc + bgb_tc + soc_tc + dead_tc + litter_tc;
+  const total_tco2e = total_tc * TC_TO_TCO2E;
+
+  return {
+    area_ha: +areaHa.toFixed(2),
+    land_class: landClassKey,
+    pools: {
+      aboveground_biomass_tc: +agb_tc.toFixed(2),
+      belowground_biomass_tc: +bgb_tc.toFixed(2),
+      soil_organic_carbon_tc: +soc_tc.toFixed(2),
+      deadwood_tc: +dead_tc.toFixed(2),
+      litter_tc: +litter_tc.toFixed(2),
+    },
+    total_carbon_tc: +total_tc.toFixed(2),
+    total_carbon_tco2e: +total_tco2e.toFixed(2),
+  };
+}
+
+// ─── State ──────────────────────────────────────────────────
+let isDrawing = false;
+let drawPoints = [];
+let drawPolygon = null;
+let drawSourceId = 'draw-source';
+let drawLayerId = 'draw-layer';
+let drawFillId = 'draw-fill';
+let aoiGeojson = null;
+
+// ─── MapLibre init ─────────────────────────────────────────
+const map = new maplibregl.Map({
+  container: 'map',
+  style: {
+    version: 8,
+    sources: {
+      'osm-tiles': {
+        type: 'raster',
+        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        attribution: '© OpenStreetMap contributors',
+      },
+    },
+    layers: [{
+      id: 'osm-layer',
+      type: 'raster',
+      source: 'osm-tiles',
+    }],
+  },
+  center: [116.40, 39.90],
+  zoom: 12,
+});
+
+map.on('load', () => {
+  // Add draw source & layers
+  map.addSource(drawSourceId, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  map.addLayer({
+    id: drawFillId, type: 'fill', source: drawSourceId,
+    paint: { 'fill-color': '#0ea5e9', 'fill-opacity': 0.18 },
+  });
+  map.addLayer({
+    id: drawLayerId, type: 'line', source: drawSourceId,
+    paint: { 'line-color': '#0ea5e9', 'line-width': 2.5, 'line-dasharray': [4, 2] },
+  });
+});
+
+// ─── Freehand drawing ──────────────────────────────────────
+const drawBtn = document.getElementById('drawBtn');
+const drawLabel = document.getElementById('drawLabel');
+const drawHint = document.getElementById('drawHint');
+const areaInfo = document.getElementById('areaInfo');
+const calcBtn = document.getElementById('calcBtn');
+const resultsPanel = document.getElementById('resultsPanel');
+const resultContent = document.getElementById('resultContent');
+const downloads = document.getElementById('downloads');
+
+let drawingActive = false;
+
+function toggleDraw() {
+  drawingActive = !drawingActive;
+  if (drawingActive) {
+    drawBtn.classList.add('active');
+    drawLabel.textContent = '绘制中… 双击闭合多边形';
+    drawHint.classList.remove('hidden');
+    map.getCanvas().style.cursor = 'crosshair';
+    clearDraw();
+  } else {
+    drawBtn.classList.remove('active');
+    drawLabel.textContent = '在地图上自由绘制多边形';
+    drawHint.classList.add('hidden');
+    map.getCanvas().style.cursor = '';
+  }
+}
+
+function clearDraw() {
+  drawPoints = [];
+  if (drawPolygon) { drawPolygon.remove(); drawPolygon = null; }
+  const src = map.getSource(drawSourceId);
+  if (src) src.setData({ type: 'FeatureCollection', features: [] });
+  aoiGeojson = null;
+  areaInfo.style.display = 'none';
+  calcBtn.disabled = true;
+  resultsPanel.style.display = 'none';
+}
+
+function updateDrawPreview() {
+  if (drawPoints.length < 2) return;
+  const coords = drawPoints.map(p => [p.lng, p.lat]);
+  const closed = [...coords, coords[0]];
+  const geojson = {
+    type: 'FeatureCollection',
+    features: [{
+      type: 'Feature',
+      geometry: { type: 'Polygon', coordinates: [closed] },
+      properties: {},
+    }],
+  };
+  const src = map.getSource(drawSourceId);
+  if (src) src.setData(geojson);
+}
+
+function finishDraw() {
+  if (drawPoints.length < 3) return;
+  const coords = drawPoints.map(p => [p.lng, p.lat]);
+  const closed = [...coords, coords[0]];
+
+  // Calculate area via Shoelace
+  let areaDeg = 0;
+  for (let i = 0; i < closed.length - 1; i++) {
+    areaDeg += closed[i][0] * closed[i+1][1] - closed[i+1][0] * closed[i][1];
+  }
+  areaDeg = Math.abs(areaDeg) / 2;
+  const latMid = drawPoints.reduce((s, p) => s + p.lat, 0) / drawPoints.length;
+  const mPerDeg = 111320 * Math.cos(latMid * Math.PI / 180);
+  const areaSqm = areaDeg * mPerDeg * mPerDeg;
+  const areaHa = areaSqm / 1e4;
+
+  aoiGeojson = {
+    type: 'Polygon',
+    coordinates: [closed],
+  };
+
+  // Finalize draw layer
+  const src = map.getSource(drawSourceId);
+  if (src) {
+    src.setData({
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        geometry: aoiGeojson,
+        properties: {},
+      }],
+    });
+  }
+  // Switch to solid fill
+  map.setPaintProperty(drawFillId, 'fill-opacity', 0.25);
+  map.setPaintProperty(drawLayerId, 'line-dasharray', [1, 0]);
+  map.setPaintProperty(drawLayerId, 'line-width', 2);
+
+  areaInfo.style.display = 'block';
+  areaInfo.textContent = `面积: ${areaHa.toFixed(2)} ha (${(areaSqm/1e6).toFixed(3)} km²)`;
+  calcBtn.disabled = false;
+  toggleDraw();
+}
+
+// Map click & dblclick for drawing
+map.on('click', (e) => {
+  if (!drawingActive) return;
+  drawPoints.push(e.lngLat);
+  updateDrawPreview();
+
+  if (drawPoints.length === 1) {
+    drawHint.textContent = `已添加 1 个点 — 继续点击或双击闭合`;
+  } else {
+    drawHint.textContent = `已添加 ${drawPoints.length} 个点 — 继续点击或双击闭合`;
+  }
+});
+
+map.on('dblclick', (e) => {
+  if (!drawingActive) return;
+  e.preventDefault();
+  finishDraw();
+});
+
+drawBtn.addEventListener('click', toggleDraw);
+
+// Right-click cancels draw
+map.on('contextmenu', (e) => {
+  if (drawingActive) {
+    e.preventDefault();
+    toggleDraw();
+  }
+});
+
+// ─── Carbon calculation ────────────────────────────────────
+let lastReport = null;
+
+calcBtn.addEventListener('click', () => {
+  if (!aoiGeojson) return;
+
+  const landClass = document.getElementById('landClass').value;
+  const year = parseInt(document.getElementById('year').value);
+
+  // Compute area
+  const coords = aoiGeojson.coordinates[0];
+  let areaDeg = 0;
+  for (let i = 0; i < coords.length - 1; i++) {
+    areaDeg += coords[i][0] * coords[i+1][1] - coords[i+1][0] * coords[i][1];
+  }
+  areaDeg = Math.abs(areaDeg) / 2;
+  const lats = coords.map(c => c[1]);
+  const latMid = lats.reduce((a, b) => a + b, 0) / lats.length;
+  const mPerDeg = 111320 * Math.cos(latMid * Math.PI / 180);
+  const areaHa = areaDeg * mPerDeg * mPerDeg / 1e4;
+
+  const stock = calcCarbonStock(areaHa, landClass);
+  lastReport = { ...stock, year, timestamp: new Date().toISOString() };
+
+  // Render
+  resultsPanel.style.display = 'block';
+  const lcLabel = document.getElementById('landClass').selectedOptions[0].text;
+  resultContent.innerHTML = `
+    <div class="result-card">
+      <div class="result-row"><span>面积</span><span class="result-val">${stock.area_ha} ha</span></div>
+      <div class="result-row"><span>土地类型</span><span class="result-val">${lcLabel}</span></div>
+      <div class="result-row"><span>评估年份</span><span class="result-val">${year}</span></div>
+    </div>
+    <div class="result-card" style="margin-top:8px">
+      <div class="result-row"><span>地上生物量</span><span class="result-val pos">${stock.pools.aboveground_biomass_tc} tC</span></div>
+      <div class="result-row"><span>地下生物量</span><span class="result-val pos">${stock.pools.belowground_biomass_tc} tC</span></div>
+      <div class="result-row"><span>土壤有机碳</span><span class="result-val pos">${stock.pools.soil_organic_carbon_tc} tC</span></div>
+      <div class="result-row"><span>枯死木</span><span class="result-val pos">${stock.pools.deadwood_tc} tC</span></div>
+      <div class="result-row"><span>枯枝落叶</span><span class="result-val pos">${stock.pools.litter_tc} tC</span></div>
+      <div class="result-row" style="border-top:2px solid var(--border);font-weight:700;margin-top:4px;padding-top:8px">
+        <span>总碳储量</span><span class="result-val pos">${stock.total_carbon_tc} tC</span></div>
+      <div class="result-row" style="font-weight:700">
+        <span>CO₂ 当量</span><span class="result-val pos">${stock.total_carbon_tco2e} tCO₂e</span></div>
+    </div>
+  `;
+  downloads.style.display = 'flex';
+});
+
+// ─── Downloads ─────────────────────────────────────────────
+document.getElementById('dlMarkdown').addEventListener('click', () => {
+  if (!lastReport) return;
+  const r = lastReport;
+  const lcLabel = document.getElementById('landClass').selectedOptions[0].text;
+  const md = `# 碳储量评估报告\n\n` +
+    `- **面积**: ${r.area_ha} ha\n` +
+    `- **土地类型**: ${lcLabel}\n` +
+    `- **评估年份**: ${r.year}\n` +
+    `- **评估时间**: ${r.timestamp}\n\n` +
+    `## 碳库明细\n\n` +
+    `| 碳库 | 储量 (tC) |\n|---|---|\n` +
+    `| 地上生物量 | ${r.pools.aboveground_biomass_tc} |\n` +
+    `| 地下生物量 | ${r.pools.belowground_biomass_tc} |\n` +
+    `| 土壤有机碳 | ${r.pools.soil_organic_carbon_tc} |\n` +
+    `| 枯死木 | ${r.pools.deadwood_tc} |\n` +
+    `| 枯枝落叶 | ${r.pools.litter_tc} |\n` +
+    `| **总碳储量** | **${r.total_carbon_tc} tC** |\n` +
+    `| **CO₂ 当量** | **${r.total_carbon_tco2e} tCO₂e** |\n\n` +
+    `---\n*由 geo-toolbox WASM 引擎生成 · IPCC 2019 Tier 1 默认因子*`;
+  downloadBlob(md, `carbon-report-${r.year}.md`, 'text/markdown');
+});
+
+document.getElementById('dlJson').addEventListener('click', () => {
+  if (!lastReport) return;
+  downloadBlob(
+    JSON.stringify({ ...lastReport, factors_source: 'IPCC_2019_Tier1' }, null, 2),
+    `carbon-report-${lastReport.year}.json`,
+    'application/json'
+  );
+});
+
+document.getElementById('dlXlsx').addEventListener('click', () => {
+  if (!lastReport) return;
+  const r = lastReport;
+  const lcLabel = document.getElementById('landClass').selectedOptions[0].text;
+  // Generate CSV as XLSX fallback (simplified)
+  const csv = [
+    '指标,值,单位',
+    `面积,${r.area_ha},ha`,
+    `土地类型,${lcLabel},`,
+    `评估年份,${r.year},`,
+    `地上生物量,${r.pools.aboveground_biomass_tc},tC`,
+    `地下生物量,${r.pools.belowground_biomass_tc},tC`,
+    `土壤有机碳,${r.pools.soil_organic_carbon_tc},tC`,
+    `枯死木,${r.pools.deadwood_tc},tC`,
+    `枯枝落叶,${r.pools.litter_tc},tC`,
+    `总碳储量,${r.total_carbon_tc},tC`,
+    `CO₂当量,${r.total_carbon_tco2e},tCO₂e`,
+  ].join('\n');
+  downloadBlob(csv, `carbon-report-${r.year}.csv`, 'text/csv');
+});
+
+function downloadBlob(content, filename, mime) {
+  const blob = new Blob(['\uFEFF' + content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>

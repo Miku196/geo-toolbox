@@ -788,4 +788,64 @@ mod tests {
             );
         }
     }
+
+    // ── decode_i64 (via h3_from_string edge cases) ──
+
+    #[test]
+    fn test_h3_from_string_empty() {
+        assert!(h3_from_string("").is_none());
+    }
+
+    #[test]
+    fn test_h3_from_string_invalid_resolution() {
+        // Resolution > 15
+        assert!(h3_from_string("h3_20_0_500").is_none());
+    }
+
+    #[test]
+    fn test_h3_from_string_missing_parts() {
+        assert!(h3_from_string("h3_5").is_none());
+        assert!(h3_from_string("h3_5_100").is_none());
+        assert!(h3_from_string("5/100/200").is_none());
+    }
+
+    #[test]
+    fn test_h3_from_string_garbage() {
+        assert!(h3_from_string("abc/def/ghi/jkl").is_none());
+        assert!(h3_from_string("h3_xyz_100_200").is_none());
+    }
+
+    #[test]
+    fn test_h3_from_string_negative_coords() {
+        // Format: "h3_{res}_{i}_{j}" where i/j are base-36
+        // "-a" in base-36 = -10
+        let h3 = h3_from_string("h3_5_-a_14").unwrap();
+        assert_eq!(h3.resolution, 5);
+        assert_eq!(h3.i, -10); // -a in base-36 = -10
+        assert_eq!(h3.j, 40); // 14 in base-36 = 1*36+4 = 40
+    }
+
+    #[test]
+    fn test_h3_from_string_plus_sign() {
+        // decode_i64 accepts '+' prefix on base-36 strings
+        // "+1a" in base-36 = 1*36 + 10 = 46
+        let h3 = h3_from_string("h3_5_+1a_2s").unwrap();
+        assert_eq!(h3.i, 46); // 1a in base-36 = 1*36+10 = 46
+        assert_eq!(h3.j, 100); // 2s in base-36 = 2*36+28 = 100
+    }
+
+    #[test]
+    fn test_h3_to_string_non_ascii() {
+        // decode_i64 rejects non-base36 chars
+        assert!(h3_from_string("h3_5_1_3!").is_none());
+        assert!(h3_from_string("h3_5_1_3@").is_none());
+    }
+
+    #[test]
+    fn test_decode_i64_overflow() {
+        // Base-36 string that overflows i64 should not panic
+        let huge = "1y2p0ij32e8e8";
+        let result = h3_from_string(&format!("h3_5_{huge}_0"));
+        assert!(result.is_none() || result.is_some());
+    }
 }

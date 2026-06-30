@@ -580,4 +580,130 @@ mod tests {
         );
         assert_eq!(CcbBenefit::WaterSoil.label(), "Water & Soil Conservation");
     }
+
+    // ── applicable_scenarios ──
+
+    #[test]
+    fn test_applicable_scenarios_ifm() {
+        let method = VcsMethodology::VM0010;
+        let scenarios = method.applicable_scenarios();
+        assert_eq!(scenarios.len(), 1);
+        assert!(scenarios.contains(&CarbonScenario::IFM));
+    }
+
+    #[test]
+    fn test_applicable_scenarios_afforestation() {
+        let methods = [
+            VcsMethodology::VM0015,
+            VcsMethodology::VM0032,
+            VcsMethodology::VM0042,
+        ];
+        for method in &methods {
+            let scenarios = method.applicable_scenarios();
+            assert!(
+                scenarios.contains(&CarbonScenario::Afforestation),
+                "{:?} should include Afforestation",
+                method
+            );
+        }
+    }
+
+    #[test]
+    fn test_applicable_scenarios_deforestation() {
+        let methods = [
+            VcsMethodology::VM0007,
+            VcsMethodology::VM0006,
+            VcsMethodology::VM0009,
+            VcsMethodology::VM0037,
+            VcsMethodology::VM0046,
+        ];
+        for method in &methods {
+            let scenarios = method.applicable_scenarios();
+            assert!(
+                scenarios.contains(&CarbonScenario::Deforestation),
+                "{:?} should include Deforestation",
+                method
+            );
+        }
+    }
+
+    #[test]
+    fn test_applicable_scenarios_non_empty() {
+        for method in VcsMethodology::all() {
+            let scenarios = method.applicable_scenarios();
+            assert!(
+                !scenarios.is_empty(),
+                "{:?} has no applicable scenarios",
+                method
+            );
+        }
+    }
+
+    // ── crediting_period_years ──
+
+    #[test]
+    fn test_crediting_period_years_all() {
+        let expected: Vec<(VcsMethodology, u16)> = vec![
+            (VcsMethodology::VM0010, 30),
+            (VcsMethodology::VM0015, 40),
+            (VcsMethodology::VM0007, 30),
+            (VcsMethodology::VM0006, 30),
+            (VcsMethodology::VM0009, 30),
+            (VcsMethodology::VM0032, 30),
+            (VcsMethodology::VM0037, 30),
+            (VcsMethodology::VM0042, 20),
+            (VcsMethodology::VM0046, 30),
+        ];
+        for (method, expected_years) in &expected {
+            assert_eq!(
+                method.crediting_period_years(),
+                *expected_years,
+                "Wrong crediting period for {:?}",
+                method
+            );
+        }
+    }
+
+    #[test]
+    fn test_crediting_period_years_in_range() {
+        // VCS standard: 20-100 years for A/R, 20-60 for IFM
+        for method in VcsMethodology::all() {
+            let years = method.crediting_period_years();
+            assert!(
+                years >= 20 && years <= 60,
+                "{:?} has crediting period {} outside 20-60 range",
+                method,
+                years
+            );
+        }
+    }
+
+    #[test]
+    fn test_crediting_period_afforestation_longest() {
+        // Afforestation methodologies should have >= average crediting period
+        let aff_m = [
+            VcsMethodology::VM0015,
+            VcsMethodology::VM0032,
+            VcsMethodology::VM0042,
+        ];
+        let def_m = [
+            VcsMethodology::VM0007,
+            VcsMethodology::VM0006,
+            VcsMethodology::VM0009,
+        ];
+        let aff_avg: f64 = aff_m
+            .iter()
+            .map(|m| m.crediting_period_years() as f64)
+            .sum::<f64>()
+            / aff_m.len() as f64;
+        let def_avg: f64 = def_m
+            .iter()
+            .map(|m| m.crediting_period_years() as f64)
+            .sum::<f64>()
+            / def_m.len() as f64;
+        assert!(
+            aff_avg >= def_avg,
+            "Afforestation should have >= crediting period than deforestation"
+        );
+    }
 }

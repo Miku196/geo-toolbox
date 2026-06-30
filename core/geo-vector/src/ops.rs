@@ -934,4 +934,88 @@ mod tests {
         let result = simplify_visvalingam_preserve(&line, 0.01);
         assert!(result.0.len() <= line.0.len());
     }
+
+    // ── bbox_buffer_inner tests ──
+
+    #[test]
+    fn test_bbox_buffer_inner_small_shrink() {
+        let a = square(0.0, 0.0, 10.0);
+        let result = bbox_buffer_inner(&a, 1.0);
+        assert!(!result.0.is_empty());
+        let r = &result.0[0];
+        let b = r.bounding_rect().unwrap();
+        assert!(b.width() < 10.0, "inner buffer should shrink");
+        assert!(b.height() < 10.0);
+    }
+
+    #[test]
+    fn test_bbox_buffer_inner_large_negative() {
+        let a = square(0.0, 0.0, 10.0);
+        // Large negative buffer (100 > half-width 5) produces degenerate geometry.
+        // Function should not panic; result can be empty for extreme shrinkage.
+        let _result = bbox_buffer_inner(&a, 100.0);
+    }
+
+    #[test]
+    fn test_bbox_buffer_inner_zero() {
+        let a = square(0.0, 0.0, 10.0);
+        let result = bbox_buffer_inner(&a, 0.0);
+        assert!(!result.0.is_empty());
+        let r = &result.0[0];
+        let b = r.bounding_rect().unwrap();
+        assert!((b.width() - 10.0).abs() < 1e-9);
+        assert!((b.height() - 10.0).abs() < 1e-9);
+    }
+
+    // ── clip_line_length tests ──
+
+    #[test]
+    fn test_clip_line_length_fully_inside() {
+        let len = clip_line_length(2.0, 2.0, 8.0, 8.0, 0.0, 0.0, 10.0, 10.0);
+        let expected = ((8.0 - 2.0f64).powi(2) + (8.0 - 2.0f64).powi(2)).sqrt();
+        assert!((len - expected).abs() < 1e-9, "line fully inside");
+    }
+
+    #[test]
+    fn test_clip_line_length_fully_outside() {
+        let len = clip_line_length(11.0, 11.0, 12.0, 12.0, 0.0, 0.0, 10.0, 10.0);
+        assert!(len < 1e-9, "line fully outside");
+    }
+
+    #[test]
+    fn test_clip_line_length_across() {
+        let len = clip_line_length(-5.0, 5.0, 15.0, 5.0, 0.0, 0.0, 10.0, 10.0);
+        assert!(len > 9.9 && len < 10.1, "horizontal across rect");
+    }
+
+    #[test]
+    fn test_clip_line_length_vertical_edge() {
+        let len = clip_line_length(5.0, -5.0, 5.0, 15.0, 0.0, 0.0, 10.0, 10.0);
+        assert!(len > 9.9 && len < 10.1, "vertical across rect");
+    }
+
+    // ── simplify (Douglas-Peucker) tests ──
+
+    #[test]
+    fn test_simplify_polygon_dp() {
+        let poly = square(0.0, 0.0, 10.0);
+        let result = simplify(&poly, 1.0);
+        assert!(result.exterior().0.len() <= 5);
+        assert!((result.unsigned_area() - 100.0).abs() < 20.0);
+    }
+
+    #[test]
+    fn test_simplify_polygon_no_op() {
+        let poly = square(0.0, 0.0, 10.0);
+        let result = simplify(&poly, 0.0);
+        assert_eq!(result.exterior().0.len(), poly.exterior().0.len());
+    }
+
+    #[test]
+    fn test_bbox_buffer_inner_via_buffer() {
+        let a = square(0.0, 0.0, 10.0);
+        let buf = buffer(&a, -1.0, BufferMode::Bbox);
+        assert!(buf.unsigned_area() < 100.0);
+        assert!(buf.unsigned_area() > 0.0);
+    }
 }

@@ -1,19 +1,40 @@
 {
-  "name": "geo-wasm-demo",
-  "private": true,
+  "name": "@geo-toolbox/wasm",
+  "version": "0.2.0",
+  "description": "WebAssembly geospatial toolbox — browser-side CRS, carbon, NDVI, vector ops, geohash, tile math",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/geo-toolbox/geo-toolbox"
+  },
+  "keywords": [
+    "geospatial",
+    "wasm",
+    "webassembly",
+    "gis",
+    "carbon",
+    "ndvi",
+    "geohash",
+    "map-tiles",
+    "buffer",
+    "crs",
+    "proj",
+    "geo"
+  ],
+  "main": "pkg/geo_wasm.js",
+  "types": "pkg/geo_wasm.d.ts",
+  "files": [
+    "pkg/geo_wasm_bg.wasm",
+    "pkg/geo_wasm.js",
+    "pkg/geo_wasm.d.ts",
+    "pkg/geo_wasm_bg.wasm.d.ts"
+  ],
   "scripts": {
-    "build": "wasm-pack build --target web --out-dir pkg && cp examples/demo.html pkg/",
-    "build:release": "wasm-pack build --target web --out-dir pkg --release && cp examples/demo.html pkg/",
-    "test": "cargo test --target wasm32-unknown-unknown -p geo-wasm --no-run && wasm-bindgen-test-runner target/wasm32-unknown-unknown/debug/deps/web-*.wasm",
-    "test:firefox": "cargo test --target wasm32-unknown-unknown -p geo-wasm --no-run && wasm-bindgen-test-runner --firefox target/wasm32-unknown-unknown/debug/deps/web-*.wasm",
-    "test:pack": "wasm-pack test --headless --chrome crates/geo-wasm",
-    "serve": "npx -y serve pkg -l 8080 -C",
-    "dev": "npm run build && npm run serve",
-    "lint": "cargo clippy --target wasm32-unknown-unknown -p geo-wasm",
-    "clean": "rm -rf pkg target crates/geo-wasm/target crates/geo-wasm/pkg",
-    "ci": "npm run lint && npm run build:release && npm run test"
+    "build": "wasm-pack build --target web --out-dir pkg --release",
+    "build:dev": "wasm-pack build --target web --out-dir pkg --dev",
+    "test": "wasm-pack test --node"
   },
   "devDependencies": {
-    "serve": "^14.2.0"
+    "wasm-pack": "^0.13.0"
   }
 }

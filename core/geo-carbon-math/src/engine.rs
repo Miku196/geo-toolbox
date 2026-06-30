@@ -864,4 +864,125 @@ mod tests {
         assert_eq!(report.total_emission_tco2e, report2.total_emission_tco2e);
         assert_eq!(report.classes.len(), report2.classes.len());
     }
+
+    // ── round2 ──
+
+    #[test]
+    fn test_round2_positive() {
+        assert_eq!(round2(3.14159), 3.14);
+        assert_eq!(round2(2.718), 2.72);
+        assert_eq!(round2(1.0), 1.0);
+        assert_eq!(round2(0.005), 0.01);
+        assert_eq!(round2(0.004), 0.0);
+    }
+
+    #[test]
+    fn test_round2_negative() {
+        assert_eq!(round2(-3.14159), -3.14);
+        assert_eq!(round2(-0.005), -0.01);
+        assert_eq!(round2(-0.004), 0.0);
+    }
+
+    #[test]
+    fn test_round2_zero() {
+        assert_eq!(round2(0.0), 0.0);
+    }
+
+    #[test]
+    fn test_round2_whole_numbers() {
+        assert_eq!(round2(42.0), 42.0);
+        assert_eq!(round2(1000.0), 1000.0);
+    }
+
+    #[test]
+    fn test_round2_extreme_values() {
+        // Very small values
+        assert_eq!(round2(0.00001), 0.0);
+        // Very large values
+        assert_eq!(round2(999999.999), 1000000.0);
+    }
+
+    // ── calculate_activities ──
+
+    #[test]
+    fn test_calculate_activities_basic() {
+        let engine = CarbonEngine::new();
+        let activities = vec![ActivityRecord::fuel("coal", FuelType::RawCoal, 1000.0)];
+        let factor = EmissionFactor::new("coal", 2.5, "IPCC");
+        let report = engine
+            .calculate_activities(&activities, &[factor], 2025)
+            .unwrap();
+        assert_eq!(report.classes.len(), 1);
+        assert_eq!(report.classified_features, 1);
+        assert_eq!(report.skipped_features, 0);
+    }
+
+    #[test]
+    fn test_calculate_activities_empty_activities() {
+        let result = CarbonEngine::new().calculate_activities(&[], &[], 2025);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_calculate_activities_empty_factors() {
+        let activities = vec![ActivityRecord::fuel("coal", FuelType::RawCoal, 1000.0)];
+        let result = CarbonEngine::new().calculate_activities(&activities, &[], 2025);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_calculate_activities_no_matching_category() {
+        let engine = CarbonEngine::new();
+        let activities = vec![ActivityRecord::fuel("coal", FuelType::RawCoal, 1000.0)];
+        let factor = EmissionFactor::new("oil", 3.0, "IPCC");
+        let result = engine.calculate_activities(&activities, &[factor], 2025);
+        assert!(result.is_err());
+        assert!(
+            result.unwrap_err().contains("No activities matched"),
+            "Should error when no activities match any factor"
+        );
+    }
+
+    #[test]
+    fn test_calculate_activities_multiple() {
+        let engine = CarbonEngine::new();
+        let activities = vec![
+            ActivityRecord::fuel("coal", FuelType::RawCoal, 1000.0),
+            ActivityRecord::fuel("coal", FuelType::RawCoal, 500.0),
+            ActivityRecord::fuel("oil", FuelType::CrudeOil, 200.0),
+        ];
+        let factors = vec![
+            EmissionFactor::new("coal", 2.5, "IPCC"),
+            EmissionFactor::new("oil", 3.0, "IPCC"),
+        ];
+        let report = engine
+            .calculate_activities(&activities, &factors, 2025)
+            .unwrap();
+        assert_eq!(report.classes.len(), 2);
+        assert_eq!(report.classified_features, 3);
+        assert_eq!(report.skipped_features, 0);
+    }
+
+    #[test]
+    fn test_calculate_activities_year_filtering() {
+        let engine = CarbonEngine::new();
+        let activities = vec![ActivityRecord::fuel("coal", FuelType::RawCoal, 1000.0)];
+        let mut factor = EmissionFactor::new("coal", 2.5, "IPCC");
+        factor.valid_from_year = 2030;
+        // Activity year is 2025, factor is only valid from 2030
+        let result = engine.calculate_activities(&activities, &[factor], 2025);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_calculate_activities_with_scope() {
+        let engine = CarbonEngine::new();
+        let mut activity = ActivityRecord::fuel("coal", FuelType::RawCoal, 100.0);
+        activity.scope = EmissionScope::Scope1;
+        let factor = EmissionFactor::new("coal", 2.5, "IPCC");
+        let report = engine
+            .calculate_activities(&[activity], &[factor], 2025)
+            .unwrap();
+        assert_eq!(report.classes[0].scope, Some(EmissionScope::Scope1));
+    }
 }

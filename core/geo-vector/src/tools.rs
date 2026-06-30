@@ -93,3 +93,75 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         Ok(multipolygon_to_json(&result))
     }]);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use geo::Area;
+    use geo_types::MultiPolygon;
+
+    fn square_geojson(x: f64, y: f64, s: f64) -> String {
+        format!(
+            r#"{{"type":"Polygon","coordinates":[[[{x},{y}],[{x2},{y}],[{x2},{y2}],[{x},{y2}],[{x},{y}]]]}}"#,
+            x = x,
+            y = y,
+            x2 = x + s,
+            y2 = y + s
+        )
+    }
+
+    #[test]
+    fn test_parse_polygon_valid() {
+        let geojson = square_geojson(0.0, 0.0, 10.0);
+        let poly = parse_polygon(&geojson).unwrap();
+        assert!((poly.unsigned_area() - 100.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_parse_polygon_invalid_json() {
+        let result = parse_polygon("not json");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_polygon_point_not_polygon() {
+        let point_json = r#"{"type":"Point","coordinates":[0.0,0.0]}"#;
+        let result = parse_polygon(point_json);
+        assert!(result.is_err(), "Point should fail polygon parse");
+    }
+
+    #[test]
+    fn test_parse_polygon_empty() {
+        let result = parse_polygon("{}");
+        assert!(result.is_err(), "Empty JSON should fail");
+    }
+
+    #[test]
+    fn test_multipolygon_to_json_single() {
+        let geojson = square_geojson(0.0, 0.0, 5.0);
+        let poly = parse_polygon(&geojson).unwrap();
+        let mp = MultiPolygon::new(vec![poly]);
+        let json = multipolygon_to_json(&mp);
+        assert_eq!(json["type"], "Polygon");
+        assert!(json["coordinates"].is_array());
+    }
+
+    #[test]
+    fn test_multipolygon_to_json_multiple() {
+        let p1 = parse_polygon(&square_geojson(0.0, 0.0, 5.0)).unwrap();
+        let p2 = parse_polygon(&square_geojson(10.0, 10.0, 5.0)).unwrap();
+        let mp = MultiPolygon::new(vec![p1, p2]);
+        let json = multipolygon_to_json(&mp);
+        assert_eq!(json["type"], "MultiPolygon");
+        assert_eq!(json["coordinates"].as_array().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_parse_polygon_roundtrip() {
+        let geojson = square_geojson(1.0, 2.0, 3.0);
+        let poly = parse_polygon(&geojson).unwrap();
+        let json = multipolygon_to_json(&MultiPolygon::new(vec![poly.clone()]));
+        let poly2 = parse_polygon(&json.to_string()).unwrap();
+        assert!((poly.unsigned_area() - poly2.unsigned_area()).abs() < 1e-9);
+    }
+}
