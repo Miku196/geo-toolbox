@@ -17,8 +17,13 @@ pub mod ops;
 pub mod stats;
 pub mod tools;
 
+pub use join::{
+    detect_gaps, point_in_multipolygon, point_in_polygon, spatial_join_points, validate_geometry,
+    validate_multipolygon,
+};
 pub use ops::{
-    buffer, intersect, kernel_density, line_density, simplify, simplify_line, union_all,
-    BufferMode, MAX_BUFFER_VERTICES,
+    buffer, clip, difference, intersect, kernel_density, line_density, simplify, simplify_line,
+    simplify_visvalingam, simplify_visvalingam_preserve, sym_difference, union_all, BufferMode,
+    MAX_BUFFER_VERTICES,
 };
 pub use stats::{centroid, feature_area};

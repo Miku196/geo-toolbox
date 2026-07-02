@@ -1,0 +1,15 @@
+[package]
+name = "geo-plugin-groundwater"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "地下水资源评估 — 含水层特性、补给估算、水位趋势"
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
+geo-stats = { path = "../../core/geo-stats" }
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+thiserror.workspace = true

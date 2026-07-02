@@ -1,33 +1,51 @@
 {
   "name": "maplibre-gl-geo-toolbox",
   "version": "0.1.0",
-  "description": "MapLibre GL JS plugin — browser-side geospatial processing powered by geo-toolbox WASM",
-  "main": "src/index.js",
-  "module": "src/index.js",
+  "description": "MapLibre GL JS plugin for geo-toolbox — browser-side geospatial analysis with WASM (CRS, carbon, NDVI, drawing, geohash, vector ops)",
   "type": "module",
+  "main": "./src/index.js",
+  "types": "./pkg/geo_wasm.d.ts",
   "files": [
-    "src/",
-    "dist/",
+    "src/index.js",
+    "pkg/geo_wasm.js",
+    "pkg/geo_wasm_bg.wasm",
+    "pkg/geo_wasm_bg.wasm.d.ts",
+    "pkg/geo_wasm.d.ts",
     "README.md"
   ],
+  "exports": {
+    ".": "./src/index.js",
+    "./pkg/*": "./pkg/*"
+  },
   "scripts": {
-    "build": "wasm-pack build ../../crates/geo-wasm --release --target web --out-dir ./pkg",
-    "dev": "vite examples"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "keywords": [
     "maplibre",
+    "maplibre-gl",
+    "gis",
     "geospatial",
     "wasm",
-    "rust",
-    "gis",
-    "geo-toolbox"
+    "webassembly",
+    "carbon",
+    "ndvi",
+    "geohash",
+    "crs",
+    "drawing"
   ],
-  "license": "MIT",
   "peerDependencies": {
-    "maplibre-gl": ">=4.0.0"
+    "maplibre-gl": "^4.0.0 || ^5.0.0"
   },
-  "devDependencies": {
-    "maplibre-gl": "^4.0.0",
-    "vite": "^5.0.0"
-  }
+  "dependencies": {
+    "geo-wasm": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Miku196/geo-toolbox"
+  },
+  "license": "MIT",
+  "author": "Miku196",
+  "sideEffects": false
 }

@@ -42,6 +42,10 @@ pub fn parse_nmea(sentence: &str) -> Result<JsValue, JsValue> {
     Ok(js_msg)
 }
 
+/// Parse multiple NMEA sentences at once, returning a JSON array of parsed results.
+///
+/// Each line is parsed independently; invalid lines produce `{"error": "..."}` entries.
+/// Empty lines are skipped.
 #[wasm_bindgen(js_name = parseNmeaBatch)]
 pub fn parse_nmea_batch(lines: &str) -> Result<JsValue, JsValue> {
     let results: Vec<serde_json::Value> = lines.lines()
@@ -79,6 +83,14 @@ pub fn validate_gps_fix(hdop: f64, satellites: u8) -> Result<JsValue, JsValue> {
     to_js(&r)
 }
 
+/// Validate a sensor reading against expected ranges.
+///
+/// Supported sensor types and their valid ranges:
+/// - `"temperature"`: -50..60 °C
+/// - `"humidity"`: 0..100 %
+/// - `"pm25"`: 0..1000 µg/m³
+///
+/// Returns `{"valid": bool, "reason": string|null}`.
 #[wasm_bindgen(js_name = validateSensorReading)]
 pub fn validate_sensor_reading(sensor_type: &str, value: f64) -> Result<JsValue, JsValue> {
     let valid = match sensor_type {
@@ -95,6 +107,10 @@ pub fn validate_sensor_reading(sensor_type: &str, value: f64) -> Result<JsValue,
     }))
 }
 
+/// Validate geographic coordinates.
+///
+/// Checks: latitude ∈ [-90, 90], longitude ∈ [-180, 180].
+/// Returns `{"valid": bool, "reason": string|null}`.
 #[wasm_bindgen(js_name = validateCoord)]
 pub fn validate_coord(lon: f64, lat: f64) -> Result<JsValue, JsValue> {
     match geo_validate_coord(lon, lat) {

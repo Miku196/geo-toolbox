@@ -278,4 +278,23 @@ mod tests {
         assert!(md.contains("450.0"));
         assert!(md.contains("client-side"));
     }
+
+    #[test]
+    fn test_export_excel() {
+        let columns = r#"["Landcover","Area (ha)","tCO2e"]"#;
+        let rows = r#"[["forest",100,500.0],["grassland",50,-50.0]]"#;
+        let bytes = export_excel(columns, rows, Some("Carbon".to_string())).unwrap();
+        // XLSX is a ZIP file starting with PK signature
+        assert!(bytes.len() > 100, "XLSX should be > 100 bytes");
+        assert_eq!(&bytes[0..2], b"PK", "XLSX must start with ZIP PK signature");
+    }
+
+    #[test]
+    fn test_export_excel_default_sheet() {
+        let columns = r#"["A","B"]"#;
+        let rows = r#"[["x",1]]"#;
+        let bytes = export_excel(columns, rows, None).unwrap();
+        assert!(bytes.len() > 50);
+        assert_eq!(&bytes[0..2], b"PK");
+    }
 }

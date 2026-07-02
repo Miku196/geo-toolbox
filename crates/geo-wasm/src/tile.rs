@@ -3,12 +3,19 @@
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-/// 瓦片坐标。
+/// Tile coordinate in XYZ (slippy map) scheme.
+///
+/// - `x`: column (0 at -180° lon, increasing eastward)
+/// - `y`: row (0 at ~85° lat, increasing southward)
+/// - `z`: zoom level (0 = whole world in one tile)
 #[wasm_bindgen]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TileCoord {
+    /// Tile column (0 at -180°, increases eastward).
     pub x: u32,
+    /// Tile row (0 at ~85°, increases southward).
     pub y: u32,
+    /// Zoom level (0 = whole world, 18 = street level).
     pub z: u8,
 }
 
@@ -86,16 +93,25 @@ impl TileEngine {
     }
 }
 
+/// Lat/lon → tile coordinate (convenience free function).
+///
+/// Calls [`TileEngine::latlon_to_tile`] internally.
 #[wasm_bindgen]
 pub fn latlon_to_tile(lon: f64, lat: f64, zoom: u8) -> TileCoord {
     TileEngine::new().latlon_to_tile(lon, lat, zoom)
 }
 
+/// Get OpenStreetMap tile URL (convenience free function).
+///
+/// Returns `https://tile.openstreetmap.org/{z}/{x}/{y}.png`.
 #[wasm_bindgen]
 pub fn tile_url_osm(x: u32, y: u32, z: u8) -> String {
     TileEngine::new().tile_url("osm", x, y, z)
 }
 
+/// Get Gaode/AMap tile URL (convenience free function).
+///
+/// Supports GCJ-02 tile scheme commonly used in China.
 #[wasm_bindgen]
 pub fn tile_url_gaode(x: u32, y: u32, z: u8) -> String {
     TileEngine::new().tile_url("gaode", x, y, z)

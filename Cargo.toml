@@ -50,6 +50,11 @@ members = [
     "plugins/geo-plugin-paleoclimate",
     "plugins/geo-plugin-geology",
     "plugins/geo-plugin-volcanology",
+    "plugins/geo-plugin-biodiversity",
+    "plugins/geo-plugin-groundwater",
+    "plugins/geo-plugin-ocean",
+    "plugins/geo-plugin-public-health",
+    "plugins/geo-plugin-ecosystem-services",
 
     # ── Round 3: Registry ──
     "core/geo-registry",

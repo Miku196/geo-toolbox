@@ -1,0 +1,14 @@
+[package]
+name = "geo-plugin-ecosystem-services"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "生态系统服务 — InVEST风格：水源涵养、泥沙滞留、栖息地质量、碳储量"
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
+geo-stats = { path = "../../core/geo-stats" }
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+thiserror.workspace = true

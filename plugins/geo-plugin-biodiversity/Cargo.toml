@@ -1,0 +1,17 @@
+[package]
+name = "geo-plugin-biodiversity"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "生物多样性评估 — 物种分布模型、栖息地连通性、保护区GAP分析"
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }
+geo-raster = { path = "../../core/geo-raster" }
+geo-stats = { path = "../../core/geo-stats" }
+geo-vector = { path = "../../core/geo-vector" }
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+thiserror.workspace = true

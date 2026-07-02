@@ -167,6 +167,10 @@ band_op!(bandSub, band_sub_inner, geo_raster::band::band_sub);
 band_op!(bandMul, band_mul_inner, geo_raster::band::band_mul);
 band_op!(bandDiv, band_div_inner, geo_raster::band::band_div);
 
+/// Classify each pixel as above/below a threshold. Returns JSON band result.
+///
+/// Pixels >= threshold become 1.0, pixels < threshold become 0.0.
+/// nodata values are preserved.
 #[wasm_bindgen(js_name = bandThreshold)]
 pub fn band_threshold(
     data: Vec<f64>,
@@ -190,6 +194,9 @@ fn band_threshold_inner(
 
 // ── Resampling ──────────────────────────────────────────────────
 
+/// Nearest-neighbor resampling (fast, blocky). Returns flat Vec<f64> row-major.
+///
+/// Useful for quick downsampling where precision isn't critical.
 #[wasm_bindgen(js_name = resampleNearest)]
 pub fn resample_nearest(
     data: Vec<f64>,
@@ -202,6 +209,10 @@ pub fn resample_nearest(
     geo_raster::resample::resample_nearest(&data, src_rows, src_cols, dst_rows, dst_cols, nodata)
 }
 
+/// Bicubic resampling (smooth, higher quality). Returns flat Vec<f64> row-major.
+///
+/// Uses cubic interpolation for smoother results at the cost of computation time.
+/// Preferred for continuous data (DEM, temperature, NDVI).
 #[wasm_bindgen(js_name = resampleCubic)]
 pub fn resample_cubic(
     data: Vec<f64>,

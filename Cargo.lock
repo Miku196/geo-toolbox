@@ -2189,6 +2189,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "geo-plugin-biodiversity"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "geo-raster",
+ "geo-registry",
+ "geo-stats",
+ "geo-vector",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "toml",
+]
+
+[[package]]
 name = "geo-plugin-carbon"
 version = "0.1.0"
 dependencies = [
@@ -2262,6 +2277,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "geo-plugin-ecosystem-services"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "geo-registry",
+ "geo-stats",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "toml",
+]
+
+[[package]]
 name = "geo-plugin-energy"
 version = "0.1.0"
 dependencies = [
@@ -2324,8 +2352,22 @@ name = "geo-plugin-geomorph"
 version = "0.8.0"
 dependencies = [
  "geo-core",
+ "geo-registry",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "geo-plugin-groundwater"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "geo-registry",
+ "geo-stats",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "toml",
 ]
 
 [[package]]
@@ -2338,6 +2380,19 @@ dependencies = [
  "geo-registry",
  "serde",
  "serde_json",
+ "toml",
+]
+
+[[package]]
+name = "geo-plugin-ocean"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "geo-registry",
+ "geo-stats",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
  "toml",
 ]
 
@@ -2360,6 +2415,19 @@ dependencies = [
  "geo-registry",
  "serde",
  "serde_json",
+ "toml",
+]
+
+[[package]]
+name = "geo-plugin-public-health"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "geo-registry",
+ "geo-stats",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
  "toml",
 ]
 
@@ -2526,9 +2594,14 @@ dependencies = [
  "geo-carbon-math",
  "geo-core",
  "geo-index",
+ "geo-io",
+ "geo-registry",
  "geo-report",
+ "geo-stats",
+ "geo-temporal",
  "geo-tile",
  "geo-types",
+ "geo-vector",
  "pyo3",
  "rust_xlsxwriter",
  "serde_json",
@@ -2566,7 +2639,7 @@ dependencies = [
 
 [[package]]
 name = "geo-wasm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "console_error_panic_hook",
@@ -2576,6 +2649,7 @@ dependencies = [
  "geo-core",
  "geo-index",
  "geo-raster",
+ "geo-stats",
  "geo-tile",
  "geo-types",
  "geo-vector",
@@ -2610,15 +2684,31 @@ dependencies = [
  "geo-index",
  "geo-io",
  "geo-plugin-agri",
+ "geo-plugin-atmosphere",
+ "geo-plugin-biodiversity",
  "geo-plugin-carbon",
+ "geo-plugin-climate",
  "geo-plugin-coastal",
+ "geo-plugin-cryosphere",
  "geo-plugin-ecology",
+ "geo-plugin-ecosystem-services",
  "geo-plugin-energy",
  "geo-plugin-forestry",
  "geo-plugin-geohazard",
+ "geo-plugin-geology",
+ "geo-plugin-geomorph",
+ "geo-plugin-groundwater",
  "geo-plugin-hydro",
+ "geo-plugin-ocean",
+ "geo-plugin-paleoclimate",
+ "geo-plugin-planetary",
+ "geo-plugin-public-health",
+ "geo-plugin-remote-sensing",
+ "geo-plugin-seismology",
+ "geo-plugin-socioeconomic",
  "geo-plugin-survey",
  "geo-plugin-urban",
+ "geo-plugin-volcanology",
  "geo-registry",
  "geo-report",
  "geo-stats",

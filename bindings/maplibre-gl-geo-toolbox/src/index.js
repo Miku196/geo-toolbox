@@ -737,17 +737,24 @@ export class GeoMaplibrePlugin {
   /** Compute area (hectares) for a GeoJSON feature — uses WASM, falls back to JS approx. */
   #computeArea(aoi) {
     if (aoi.properties?.area_ha) return aoi.properties.area_ha;
-    try {
-      // Try WASM computeArea for precise geodesic area
-      const json = this.#engine?.crs
-        ? null  // CRS engine doesn't have computeArea — use the raw wasm module
-        : null;
-      // Fall through to JS approximation if WASM not available
-    } catch (_) { /* fallback */ }
 
-    let poly = aoi;
-    if (aoi.type === 'FeatureCollection') poly = aoi.features?.[0] ?? aoi;
-    const coords = poly?.geometry?.coordinates?.[0];
+    // Extract geometry object from AOI (Feature, FeatureCollection, or bare Geometry)
+    let geom = aoi;
+    if (aoi.type === 'FeatureCollection') geom = aoi.features?.[0]?.geometry ?? aoi;
+    else if (aoi.type === 'Feature') geom = aoi.geometry ?? aoi;
+    if (!geom || !geom.type || !geom.coordinates) return 100;
+
+    // Try WASM computeArea for geodesic area
+    try {
+      const wasm = this.#_wasmModule();
+      if (wasm && wasm.computeArea) {
+        const result = JSON.parse(wasm.computeArea(JSON.stringify(geom)));
+        if (result.area_ha > 0) return result.area_ha;
+      }
+    } catch (_) { /* fall through to JS approximation */ }
+
+    // JS fallback: planar approximation
+    const coords = geom.coordinates?.[0];
     if (!coords || coords.length < 3) return 100;
     const lons = coords.map(c => c[0]);
     const lats = coords.map(c => c[1]);

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#2e7d32" />
+  <link rel="manifest" href="/manifest.json" />
+  <title>geo-toolbox 野外调查</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; background:#f5f5f5; overflow:hidden; }
+    #map { position:absolute; top:0; left:0; width:100%; height:60%; }
+    #panel { position:absolute; bottom:0; left:0; width:100%; height:40%; background:#fff; border-radius:16px 16px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,.12); overflow-y:auto; padding:16px; }
+    .btn { display:inline-flex; align-items:center; gap:6px; padding:10px 20px; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+    .btn-primary { background:#2e7d32; color:#fff; }
+    .btn-primary:hover { background:#1b5e20; }
+    .btn-outline { background:transparent; border:2px solid #2e7d32; color:#2e7d32; }
+    .btn-danger { background:#d32f2f; color:#fff; }
+    .toolbar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+    .form-group { margin-bottom:10px; }
+    .form-group label { display:block; font-size:12px; color:#666; margin-bottom:4px; font-weight:600; }
+    .form-group select, .form-group input { width:100%; padding:8px 12px; border:1px solid #ddd; border-radius:6px; font-size:14px; }
+    .result-card { background:#e8f5e9; border-radius:8px; padding:12px; margin-top:12px; }
+    .result-card .value { font-size:24px; font-weight:700; color:#2e7d32; }
+    .result-card .unit { font-size:12px; color:#666; }
+    .tab-bar { display:flex; border-bottom:2px solid #eee; margin-bottom:12px; }
+    .tab { padding:8px 16px; font-size:13px; font-weight:600; color:#999; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; }
+    .tab.active { color:#2e7d32; border-bottom-color:#2e7d32; }
+    .photo-preview { width:80px; height:80px; border-radius:8px; object-fit:cover; border:2px solid #eee; margin:4px; }
+    .status-bar { position:absolute; top:10px; right:10px; background:rgba(0,0,0,.6); color:#fff; padding:4px 10px; border-radius:12px; font-size:11px; z-index:1; }
+    #draw-hint { position:absolute; top:50px; left:10px; background:rgba(0,0,0,.7); color:#fff; padding:6px 12px; border-radius:6px; font-size:12px; z-index:1; display:none; }
+  </style>
+  <link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel="stylesheet" />
+</head>
+<body>
+  <div id="map"></div>
+  <div class="status-bar" id="status">🟢 在线</div>
+  <div id="draw-hint">🖐 点击地图圈定调查范围</div>
+
+  <div id="panel">
+    <div class="tab-bar">
+      <div class="tab active" data-tab="survey">🌱 调查</div>
+      <div class="tab" data-tab="history">📋 记录</div>
+      <div class="tab" data-tab="sync">☁️ 同步</div>
+    </div>
+
+    <div id="tab-survey">
+      <div class="form-group">
+        <label>样地名称</label>
+        <input type="text" id="plot-name" placeholder="如：矿区-东-001" />
+      </div>
+      <div class="form-group">
+        <label>土地类型</label>
+        <select id="land-class">
+          <option value="forest">森林</option>
+          <option value="grassland">草地</option>
+          <option value="wetland">湿地</option>
+          <option value="cropland">农田</option>
+          <option value="shrubland">灌丛</option>
+          <option value="bare">裸地</option>
+          <option value="water">水体</option>
+          <option value="built_up">建设用地</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>调查日期</label>
+        <input type="date" id="survey-date" />
+      </div>
+      <div class="form-group">
+        <label>备注</label>
+        <input type="text" id="notes" placeholder="植被状况、干扰等信息" />
+      </div>
+      <div class="form-group">
+        <label>照片 (<span id="photo-count">0</span>)</label>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;" id="photo-list"></div>
+        <button class="btn btn-outline" onclick="document.getElementById('photo-input').click()" style="margin-top:4px;">
+          📷 拍照/上传
+        </button>
+        <input type="file" id="photo-input" accept="image/*" capture="environment" multiple style="display:none" />
+      </div>
+
+      <div class="toolbar">
+        <button class="btn btn-primary" id="btn-draw-aoi">📍 圈定范围</button>
+        <button class="btn btn-primary" id="btn-calculate">🔬 计算碳储量</button>
+        <button class="btn btn-primary" id="btn-save">💾 保存记录</button>
+      </div>
+
+      <div class="result-card" id="carbon-result" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;">
+          <span>碳储量估算</span>
+          <span class="value" id="carbon-value">--</span>
+        </div>
+        <div class="unit">tCO₂e</div>
+        <div style="font-size:12px;color:#666;margin-top:4px;">
+          调查面积: <span id="aoi-area">--</span> ha
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-history" style="display:none">
+      <div class="toolbar">
+        <button class="btn btn-outline" id="btn-export-json">📥 导出 JSON</button>
+        <button class="btn btn-outline" id="btn-export-xlsx">📊 导出 Excel</button>
+        <button class="btn btn-danger" id="btn-clear">🗑 清除全部</button>
+      </div>
+      <div id="history-list" style="font-size:13px;color:#666;">暂无记录</div>
+    </div>
+
+    <div id="tab-sync" style="display:none">
+      <p style="font-size:13px;color:#666;">上传离线收集的调查数据到云端。</p>
+      <div id="sync-status" style="margin-top:8px;"></div>
+      <button class="btn btn-primary" id="btn-sync" style="margin-top:8px;">☁️ 同步到云端</button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
+  <script type="module" src="/src/app.ts"></script>
+</body>
+</html>

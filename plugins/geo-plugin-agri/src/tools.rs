@@ -32,5 +32,21 @@ pub fn register_tools(registry: &mut PluginRegistry) {
         let net = p.net_irrigation(et0, crop, rain);
         let gross = p.gross_irrigation(net);
         Ok(serde_json::json!({"net_irrigation_mm":net,"gross_irrigation_mm":gross,"kc":p.config.crops.get(crop).map(|c|c.kc),"crop_type":crop}))
-    }]);
+    },
+        sync "agri_usle" => "USLE soil erosion (t/ha/yr)" ; serde_json::json!({"type":"object","properties":{"r_factor":{"type":"number"},"k_factor":{"type":"number"},"ls_factor":{"type":"number"},"c_factor":{"type":"number"},"p_factor":{"type":"number","default":1.0}},"required":["r_factor","k_factor","ls_factor","c_factor"]}) => |args| -> ToolResult {
+            let r=args["r_factor"].as_f64().unwrap_or(100.0);let k=args["k_factor"].as_f64().unwrap_or(0.3);let ls=args["ls_factor"].as_f64().unwrap_or(2.0);let c=args["c_factor"].as_f64().unwrap_or(0.2);let p=args["p_factor"].as_f64().unwrap_or(1.0);
+            serde_json::to_value(crate::soil::usle_erosion(r,k,ls,c,p)).map_err(geo_core::GeoError::Serde)
+        },
+        sync "agri_ls_factor" => "LS factor from slope length & gradient" ; serde_json::json!({"type":"object","properties":{"slope_length_m":{"type":"number"},"slope_pct":{"type":"number"}},"required":["slope_length_m","slope_pct"]}) => |args| -> ToolResult {
+            let l=args["slope_length_m"].as_f64().unwrap_or(100.0);let s=args["slope_pct"].as_f64().unwrap_or(10.0);
+            Ok(serde_json::json!({"ls_factor":crate::soil::ls_factor(l,s)}))
+        },
+        sync "agri_soil_carbon" => "Soil organic carbon dynamics" ; serde_json::json!({"type":"object","properties":{"initial_soc_tc_ha":{"type":"number"},"c_input_tc_ha_yr":{"type":"number"},"k_decay":{"type":"number"}},"required":["initial_soc_tc_ha","c_input_tc_ha_yr","k_decay"]}) => |args| -> ToolResult {
+            let s=args["initial_soc_tc_ha"].as_f64().unwrap_or(50.0);let i=args["c_input_tc_ha_yr"].as_f64().unwrap_or(2.0);let kd=args["k_decay"].as_f64().unwrap_or(0.05);
+            serde_json::to_value(crate::soil::soil_carbon_dynamics(s,i,kd)).map_err(geo_core::GeoError::Serde)
+        },
+        sync "agri_k_factor" => "K factor from soil texture" ; serde_json::json!({"type":"object","properties":{"silt_pct":{"type":"number"},"sand_pct":{"type":"number"},"clay_pct":{"type":"number"},"organic_matter_pct":{"type":"number"}},"required":["silt_pct","sand_pct","clay_pct","organic_matter_pct"]}) => |args| -> ToolResult {
+            let si=args["silt_pct"].as_f64().unwrap_or(40.0);let sa=args["sand_pct"].as_f64().unwrap_or(30.0);let cl=args["clay_pct"].as_f64().unwrap_or(30.0);let om=args["organic_matter_pct"].as_f64().unwrap_or(2.0);
+            Ok(serde_json::json!({"k_factor":crate::soil::k_factor_texture(si,sa,cl,om)}))
+        }]);
 }

@@ -8,3 +8,4 @@ description = "Geomorphology plugin: D8 flow direction/accumulation, Strahler ri
 serde = { workspace = true }
 serde_json = { workspace = true }
 geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry" }

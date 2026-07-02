@@ -35,6 +35,22 @@ pub fn populate_defaults(reg: &mut PluginRegistry, config: Option<&GeoConfig>) {
     geo_plugin_geohazard::tools::register_tools(reg);
     geo_plugin_agri::tools::register_tools(reg);
     geo_plugin_urban::tools::register_tools(reg);
+    geo_plugin_climate::tools::register_tools(reg);
+    geo_plugin_geomorph::tools::register_tools(reg);
+    geo_plugin_remote_sensing::tools::register_tools(reg);
+    geo_plugin_seismology::tools::register_tools(reg);
+    geo_plugin_socioeconomic::tools::register_tools(reg);
+    geo_plugin_cryosphere::tools::register_tools(reg);
+    geo_plugin_atmosphere::tools::register_tools(reg);
+    geo_plugin_planetary::tools::register_tools(reg);
+    geo_plugin_paleoclimate::tools::register_tools(reg);
+    geo_plugin_geology::tools::register_tools(reg);
+    geo_plugin_volcanology::tools::register_tools(reg);
+    geo_plugin_biodiversity::tools::register_tools(reg);
+    geo_plugin_groundwater::tools::register_tools(reg);
+    geo_plugin_ocean::tools::register_tools(reg);
+    geo_plugin_public_health::tools::register_tools(reg);
+    geo_plugin_ecosystem_services::tools::register_tools(reg);
 
     // ── Adapters: lightweight (always-on) ──
     geo_adapter_duckdb::tools::register_tools(reg);

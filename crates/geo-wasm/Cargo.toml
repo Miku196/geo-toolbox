@@ -21,6 +21,7 @@ geo-tile = { path = "../../core/geo-tile" }
 geo-index = { path = "../../core/geo-index" }
 geo-raster = { path = "../../core/geo-raster" }
 geo-vector = { path = "../../core/geo-vector" }
+geo-stats = { path = "../../core/geo-stats" }
 
 wasm-bindgen = "0.2"
 js-sys = "0.3"
