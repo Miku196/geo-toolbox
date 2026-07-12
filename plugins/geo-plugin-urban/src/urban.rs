@@ -304,7 +304,7 @@ mod tests {
 
     fn default_plugin() -> UrbanPlugin {
         UrbanPlugin::new(UrbanConfig {
-            plugin: PluginMeta {
+            plugin: PluginHeader {
                 name: "urban".into(),
                 version: "0.1".into(),
                 description: "test".into(),

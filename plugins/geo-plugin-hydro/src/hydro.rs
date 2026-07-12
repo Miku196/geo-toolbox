@@ -379,11 +379,11 @@ impl HydroPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{HydroConfig, PluginMeta};
+    use crate::config::{HydroConfig, PluginHeader};
 
     fn default_plugin() -> HydroPlugin {
         HydroPlugin::new(HydroConfig {
-            plugin: PluginMeta {
+            plugin: PluginHeader {
                 name: "hydro".into(),
                 version: "0.2".into(),
                 description: "test".into(),

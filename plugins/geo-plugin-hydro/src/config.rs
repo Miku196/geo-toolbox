@@ -1,9 +1,19 @@
 use geo_core::plugin::PluginConfig;
+pub use geo_core::plugin::PluginHeader;
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Deserialize, Default)]
+fn default_hydro_plugin() -> PluginHeader {
+    PluginHeader {
+        name: "hydro".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
+        description: "水文分析：D8 汇流、径流、淹没分析、集水区提取".into(),
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct HydroConfig {
-    pub plugin: PluginMeta,
+    #[serde(default = "default_hydro_plugin")]
+    pub plugin: PluginHeader,
     #[serde(default)]
     pub flood: FloodParams,
     #[serde(default)]
@@ -12,14 +22,6 @@ pub struct HydroConfig {
     pub catchment: CatchmentParams,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct PluginMeta {
-    pub name: String,
-    pub version: String,
-    pub description: String,
-}
-
-/// 洪水参数。
 #[derive(Debug, Clone, Deserialize)]
 pub struct FloodParams {
     #[serde(default = "default_return_period")]
@@ -72,17 +74,19 @@ fn default_slope_threshold() -> f64 {
     0.01
 }
 
-impl Default for PluginMeta {
+
+impl PluginConfig for HydroConfig {}
+
+impl Default for HydroConfig {
     fn default() -> Self {
         Self {
-            name: "hydro".into(),
-            version: env!("CARGO_PKG_VERSION").into(),
-            description: "水文分析：D8 汇流、径流、淹没分析、集水区提取".into(),
+            plugin: default_hydro_plugin(),
+            flood: FloodParams::default(),
+            runoff: RunoffParams::default(),
+            catchment: CatchmentParams::default(),
         }
     }
 }
-
-impl PluginConfig for HydroConfig {}
 
 impl Default for FloodParams {
     fn default() -> Self {

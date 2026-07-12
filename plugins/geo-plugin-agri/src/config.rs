@@ -1,10 +1,10 @@
-use geo_core::plugin::PluginConfig;
+use geo_core::plugin::{PluginConfig, PluginHeader};
 use serde::Deserialize;
 
 /// Agriculture plugin top-level configuration.
 #[derive(Debug, Clone, Deserialize)]
 pub struct AgriConfig {
-    pub plugin: PluginMeta,
+    pub plugin: PluginHeader,
 
     /// Per-crop yield parameters.
     #[serde(default)]
@@ -17,13 +17,6 @@ pub struct AgriConfig {
     /// Irrigation calculation parameters.
     #[serde(default)]
     pub irrigation: IrrigationParams,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct PluginMeta {
-    pub name: String,
-    pub version: String,
-    pub description: String,
 }
 
 /// ── Crop-specific parameters ──

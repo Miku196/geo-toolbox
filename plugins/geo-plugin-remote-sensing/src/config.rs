@@ -1,20 +1,14 @@
 use serde::{Deserialize, Serialize};
+use geo_core::plugin::PluginHeader;
 
 /// 遥感插件配置。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RemoteSensingConfig {
-    pub plugin: PluginMeta,
+    pub plugin: PluginHeader,
     #[serde(default)]
     pub radiometric: RadiometricConfig,
     #[serde(default)]
     pub insar: InsarConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PluginMeta {
-    pub name: String,
-    pub version: String,
-    pub description: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -114,7 +108,7 @@ impl Default for InsarConfig {
 impl Default for RemoteSensingConfig {
     fn default() -> Self {
         Self {
-            plugin: PluginMeta {
+            plugin: PluginHeader {
                 name: "remote-sensing".into(),
                 version: env!("CARGO_PKG_VERSION").into(),
                 description: "遥感影像辐射校正、大气校正、InSAR 形变监测".into(),

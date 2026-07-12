@@ -1,21 +1,14 @@
-use geo_core::plugin::PluginConfig;
+use geo_core::plugin::{PluginConfig, PluginHeader};
 use serde::Deserialize;
 
 /// 地震插件配置。
 #[derive(Debug, Clone, Deserialize)]
 pub struct SeismologyConfig {
-    pub plugin: PluginMeta,
+    pub plugin: PluginHeader,
     #[serde(default)]
     pub ground_motion: GroundMotionConfig,
     #[serde(default)]
     pub psha: PshaConfig,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct PluginMeta {
-    pub name: String,
-    pub version: String,
-    pub description: String,
 }
 
 /// 地震动参数配置（GB 18306-2015 经验系数）。
@@ -124,7 +117,7 @@ impl Default for PshaConfig {
 impl Default for SeismologyConfig {
     fn default() -> Self {
         Self {
-            plugin: PluginMeta {
+            plugin: PluginHeader {
                 name: "seismology".into(),
                 version: env!("CARGO_PKG_VERSION").into(),
                 description: "地震动参数预测、概率地震危险性分析、地震目录工具".into(),

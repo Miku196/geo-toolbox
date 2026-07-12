@@ -1,18 +1,11 @@
-use geo_core::plugin::PluginConfig;
+use geo_core::plugin::{PluginConfig, PluginHeader};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ForestryConfig {
-    pub plugin: PluginMeta,
+    pub plugin: PluginHeader,
     #[serde(default)]
     pub carbon: CarbonParams,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct PluginMeta {
-    pub name: String,
-    pub version: String,
-    pub description: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -58,7 +51,7 @@ fn default_co2_c_ratio() -> f64 {
 impl Default for ForestryConfig {
     fn default() -> Self {
         Self {
-            plugin: PluginMeta {
+            plugin: PluginHeader {
                 name: "forestry".into(),
                 version: "0.1.0".into(),
                 description: "林业碳汇计量".into(),

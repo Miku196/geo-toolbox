@@ -1,21 +1,15 @@
 use serde::{Deserialize, Serialize};
+use geo_core::plugin::PluginHeader;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SocioeconomicConfig {
-    pub plugin: PluginMeta,
+    pub plugin: PluginHeader,
     #[serde(default)]
     pub population: PopulationConfig,
     #[serde(default)]
     pub landuse: LanduseConfig,
     #[serde(default)]
     pub accessibility: AccessibilityConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PluginMeta {
-    pub name: String,
-    pub version: String,
-    pub description: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -105,7 +99,7 @@ impl Default for AccessibilityConfig {
 impl Default for SocioeconomicConfig {
     fn default() -> Self {
         Self {
-            plugin: PluginMeta {
+            plugin: PluginHeader {
                 name: "socioeconomic".into(),
                 version: env!("CARGO_PKG_VERSION").into(),
                 description: "社会经济分析：人口空间化、GDP估算、土地变化模拟、可达性".into(),

@@ -1,22 +1,15 @@
 //! 能源插件配置。
 
-use geo_core::plugin::PluginConfig;
+use geo_core::plugin::{PluginConfig, PluginHeader};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct EnergyConfig {
-    pub plugin: PluginMeta,
+    pub plugin: PluginHeader,
     #[serde(default)]
     pub solar: SolarConfig,
     #[serde(default)]
     pub wind: WindConfig,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct PluginMeta {
-    pub name: String,
-    pub version: String,
-    pub description: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -76,7 +69,7 @@ impl Default for WindConfig {
 impl Default for EnergyConfig {
     fn default() -> Self {
         Self {
-            plugin: PluginMeta {
+            plugin: PluginHeader {
                 name: "energy".into(),
                 version: "0.1.0".into(),
                 description: "新能源选址评估".into(),

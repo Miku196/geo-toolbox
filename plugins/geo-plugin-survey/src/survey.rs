@@ -243,11 +243,11 @@ impl SurveyPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{PluginMeta, SurveyConfig};
+    use crate::config::{PluginHeader, SurveyConfig};
 
     fn default_plugin() -> SurveyPlugin {
         SurveyPlugin::new(SurveyConfig {
-            plugin: PluginMeta {
+            plugin: PluginHeader {
                 name: "survey".into(),
                 version: "0.2".into(),
                 description: "test".into(),

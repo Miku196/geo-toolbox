@@ -33,3 +33,6 @@ nul
 fuzz/target/
 fuzz/Cargo.lock
 .venv/
+
+# Output data (generated)
+output/

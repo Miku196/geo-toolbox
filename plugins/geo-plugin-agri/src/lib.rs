@@ -5,7 +5,6 @@ pub mod config;
 pub mod dssat;
 pub mod soil;
 pub mod tools;
-pub mod trait_impl;
 pub use agri::AgriPlugin;
 pub use config::AgriConfig;
 pub use dssat::{

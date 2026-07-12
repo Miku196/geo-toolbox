@@ -1,12 +1,12 @@
 //! 生态修复配置（rules.toml）。
 
-use geo_core::plugin::PluginConfig;
+use geo_core::plugin::{PluginConfig, PluginHeader};
 use serde::Deserialize;
 
 /// 生态修复插件的顶级配置。
 #[derive(Debug, Clone, Deserialize)]
 pub struct EcologyConfig {
-    pub plugin: PluginMeta,
+    pub plugin: PluginHeader,
 
     /// NDVI 阈值定义。
     #[serde(default)]
@@ -19,13 +19,6 @@ pub struct EcologyConfig {
     /// 报告模板路径。
     #[serde(default)]
     pub report: ReportConfig,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct PluginMeta {
-    pub name: String,
-    pub version: String,
-    pub description: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

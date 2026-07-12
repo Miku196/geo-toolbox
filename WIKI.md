@@ -1,3034 +1,384 @@
-# geo-toolbox Wiki
+# geo-toolbox 使用指南
 
-> 从零到一：安装、开发、部署全流程指南。
-> > 最后更新：2026-06-24
-
-> 💡 **2026-06 v0.11 更新**：Round 3 生态破圈全部落地 — pygeoapi PyO3 FFI 适配器 (Rust↔shapely 零拷贝) + PDAL LiDAR 适配器 + 3 fuzz 目标 (GeoJSON/NMEA/WKT) + WASM 浏览器生态 (MapLibre GL JS 插件 + ObservableHQ 笔记本)
->
-> 💡 **2026-06 v0.10 更新**：遥感插件 `geo-plugin-remote-sensing` 全新发布 — 辐射校正 (TOA 辐射亮度/反射率、DOS 大气校正、云检测) + InSAR (相干性、Goldstein 相位解缠、LOS 形变估计)。MUSLE 事件版土壤流失 + Jensen/Frandsen 尾流效应 MCP 工具注册。
->
-> 💡 **2026-06 v0.9 更新**：插件深度拓展全面完成 — 新增 2 个插件（climate 气象气候 7 模块、geomorph 地貌 2 模块）+ 5 个旧插件新增模块（groundwater 地下水、ocean 海洋物理、wave_runup 波浪爬高、soil 土壤、unit_hydrograph 单位线、transform 坐标转换、dssat 作物模型）。总计 ~6500 行新代码。详见 [ROADMAP](ROADMAP.md)。
->
-> 💡 **2026-06 v0.8 更新**：Phase 3.3 Plugin trait 统一 — 全部插件实现 `PluginConfig` + `Default` 配置 + `type Config` 关联类型；DuckDB/STAC 适配器实现 Plugin trait 默认方法。
->
-> 💡 **2026-06 v0.6 更新**：RUSLE 通用土壤流失方程 (A=R·K·LS·C·P) + SCS-CN 径流曲线数 (26种土地利用CN查表) + InVEST 碳存储(4碳库)+水源涵养(Budyko曲线) + 7个新CLI工具 + 35个新测试。详见 [核心功能使用](#4-核心功能使用)。
+> API 参考、插件开发、适配器集成、常见问题。
+> 架构与编译指南见 [README](README.md)。
 
 ---
 
-## 目录
+## 1. 核心功能使用
 
-- [1. 环境搭建](#1-环境搭建)
-  - [1.1 Rust 工具链](#11-rust-工具链)
-  - [1.2 必需依赖](#12-必需依赖)
-  - [1.3 可选依赖（按需安装）](#13-可选依赖按需安装)
-  - [1.4 验证安装](#14-验证安装)
-- [2. 克隆与首次编译](#2-克隆与首次编译)
-- [3. 项目结构速览](#3-项目结构速览)
-- [4. 核心功能使用](#4-核心功能使用)
-  - [4.1 CRS 坐标变换](#41-crs-坐标变换)
-  - [4.2 碳核算](#42-碳核算)
-    - [4.2.1 5碳库模型](#421-5碳库模型)
-    - [4.2.2 碳场景计算](#422-碳场景计算)
-    - [4.2.2 VCS/CCB 方法学](#423-vcsccb-方法学)
-  - [4.3 NDVI 计算](#43-ndvi-计算)
-  - [4.4 GeoJSON IO](#44-geojson-io)
-  - [4.5 瓦片索引（MVT/PMTiles）](#45-瓦片索引-mvtpmtiles)
-  - [4.6 时空趋势分析](#46-时空趋势分析)
-  - [4.7 新能源选址](#47-新能源选址)
-  - [4.8 DuckDB 嵌入式数据库](#48-duckdb-嵌入式数据库)
-  - [4.9 STAC 影像搜索](#49-stac-影像搜索)
-  - [4.10 林业碳汇](#410-林业碳汇)
-  - [4.11 海岸带监测](#411-海岸带监测)
-  - [4.12 OSM 数据拉取](#412-osm-数据拉取)
-  - [4.13 CLI 管道模式](#413-cli-管道模式)
-  - [4.14 RUSLE 土壤流失方程](#414-rusle-土壤流失方程)
-  - [4.15 SCS-CN 径流曲线数](#415-scs-cn-径流曲线数)
-  - [4.16 InVEST 碳存储与水源涵养](#416-invest-碳存储与水源涵养)
-  - [4.17 气象气候：GCM降尺度 + IDF + 干旱指数 + Kriging](#417-气象气候gcm降尺度--idf--干旱指数--kriging)
-  - [4.18 地貌分析：D8流向累积 + Strahler河网](#418-地貌分析d8流向累积--strahler河网)
-  - [4.19 地下水模块：达西定律 + MODFLOW适配](#419-地下水模块达西定律--modflow适配)
-  - [4.20 单位线汇流：SCS三角 + Snyder合成 + IUH](#420-单位线汇流scs三角--snyder合成--iuh)
-  - [4.21 波浪爬高：Stockdon / Mase 公式](#421-波浪爬高stockdon--mase-公式)
-  - [4.22 海洋物理：Ekman输运 + SWAN波浪 + 潮汐调和](#422-海洋物理ekman输运--swan波浪--潮汐调和)
-  - [4.23 土壤模块：USDA质地 + van Genuchten + HWSD](#423-土壤模块usda质地--van-genuchten--hwsd)
-  - [4.24 坐标转换：四参数 + 七参数 + 仿射](#424-坐标转换四参数--七参数--仿射)
-  - [4.25 DSSAT作物模型适配](#425-dssat作物模型适配)
-  - [4.26 MUSLE 事件版土壤流失](#426-musle-事件版土壤流失)
-  - [4.27 遥感辐射校正与InSAR形变](#427-遥感辐射校正与insar形变)
-- [5. 插件开发](#5-插件开发)
-  - [5.1 创建插件骨架](#51-创建插件骨架)
-  - [5.2 编写配置](#52-编写配置)
-  - [5.3 实现业务逻辑](#53-实现业务逻辑)
-  - [5.4 注册到项目](#54-注册到项目)
-  - [5.5 在 CLI 中使用](#55-在-cli-中使用)
-- [6. 适配器使用](#6-适配器使用)
-  - [6.1 PostgreSQL + PostGIS](#61-postgresql--postgis)
-  - [6.2 QGIS 集成](#62-qgis-集成)
-  - [6.3 MQTT 传感器接入](#63-mqtt-传感器接入)
-  - [6.4 CamoFox 网页数据接入](#64-camofox-网页数据接入)
-  - [6.5 NMEA GPS 解析](#65-nmea-gps-解析)
-- [7. 适配器开发](#7-适配器开发)
-  - [7.1 ExternalAdapter trait](#71-externaladapter-trait)
-  - [7.2 创建适配器骨架](#72-创建适配器骨架)
-  - [7.3 示例：开发一个 TiDB 适配器](#73-示例开发一个-tidb-适配器)
-  - [7.4 适配器开发约束](#74-适配器开发约束)
-  - [7.5 在 CLI 中注册适配器](#75-在-cli-中注册适配器)
-- [8. 测试](#8-测试)
-- [9. 常见问题](#9-常见问题)
-- [10. MCP 集成（AI Agent 调用）](#10-mcp-集成ai-agent-调用)
-  - [10.1 启动 MCP Server](#101-启动-mcp-server)
-  - [10.2 完整工具列表](#102-完整工具列表)
-  - [10.3 安全审计](#103-安全审计)
-
----
-
-## 1. 环境搭建
-
-### 1.1 Rust 工具链
-
-```bash
-# 安装 Rust（如果已安装则跳过）
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# 重启终端或执行
-source "$HOME/.cargo/env"
-
-# 确认版本 ≥ 1.80
-rustc --version
-```
-
-### 1.2 必需依赖
-
-这些是**编译 geo-toolbox 本身**所需的：
-
-```bash
-# ── macOS ──
-xcode-select --install          # 命令行工具（含 C 编译器）
-
-# ── Ubuntu/Debian ──
-sudo apt update
-sudo apt install build-essential pkg-config libssl-dev
-```
-
-### 1.3 可选依赖（按需安装）
-
-根据你实际要用的功能选择性安装，**不需要全装**。
-
-#### PostgreSQL + PostGIS（存储和碳核算数据库）
-
-```bash
-# ── macOS ──
-brew install postgresql@16 postgis
-brew services start postgresql@16
-
-# ── Ubuntu ──
-sudo apt install postgresql-16 postgis
-sudo systemctl start postgresql
-```
-
-创建数据库和用户：
-
-```bash
-sudo -u postgres createuser geo -P
-# 输入密码：geo（开发用，生产请换强密码）
-
-sudo -u postgres createdb geo_test -O geo
-
-sudo -u postgres psql geo_test -c "CREATE EXTENSION postgis;"
-sudo -u postgres psql geo_test -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
-```
-
-设置环境变量：
-
-```bash
-echo 'export DATABASE_URL=postgres://geo:geo@localhost/geo_test' >> ~/.bashrc
-source ~/.bashrc
-```
-
-#### QGIS（空间分析、制图输出）
-
-从 [qgis.org/download](https://qgis.org/download/) 下载安装。
-
-确认 `qgis_process` 可用：
-
-```bash
-qgis_process --version
-# 应输出版本号
-```
-
-#### GDAL（栅格处理）
-
-```bash
-# macOS
-brew install gdal
-
-# Ubuntu
-sudo apt install gdal-bin libgdal-dev
-
-# 验证
-gdal_translate --version
-```
-
-#### NATS（GEE 分布式消息队列）
-
-```bash
-# macOS
-brew install nats-server
-
-# 直接下载二进制
-curl -sf https://binaries.nats.dev/nats-io/nats-server/v2@main | sh
-
-# 验证
-nats-server --version
-```
-
-#### WASM（浏览器端发布）
-
-```bash
-rustup target add wasm32-unknown-unknown
-cargo install wasm-pack
-```
-
-### 1.4 验证安装
-
-```bash
-# 检查 Rust
-rustc --version    # ≥ 1.80
-cargo --version
-
-# 检查数据库（如果安装了）
-psql -U geo -d geo_test -c "SELECT PostGIS_Version();"
-
-# 检查 QGIS（如果安装了）
-qgis_process list | head -5
-```
-
----
-
-## 2. 克隆与首次编译
-
-```bash
-git clone https://github.com/Miku196/geo-toolbox.git
-cd geo-toolbox
-```
-
-### 最小化编译（无需任何外部依赖）
-
-```bash
-cargo build --release --no-default-features --features minimal
-```
-
-编译产物：`target/release/geo-toolbox`（Windows: `.exe`）
-
-```bash
-# 快速验证
-cargo run -- crs list
-# 输出：
-#   EPSG:4326 | WGS 84              | Storage
-#   EPSG:3857 | WGS 84 / Pseudo-Mercator | Display
-#   ...
-```
-
-### 按需开启 feature
-
-```bash
-# 仅需要 PostGIS
-cargo build --release --no-default-features --features minimal,postgis
-
-# 仅需要 QGIS
-cargo build --release --no-default-features --features qgis
-
-# 仅需要 MQTT
-cargo build --release --features mqtt
-```
-
-### 运行全部测试（无需任何外部服务）
-
-```bash
-cargo test --workspace
-# 预期：1001 个测试全部通过
-```
-
-### Benchmark 基准测试
-
-8 个 crate 已覆盖 criterion bench：
-
-```bash
-# 全部基准测试（编译为 release）
-cargo bench --workspace
-
-# 单个 crate
-cargo bench -p geo-core
-cargo bench -p geo-io
-cargo bench -p geo-vector
-cargo bench -p geo-index
-cargo bench -p geo-stats
-
-# 仅编译不运行（CI 检查用）
-cargo bench --no-run --workspace
-```
-
-覆盖范围：CRS 变换对比 · NDVI 栅格计算 · MVT 瓦片编码 · GeoJSON/NMEA 解析 · 空间运算 (buffer/intersect/union) · GeoHash/Quadtree/RTree 索引 · 碳核算 (pool_stock/scenario) · 分区统计
-
----
-
-## 3. 项目结构速览
-
-```
-geo-toolbox/
-├── core/                          # 纯 Rust 核心引擎（13 crates）
-│   ├── geo-core/                  # 几何基类、CRS 注册、错误类型、插件 trait
-│   ├── geo-carbon-math/           # IPCC Tier 1 碳核算公式
-│   ├── geo-raster/                # 栅格运算 + NDVI/NDWI
-│   ├── geo-vector/                # 矢量空间运算
-│   ├── geo-tile/                  # MVT/PMTiles 瓦片
-│   ├── geo-temporal/              # 时空序列分析
-│   ├── geo-stats/                 # 空间统计
-│   ├── geo-io/                    # GeoJSON/CSV/NMEA/GPS 解析
-│   ├── geo-report/                # Tera 报告模板引擎
-│   ├── geo-index/                 # GeoHash 空间索引
-│   ├── geo-parquet/               # GeoParquet 云原生格式
-│   ├── geo-ogc/                   # WMS/WFS/WPS 标准
-│   └── geo-registry/              # 插件注册调度中心 + register_plugin! 宏
-│
-├── plugins/                       # 专业领域插件（13 crates）
-│   ├── geo-plugin-carbon/         # 碳核算插件
-│   ├── geo-plugin-ecology/        # 生态修复评估（NDVI + 碳汇 + 报告）
-│   ├── geo-plugin-survey/         # 测绘
-│   ├── geo-plugin-urban/          # 城乡规划
-│   ├── geo-plugin-hydro/          # 水文分析
-│   ├── geo-plugin-geohazard/      # 地质灾害
-│   ├── geo-plugin-agri/           # 农业
-│   ├── geo-plugin-energy/         # 新能源选址
-│   ├── geo-plugin-forestry/       # 林业碳汇
-│   └── geo-plugin-coastal/        # 海岸带
-│   ├── geo-plugin-remote-sensing/ # 遥感辐射校正+InSAR
-│
-├── adapters/                      # 外部适配器（9 crates）
-│   ├── geo-adapter-duckdb/        # SQLite 嵌入式
-│   ├── geo-adapter-stac/          # STAC 数据发现
-│   ├── geo-adapter-osm/           # OpenStreetMap
-│   ├── geo-adapter-postgis/       # PostgreSQL + PostGIS
-│   ├── geo-adapter-gee/           # Google Earth Engine
-│   ├── geo-adapter-qgis/          # QGIS 桥接 (Subprocess + REST 双后端)
-│   ├── geo-adapter-cad/           # CAD 格式
-│   ├── geo-adapter-cli/           # GDAL/DVC 子进程
-│   └── geo-adapter-iot/           # MQTT 传感器
-│
-├── crates/                        # 入口
-│   ├── geo-cli/                   # CLI + MCP Server
-│   ├── geo-server/                # HTTP API + WMS
-│   ├── geo-wiring/                # 注册表接线 (de-dup)
-│   └── geo-wasm/                  # WASM + NPM 包
-│
-├── examples/                      # 示例
-│   ├── chengdu-carbon/            # 成都碳收支
-│   ├── china-risk-assessment/     # 中国风险评估
-│   └── dexing-copper/             # 德兴铜矿生态修复
-│
-├── Cargo.toml                     # workspace 配置
-├── README.md
-└── DEVPLAN.md                     # 改造开发流程详规
-```
-
-**依赖方向**：`Adapter → Plugin → Core`（严格单向，下层不能依赖上层）
-
----
-
-## 4. 核心功能使用
-
-以下代码均可直接编译运行，无需任何外部服务。
-
-### 4.1 CRS 坐标变换
+### 1.1 CRS 坐标变换
 
 ```rust
 use geo_core::crs::CrsRegistry;
 
-fn main() {
-    let reg = CrsRegistry::new();
-
-    // WGS84 → Web Mercator
-    let (x, y) = reg.transform_point(4326, 3857, 104.06, 30.57).unwrap();
-    println!("成都 (104.06, 30.57) → Web Mercator ({:.0}, {:.0})", x, y);
-
-    // WGS84 → GCJ-02（火星坐标系）
-    let (gx, gy) = reg.transform_point(4326, 9000, 116.40, 39.90).unwrap();
-    println!("北京 (116.40, 39.90) → GCJ-02 ({:.6}, {:.6})", gx, gy);
-
-    // GCJ-02 → BD-09（百度坐标系）
-    let (bx, by) = reg.transform_point(9000, 9001, gx, gy).unwrap();
-    println!("     → BD-09 ({:.6}, {:.6})", bx, by);
-
-    // 列出所有内置坐标系
-    for c in reg.list() {
-        println!("EPSG:{} | {:30} | {}", c.epsg, c.name, reg.by_category(c.category).len());
-    }
-}
+let reg = CrsRegistry::new();
+let (x, y) = reg.transform_point(4326, 3857, 104.06, 30.57).unwrap();
 ```
 
-**Cargo.toml：**
-
-```toml
-[dependencies]
-geo-core = { git = "https://github.com/Miku196/geo-toolbox" }
-```
-
-### 4.2 碳核算
+### 1.2 碳核算
 
 ```rust
 use geo_carbon_math::{CarbonEngine, EmissionFactor, GeoFeature};
 
-fn main() {
-    let engine = CarbonEngine::new();
-
-    // 排放因子表（正值 = 排放源，负值 = 碳汇）
-    let factors = vec![
-        EmissionFactor::new("forest", -5.0, "IPCC_2019"),
-        EmissionFactor::new("grassland", -1.2, "IPCC_2019"),
-        EmissionFactor::new("built_up", 2.0, "IPCC_2019"),
-    ];
-
-    // 土地覆盖斑块（GeoJSON 多边形 + 类型标注）
-    let forest_poly = r#"{"type":"Polygon","coordinates":[[[104.0,30.5],[104.1,30.5],[104.1,30.6],[104.0,30.6],[104.0,30.5]]]}"#;
-    let builtup_poly = r#"{"type":"Polygon","coordinates":[[[104.1,30.5],[104.2,30.5],[104.2,30.6],[104.1,30.6],[104.1,30.5]]]}"#;
-
-    let features = vec![
-        GeoFeature::new("forest", forest_poly).unwrap(),
-        GeoFeature::new("built_up", builtup_poly).unwrap(),
-    ];
-
-    let report = engine.calculate(&features, &factors, 2025).unwrap();
-
-    println!("总评估面积: {:.1} ha", report.total_area_ha);
-    println!("净碳排放:   {:.1} tCO₂e/yr", report.total_emission_tco2e);
-
-    for c in &report.classes {
-        let tag = if c.emission_tco2e < 0.0 { "🌿碳汇" } else { "🏭碳源" };
-        println!("  {:<12} {:>8.1} ha  {:>8.1} tCO₂e  {}", c.landcover_class, c.area_ha, c.emission_tco2e, tag);
-    }
-}
+let engine = CarbonEngine::new();
+let factors = vec![EmissionFactor::new("forest", -5.0, "IPCC_2019")];
+let features = vec![GeoFeature::new("forest", geojson_str).unwrap()];
+let report = engine.calculate(&features, &factors, 2025).unwrap();
 ```
 
-```
+#### 1.2.1 5 碳库模型
 
-#### 4.2.1 5 碳库模型
-
-IPCC 2006/2019 全五池 (AGB/BGB/Deadwood/Litter/SOC) 估算土地碳储量：
+IPCC 全五池 (AGB/BGB/Deadwood/Litter/SOC):
 
 ```rust
-use geo_carbon_math::{CarbonEngine, BiomassParams, SocParams, EcoZone};
-
-let engine = CarbonEngine::new();
-
-// 10 公顷温带阔叶林碳储量
 let stock = engine.calculate_pool_stock(
-    10.0, 200.0,  // 面积 ha, 蓄积量 m³/ha
+    10.0, 200.0,
     &BiomassParams::temperate_broadleaf(),
     &SocParams::native_forest(70.0),
 );
-
-println!("总碳储量: {:.1} tCO₂e", stock.total_tco2e);
-for pool in &stock.pools {
-    println!("  {}: {:.1} tCO₂e/ha", pool.pool.label(), pool.tco2e_per_ha);
-}
 ```
 
-公式: AGB = V×WD×BEF×CF×44/12; BGB = AGB×R; SOC = SOC_ref×FLU×FMG×FI×44/12
+公式: AGB = V × WD × BEF × CF × 44/12; BGB = AGB × R
 
-六生态区预设: TropicalMoist, TropicalDry, TemperateConiferous, TemperateBroadleaf, Boreal, SubtropicalHumid
+#### 1.2.2 VCS/CCB 方法学映射
 
-#### 4.2.2 碳场景
+`vcs_gs.rs` 实现 9 种方法学:
+VM0010 (IFM)、VM0015 (Afforestation)、VM0024 (Wetlands)、VM0026 (Grassland)、VM0032 (REDD+)、VM0033 (Tidal Wetland)、VM0034 (Peatland)、VM0036 (Agroforestry)、VM0046 (Blue Carbon)
 
-造林/IFM/毁林场景，含时间动态：
+### 1.3 遥感辐射校正与 InSAR
+
+TOA 辐射亮度/反射率、DOS 大气校正、云检测、Goldstein 相位解缠、LOS 形变估计。
 
 ```rust
-use geo_carbon_math::{CarbonScenario, LandState, EcoZone, ScenarioInput, CarbonEngine};
-
-let engine = CarbonEngine::new();
-let input = ScenarioInput::new(
-    CarbonScenario::Afforestation, 100.0,
-    LandState::non_forest("grassland"),
-    LandState { landcover_class: "forest".into(), stem_volume_m3_ha: 150.0,
-        ecozone: EcoZone::TemperateBroadleaf, ..Default::default() },
-).with_methodology("IPCC Tier 1 — A/R");
-
-let result = engine.calculate_scenario(&input);
-println!("年碳汇: {:.1} tCO₂e/yr", result.annual_sequestration());
+use geo_plugin_remote_sensing::{full_radiometric_pipeline, full_insar_pipeline};
 ```
 
-#### 4.2.3 VCS/CCB 方法学
-
-9 种 VCS 方法学自动匹配 + 缓冲池/计入期/CCB 共认证：
-
-```rust
-use geo_carbon_math::{CarbonScenario, CarbonEngine};
-let engine = CarbonEngine::new();
-let s = engine.match_vcs_methodology(CarbonScenario::Afforestation).unwrap();
-// → VM0015, buffer 20%, 40yr crediting, CCB ✅
-```
-
-支持: VM0010(IFM), VM0015(A/R), VM0007(REDD+), VM0006, VM0009, VM0032, VM0037, VM0042, VM0046
-
-### 4.3 NDVI 计算
-
-```rust
-use geo_raster::RasterBand;
-use geo_raster::ndvi::compute_ndvi;
-
-fn main() {
-    // 模拟 100×100 像素的 Sentinel-2 波段
-    let red = RasterBand::new("B4", 100, 100, vec![0.05; 10000], -999.0);
-    let nir = RasterBand::new("B8", 100, 100, vec![0.50; 10000], -999.0);
-
-    let result = compute_ndvi(&red, &nir).unwrap();
-
-    println!("平均 NDVI:       {:?}", result.mean_ndvi);
-    println!("健康植被比例:    {:?}", result.healthy_ratio);
-    println!("退化植被比例:    {:?}", result.degraded_ratio);
-    println!("有效像素:        {}", result.valid_pixels);
-}
-```
-
-### 4.4 GeoJSON IO
-
-```rust
-use geo_io::geojson::parse_feature_collection;
-
-fn main() {
-    let geojson = r#"{
-        "type": "FeatureCollection",
-        "features": [
-            {
-                "type": "Feature",
-                "properties": {"name": "成都高新区"},
-                "geometry": {"type": "Polygon", "coordinates": [[[104.0,30.5],[104.1,30.5],[104.1,30.6],[104.0,30.6],[104.0,30.5]]]}
-            }
-        ]
-    }"#;
-
-    let (features, bbox) = parse_feature_collection(geojson).unwrap();
-    println!("要素数: {}", features.len());
-    println!("范围:   ({}, {}) ~ ({}, {})", bbox.min_x, bbox.min_y, bbox.max_x, bbox.max_y);
-}
-```
+### 1.4 RUSLE 土壤流失方程
 
-### 4.5 瓦片索引 (MVT/PMTiles)
-
-```rust
-use geo_tile::{latlon_to_tile, tile_to_latlon, tile_bounds, MvtEncoder};
-
-// 经纬度 → 瓦片坐标
-let (x, y, z) = latlon_to_tile(104.06, 30.57, 14);
-println!("成都 z14: ({x}, {y})");
-
-// 瓦片边界
-let (w, s, e, n) = tile_bounds(x, y, z);
-println!("范围: ({w}, {s}) ~ ({e}, {n})");
+A = R · K · LS · C · P — 5 因子完整计算，侵蚀等级分类。
 
-// GeoJSON → MVT 矢量瓦片（可直接喂给 MapLibre）
-let encoder = MvtEncoder::new(4096);
-let features = vec![serde_json::json!({
-    "type": "Feature",
-    "properties": {"name": "Chengdu"},
-    "geometry": {"type": "Point", "coordinates": [104.06, 30.57]}
-})];
-let mvt_bytes = encoder.encode_tile("cities", &features, x, y, z)?;
-// mvt_bytes 可直接 HTTP 返回给 MapLibre GL JS
-```
-
-### 4.6 时空趋势分析
-
-```rust
-use geo_temporal::trend::{linear_trend, mann_kendall};
-use geo_temporal::raster_ts::RasterTimeSeries;
-
-// 单像素趋势
-let ndvi_series = vec![0.32, 0.35, 0.38, 0.41, 0.45];
-let result = linear_trend(&ndvi_series);
-println!("斜率: {:.4}/yr, 显著: {}", result.sen_slope, result.significant);
-
-// 多期栅格逐像素 MK 趋势
-let mut ts = RasterTimeSeries::new();
-ts.add(2020, ndvi_2020)?;
-ts.add(2021, ndvi_2021)?;
-ts.add(2023, ndvi_2023)?;
-let tau_map = ts.pixelwise_trend()?;   // 每个像素的 τ
-let change = ts.change_detection(2020, 2023, 0.1)?;  // 改善/退化图
-```
+### 1.5 SCS-CN 径流曲线数
 
-### 4.7 新能源选址
+26 种土地利用 CN 查表，AMC 干旱/正常/湿润修正。
 
-```rust
-use geo_plugin_energy::{EnergyPlugin, EnergyConfig};
+### 1.6 InVEST 碳存储与水源涵养
 
-let plugin = EnergyPlugin::new(EnergyConfig::default());
+4 碳库评估 + Budyko 蒸散发曲线产水量。
 
-// 光伏选址：坡度 < 25° + 年辐射 > 1500 kWh/m²
-let solar = plugin.assess_solar("场址A", aoi_geojson, &dem, &radiation)?;
-println!("适宜比例: {:.0}%, 评级: {}", solar.suitable_ratio * 100.0, solar.grade);
+### 1.7 气象气候
 
-// 风电选址：风速 > 5.5 m/s + 坡度 < 15°
-let wind = plugin.assess_wind("风场B", aoi_geojson, &dem, &wind_speed)?;
-println!("均风速: {:.1} m/s, 评级: {}", wind.mean_windspeed, wind.grade);
-```
+GCM 降尺度 (Delta + 分位数映射)、IDF 曲线 (Sherman)、干旱指数 (SPI/SPEI/PDSI)、Kriging 插值。
 
-### 4.8 DuckDB 嵌入式数据库
+### 1.8 地貌分析
 
-```rust
-use geo_adapter_duckdb::DuckDbStore;
+D8 流向累积 + Strahler 河网 + 河谷断面。
 
-// 内存模式（零部署）
-let store = DuckDbStore::in_memory()?;
+### 1.9 地下水模块
 
-// GeoJSON 直接导入
-let count = store.ingest_geojson_raw("sites", geojson_fc_str)?;
+达西定律、Cooper-Jacob/Theis 抽水试验、MODFLOW 适配。
 
-// SQL 查询（自动 SQL 注入拦截）
-let rows = store.query_json("SELECT name, lon, lat FROM sites WHERE lon > 104")?;
+### 1.10 单位线汇流
 
-// 空间范围查询
-let in_bbox = store.query_bbox("sites", 104.0, 30.0, 105.0, 31.0)?;
-```
+SCS 三角单位线、Snyder 合成单位线、Nash IUH。
 
-### 4.9 STAC 影像搜索
+### 1.11 波浪爬高
 
-```rust
-use geo_adapter_stac::StacClient;
+Stockdon / Mase 公式、越浪量计算。
 
-let client = StacClient::new("https://planetarycomputer.microsoft.com/api/stac/v1");
+### 1.12 海洋物理
 
-let items = client.search(
-    "sentinel-2-l2a",
-    104.0, 30.0, 105.0, 31.0,
-    "2025-06-01", "2025-06-30", 10,
-).await?;
-```
+Ekman 输运、SWAN 波浪变形、潮汐调和分析。
 
-### 4.10 林业碳汇
+### 1.13 土壤模块
 
-geo-toolbox 的林业碳汇体系遵循 **"数据采集 → 数据处理与建模 → 碳汇计量与决策"** 三层智能架构：
+USDA 质地三角分类、van Genuchten 参数、HWSD 数据库。
 
-| 层级 | geo-toolbox 组件 | 核心能力 |
-|------|-----------------|--------|
-| **天（卫星遥感）** | `geo-adapter-stac` + `geo-adapter-gee` | Sentinel-2/Landsat 多时相影像发现与下载 |
-| **空（无人机）** | `geo-io` (NMEA/GPS) + `geo-ogc` (WMS/WFS) | 无人机航迹解析、正射影像接入 |
-| **地（IoT 传感器）** | `geo-adapter-iot` (MQTT) | 气象站、土壤传感器、树木胸径实时数据流 |
-| **数据集成** | `geo-io` (GeoJSON/CSV) + `geo-adapter-postgis` | 样地调查数据落库、空间数据"一张图"管理 |
-| **遥感分析** | `geo-raster` (NDVI/NDWI) + `geo-index` (GeoHash) | 植被指数计算、森林扰动检测 |
-| **时空建模** | `geo-temporal` (MK趋势 + 变化检测) | 多期NDVI序列分析、植被恢复/退化趋势 |
-| **碳汇计量** | `geo-carbon-math` + `geo-plugin-forestry` | IPCC Tier 1 生物量扩展方程、碳储量 → tCO₂e 换算 |
-| **报告输出** | `geo-report` (Tera模板) | 碳汇评估报告 Markdown 渲染 |
+### 1.14 坐标转换
 
-#### 核心用法
+四参数/七参数 Helmert、仿射变换、椭球识别。
 
-##### 1. 碳储量变化评估
+### 1.15 MUSLE 事件版土壤流失
 
-基于两期卫星影像的 NDVI 变化 + 野外样地蓄积量调查，用 IPCC 生物量扩展因子法（BEF）估算碳储量变化。
+A = 11.8 · (Q · qp)^0.56 · K · LS · C · P
 
-```rust
-use geo_plugin_forestry::{ForestryPlugin, ForestryConfig};
-
-let plugin = ForestryPlugin::new(ForestryConfig::default());
-let result = plugin.assess_carbon_stock(
-    "龙泉山林场", aoi_geojson,
-    &red_2020, &nir_2020, &red_2025, &nir_2025,
-    2020, 2025,
-    sample_volume_m3_ha,  // 样地蓄积量 (m³/ha)
-    forest_area_ha,        // 林地面积
-)?;
-
-println!("蓄积量变化:   {:.0} m³", result.volume_change_m3);
-println!("碳储量变化:   {:.1} tC", result.carbon_stock_change_tc);
-println!("碳汇量:       {:.1} tCO₂e", -result.carbon_sink_tco2e);
-println!("年碳汇:       {:.0} tCO₂/yr", -result.annual_sink_tco2_per_yr);
-println!("CCER可开发:   {}", result.ccer_applicable);
-println!("评估等级:     {}", result.grade);
-```
-
-> **CCER 判定逻辑**：年碳汇 > 10 tCO₂/yr 且林地面积 ≥ 100 ha → `ccer_applicable = true`。
-
-##### 2. 多期NDVI趋势分析
-
-利用 `geo-temporal` 对 4 期以上 NDVI 序列做逐像素 Mann-Kendall 趋势检验，识别植被恢复/退化区域。
-
-```rust
-let ndvi_series = vec![&ndvi_2019, &ndvi_2021, &ndvi_2023, &ndvi_2025];
-let years = vec![2019, 2021, 2023, 2025];
-
-let report = plugin.trend_assessment("卧龙保护区", aoi_geojson, &ndvi_series, &years)?;
-// 输出: "卧龙保护区 林业趋势: 68% 像素恢复, 当前均NDVI 0.72"
-```
-
-##### 3. 自定义碳参数
-
-通过 `rules.toml` 配置树种特异性参数（木材密度、含碳率按树种、区域调整）：
-
-```toml
-[plugin]
-name = "forestry"
-version = "0.1.0"
-description = "四川针叶林碳汇评估"
-
-[carbon]
-source = "IPCC_2019"
-biomass_expansion_factor = 1.74  # 针叶林 BEF
-wood_density = 0.45              # 云杉木材密度 (t/m³)
-root_shoot_ratio = 0.23          # 针叶林根冠比
-carbon_fraction = 0.51           # 针叶树含碳率
-```
-
-```rust
-let config = ForestryConfig::from_file("rules.toml")?;
-let plugin = ForestryPlugin::new(config);
-```
-
-##### 4. 完整碳汇评估管线（端到端）
-
-将以上组件串联为一条自动评估管线：
-
-```text
-STAC 搜索两期 Sentinel-2 L2A
-  → geo-raster 计算 NDVI 差值
-  → geo-temporal 变化检测（恢复/退化图）
-  → geo-carbon-math 生物量→碳储量换算
-  → geo-plugin-forestry 输出 CarbonStockAssessment
-  → geo-report 渲染 Markdown 报告
-```
-
-### 算法参考：forestat R 包
-
-geo-toolbox 的林业碳汇计算方法参考了中国林业科学研究院资源信息研究所开发的 R 包 **forestat**（[GitHub](https://github.com/caf-ifrit/forestat)），该包实现了基于林分潜在生长量的立地质量评价与碳汇潜力计算。
-
-#### 六种树高生长模型
-
-| 模型 | 公式 | 适用场景 |
-|------|------|---------|
-| **Richards** | `H = 1.3 + a(1 - e⁻ᵇᴬᴳᴱ)ᶜ` | 通用，最广泛使用 |
-| **Logistic** | `H = 1.3 + a/(1 + be⁻ᶜᴬᴳᴱ)` | S 形生长，速生期明显 |
-| **Korf** | `H = 1.3 + ae⁻ᵇᴬᴳᴱ⁻ᶜ` | 慢生树种，上方渐近 |
-| **Gompertz** | `H = 1.3 + ae⁻ᵇᵉ⁻ᶜᴬᴳᴱ` | 不对称 S 形 |
-| **Weibull** | `H = 1.3 + a(1 - e⁻ᵇᴬᴳᴱᶜ)` | 灵活形状参数 |
-| **Schumacher** | `H = 1.3 + ae⁻ᵇ/ᴬᴳᴱ` | 简单，少参数 |
-
-#### 断面积与生物量生长模型
-
-两种模型共用 Richard 形式，引入林分密度指数 S 作为协变量：
-
-```
-BA = a(1 - exp(-b × (S/1000)ᶜ × AGE))ᵈ
-Bio = a(1 - exp(-b × (S/1000)ᶜ × AGE))ᵈ
-```
-
-其中 `S` = 林分密度指数 (SDI)，反映林分拥挤程度。
-
-#### 立地等级划分（迭代分级法）
-
-1. 按林龄分组，等距划分初始树高等级
-2. 拟合非线性混合效应树高模型（林分作为随机效应）
-3. 根据拟合曲线重新分配每块样地的立地等级
-4. 迭代至收敛，得到每个林分类型的分级树高生长曲线
-
-#### 潜在生产力计算
-
-给定立地等级下，通过**黄金分割法**搜索最优林分密度 S，使年生长增量最大化：
-
-```
-Max MI = maxₛ [M(S, AGE+1) - M(S, AGE)]
-```
-
-其中 M 为生物量生长模型预测值。黄金分割法在 [Smin=20, Smax=3000] 区间搜索最优 S。
-
-#### 现实生产力计算
-
-对每块样地，使用实际观测的 AGE、S 和立地等级代入生长模型，计算当前的断面积年生长量 (BAI) 和生物量年生长量 (VI)。
-
-#### 碳汇潜力
-
-```
-碳汇潜力 = 潜在生产力 - 现实生产力
-```
-
-定量回答：给定立地条件下最大能达到多少、现在是多少、提升空间有多大。
-
----
-
-> **集成路线图**：以上算法目前以 R 包 `forestat` 实现，geo-toolbox 计划分阶段将核心模型移植为 Rust 原生实现（`geo-carbon-math` 扩展），并保留 R 语言桥接适配器（`geo-adapter-forestat`）作为过渡方案。
-
-#### 关键参数说明
-
-| 参数 | 符号 | 默认值 | 说明 |
-|------|------|--------|------|
-| `biomass_expansion_factor` | BEF | 1.7 | 生物量扩展因子，地上生物量→全树生物量 |
-| `wood_density` | WD | 0.55 t/m³ | 木材基本密度 |
-| `root_shoot_ratio` | R | 0.25 | 根冠比，地下/地上生物量 |
-| `carbon_fraction` | CF | 0.47 | 生物量含碳率 (IPCC 默认) |
-| `co2_c_ratio` | 44/12 | 3.6667 | CO₂/C 分子量比 |
-
-**计算链**：
-```
-蓄积量变化 (m³) × BEF × WD × (1+R) × CF = 碳储量变化 (tC)
-碳储量变化 × (44/12) = 碳汇量 (tCO₂e)
-```
-
-#### 前沿展望
-
-geo-toolbox 的林业模块正朝以下方向演进：
-
-- **AI 增强**：集成 ML 模型实现树种自动分类、病虫害早期识别
-- **数字孪生森林**：在虚拟空间构建与真实林场对应的动态模型，推演经营方案
-- **区块链存证**：碳汇监测数据上链，保障 CCER 交易数据的真实性、完整性和可追溯性
-- **大模型接入**：通过 MCP 协议对接 LLM，实现自然语言驱动的林业查询与报告生成
-
-### 4.11 海岸带监测
-
-```rust
-use geo_plugin_coastal::CoastalPlugin;
-
-let report = CoastalPlugin::new().assess_shoreline(
-    "上海", aoi, &dem, &ndvi_2015, &ndvi_2025, 2015, 2025, 1.0,
-)?;
-println!("侵蚀: {:.0}%, 淹没: {:.0} ha", report.erosion_ratio*100.0, report.inundated_area_ha);
-```
-
-### 4.12 OSM 数据拉取
-
-```rust
-use geo_adapter_osm::OsmClient;
-
-let client = OsmClient::new();
-let elements = client.query_bbox(104.0,30.0,105.0,31.0, OsmFeature::Highway).await?;
-let fc = OsmClient::to_geojson(&elements);
-```
-
-### 4.13 CLI 管道模式
-
-Unix 流水线风格的地理空间处理：通过 stdin/stdout 串联 GeoJSON FeatureCollection。
+### 1.16 CLI 管道模式
 
 ```bash
-# CSV → GeoJSON → 缓冲区 → 写文件
-go pipeline read data.csv --format csv \
-  | geo pipeline buffer --distance 500 \
-  | geo pipeline write output.geojson
-
-# GeoJSON → 按属性过滤 → 算面积
-go pipeline read city.geojson \
-  | geo pipeline filter key=class value=park \
-  | geo pipeline area
-
-# 重投影(需--features proj-crs) → 抽稀
-go pipeline read aoi.geojson \
-  | geo pipeline reproject --from-epsg 4326 --to-epsg 3857 \
-  | geo pipeline simplify --epsilon 0.005
+geo pipeline read input.geojson | geo buffer 500 | geo write output.geojson
+geo pipeline read city.geojson | geo filter key=class value=park | geo area
+geo pipeline read data.geojson | geo reproject --from-epsg 4326 --to-epsg 3857 | geo write out.json
 ```
 
-管道子命令一览：
-
-| 命令 | 说明 |
-|------|------|
-| `read [file]` | 读 GeoJSON/CSV → stdout |
-| `buffer --distance N` | 缓冲区 |
-| `simplify --epsilon N` | Douglas-Peucker 抽稀 |
-| `reproject --from-epsg N --to-epsg M` | CRS 重投影 (需 `proj-crs` feature) |
-| `write <file>` | stdout → 文件 (GeoJSON/CSV) |
-| `area` | 面积统计 → JSON |
-| `filter key=X value=Y` | 按属性过滤 |
+可用子命令: `read`, `buffer`, `simplify`, `reproject`, `write`, `area`, `filter`
 
 ---
 
-## 4.14 RUSLE 土壤流失方程
+## 2. 插件开发
 
-**文件**: `plugins/geo-plugin-ecology/src/rusle.rs`
-
-修正通用土壤流失方程（Revised Universal Soil Loss Equation）：
-
-`A = R × K × LS × C × P`
-
-| 因子 | 含义 | 单位 |
-|------|------|------|
-| R | 降雨侵蚀力 | MJ·mm/ha·h·yr |
-| K | 土壤可蚀性 | t·ha·h/ha·MJ·mm |
-| LS | 坡长-坡度 | 无量纲 |
-| C | 覆盖管理 | 0-1 |
-| P | 水土保持措施 | 0-1 |
-| A | 年均土壤流失量 | t/ha/yr |
-
-### 侵蚀等级
-
-| 等级 | 流失量 (t/ha/yr) |
-|------|-----------------|
-| 微度 | < 5 |
-| 轻度 | 5 - 10 |
-| 中度 | 10 - 20 |
-| 强烈 | 20 - 50 |
-| 极强烈 | > 50 |
-
-### 核心 API
-
-```rust
-use geo_plugin_ecology::rusle::*;
-
-// R 因子 — 月降雨数据
-let monthly = vec![
-    &[50,60,100,150,200,250,200,180,120,80,60,40][..],
-    &[45,55,95,140,190,240,210,170,110,75,55,38][..],
-];
-let r_factor = compute_r_factor(&monthly);
-
-// R 因子简化 — 年降雨量
-let r = compute_r_factor_simple(1000.0); // 约 3265
-
-// K 因子 — 土壤质地
-let k = compute_k_factor(20.0, 65.0, 15.0, 7.0, 2.0, 2, 3);
-
-// LS 因子 — 从 DEM
-let dem = vec![100.0; 9];
-let ls = compute_ls_from_dem(&dem, 30.0, 3, 3);
-
-// C 因子 — 从 NDVI
-let ndvi = vec![0.3, 0.5, 0.7, 0.0];
-let c = compute_c_factor_from_ndvi(&ndvi);
-
-// P 因子 — 措施类型
-let p = compute_p_factor(&[5.0, 10.0, 15.0], PracticeType::Terracing);
-
-// 完整评估
-let result = assess_soil_loss(
-    &dem, None, 30.0, 3, 3,
-    4000.0,  // R factor
-    None,     // K factor (default 0.032)
-    &ndvi,
-    PracticeType::Contouring,
-);
-println!("平均流失: {:.1} t/ha/yr", result.soil_loss_mean);
-println!("侵蚀等级分布: {:?}", result.class_distribution);
-```
-
----
-
-## 4.15 SCS-CN 径流曲线数
-
-**文件**: `plugins/geo-plugin-hydro/src/scs_cn.rs`
-
-NRCS 径流曲线数法（SCS-CN）：
-
-`Q = (P - Ia)² / (P - Ia + S)`
-
-其中 `S = 25400/CN - 254`，`Ia = 0.2 × S`。
-
-### 水文土壤分组
-
-| 分组 | 入渗率 | 典型土壤 |
-|------|--------|---------|
-| A | 高 | 砂土、砾石 |
-| B | 中等 | 粉砂壤土 |
-| C | 慢 | 粘壤土 |
-| D | 低 | 粘土 |
-
-### CN 查表（部分）
-
-| 土地利用 | A | B | C | D |
-|---------|----|----|----|----|
-| 森林 | 30 | 55 | 70 | 77 |
-| 草地 | 39 | 61 | 74 | 80 |
-| 耕地 | 67 | 78 | 85 | 89 |
-| 城市 | 89 | 92 | 94 | 95 |
-| 水体 | 100 | 100 | 100 | 100 |
-| 裸地 | 77 | 86 | 91 | 94 |
-
-共 26 种土地利用类型。
-
-### 核心 API
-
-```rust
-use geo_plugin_hydro::scs_cn::*;
-
-// CN 查表
-let cn = get_cn_ii("forest_good", SoilGroup::B); // 55
-
-// AMC 修正（干旱）
-let dry_cn = adjust_cn_for_amc(cn, AMC::Dry);
-
-// 计算径流
-let runoff = compute_runoff(100.0, 70.0, 0.2); // 降雨100mm, CN70
-// → Q ≈ 32.7 mm
-
-// 完整评估
-let landuse: Vec<&str> = vec!["forest_good", "cropland", "urban", "water"];
-let soil = vec![SoilGroup::A, SoilGroup::B, SoilGroup::C, SoilGroup::D];
-let result = assess_runoff(&landuse, &soil, 100.0, AMC::Normal, 4, 30.0, 0.2);
-println!("CN 均值: {:.1}", result.cn_mean);
-println!("径流深: {:.1} mm", result.runoff_mm);
-```
-
----
-
-## 4.16 InVEST 碳存储与水源涵养
-
-**文件**: `plugins/geo-plugin-hydro/src/invest.rs`
-
-基于 Natural Capital Project InVEST 3.x 模型。
-
-### 碳存储
-
-4 碳库模型：`C_total = C_above + C_below + C_soil + C_dead`
-
-| 碳库 | 说明 |
-|------|------|
-| 地上生物量 | 活植被地上部分 (Mg C/ha) |
-| 地下生物量 | 根系 (Mg C/ha) |
-| 土壤有机碳 | 矿质土有机碳 (Mg C/ha) |
-| 枯落物 | 凋落物+粗木质残体 (Mg C/ha) |
-
-内置 20 种生态系统碳密度默认值（常绿阔叶林 244, 草地 78, 湿地 222 Mg C/ha 等）。
-
-### 水源涵养
-
-Budyko 蒸散发曲线：
-
-`AET/P = 1 + PET/P - (1 + (PET/P)^ω)^(1/ω)`
-
-`ω = Z × AWC/P + 1.25`
-
-产水量：`Y = (1 - AET/P) × P`
-
-### 核心 API
-
-```rust
-use geo_plugin_hydro::invest::*;
-
-// 碳存储评估
-let landuse: Vec<&str> = vec!["forest", "forest", "cropland", "water"];
-let carbon = assess_carbon_storage(&landuse, 30.0, None);
-println!("总碳储量: {:.0} Mg C", carbon.total_carbon_mg);
-println!("碳密度: {:.1} Mg C/ha", carbon.carbon_density_mg_per_ha);
-
-// 产水量评估
-let p = vec![1000.0, 800.0, 600.0, 400.0];
-let pet = vec![500.0, 400.0, 300.0, 200.0];
-let awc = vec![100.0; 4];
-let water = assess_water_yield(&p, &pet, &awc, 5.0, 30.0);
-println!("产水量: {:.1} mm/yr", water.water_yield_mm);
-println!("总产水量: {:.0} m³/yr", water.total_water_yield_m3);
-
-// 综合评估
-let invest = assess_invest(&landuse, &p, &pet, &awc, 5.0, 30.0);
-```
-
----
-
-## 4.17 气象气候：GCM降尺度 + IDF + 干旱指数 + Kriging
-
-**文件**: `plugins/geo-plugin-climate/`（全新插件，7模块）
-
-### GCM 降尺度 (`gcm.rs`)
-
-两种方法将全球气候模型输出降尺度到站点/栅格：
-
-| 方法 | 函数 | 原理 |
-|------|------|------|
-| Delta 法 | `delta_downscale()` | 未来GCM月均值 − 历史GCM月均值 + 观测值，线性贴合 |
-| 分位数映射 | `quantile_mapping()` | 构建观测与GCM的CDF转换函数，校正分布偏倚 |
-
-```rust
-// 降尺度温度：未来+3°C信号
-let obs = vec![15.0, 16.0, 18.0];
-let gcm_hist = vec![14.5, 15.5, 17.5];
-let gcm_fut = vec![17.5, 18.5, 20.5];
-let downscaled = delta_downscale(&obs, &gcm_hist, &gcm_fut);
-```
-
-### IDF 曲线 (`idf.rs`)
-
-Sherman 公式拟合：
-`i = c / (t + b)^d`
-
-```rust
-let data = vec![
-    IdfRecord { duration_min: 10.0, intensity: 120.0 },
-    IdfRecord { duration_min: 60.0, intensity: 40.0 },
-];
-let params = idf_curve(&data).unwrap();
-let i_30min = idf_return_period(&params, 30.0); // 30分钟降雨强度
-```
-
-### 干旱指数 (`drought.rs`)
-
-| 指数 | 函数 | 时间尺度 |
-|------|------|---------|
-| SPI | `compute_spi()` | 标准化降水指数，月/季/年 |
-| SPEI | `compute_spei()` | 标准化降水蒸散发指数 |
-| PDSI | `compute_pdsi()` | 帕尔默指数，含水分平衡 |
-
-### 克里金插值 (`kriging.rs`)
-
-| 方法 | 函数 |
-|------|------|
-| 普通克里金 | `ordinary_kriging()` — 未知均值，半变异函数拟合 |
-| 简单克里金 | `simple_kriging()` — 已知全局均值 |
-| 半变异函数 | `semivariogram()` — 实验/理论半变异图 |
-
----
-
-## 4.18 地貌分析：D8流向累积 + Strahler河网
-
-**文件**: `plugins/geo-plugin-geomorph/src/d8.rs`、`river.rs`
-
-### D8 流向 (`d8_flow_direction`)
-
-单流向算法：8方向邻域 + 平面/洼地填充双模式。
-
-| 模式 | 行为 |
-|------|------|
-| 平面 (fill=false) | 原始 DEM，含洼地 |
-| 填洼 (fill=true) | 抬升洼地至最低溢出点（Jenson & Domingue） |
-
-### 流向编码
-
-| 方向 | 代码 |
-|------|:----:|
-| E | 0 |
-| NE | 1 |
-| N | 2 |
-| NW | 3 |
-| W | 4 |
-| SW | 5 |
-| S | 6 |
-| SE | 7 |
-| Pit | 255 |
-
-### 流量累积
-
-两种实现：
-- `d8_flow_accumulation()` — 下游行走法（简单），逐个细胞下游追踪
-- `d8_flow_accumulation_fast()` — 递归+记忆化（高效），O(rows×cols) 一次遍历
-
-### Strahler 河网 (`river.rs`)
-
-`strahler_order()` — 河段分级。`extract_stream_segments()` — 从流向栅格提取连线河段。`valley_cross_section()` — V型/U型断面拟合。
-
----
-
-## 4.19 地下水模块：达西定律 + MODFLOW适配
-
-**文件**: `plugins/geo-plugin-hydro/src/groundwater.rs`
-
-| 模块 | 函数 | 说明 |
-|------|------|------|
-| 达西渗流 | `darcy_flow()` | Q = KiA，水力传导K、梯度i、截面A |
-| 承压井函数 | `theim_confined()` / `thiem_unconfined()` | Thiem 稳定流降深 |
-| 河流补给 | `river_recharge_gain()` | 河流-含水层交互 (渗漏/补给) |
-| MODFLOW 文件 | `generate_modflow_dis()` / `bas6()` / `lpf()` / `pcg()` | .DIS / .BAS6 / .LPF / .PCG 适配 |
-| 达西速度 | `darcy_velocity()` / `seepage_velocity()` | 达西流速 vs 孔隙实际流速 |
-| 溶质运移 | `advection_dispersion_1d()` | 对流-弥散方程 1D |
-
----
-
-## 4.20 单位线汇流：SCS三角 + Snyder合成 + IUH
-
-**文件**: `plugins/geo-plugin-hydro/src/unit_hydrograph.rs`
-
-SCS-CN 产流 + 单位线汇流 = 完整洪水过程线。
-
-| 方法 | 函数 | 适用 |
-|------|------|------|
-| SCS 三角单位线 | `scs_triangular_uh()` | 小流域（面积<50km²） |
-| SCS 无因次单位线 | `scs_dimensionless_uh()` | 标准 SCS 曲线（NRCS） |
-| Snyder 合成单位线 | `snyder_synthetic_uh()` | 参数化流域（Ct, Cp 经验参数） |
-| 瞬时单位线 (IUH) | `instantaneous_uh_nash()` | Nash 串联水库模型 |
-| 卷积汇流 | `convolution_hydrograph()` | 净雨×单位线→洪水过程 |
-
-```rust
-let area_km2 = 50.0;
-let uh_scs = scs_triangular_uh(area_km2, 0.5, 0.5);
-let excess_rainfall = vec![10.0, 20.0, 5.0]; // mm
-let flood = convolution_hydrograph(&uh_scs, &excess_rainfall);
-```
-
----
-
-## 4.21 波浪爬高：Stockdon / Mase 公式
-
-**文件**: `plugins/geo-plugin-coastal/src/wave_runup.rs`
-
-| 公式 | 函数 | 来源 |
-|------|------|------|
-| Stockdon (2006) | `stockdon_runup()` | 有义波高 Hs + 周期 Tp + 坡度 β |
-| Mase (1989) | `mase_runup()` | 基于 Irribarren 数的经验公式 |
-| 平均爬高 | `mean_runup()` | R₂ 统计爬高 (2% exceedance) |
-| 组合评估 | `wave_runup_assessment()` | 多方法综合，含合理性校验 |
-| 越浪 | `wave_overtopping_rate()` | 单位宽度越浪流量 (m³/s/m) |
-
----
-
-## 4.22 海洋物理：Ekman输运 + SWAN波浪 + 潮汐调和
-
-**文件**: `plugins/geo-plugin-coastal/src/ocean.rs`
-
-| 模块 | 函数 | 说明 |
-|------|------|------|
-| Ekman 输运 | `ekman_transport()` | 风应力驱动的海水输运 |
-| 波浪能通量 | `wave_energy_flux()` | P = E·cg，波功率 (W/m) |
-| SWAN 波浪 | `swan_wave_transformation()` | 向岸波浅化/折射/破波 (Komar-Gaughan) |
-| 波浪增水 | `wave_setup()` | 破波引起的平均水位抬升 |
-| 潮汐分析 | `harmonic_tide()` / `tide_range()` | 天文潮调和 + 大潮小潮范围 |
-| 潮汐基准面 | `chart_datum_correction()` | CD↔MSL 换算 |
-| 风暴潮 | `storm_surge_simple()` | 逆气压 + 风增水 |
-| ENSO 指数 | `nino_34_index()` / `oni_index()` / `enso_diagnosis()` | 厄尔尼诺-南方涛动诊断 |
-
----
-
-## 4.23 土壤模块：USDA质地 + van Genuchten + HWSD
-
-**文件**: `plugins/geo-plugin-ecology/src/soil.rs`
-
-| 功能 | 函数 | 说明 |
-|------|------|------|
-| 质地分类 | `usda_texture_class()` | USDA三角，12质地砂/粘/粉粒%→类别 |
-| SCS水文分组 | `scs_hydrologic_group()` | 质地→A/B/C/D组 |
-| RUSLE K因子 | `k_factor_estimate()` | 质地→K经验值 (0.02-0.38) |
-| van Genuchten | `van_genuchten_params()` | Carsel & Parrish (1988) 12质地参数 |
-| 有效饱和度 | `effective_saturation()` | Se(h) = 1/(1+(α|h|)^n)^m |
-| 含水量 | `water_content()` | θ(h) = θr + (θs-θr)×Se |
-| 非饱和K | `unsaturated_k()` | Mualem 模型 K(h) = Ks × Kr |
-| HWSD查询 | `hwsd_lookup()` | 中文土壤名→SoilRecord |
-
-内置7种中国土壤参数：红壤、水稻土、黑土、棕壤、褐土、风沙土、荒漠土。
-
----
-
-## 4.24 坐标转换：四参数 + 七参数 + 仿射
-
-**文件**: `plugins/geo-plugin-survey/src/transform.rs`
-
-| 模型 | 函数 | 说明 |
-|------|------|------|
-| 四参数 | `helmert_4param()` | 平移+旋转+尺度，平面坐标 |
-| 七参数 (Helmert) | `helmert_7param()` | 3平移+3旋转+尺度，椭球间转换 |
-| 仿射变换 | `affine_transform_2d()` / `fit_affine_2d()` | 6参数一般线性，N点最小二乘拟合 |
-| 对点拟合 | `fit_helmert_4param()` | 同名控制点→四参数 |
-
-支持 CGCS2000↔Beijing54↔WGS84 等中国常用基准转换。
-
----
-
-## 4.25 DSSAT作物模型适配
-
-**文件**: `plugins/geo-plugin-agri/src/dssat.rs`
-
-| 输入文件 | 函数 | 说明 |
-|----------|------|------|
-| .WTH (天气) | `write_wth()` | DSSAT 日气象数据格式 |
-| .SOIL (土壤) | `write_soil_solo()` | 单层土壤文件 |
-| .CUL (品种) | `write_cul()` | 品种参数文件 |
-| .CO2 (CO₂) | `write_co2()` | IPCC 情景 CO₂ 浓度 |
-| .DXF / FILEX | `write_filex()` / `write_filex_section()` | 实验控制文件 |
-
-```rust
-let wth = WthRecord {
-    station: "STATION".into(), year: 2024, julian: 1,
-    solar_rad: 20.0, tmax: 30.0, tmin: 20.0, rain: 0.0,
-};
-let output = write_wth(&[wth], &WthHeader::default());
-```
-
----
-
-
-## 4.26 MUSLE 事件版土壤流失
-
-MUSLE (Modified Universal Soil Loss Equation) 是 RUSLE 的**单次暴雨版**，用径流能量替代降雨侵蚀力因子 R：
-
-`A = 11.8 x (Q x qp)^0.56 x K x LS x C x P`
-
-| 参数 | 说明 | 来源 |
-|------|------|------|
-| Q | 暴雨径流总量 (m3) | SCS-CN 产流 |
-| qp | 洪峰流量 (m3/s) | 单位线或经验公式 |
-| K/LS/C/P | 与 RUSLE 相同因子 | geo-raster/soil 模块 |
-
-### 示例
-
-```rust
-use geo_plugin_ecology::musle::{assess_musle, musle_event_assessment, musle_annual_average};
-
-// 单次暴雨评估
-let result = assess_musle(10000.0, 5.0, 0.28, 2.5, 0.25, 0.6, 10.0);
-println!("土壤流失: {:.1} t", result.soil_loss_t);
-
-// 多事件评估
-let events = vec![(3000.0, 1.5), (8000.0, 4.0), (2000.0, 1.0)];
-let results = musle_event_assessment(&events, 0.25, 2.0, 0.3, 0.5, 5.0);
-
-// 年均土壤流失
-let avg = musle_annual_average(&events, 0.25, 2.0, 0.3, 0.5, 5.0);
-```
-
-### MCP 工具
-
-| 工具 | 输入 | 输出 |
-|------|------|------|
-| ecology_musle_single | runoff_m3, peak_flow_m3s, k_factor, area_ha | MusleResult |
-| ecology_musle_assessment | events[][runoff,peak], k, area_ha | event results[] |
-| ecology_musle_annual | events[][runoff,peak], k, area_ha | annual avg t |
-
----
-
-## 4.27 遥感辐射校正与InSAR形变
-
-geo-plugin-remote-sensing 提供 DN 到地表反射率全管线 + InSAR 形变监测。
-
-### 辐射校正管线
-
-DN -> TOA 辐射亮度 (L = gain x DN + bias) -> TOA 反射率 -> DOS 大气校正 -> 云掩膜
-
-### 示例
-
-```rust
-use geo_plugin_remote_sensing::radiometric::full_radiometric_pipeline;
-
-let dn = vec![
-    vec![80.0; 100],
-    vec![50.0; 100],
-    vec![200.0; 100],
-];
-let result = full_radiometric_pipeline(
-    &dn, &[0.1, 0.05, 0.04], &[-0.5, -0.1, 0.0],
-    50.0, 1.0, 0.01, 0.2, 1, 2,
-);
-println!("云像素: {}/{}", result.cloud_mask.iter().filter(|&&c|c).count(), result.cloud_mask.len());
-```
-
-### InSAR 形变监测管线
-
-主从 SLC 影像 -> 相干性计算 -> 缠绕相位 -> Goldstein 解缠 -> LOS 形变
-
-### MCP 工具
-
-| 工具 | 说明 |
-|------|------|
-| remote_toa_radiance | TOA 辐射亮度: DN x gain + bias |
-| remote_full_pipeline | 完整校正管线: DN -> 地表反射率 + 云掩膜 |
-| remote_cloud_mask | 云检测 (NDVI + 亮度阈值) |
-| remote_insar_coherence | 主从影像相干性 |
-| remote_insar_full | 完整 InSAR: 相干性 -> 解缠 -> 形变 |
-| remote_insar_displacement_class | 形变等级分类 |
-
----
-
-以开发一个"矿山风险评估插件"为例，走完整流程。
-
-### 5.1 创建插件骨架
+### 2.1 创建插件骨架
 
 ```bash
-mkdir -p plugins/geo-plugin-mine/src
-mkdir -p plugins/geo-plugin-mine/templates
+mkdir -p plugins/geo-plugin-myplugin/src
 ```
 
-**Cargo.toml：**
+**Cargo.toml:**
 
 ```toml
-# plugins/geo-plugin-mine/Cargo.toml
 [package]
-name = "geo-plugin-mine"
+name = "geo-plugin-myplugin"
 version.workspace = true
 edition.workspace = true
-description = "矿山风险评估插件 — 坡度分析、植被覆盖、碳汇评估"
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
-geo-raster = { path = "../../core/geo-raster" }
-geo-stats = { path = "../../core/geo-stats" }
-geo-io = { path = "../../core/geo-io" }
-geo-carbon-math = { path = "../../core/geo-carbon-math" }
-geo-report = { path = "../../core/geo-report" }
-
+geo-registry = { path = "../../core/geo-registry" }
 serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true
-thiserror.workspace = true
-
-# ⚠ 注意：不依赖 geo-adapter-*、不依赖其他 geo-plugin-*
 ```
 
-### 5.2 编写配置
+### 2.2 配置
 
 ```rust
-// plugins/geo-plugin-mine/src/config.rs
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct MineConfig {
-    pub plugin: PluginMeta,
-    #[serde(default)]
-    pub slope: SlopeConfig,
-    #[serde(default)]
-    pub vegetation: VegetationConfig,
-    #[serde(default)]
-    pub carbon: CarbonConfig,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MyPluginConfig {
+    pub plugin: geo_core::plugin::PluginMeta,
+    pub my_param: f64,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct PluginMeta {
-    pub name: String,
-    pub version: String,
-    pub description: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct SlopeConfig {
-    #[serde(default = "default_low_risk")]
-    pub low_risk_deg: f64,
-    #[serde(default = "default_high_risk")]
-    pub high_risk_deg: f64,
-}
-
-fn default_low_risk() -> f64 { 10.0 }
-fn default_high_risk() -> f64 { 25.0 }
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct VegetationConfig {
-    #[serde(default = "default_ndvi_healthy")]
-    pub ndvi_healthy_min: f64,
-    #[serde(default = "default_ndvi_degraded")]
-    pub ndvi_degraded_max: f64,
-}
-
-fn default_ndvi_healthy() -> f64 { 0.5 }
-fn default_ndvi_degraded() -> f64 { 0.2 }
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct CarbonConfig {
-    #[serde(default = "default_source")]
-    pub source: String,
-    #[serde(default)]
-    pub forest: f64,
-    #[serde(default)]
-    pub grassland: f64,
-    #[serde(default)]
-    pub bare: f64,
-}
-
-fn default_source() -> String { "IPCC_2019".into() }
-
-impl Default for MineConfig {
+impl Default for MyPluginConfig {
     fn default() -> Self {
-        toml::from_str(include_str!("../rules.toml")).unwrap()
-    }
-}
-```
-
-**rules.toml：**
-
-```toml
-# plugins/geo-plugin-mine/rules.toml
-
-[plugin]
-name = "mine"
-version = "0.1.0"
-description = "矿山风险评估插件"
-
-[slope]
-low_risk_deg = 10.0
-high_risk_deg = 25.0
-
-[vegetation]
-ndvi_healthy_min = 0.5
-ndvi_degraded_max = 0.2
-
-[carbon]
-source = "IPCC_2019"
-forest = -5.0
-grassland = -1.2
-bare = 0.0
-```
-
-### 5.3 实现业务逻辑
-
-```rust
-// plugins/geo-plugin-mine/src/mine.rs
-use geo_core::errors::GeoResult;
-use geo_core::types::BBox;
-use geo_raster::ndvi::compute_ndvi;
-use geo_raster::RasterBand;
-use geo_carbon_math::{CarbonEngine, EmissionFactor, GeoFeature, CarbonReport};
-
-use crate::config::MineConfig;
-
-pub struct MinePlugin {
-    config: MineConfig,
-}
-
-#[derive(Debug, serde::Serialize)]
-pub struct MineAssessment {
-    pub aoi_name: String,
-    pub bbox: BBox,
-    pub ndvi_mean: Option<f64>,
-    pub vegetation_healthy: bool,
-    pub slope_risk: String,
-    pub carbon_report: CarbonReport,
-    pub overall_risk: String,
-    pub summary: String,
-}
-
-impl MinePlugin {
-    pub fn new(config: MineConfig) -> Self {
-        Self { config }
-    }
-
-    pub fn config(&self) -> &MineConfig {
-        &self.config
-    }
-
-    pub fn from_file(path: &std::path::Path) -> GeoResult<Self> {
-        let s = std::fs::read_to_string(path)?;
-        let config: MineConfig = toml::from_str(&s)
-            .map_err(|e| geo_core::GeoError::Validation(e.to_string()))?;
-        Ok(Self { config })
-    }
-
-    /// 完整矿山风险评估
-    pub fn assess(
-        &self,
-        aoi_name: &str,
-        aoi_geojson: &str,
-        red: &RasterBand,
-        nir: &RasterBand,
-        year: u16,
-    ) -> GeoResult<MineAssessment> {
-        let bbox = geo_io::extract_bbox(aoi_geojson)?;
-
-        // 1. NDVI 植被分析
-        let ndvi = compute_ndvi(red, nir)?;
-        let mean_ndvi = ndvi.mean_ndvi.unwrap_or(0.0);
-        let veg_healthy = mean_ndvi >= self.config.vegetation.ndvi_healthy_min;
-
-        // 2. 坡度风险判定（简化：基于 NDVI 代理）
-        //    实际应用中需结合 DEM 栅格数据
-        let slope_risk = if mean_ndvi < self.config.vegetation.ndvi_degraded_max {
-            "高风险".to_string()
-        } else if mean_ndvi < self.config.vegetation.ndvi_healthy_min {
-            "中风险".to_string()
-        } else {
-            "低风险".to_string()
-        };
-
-        // 3. 碳核算
-        let engine = CarbonEngine::new();
-        let factors = vec![
-            EmissionFactor::new("forest", self.config.carbon.forest, &self.config.carbon.source),
-            EmissionFactor::new("grassland", self.config.carbon.grassland, &self.config.carbon.source),
-            EmissionFactor::new("bare", self.config.carbon.bare, &self.config.carbon.source),
-        ];
-
-        let fc: serde_json::Value = serde_json::from_str(aoi_geojson)
-            .map_err(|e| geo_core::GeoError::Serde(e))?;
-        let features = fc["features"].as_array()
-            .ok_or_else(|| geo_core::GeoError::Validation("no features".into()))?
-            .iter()
-            .filter_map(|f| {
-                let s = serde_json::to_string(f).ok()?;
-                GeoFeature::from_feature_json(&s).ok()
-            })
-            .collect::<Vec<_>>();
-
-        let carbon = engine.calculate(&features, &factors, year)
-            .map_err(|e| geo_core::GeoError::Validation(e))?;
-
-        // 4. 综合评级
-        let risk_count = [
-            veg_healthy,
-            slope_risk == "低风险",
-            carbon.is_net_sink(),
-        ].iter().filter(|&&x| x).count();
-
-        let (overall_risk, summary) = match risk_count {
-            3 => ("🟢 低风险", format!("{} 矿山生态状况良好：植被健康、坡度安全、净碳汇。", aoi_name)),
-            2 => ("🟡 中风险", format!("{} 矿山需关注：{} 项指标未达标，建议加强监测。", aoi_name, 3 - risk_count)),
-            _ => ("🔴 高风险", format!("{} 矿山生态退化严重，需立即启动修复措施。", aoi_name)),
-        };
-
-        Ok(MineAssessment {
-            aoi_name: aoi_name.to_string(),
-            bbox,
-            ndvi_mean: ndvi.mean_ndvi,
-            vegetation_healthy: veg_healthy,
-            slope_risk,
-            carbon_report: carbon,
-            overall_risk: overall_risk.to_string(),
-            summary: summary.to_string(),
-        })
-    }
-}
-```
-
-### 5.4 注册到项目
-
-**lib.rs：**
-
-```rust
-// plugins/geo-plugin-mine/src/lib.rs
-pub mod config;
-pub mod mine;
-
-pub use config::MineConfig;
-pub use mine::{MinePlugin, MineAssessment};
-```
-
-**workspace Cargo.toml（根目录）：**
-
-```toml
-[workspace]
-members = [
-    # ... 其他成员 ...
-    "plugins/geo-plugin-mine",   # ← 添加这一行
-]
-```
-
-### 5.5 在 CLI 中使用
-
-```rust
-// crates/geo-cli/src/commands/mine.rs
-use geo_plugin_mine::MinePlugin;
-use geo_raster::RasterBand;
-
-pub fn handle_mine_assess(
-    aoi_name: &str,
-    aoi_geojson: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let plugin = MinePlugin::from_file(
-        std::path::Path::new("plugins/geo-plugin-mine/rules.toml")
-    )?;
-
-    // 构造测试波段（实际应从文件读取）
-    let red = RasterBand::new("B4", 10, 10, vec![0.1; 100], -999.0);
-    let nir = RasterBand::new("B8", 10, 10, vec![0.5; 100], -999.0);
-
-    let result = plugin.assess(aoi_name, aoi_geojson, &red, &nir, 2025)?;
-
-    println!("风险评估: {}", result.overall_risk);
-    println!("{}", result.summary);
-    Ok(())
-}
-```
-
----
-
-## 6. 适配器使用
-
-### 6.1 PostgreSQL + PostGIS
-
-```rust
-use geo_adapter_postgis::{PostgisStore, PostgisCarbonEngine, run_migrations};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let db_url = "postgres://geo:geo@localhost/geo_test";
-
-    // 1. 连接数据库
-    let store = PostgisStore::connect(db_url).await?;
-
-    // 2. 确认 PostGIS 可用
-    let version = store.check_postgis().await?;
-    println!("PostGIS: {version}");
-
-    // 3. 运行数据迁移
-    run_migrations(store.pool()).await?;
-
-    // 4. 查询（SQL 注入自动拦截）
-    let rows = store.query_json("SELECT PostGIS_Version()").await?;
-    println!("{:#?}", rows);
-
-    // 5. 写入几何
-    let wkb = vec![/* WKB 二进制数据 */];
-    store.insert_geometry(
-        None,
-        "manual-import",
-        &wkb,
-        &serde_json::json!({"name": "测试区域"}),
-    ).await?;
-
-    // 6. 碳核算引擎
-    let engine = PostgisCarbonEngine::new(store.pool().clone());
-
-    // 导入排放因子 CSV
-    engine.import_factors_csv("examples/chengdu-carbon/emission-factors.csv").await?;
-
-    // 查询有效因子
-    let factors = engine.query_factors(2025, Some("IPCC_2019")).await?;
-    for f in &factors {
-        println!("{} = {:.2} {} ({}..{:?})",
-            f.category, f.factor_value, f.unit,
-            f.valid_from_year, f.valid_to_year);
-    }
-
-    Ok(())
-}
-```
-
-### 6.1.1 双向推送/拉取（ExternalAdapter trait）
-
-PostGIS 适配器实现完整的 `ExternalAdapter` trait，支持 push/pull/execute：
-
-```rust
-use geo_adapter_postgis::adapter::PostgisAdapter;
-use geo_core::plugin::{ExternalAdapter, Plugin, GeoFeature};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut adapter = PostgisAdapter::new("postgres://geo:geo@localhost/geo_test");
-
-    // 初始化连接
-    adapter.init()?;
-
-    // push — 写入空间数据到指定表（自动建表）
-    let features = vec![GeoFeature {
-        id: uuid::Uuid::new_v4().to_string(),
-        geometry: serde_json::json!({"type":"Point","coordinates":[104.06,30.67]}),
-        properties: serde_json::json!({"name": "成都", "population": 16000000}),
-    }];
-    let count = adapter.push("cities", &features).await?;
-    println!("Pushed {count} features");
-
-    // pull — 查询空间数据
-    let results = adapter.pull("SELECT *, ST_AsGeoJSON(geom) AS geojson FROM cities LIMIT 5").await?;
-    for f in &results {
-        println!("Feature: id={} geom={} props={}", f.id, f.geometry, f.properties);
-    }
-
-    // execute — 通用查询
-    let result = adapter.execute("SELECT version()", serde_json::json!({})).await?;
-    println!("DB version: {result:#?}");
-
-    Ok(())
-}
-```
-
-> ⚠️ 安全：表名、SQL 均经过 `validate_sql_identifier()` / `validate_select_sql()` 校验，
-> 拒绝 DDL/DML 和 SQL 注入字符。生产环境建议使用只读数据库用户。
-
-### 6.2 QGIS 集成
-
-QGIS 适配器统一 `QgisAdapter`，通过环境变量 `QGIS_BACKEND` 自动选择后端：
-
-| 后端 | 模式 | 触发 | 说明 |
-|------|------|------|------|
-| `Subprocess` | `qgis_process` CLI (默认) | `QGIS_BACKEND` 未设置或非 `rest` | 批处理，无需额外 daemon |
-| `REST` | PyQGIS REST 服务 | `QGIS_BACKEND=rest` | 交互式，长运行 QGIS 实例 |
-
-```rust
-use geo_adapter_qgis::adapter::QgisAdapter;
-
-// 自动检测（读 QGIS_BACKEND 环境变量）
-let adapter = QgisAdapter::from_env();
-
-// 或显式指定
-let adapter = QgisAdapter::new_subprocess(Default::default());
-let adapter = QgisAdapter::new_rest("http://localhost:9100");
-```
-
-#### 方式 A：qgis_process 子进程 (默认)
-
-```rust
-use geo_adapter_qgis::process_runner::{BatchQgisRunner, QgisProcessConfig};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let runner = BatchQgisRunner::new(QgisProcessConfig::default());
-
-    // 重投影
-    runner.reproject("input.geojson", 3405, "equalarea.gpkg").await?;
-
-    // 缓冲区
-    runner.buffer("sites.gpkg", 2000.0, "sites_buffer.gpkg").await?;
-
-    // 裁剪
-    runner.clip("landcover.gpkg", "aoi.gpkg", "clipped.gpkg").await?;
-
-    // 相交
-    runner.intersect("layer_a.gpkg", "layer_b.gpkg", "intersection.gpkg").await?;
-
-    println!("处理完成");
-    Ok(())
-}
-```
-
-#### 方式 B：PyQGIS REST 服务 (`QGIS_BACKEND=rest`)
-
-**启动服务端**（在 QGIS Python 控制台或独立脚本）：
-
-```python
-# 保存为 pyqgis_service.py
-from flask import Flask, request, jsonify
-import processing, uuid, threading
-
-app = Flask(__name__)
-jobs = {}
-
-@app.route('/health')
-def health():
-    return "ok"
-
-@app.route('/process', methods=['POST'])
-def submit():
-    data = request.json
-    job_id = str(uuid.uuid4())
-    jobs[job_id] = {"status": "pending", "progress": 0}
-
-    def run():
-        jobs[job_id]["status"] = "running"
-        for i, tool in enumerate(data["tools"]):
-            result = processing.run(tool["algorithm"], tool["params"])
-            jobs[job_id]["progress"] = (i + 1) / len(data["tools"]) * 100
-        jobs[job_id] = {"status": "completed", "progress": 100,
-                        "output": result.get("OUTPUT")}
-    threading.Thread(target=run).start()
-    return jsonify({"job_id": job_id, "status": "accepted"})
-
-@app.route('/status/<job_id>')
-def status(job_id):
-    return jsonify(jobs.get(job_id, {"status": "unknown"}))
-
-@app.route('/result/<job_id>')
-def result(job_id):
-    job = jobs.get(job_id, {})
-    return jsonify({"output_path": job.get("output", "")})
-
-app.run(host="127.0.0.1", port=9100)
-```
-
-启动：
-
-```bash
-# 在 QGIS 安装目录的 Python 环境中
-pip install flask
-python pyqgis_service.py
-```
-
-**Rust 端调用**：
-
-```rust
-use geo_adapter_qgis::grpc_client::{QgisClient, QgisInput};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = QgisClient::new("http://localhost:9100");
-
-    if !client.health_check().await? {
-        eprintln!("PyQGIS 服务未启动");
-        return Ok(());
-    }
-
-    // 缓冲区
-    let output = client.buffer("sites.gpkg", 100.0, Some("sites_buffered")).await?;
-    println!("输出: {output}");
-
-    // 重投影
-    let reprojected = client.reproject("input.geojson", 3857).await?;
-    println!("重投影: {reprojected}");
-
-    Ok(())
-}
-```
-
-#### 终端直接调用（无需 Rust）
-
-```bash
-# 列出所有可用算法
-qgis_process list
-
-# 重投影到等积投影
-qgis_process run native:reprojectlayer \
-  --INPUT=chengdu-zones.geojson \
-  --TARGET_CRS=EPSG:3405 \
-  --OUTPUT=equalarea.gpkg
-
-# 缓冲区分析
-qgis_process run native:buffer \
-  --INPUT=sites.gpkg \
-  --DISTANCE=2000 \
-  --OUTPUT=sites_buffer.gpkg
-
-# 分区统计（栅格按矢量汇总）
-qgis_process run native:zonalstatisticsfb \
-  --INPUT=zones.gpkg \
-  --INPUT_RASTER=dem.tif \
-  --STATISTICS='mean,sum,count' \
-  --OUTPUT=zones_stats.gpkg
-```
-
-### 6.3 MQTT 传感器接入
-
-```rust
-use geo_adapter_iot::mqtt::MqttIngestor;
-use sqlx::postgres::PgPool;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let pool = PgPool::connect("postgres://geo:geo@localhost/geo_test").await?;
-
-    let ingestor = MqttIngestor::new(pool);
-
-    // 订阅传感器 topic，自动写入 iot_readings 表
-    ingestor.start("localhost", 1883, "sensors/#").await?;
-
-    Ok(())
-}
-```
-
-**消息格式**（设备端按此 JSON 发布）：
-
-```json
-{
-  "device_id": "gps-tracker-001",
-  "sensor_type": "temperature",
-  "value": 25.5,
-  "lat": 30.57,
-  "lng": 104.06
-}
-```
-
-**验证规则**：
-- `temperature` ∈ [-50, 60]
-- `humidity` ∈ [0, 100]
-- `pm25` ∈ [0, 1000]
-
-**测试消息**：
-
-```bash
-mosquitto_pub -h localhost -t sensors/env/temperature \
-  -m '{"device_id":"ws-001","sensor_type":"temperature","value":22.3,"lat":30.57,"lng":104.06}'
-
-mosquitto_pub -h localhost -t sensors/env/pm25 \
-  -m '{"device_id":"air-001","sensor_type":"pm25","value":45,"lat":30.66,"lng":104.07}'
-```
-
-**查询入库数据**：
-
-```sql
-SELECT time, device_id, sensor_type, value,
-       ST_AsText(geom) AS location
-FROM iot_readings
-ORDER BY time DESC LIMIT 20;
-```
-
-### 6.4 CamoFox 网页数据接入
-
-CamoFox 是 geo-toolbox 与 Pi Agent 的 `camoufox-browser` 技能配合使用的网页数据采集管道。
-浏览器端抓取数据后，通过 `geo_io::camofox` 解析、验证、转换为空间要素。
-
-#### 数据格式
-
-支持三种 JSON 格式：
-
-**格式 A：JSON 数组**
-
-```json
-[
-  {"name": "梧桐山", "lat": 22.55, "lng": 114.06, "type": "forest", "area_ha": 3170},
-  {"name": "深圳湾", "lat": 22.54, "lng": 113.93, "type": "park", "area_ha": 128.5}
-]
-```
-
-**格式 B：单个 JSON 对象**
-
-```json
-{"name": "梧桐山", "lat": 22.55, "lng": 114.06, "type": "forest", "area_ha": 3170}
-```
-
-**格式 C：GeoJSON FeatureCollection**
-
-```json
-{
-  "type": "FeatureCollection",
-  "features": [
-    {
-      "type": "Feature",
-      "geometry": {"type": "Point", "coordinates": [114.06, 22.55]},
-      "properties": {"name": "梧桐山", "type": "forest", "area_ha": 3170}
-    }
-  ]
-}
-```
-
-#### 字段说明
-
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|:---:|------|
-| `name` | string | ✅ | 地点名称 |
-| `lat` | number | ✅ | 纬度（-90 ~ 90） |
-| `lng` | number | ✅ | 经度（-180 ~ 180） |
-| `type` | string | ❌ | 土地覆盖类型（forest/grassland/park/water/built_up/...） |
-| `area_ha` | number | ❌ | 面积（公顷） |
-| _其他_ | any | ❌ | 额外字段自动合并到 properties |
-
-#### Rust 代码调用
-
-```rust
-use geo_io::camofox::parse_camofox_file;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let json = std::fs::read_to_string("scraped_sites.json")?;
-
-    // 解析 + 验证 + 生成 WKB SpatialRow
-    let (rows, result) = parse_camofox_file(&json, "shenzhen-parks")?;
-
-    println!("解析完成: {} 接受, {} 拒绝", result.accepted, result.rejected);
-
-    for err in &result.errors {
-        eprintln!("  拒绝: {err}");
-    }
-
-    // rows 可直接写入 PostGIS（见 6.1）
-    for row in &rows {
-        // row.wkb        — WKB 二进制几何
-        // row.properties — JSON 属性
-        // row.source     — 数据来源标识
-        println!("  {:?}", row);
-    }
-
-    Ok(())
-}
-```
-
-#### 写入 PostGIS
-
-```rust
-// 接上例，批量写入数据库
-use geo_adapter_postgis::PostgisStore;
-
-let store = PostgisStore::connect("postgres://geo:geo@localhost/geo_test").await?;
-
-for row in &rows {
-    let props: serde_json::Value = serde_json::from_str(&row.properties)?;
-    store.insert_geometry(None, &row.source, &row.wkb, &props).await?;
-}
-println!("已写入 {} 条记录", rows.len());
-```
-
-#### CLI 命令行调用
-
-```bash
-# 解析 CamoFox JSON 文件（纯解析，不写库）
-geo-toolbox ingest camofox scraped_sites.json
-# 输出:
-#   CamoFox ingest: 2 accepted, 0 rejected
-#   Sample records:
-#     1. 梧桐山 (forest) @ (114.06, 22.55)
-#     2. 深圳湾 (park) @ (113.93, 22.54)
-
-# 解析 + 写入 PostGIS
-DATABASE_URL=postgres://geo:geo@localhost/geo_test \
-  geo-toolbox ingest camofox scraped_sites.json
-# 输出:
-#   Written 2 rows to spatial_assets
-```
-
-#### MCP 协议调用（AI Agent）
-
-```json
-{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"ingest_camofox","arguments":{"file":"scraped_sites.json"}}}
-```
-
-#### 验证规则
-
-解析时自动执行：
-- 经纬度 ∈ 合法区间（lat: [-90, 90], lng: [-180, 180]）
-- 超出范围 → 记入 `result.rejected` + `result.errors`，跳过该条
-- 格式错误 → 返回 `Err(GeoError::Validation(...))`
-
-#### 与 camoufox-browser 技能配合
-
-```
-┌─────────────────┐     JSON      ┌──────────────┐    WKB+props   ┌──────────┐
-│ camoufox-browser │ ───────────→ │ geo-io       │ ─────────────→ │ PostGIS  │
-│ (网页数据采集)    │  scrape结果   │ camofox解析   │  SpatialRow   │ spatial_ │
-│                  │              │ +坐标验证      │               │ assets   │
-└─────────────────┘              └──────────────┘              └──────────┘
-```
-
-### 6.5 NMEA GPS 解析
-
-解析标准 NMEA 0183 协议的 GPS 日志，支持 GGA（定位信息）和 RMC（推荐最小数据）语句。
-
-#### 支持的语句
-
-| 语句 | 说明 | 关键字段 |
-|------|------|---------|
-| `$GPGGA` | 全球定位系统固定数据 | 时间、经纬度、定位质量、卫星数、HDOP、海拔 |
-| `$GPRMC` | 推荐最小导航信息 | 时间、经纬度、速度（节）、航向、日期 |
-
-#### Rust 代码调用
-
-```rust
-use geo_io::nmea::{parse_nmea_line, NmeaMessage};
-
-fn main() {
-    let nmea = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47";
-
-    match parse_nmea_line(nmea).unwrap() {
-        NmeaMessage::Gga(fix) => {
-            println!("定位时间: {}", fix.time);
-            println!("纬度:     {:.6}°", fix.lat);
-            println!("经度:     {:.6}°", fix.lng);
-            println!("精度因子: {:.1}", fix.hdop);
-            println!("卫星数:   {}", fix.satellites);
-            println!("海拔:     {:.1}m", fix.altitude);
-        }
-        NmeaMessage::Rmc(rmc) => {
-            println!("速度:     {:.1} 节", rmc.speed_knots);
-            println!("航向:     {:.1}°", rmc.track);
-        }
-        _ => {}
-    }
-}
-```
-
-#### 批量解析日志文件
-
-```rust
-use geo_io::nmea::{parse_nmea_line, NmeaMessage};
-
-fn main() {
-    let log = std::fs::read_to_string("gps_log.txt").unwrap();
-    let mut fixes = 0;
-
-    for line in log.lines() {
-        let line = line.trim();
-        if line.is_empty() { continue; }
-
-        match parse_nmea_line(line) {
-            Ok(NmeaMessage::Gga(fix)) => {
-                println!("[{}] ({:.6}, {:.6}) 精度={:.1} 卫星={}",
-                    fix.time, fix.lat, fix.lng, fix.hdop, fix.satellites);
-                fixes += 1;
-            }
-            Ok(NmeaMessage::Rmc(rmc)) => {
-                println!("[{}] ({:.6}, {:.6}) 速度={:.1}kt 航向={:.1}°",
-                    rmc.time, rmc.lat, rmc.lng, rmc.speed_knots, rmc.track);
-                fixes += 1;
-            }
-            Err(e) => eprintln!("解析失败: {e}"),
-            _ => {}
-        }
-    }
-    println!("共解析 {fixes} 条定位记录");
-}
-```
-
-#### CLI 命令行调用
-
-```bash
-geo-toolbox ingest nmea gps_log.txt
-```
-
-#### MCP 协议调用
-
-```json
-{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"ingest_nmea","arguments":{"file":"gps_log.txt"}}}
-```
-
-#### GPS 质量验证
-
-`geo_io::validator::validate_gps_fix()` 提供：
-
-```rust
-use geo_io::validator::validate_gps_fix;
-
-// 检查 HDOP ≤ 5.0 且卫星数 ≥ 4
-validate_gps_fix(1.5, 12).unwrap();  // ✅ 好的定位
-validate_gps_fix(6.0, 10).unwrap();  // ❌ HDOP 太高
-validate_gps_fix(2.0, 3).unwrap();   // ❌ 卫星太少
-```
-
----
-
-## 7. 适配器开发
-
-适配器是 geo-toolbox 与外部系统（数据库、GIS 引擎、消息队列、文件格式）之间的桥梁。
-与插件不同，适配器**允许持有外部连接和调用外部进程**。
-
-### 7.1 ExternalAdapter trait
-
-所有适配器必须实现 `ExternalAdapter` trait（定义在 `geo-core`）：
-
-```rust
-// core/geo-core/src/plugin.rs
-
-pub trait ExternalAdapter: Plugin {
-    /// 外部服务端点标识（URL、连接串、命令名）
-    fn external_endpoint(&self) -> &str;
-
-    /// 健康检查：外部服务是否可达
-    async fn health_check(&self) -> GeoResult<bool>;
-
-    /// 获取外部工具版本
-    async fn external_version(&self) -> GeoResult<String>;
-
-    /// 是否需要网络
-    fn requires_network(&self) -> bool { true }
-
-    // ── 双向通信核心 ──
-
-    /// 推送数据到外部系统
-    async fn push(&self, table: &str, data: &[GeoFeature]) -> GeoResult<u64>;
-
-    /// 从外部系统拉取数据
-    async fn pull(&self, query: &str) -> GeoResult<Vec<GeoFeature>>;
-
-    /// 执行外部命令/操作
-    async fn execute(&self, command: &str, params: serde_json::Value) -> GeoResult<serde_json::Value>;
-}
-```
-
-同时还需要实现基 trait `Plugin`：
-
-```rust
-pub trait Plugin: Send + Sync {
-    fn name(&self) -> &str;
-    fn version(&self) -> &str;
-    fn description(&self) -> &str;
-    fn category(&self) -> PluginCategory;
-    fn init(&mut self) -> GeoResult<()> { Ok(()) }
-    fn shutdown(&mut self) -> GeoResult<()> { Ok(()) }
-    fn is_healthy(&self) -> bool { true }
-
-    /// 构建 PluginMeta 快照（默认委托给上面方法；可覆盖提供 extra 字段）
-    fn metadata(&self) -> PluginMeta {
-        PluginMeta {
-            name: self.name().to_string(),
-            version: self.version().to_string(),
-            description: self.description().to_string(),
-            category: self.category(),
-            healthy: self.is_healthy(),
-            extra: serde_json::Value::Null,
-        }
-    }
-
-    /// Adapter 判断快捷方式
-    fn is_adapter(&self) -> bool {
-        self.category() == PluginCategory::Adapter
-    }
-
-    /// Carbon 插件判断快捷方式
-    fn is_carbon(&self) -> bool {
-        self.category() == PluginCategory::Carbon
-    }
-}
-```
-
-### 7.2 创建适配器骨架
-
-```bash
-mkdir -p adapters/geo-adapter-mysystem/src
-```
-
-**Cargo.toml：**
-
-```toml
-# adapters/geo-adapter-mysystem/Cargo.toml
-[package]
-name = "geo-adapter-mysystem"
-version.workspace = true
-edition.workspace = true
-description = "MySystem 适配器 — 双向数据桥接"
-
-[dependencies]
-geo-core = { path = "../../core/geo-core" }
-# 适配器可以依赖 Plugin 层
-geo-plugin-carbon = { path = "../../plugins/geo-plugin-carbon" }
-# 适配器可以依赖其他 Adapter
-geo-adapter-postgis = { path = "../geo-adapter-postgis" }
-# 外部系统 SDK
-# 例如: sqlx、reqwest、rumqttc、object_store 等
-
-serde.workspace = true
-serde_json.workspace = true
-tokio.workspace = true
-tracing.workspace = true
-```
-
-**lib.rs：**
-
-```rust
-// adapters/geo-adapter-mysystem/src/lib.rs
-#![allow(missing_docs)]
-
-mod adapter;
-pub use adapter::MySystemAdapter;
-```
-
-**adapter.rs：**
-
-```rust
-use geo_core::errors::GeoResult;
-use geo_core::plugin::{
-    ExternalAdapter, Plugin, PluginCategory, GeoFeature,
-};
-
-/// MySystem 适配器。
-pub struct MySystemAdapter {
-    endpoint: String,
-    connected: bool,
-    // 可以持有任何外部资源
-    // client: SomeClient,
-    // pool: PgPool,
-}
-
-impl MySystemAdapter {
-    pub fn new(endpoint: &str) -> Self {
         Self {
-            endpoint: endpoint.to_string(),
-            connected: false,
+            plugin: geo_core::plugin::PluginMeta {
+                name: "myplugin".into(),
+                version: env!("CARGO_PKG_VERSION").into(),
+                description: "My plugin description".into(),
+            },
+            my_param: 1.0,
         }
     }
 }
+```
 
-// ── Plugin trait ──
+### 2.3 实现业务逻辑
 
-impl Plugin for MySystemAdapter {
-    fn name(&self) -> &str { "mysystem" }
+```rust
+pub struct MyPlugin { config: MyPluginConfig }
 
+impl MyPlugin {
+    pub fn new(config: MyPluginConfig) -> Self { Self { config } }
+    pub fn do_work(&self, input: f64) -> f64 { input * self.config.my_param }
+}
+```
+
+### 2.4 实现 Plugin trait
+
+```rust
+use geo_core::plugin::{Plugin, PluginCategory};
+
+impl Plugin for MyPlugin {
+    type Config = MyPluginConfig;
+    fn new(config: Self::Config) -> Self { Self::new(config) }
+    fn name(&self) -> &str { &self.config.plugin.name }
     fn version(&self) -> &str { env!("CARGO_PKG_VERSION") }
-
-    fn description(&self) -> &str {
-        "MySystem bidirectional adapter"
-    }
-
-    fn category(&self) -> PluginCategory {
-        PluginCategory::Adapter
-    }
-
-    fn init(&mut self) -> GeoResult<()> {
-        tracing::info!("MySystemAdapter connecting to {}", self.endpoint);
-        // 连接外部系统
-        // self.client = SomeClient::connect(&self.endpoint)?;
-        self.connected = true;
-        Ok(())
-    }
-
-    fn shutdown(&mut self) -> GeoResult<()> {
-        self.connected = false;
-        Ok(())
-    }
-
-    fn is_healthy(&self) -> bool {
-        self.connected
-    }
-}
-
-// ── ExternalAdapter trait ──
-
-impl ExternalAdapter for MySystemAdapter {
-    fn external_endpoint(&self) -> &str {
-        &self.endpoint
-    }
-
-    async fn health_check(&self) -> GeoResult<bool> {
-        // 尝试 ping 外部系统
-        // self.client.ping().await?;
-        Ok(self.connected)
-    }
-
-    async fn external_version(&self) -> GeoResult<String> {
-        // self.client.version().await
-        Ok("MySystem v2.0".into())
-    }
-
-    fn requires_network(&self) -> bool {
-        true
-    }
-
-    async fn push(
-        &self,
-        table: &str,
-        data: &[GeoFeature],
-    ) -> GeoResult<u64> {
-        // 批量写入外部系统
-        let count = data.len() as u64;
-        tracing::info!("Pushed {count} features to {table}");
-        Ok(count)
-    }
-
-    async fn pull(
-        &self,
-        query: &str,
-    ) -> GeoResult<Vec<GeoFeature>> {
-        // 从外部系统拉取数据
-        tracing::info!("Pulling data: {query}");
-        Ok(vec![])
-    }
-
-    async fn execute(
-        &self,
-        command: &str,
-        params: serde_json::Value,
-    ) -> GeoResult<serde_json::Value> {
-        // 通用操作
-        tracing::info!("Executing {command} with {params}");
-        Ok(serde_json::json!({"status": "ok"}))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_adapter_creation() {
-        let adapter = MySystemAdapter::new("http://localhost:8080");
-        assert_eq!(adapter.name(), "mysystem");
-        assert_eq!(adapter.category(), PluginCategory::Adapter);
-        assert!(adapter.requires_network());
-    }
+    fn description(&self) -> &str { &self.config.plugin.description }
+    fn category(&self) -> PluginCategory { PluginCategory::Process }
 }
 ```
 
-### 7.3 示例：开发一个 TiDB 适配器
-
-假设需要支持 TiDB（兼容 MySQL 协议的分布式数据库）作为 PostGIS 的替代存储后端。
-
-**目录结构：**
-
-```
-adapters/geo-adapter-tidb/
-├── Cargo.toml
-└── src/
-    ├── lib.rs
-    ├── adapter.rs      # ExternalAdapter 实现
-    ├── store.rs        # TiDB 空间查询封装
-    └── migrate.sql     # 建表 DDL
-```
-
-**Cargo.toml：**
-
-```toml
-[package]
-name = "geo-adapter-tidb"
-version.workspace = true
-edition.workspace = true
-description = "TiDB spatial adapter — MySQL-compatible distributed storage"
-
-[dependencies]
-geo-core = { path = "../../core/geo-core" }
-sqlx = { workspace = true, features = ["mysql", "runtime-tokio"] }
-serde.workspace = true
-serde_json.workspace = true
-tokio.workspace = true
-tracing.workspace = true
-uuid.workspace = true
-```
-
-**lib.rs：**
+### 2.5 注册工具
 
 ```rust
-pub mod adapter;
-pub mod store;
+// tools.rs
+use geo_registry::register_plugin;
+use crate::MyPlugin;
 
-pub use adapter::TidbAdapter;
-pub use store::TidbStore;
-```
-
-**store.rs — 空间查询封装：**
-
-```rust
-use geo_core::errors::{GeoError, GeoResult};
-use sqlx::mysql::MySqlPool;
-use uuid::Uuid;
-
-pub struct TidbStore {
-    pool: MySqlPool,
-}
-
-impl TidbStore {
-    pub async fn connect(url: &str) -> GeoResult<Self> {
-        let pool = MySqlPool::connect(url).await
-            .map_err(|e| GeoError::Database(e.to_string()))?;
-        Ok(Self { pool })
-    }
-
-    pub fn pool(&self) -> &MySqlPool { &self.pool }
-
-    /// 写入空间要素（TiDB 支持 WKB + ST_GeomFromWKB）
-    pub async fn insert_feature(
-        &self,
-        aoi_id: Uuid,
-        wkb: &[u8],
-        props: &serde_json::Value,
-    ) -> GeoResult<Uuid> {
-        let row = sqlx::query(
-            "INSERT INTO spatial_assets (aoi_id, geom, properties)
-             VALUES (?, ST_GeomFromWKB(?, 4326), ?)
-             RETURNING id"
-        )
-        .bind(aoi_id)
-        .bind(wkb)
-        .bind(props)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|e| GeoError::Database(e.to_string()))?;
-
-        Ok(row.get(0))
-    }
-
-    /// 空间范围查询（利用 TiDB 空间索引）
-    pub async fn query_bbox(
-        &self,
-        min_x: f64, min_y: f64, max_x: f64, max_y: f64,
-    ) -> GeoResult<Vec<serde_json::Value>> {
-        let rows = sqlx::query(
-            "SELECT id, ST_AsGeoJSON(geom) AS geojson, properties
-             FROM spatial_assets
-             WHERE MBRContains(
-                 ST_GeomFromText(CONCAT('POLYGON((',?, ' ',?, ',', ?, ' ',?, ',', ?, ' ',?, ',', ?, ' ',?, ',', ?, ' ',?, '))'), 4326),
-                 geom
-             )"
-        )
-        .bind(min_x).bind(min_y)  // 左下
-        .bind(max_x).bind(min_y)  // 右下
-        .bind(max_x).bind(max_y)  // 右上
-        .bind(min_x).bind(max_y)  // 左上
-        .bind(min_x).bind(min_y)  // 闭合
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| GeoError::Database(e.to_string()))?;
-
-        // 转换为 JSON
-        let result: Vec<serde_json::Value> = rows.iter().map(|row| {
-            serde_json::json!({
-                "id": row.get::<String, _>(0),
-                "geojson": row.get::<String, _>(1),
-                "properties": row.get::<serde_json::Value, _>(2),
-            })
-        }).collect();
-
-        Ok(result)
-    }
-
-    /// 运行迁移 DDL
-    pub async fn migrate(&self) -> GeoResult<()> {
-        let sql = include_str!("migrate.sql");
-        for stmt in sql.split(';').filter(|s| !s.trim().is_empty()) {
-            sqlx::query(stmt).execute(&self.pool).await
-                .map_err(|e| GeoError::Database(e.to_string()))?;
-        }
-        tracing::info!("TiDB migration complete");
-        Ok(())
-    }
-}
-```
-
-**adapter.rs — ExternalAdapter 实现：**
-
-```rust
-use geo_core::errors::GeoResult;
-use geo_core::plugin::{
-    ExternalAdapter, Plugin, PluginCategory, GeoFeature,
-};
-use crate::store::TidbStore;
-
-pub struct TidbAdapter {
-    url: String,
-    store: Option<TidbStore>,
-}
-
-impl TidbAdapter {
-    pub fn new(url: &str) -> Self {
-        Self { url: url.to_string(), store: None }
-    }
-
-    pub fn store(&self) -> Option<&TidbStore> {
-        self.store.as_ref()
-    }
-}
-
-impl Plugin for TidbAdapter {
-    fn name(&self) -> &str { "tidb" }
-    fn version(&self) -> &str { env!("CARGO_PKG_VERSION") }
-    fn description(&self) -> &str {
-        "TiDB distributed spatial storage adapter"
-    }
-    fn category(&self) -> PluginCategory { PluginCategory::Adapter }
-
-    fn init(&mut self) -> GeoResult<()> {
-        // 注意：async init 需要特殊处理
-        // 实际项目中 init() 应为 async，或使用 tokio::runtime::Handle
-        tracing::info!("TidbAdapter registered (connect on first use)");
-        Ok(())
-    }
-}
-
-impl ExternalAdapter for TidbAdapter {
-    fn external_endpoint(&self) -> &str { &self.url }
-
-    async fn health_check(&self) -> GeoResult<bool> {
-        match &self.store {
-            Some(s) => {
-                sqlx::query("SELECT 1").execute(s.pool()).await
-                    .map(|_| true)
-                    .map_err(|e| geo_core::GeoError::Database(e.to_string()))
-            }
-            None => {
-                // 未连接时尝试快速连接测试
-                let test_store = TidbStore::connect(&self.url).await?;
-                sqlx::query("SELECT 1").execute(test_store.pool()).await
-                    .map(|_| true)
-                    .map_err(|e| geo_core::GeoError::Database(e.to_string()))
-            }
-        }
-    }
-
-    async fn external_version(&self) -> GeoResult<String> {
-        match &self.store {
-            Some(s) => {
-                let row: (String,) = sqlx::query_as("SELECT VERSION()")
-                    .fetch_one(s.pool()).await
-                    .map_err(|e| geo_core::GeoError::Database(e.to_string()))?;
-                Ok(row.0)
-            }
-            None => Ok("TiDB (not connected)".into()),
-        }
-    }
-
-    fn requires_network(&self) -> bool { true }
-
-    async fn push(&self, table: &str, data: &[GeoFeature]) -> GeoResult<u64> {
-        let store = self.store.as_ref()
-            .ok_or_else(|| geo_core::GeoError::Other("TiDB not connected".into()))?;
-
-        let mut count = 0u64;
-        for feature in data {
-            let wkb = feature.to_wkb_bytes(); // 假设 GeoFeature 有此方法
-            // 实际需要从 GeoJSON geometry 编码为 WKB
-            // store.insert_feature(uuid, &wkb, &feature.properties).await?;
-            count += 1;
-        }
-        tracing::info!("Pushed {count} features to TiDB table {table}");
-        Ok(count)
-    }
-
-    async fn pull(&self, query: &str) -> GeoResult<Vec<GeoFeature>> {
-        let store = self.store.as_ref()
-            .ok_or_else(|| geo_core::GeoError::Other("TiDB not connected".into()))?;
-
-        // 查询并转换为 GeoFeature 列表
-        // let results = store.query_bbox(...).await?;
-        tracing::info!("Pulling from TiDB: {query}");
-        Ok(vec![])
-    }
-
-    async fn execute(&self, command: &str, params: serde_json::Value) -> GeoResult<serde_json::Value> {
-        let store = self.store.as_ref()
-            .ok_or_else(|| geo_core::GeoError::Other("TiDB not connected".into()))?;
-
-        match command {
-            "migrate" => {
-                store.migrate().await?;
-                Ok(serde_json::json!({"status": "migrated"}))
-            }
-            _ => Err(geo_core::GeoError::Unimplemented(
-                format!("Unknown command: {command}")
-            )),
-        }
-    }
-}
-```
-
-**migrate.sql：**
-
-```sql
-CREATE TABLE IF NOT EXISTS spatial_assets (
-    id        VARCHAR(36) PRIMARY KEY,
-    aoi_id    VARCHAR(36),
-    geom      GEOMETRY NOT NULL,
-    properties JSON,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    SPATIAL INDEX(geom)
-);
-
-CREATE TABLE IF NOT EXISTS carbon_accounting_results (
-    calc_id          VARCHAR(36) PRIMARY KEY,
-    workflow_run_id  VARCHAR(36) NOT NULL,
-    aoi_id           VARCHAR(36) NOT NULL,
-    landcover_class  VARCHAR(100) NOT NULL,
-    area_ha          DOUBLE NOT NULL,
-    emission_tco2e   DOUBLE NOT NULL,
-    factor_set_id    VARCHAR(36),
-    audit_status     VARCHAR(20) DEFAULT 'pending',
-    calculation_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### 7.4 适配器开发约束
-
-| 约束 | 说明 |
-|------|------|
-| ✅ 必须实现 | `Plugin` + `ExternalAdapter` 两个 trait |
-| ✅ 可依赖 | Core 层所有 crate、Plugin 层所有 crate、其他 Adapter |
-| ✅ 可持有 | 数据库连接池、HTTP Client、子进程句柄、MQTT 连接、文件句柄 |
-| ✅ 可调用 | 外部命令行工具（`qgis_process`、`gdal_translate`、`dvc`） |
-| ❌ 禁止方向 | Adapter 不能反过来被 Core/Plugin 依赖 |
-| ✅ 需注册 | 在 workspace `Cargo.toml` 的 `members` 中、CLI `Cargo.toml` 的 `dependencies` 中 |
-
-### 7.5 在 CLI 中注册适配器
-
-```toml
-# crates/geo-cli/Cargo.toml
-[dependencies]
-geo-adapter-tidb = { path = "../../adapters/geo-adapter-tidb" }
-```
-
-```rust
-// crates/geo-cli/src/main.rs
-fn build_registry() -> PluginRegistry {
-    let mut reg = PluginRegistry::new();
-
-    // 注册适配器
-    reg.register(PluginMeta {
-        name: "tidb".into(),
-        version: env!("CARGO_PKG_VERSION").into(),
-        description: "TiDB distributed spatial storage".into(),
-        category: PluginCategory::Adapter,
-        healthy: true,
-        extra: serde_json::json!({"endpoint": "tidb://localhost:4000"}),
+pub fn register_tools(registry: &mut geo_core::plugin::PluginRegistry) {
+    register_plugin!(registry, myplugin, {
+        "myplugin_do_work" => |args| {
+            let input = args["input"].as_f64().unwrap_or(0.0);
+            let plugin = MyPlugin::new(MyPluginConfig::default());
+            Ok(serde_json::json!({"result": plugin.do_work(input)}))
+        },
     });
-
-    // 注册工具
-    reg.register_tool("tidb", ToolDef {
-        name: "tidb_migrate".into(),
-        description: "Run TiDB schema migration".into(),
-        input_schema: serde_json::json!({"type": "object", "properties": {}}),
-    });
-
-    reg
 }
 ```
 
+### 2.6 注册到 workspace
+
+在根 `Cargo.toml` 的 `[workspace].members` 添加 `"plugins/geo-plugin-myplugin"`。
+
+---
+
+## 3. 适配器使用
+
+### 3.1 PostgreSQL + PostGIS
+
+```bash
+export DATABASE_URL=postgres://geo:geo@localhost/geo_test
+```
+
 ```rust
-// crates/geo-cli/src/mcp.rs — 处理工具调用
-"tidb_migrate" => {
-    let mut adapter = geo_adapter_tidb::TidbAdapter::new("tidb://localhost:4000");
-    adapter.init()?;
-    let result = adapter.execute("migrate", serde_json::json!({})).await?;
-    Ok(json!({"jsonrpc": "2.0", "result": {"content": [{"type": "text", "text": result.to_string()}]}}))
-}
+use geo_adapter_postgis::PostgisAdapter;
+let adapter = PostgisAdapter::from_env()?;
+adapter.push("features", &features).await?;
+let results = adapter.pull("SELECT * FROM features").await?;
+```
+
+### 3.2 QGIS 集成
+
+支持 Subprocess 和 REST 双后端:
+
+```bash
+export QGIS_PROCESS_PATH="E:/QGIS/bin/qgis_process.bat"
+# 或 REST 模式:
+export QGIS_BACKEND=rest
+```
+
+### 3.3 DuckDB 嵌入式数据库
+
+```rust
+use geo_adapter_duckdb::DuckDbStore;
+let store = DuckDbStore::new_in_memory()?;
+store.ingest_geojson("my_layer", geojson_str).await?;
+```
+
+### 3.4 STAC 影像搜索
+
+```rust
+use geo_adapter_stac::StacClient;
+let client = StacClient::new("https://planetarycomputer.microsoft.com/api/stac/v1");
+let items = client.search(bbox, "2024-01-01", "2024-06-01", 10).await?;
+```
+
+### 3.5 NMEA GPS 解析
+
+```rust
+use geo_io::nmea::parse_nmea_line;
+let msg = parse_nmea_line("$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47")?;
 ```
 
 ---
 
-## 8. 测试
+## 4. 适配器开发
 
-### 运行测试
+### 4.1 ExternalAdapter trait
+
+```rust
+pub trait ExternalAdapter: Plugin {
+    fn external_endpoint(&self) -> &str;
+    async fn health_check(&self) -> GeoResult<bool>;
+    async fn external_version(&self) -> GeoResult<String>;
+    fn requires_network(&self) -> bool { true }
+    async fn push(&self, table: &str, data: &[GeoFeature]) -> GeoResult<u64>;
+    async fn pull(&self, query: &str) -> GeoResult<Vec<GeoFeature>>;
+    async fn execute(&self, command: &str, params: Value) -> GeoResult<Value>;
+}
+```
+
+同时需实现 `Plugin` trait（name/version/description/category/init/shutdown）。
+
+### 4.2 创建适配器骨架
+
+详见 `adapters/` 下现有适配器源码作参考，推荐直接复制 `geo-adapter-duckdb` 或 `geo-adapter-stac` 作为模板。
+
+---
+
+## 5. 测试
 
 ```bash
-# 全部测试（无需任何外部服务）
+# 全部测试
 cargo test --workspace
 
-# 单个 crate
-cargo test -p geo-core
-cargo test -p geo-carbon-math
-cargo test -p geo-plugin-ecology
+# 单 crate
+cargo test -p geo-plugin-carbon
 
-# 含数据库的测试（需先安装并启动 PostgreSQL）
-DATABASE_URL=postgres://geo:geo@localhost/geo_test cargo test -p geo-adapter-postgis
-```
+# 带输出
+cargo test -p geo-plugin-carbon -- --nocapture
 
-### 测试结果期望
-
-```
-running 300+ tests
-test result: ok. 0 failed
-```
-
-包含端到端集成测试：
-- `geo-carbon-math`: GeoJSON+CSV→CarbonReport 全管线
-- `geo-adapter-postgis`: push/pull/execute 安全校验
-- `geo-report`: 模板引擎渲染 + MCP 工具
-
-### 代码质量
-
-```bash
-cargo clippy --workspace -- -D warnings
-cargo fmt --all -- --check
+# benchmark
+cargo bench --workspace
 ```
 
 ---
 
-## 9. 常见问题
+## 6. 常见问题
 
-### Q: 编译报错 `error: linker 'cc' not found`
+**Q: 首次编译报错 "找不到 gdal-sys"?**
+A: 用轻量编译 `cargo build --no-default-features --features minimal`，或安装 GDAL C 库。
 
-```bash
-# macOS
-xcode-select --install
+**Q: PostGIS 连接失败?**
+A: 检查 `DATABASE_URL` 环境变量，确保 PostgreSQL 运行且已 `CREATE EXTENSION postgis`。
 
-# Ubuntu
-sudo apt install build-essential
-```
+**Q: QGIS 工具调用报错?**
+A: 确保 `QGIS_PROCESS_PATH` 指向正确的 `qgis_process` 可执行文件。
 
-### Q: `cargo test` 卡住不动
+**Q: WASM 编译报错?**
+A: 确保 `rustup target add wasm32-unknown-unknown` 且 `cargo install wasm-pack`。
 
-某些测试用了 `tokio::time::sleep`，但超时时间很短（≤ 1s）。如果确实卡住：
-
-```bash
-cargo test --workspace -- --test-threads=1
-```
-
-### Q: PostGIS 连接失败
-
-```bash
-# 检查 PostgreSQL 是否运行
-pg_isready -U geo -d geo_test
-
-# 检查 PostGIS 扩展
-psql -U geo -d geo_test -c "SELECT PostGIS_Version();"
-
-# 确认环境变量
-echo $DATABASE_URL
-```
-
-### Q: `qgis_process` 找不到
-
-Windows 需将 QGIS bin 目录加入 PATH：
-
-```powershell
-$env:Path += ";C:\Program Files\QGIS 3.34\bin"
-```
-
-或使用完整路径：
-
-```bash
-"C:/Program Files/QGIS 3.34/bin/qgis_process-qgis.bat" run native:buffer ...
-```
-
-### Q: WASM 编译缺少 wasm32 target
-
-```bash
-rustup target add wasm32-unknown-unknown
-```
-
-### Q: 如何只编译核心功能（不依赖任何外部系统）
-
-```bash
-cargo build --release --no-default-features --features minimal
-```
-
-这条命令只会编译 `geo-core` + `geo-cli` 的基础部分，不需要 PostGIS/GDAL/QGIS。
-
-### Q: 插件之间的依赖约束是什么
-
-```
-✅ Plugin 可以依赖 → Core 层的任何 crate
-❌ Plugin 不能依赖 → 其他 Plugin（横向）
-❌ Plugin 不能依赖 → Adapter 层的任何 crate
-❌ Core 不能依赖   → Plugin 或 Adapter
-```
-
-如果多个插件需要同一功能，应将其下沉到 Core 层。
+**Q: 如何添加新插件?**
+A: 参考 [§2 插件开发](#2-插件开发)，确保遵循 Core → Plugin 单向依赖。
 
 ---
 
-## 10. MCP 集成（AI Agent 调用）
-
-geo-toolbox 内置 MCP (Model Context Protocol) Server，支持 AI Agent（Claude、Pi Agent 等）通过 JSON-RPC stdio 直接调用全部 44 个空间分析工具。
-
-### 10.1 启动 MCP Server
-
-```bash
-# 编译（全功能）
-cargo build --release
-
-# 启动 MCP Server（stdio 模式）
-./target/release/geo-toolbox mcp-serve
-
-# 轻量模式（仅 Core 功能，零外部依赖）
-cargo build --release --no-default-features --features minimal
-```
-
-### 10.2 完整工具列表
-
-| 分类 | 工具名称 | 功能 | 来源 crate |
-|------|---------|------|-----------|
-| **CRS** | `crs_list` | 列出所有坐标系 | geo-io |
-| | `crs_transform` | 坐标变换（含GCJ-02/BD-09） | geo-io |
-| **瓦片** | `tile_latlon_to_tile` | 经纬度→瓦片坐标 | geo-tile |
-| | `tile_bounds` | 瓦片边界 | geo-tile |
-| | `tile_url` | OSM/高德/天地图URL | geo-tile |
-| **索引** | `geohash_encode` | 经纬度→GeoHash | geo-index |
-| | `geohash_decode` | GeoHash→边界框 | geo-index |
-| | `geohash_neighbors` | 8邻域GeoHash | geo-index |
-| **矢量** | `vector_buffer` | 多边形缓冲区 | geo-vector |
-| | `vector_intersect` | 多边形相交 | geo-vector |
-| | `vector_area` | 多边形面积 | geo-vector |
-| | `vector_centroid` | 多边形质心 | geo-vector |
-| **时序** | `temporal_trend` | Mann-Kendall趋势+Sen斜率 | geo-temporal |
-| **统计** | `zonal_stats` | 栅格分区统计 | geo-stats |
-| **碳核算** | `carbon_calculate_raw` | GeoJSON+CSV→碳排放 | geo-carbon-math |
-| | `carbon_calculate_geojson` | 插件配置+GeoJSON→碳报告 | geo-plugin-carbon |
-| **报告** | `report_carbon` | 碳核算Markdown报告 | geo-report |
-| | `report_render` | 通用Tera模板渲染 | geo-report |
-| **生态** | `ecology_assess` | 生态修复评估（NDVI+碳汇） | geo-plugin-ecology |
-| **能源** | `energy_solar_suitability` | 光伏选址适宜性 | geo-plugin-energy |
-| **林业** | `forestry_carbon_stock` | 林业碳储量变化 | geo-plugin-forestry |
-| **海岸** | `coastal_shoreline` | 海岸带侵蚀+淹没 | geo-plugin-coastal |
-| **测绘** | `survey_earthwork` | 土方量计算 | geo-plugin-survey |
-| **水文** | `hydro_inundation` | 洪水淹没面积 | geo-plugin-hydro |
-| | `hydro_runoff` | 径流系数 | geo-plugin-hydro |
-| **地灾** | `geohazard_landslide` | 滑坡敏感性指数 | geo-plugin-geohazard |
-| **农业** | `agri_yield` | 作物估产 | geo-plugin-agri |
-| | `agri_soil` | 土壤评级 | geo-plugin-agri |
-| **规划** | `urban_far` | 容积率+合规检查 | geo-plugin-urban |
-| **数据** | `ingest_camofox` | CamoFox JSON解析 | geo-io |
-| | `ingest_nmea` | NMEA GPS日志解析 | geo-io |
-| | `duckdb_query` | DuckDB SQL查询 | geo-adapter-duckdb |
-| | `duckdb_ingest_geojson` | GeoJSON→DuckDB | geo-adapter-duckdb |
-| | `stac_search` | STAC影像目录搜索 ⚠网络 | geo-adapter-stac |
-| | `osm_query_bbox` | OSM要素查询 ⚠网络 | geo-adapter-osm |
-| | `store_query` | PostGIS SQL查询 ⚠DB | geo-adapter-postgis |
-| | `store_migrate` | PostGIS迁移 ⚠DB | geo-adapter-postgis |
-| **外部** | `qgis_buffer` | QGIS缓冲区 ⚠QGIS | geo-adapter-qgis |
-| | `qgis_reproject` | QGIS重投影 ⚠QGIS | geo-adapter-qgis |
-| | `cli_cog_convert` | GDAL COG转换 ⚠GDAL | geo-adapter-cli |
-| | `cli_ogr2ogr` | 矢量格式转换 ⚠GDAL | geo-adapter-cli |
-| | `gee_classify` | GEE土地覆盖分类 ⚠GEE | geo-adapter-gee |
-| | `gee_status` | GEE任务状态查询 ⚠GEE | geo-adapter-gee |
-| | `cad_export_geojson` | PostGIS→GeoJSON ⚠DB | geo-adapter-cad |
-| | `dvc_snapshot` | DVC数据版本快照 ⚠DVC | geo-adapter-postgis |
-| | `dvc_hash` | DVC文件哈希 ⚠DVC | geo-adapter-postgis |
-
-> ⚠ 标记表示需要特定的外部依赖或环境变量。
-
-### 10.3 安全审计
-
-geo-toolbox 实施了以下安全措施：
-
-| 防护 | 机制 | 范围 |
-|------|------|------|
-| SQL 注入防护 | `validate_select_sql()` 拦截 DROP/DELETE/INSERT/UPDATE/CREATE 等危险关键词，仅允许 SELECT | PostGIS 查询 |
-| 路径遍历防护 | `validate_safe_path()` 拦截 `..`、shell 元字符(`;\|&$`()<>`)、敏感系统路径(/etc、/proc、C:\Windows) | QGIS、CLI adapter |
-| 参数化查询 | 所有 INSERT 使用 `$1`、`$2` 绑定参数，不拼接 SQL | PostGIS 写入 |
-| 子进程参数隔离 | `Command::new().args()` 逐参数传递，不拼接 shell 命令 | QGIS、GDAL 子进程 |
-| 凭证管理 | 数据库密码通过 `DATABASE_URL` 环境变量注入，不硬编码 | 全局 |
-| Rust 内存安全 | 无 unsafe 代码块，编译器保证内存安全 | 全局 |
-
-**已知风险**（低优先级）：
-- CLI `store write` 命令不校验文件路径，可能读取任意文件（但仅读取，不写入）
-- `format!("COMPRESS={}", user_input)` 在 GDAL CLI 中可能被空格拆分参数
-
----
-
-## 11. HTTP API Server + WMS（`crates/geo-server`）
-
-### 11.1 启动
+## 7. HTTP API + WMS
 
 ```bash
 cargo run -p geo-server --release
-# 监听 http://0.0.0.0:9378
+# http://0.0.0.0:9378
 ```
-
-### 11.2 API
 
 | 端点 | 方法 | 说明 |
 |------|------|------|
 | `/health` | GET | 健康检查 |
 | `/api/tools` | GET | 列出所有工具 |
-| `/api/call/{tool}` | POST | 调用工具，body 为 JSON 参数 |
-| `/wms` | GET/POST | OGC WMS 1.3.0 (GetCapabilities/GetMap/GetFeatureInfo) |
-
-### 11.3 使用示例
+| `/api/call/{tool}` | POST | 调用工具 |
+| `/wms` | GET/POST | OGC WMS 1.3.0 |
 
 ```bash
-# 坐标变换
 curl -X POST http://localhost:9378/api/call/crs_transform \
   -d '{"from_epsg":4326,"to_epsg":3857,"x":104.06,"y":30.57}'
 
-# 碳核算
-curl -X POST http://localhost:9378/api/call/carbon_calculate_raw \
-  -d '{"geojson":"...","csv":"source,category,factor_value\nIPCC_2019,forest,-5.0","year":2025}'
-
-# OGC WMS GetCapabilities
 curl "http://localhost:9378/wms?service=WMS&request=GetCapabilities"
-
-# WMS GetMap (PNG)
-curl "http://localhost:9378/wms?service=WMS&request=GetMap&layers=nlcd&crs=EPSG:4326&bbox=-180,-90,180,90&width=800&height=400&format=image/png"
-
-# 列出所有可用工具
-curl http://localhost:9378/api/tools
 ```
 
----
+## 8. 算法清单
 
-## 🧮 算法清单（~360个）
+### Core — 纯 Rust 核心
 
-### Core — 纯 Rust 核心库
+**栅格**: 坡度(Horn) · 坡向 · TPI · TRI · Hillshade · NDVI · NDWI · 波段代数 · 重采样(Nearest/Cubic/Bilinear) · Zonal统计
 
-**栅格**: 坡度(Horn) · 坡向 · 曲率 · TPI · TRI · Hillshade · NDVI · NDWI · 波段代数 · 阈值 · 重采样(Nearest/Cubic/Bilinear) · 镶嵌 · Zonal统计 · GeoTIFF
+**矢量**: 缓冲区 · 相交 · 合并 · 差集 · 裁剪 · Douglas-Peucker简化 · KDE · 线密度
 
-**矢量**: 点面包含(Ray casting) · 缓冲区 · 相交 · 合并 · 差集 · 裁剪 · Douglas-Peucker简化 · 空间连接 · 自相交检测
+**空间统计**: Jenks · Moran's I · Gi\*热点 · IDW插值 · K-means
 
-**空间统计**: Jenks · 分位数分类 · Moran's I · Gi\*热点 · Queen/Rook权重 · IDW插值 · K-means · OLS回归
+**时序**: Mann-Kendall · Sen's Slope · 季节性MK · Pettitt断点 · BFAST
 
-**时序**: Mann-Kendall · Sen's Slope · 季节性MK · Pettitt断点 · BFAST · 季节分解 · 正态CDF
-
-**索引**: Geohash · H3六边形 · k-ring邻域 · BBox覆盖
+**索引**: Geohash · STR R-tree · 四叉树
 
 **碳核算**: IPCC 5碳库 · 造林/森林经营/毁林场景 · VCS/CCB方法学 · 蒙特卡洛不确定性
 
-**IO/瓦片**: NMEA解析 · GeoJSON · MVT矢量瓦片 · PMTiles · 瓦片索引
-
 ### Plugin — 专业领域
 
-**水文**: SCS-CN产流(26种CN表, AMC修正) · InVEST水源涵养(Budyko) · InVEST碳存储(4碳库) · 流域提取 · Strahler分级 · SCS三角单位线 · Snyder合成单位线 · Nash IUH · 卷积汇流 · 达西定律 · Thiem井流 · 河流-含水层交互 · 溶质运移1D · 度日因子融雪 · 雪水当量 · SCS-CN+融雪耦合
+**水文**: SCS-CN产流(26种CN表) · InVEST水源涵养(Budyko) · InVEST碳存储(4碳库) · Strahler分级 · SCS三角单位线 · Snyder合成 · Nash IUH · 达西定律 · 融雪
 
-**生态**: RUSLE土壤流失(A=RKLSCP) · MFI降雨侵蚀力 · McCool LS因子 · C因子(NDVI) · P因子 · 侵蚀分级 · SDR泥沙输移 · MUSLE暴雨侵蚀 · USDA质地三角 · SCS分组 · van Genuchten参数(12质地) · 水分特征 · HWSD中国土壤 · 随机森林LULC
+**生态**: RUSLE(A=RKLSCP) · MUSLE暴雨侵蚀 · SDR泥沙输移 · 随机森林LULC · USDA质地 · van Genuchten · HWSD
 
-**气候**: Delta降尺度 · 分位数映射 · IDF曲线(Sherman) · SPI(Gamma MLE) · SPEI · PDSI · Thornthwaite PET · 普通/简单克里金
+**气候**: GCM降尺度 · IDF曲线 · SPI/SPEI/PDSI · 普通克里金
 
-**地貌**: D8流向(含填洼) · D8累积(简单+快速) · Strahler河网 · 河谷断面
+**地貌**: D8流向(填洼) · D8累积 · Strahler河网
 
-**海岸**: Ekman输运 · 波浪能通量 · SWAN波浪(浅化/折射/破波) · 潮汐调和 · 风暴潮(Holland) · ENSO诊断 · Stockdon爬高 · Holman爬高 · 越浪 · 蓝碳
+**海岸**: Ekman输运 · SWAN波浪 · 潮汐调和 · Holland风暴潮 · Stockdon爬高 · 蓝碳
 
-**能源**: Weibull拟合 · 风能密度 · 风机功率曲线(Betz) · AEP · Jensen尾流 · 风电场效率 · 风切变 · 地热(Fourier) · 输电LCP(Dijkstra)
+**能源**: Weibull风能 · 风机功率曲线 · Jensen尾流 · 地热(Fourier) · 输电LCP(Dijkstra)
 
-**地灾**: 信息量模型 · Newmark位移(Jibson) · 安全系数FS · 降雨ID阈值 · 泥石流冲出
+**地灾**: 信息量模型 · Newmark位移 · 安全系数FS · 降雨ID阈值
 
-**测绘**: GK正反算 · 分带转换 · 椭球识别 · Helmert四/七参数 · 仿射六参数 · 最小二乘拟合
+**测绘**: GK正反算 · Helmert七参数 · 仿射变换
 
-**碳汇**: 5碳库 · 蒙特卡洛 · LCA · 高斯烟羽 · CCER报告
+**林业**: 树高生长(Richards/Logistic/Korf/Gompertz/Weibull/Schumacher) · 立地指数
 
-**林业**: 树高生长(Richards/Logistic/...) · 立地指数 · SDI优化
-
-### Adapter — 外部桥接
-
-MODFLOW文件生成 · DSSAT文件生成 · QGIS双后端 · PostGIS/TimescaleDB · GEE · DuckDB · STAC · OSM · CAD · GDAL CLI
-
----
-
-## 12. Plugin 开发（ProcessPlugin trait）
-
-所有插件实现统一的 `ProcessPlugin` trait，可通过 `PluginRegistry::dispatch()` 调度。
-
-### 示例：UrbanPlugin
-
-```rust
-// plugins/geo-plugin-urban/src/trait_impl.rs
-use crate::UrbanPlugin;
-use geo_core::plugin::{Plugin, ProcessPlugin, PluginCategory};
-use geo_core::errors::GeoResult;
-
-impl Plugin for UrbanPlugin {
-    fn name(&self) -> &str { "urban" }
-    fn description(&self) -> &str { "Urban planning" }
-    fn category(&self) -> PluginCategory { PluginCategory::Process }
-}
-
-impl ProcessPlugin for UrbanPlugin {
-    fn process_type(&self) -> &str { "urban" }
-    async fn execute(&self, p: serde_json::Value) -> GeoResult<serde_json::Value> {
-        // 调用现有方法
-        Ok(serde_json::json!({"far": self.far(...)}))
-    }
-}
-```
-
-所有 10 个插件均已实现此 trait，可通过 `registry.dispatch("urban", args)` 统一调用。
+**遥感**: TOA辐射校正 · DOS大气校正 · 云检测 · InSAR相干性 · Goldstein相位解缠

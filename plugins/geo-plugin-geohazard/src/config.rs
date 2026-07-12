@@ -1,10 +1,10 @@
-use geo_core::plugin::PluginConfig;
+use geo_core::plugin::{PluginConfig, PluginHeader};
 use serde::Deserialize;
 
 /// 地质灾害插件的顶级配置。
 #[derive(Debug, Clone, Deserialize)]
 pub struct GeohazardConfig {
-    pub plugin: PluginMeta,
+    pub plugin: PluginHeader,
 
     /// 滑坡因子权重。
     #[serde(default)]
@@ -13,13 +13,6 @@ pub struct GeohazardConfig {
     /// 泥石流参数。
     #[serde(default)]
     pub debris_flow: DebrisFlowParams,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct PluginMeta {
-    pub name: String,
-    pub version: String,
-    pub description: String,
 }
 
 /// 滑坡6因子权重 + 模糊隶属度参数。

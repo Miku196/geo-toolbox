@@ -1,9 +1,19 @@
 use geo_core::plugin::PluginConfig;
+pub use geo_core::plugin::PluginHeader;
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Deserialize, Default)]
+fn default_urban_plugin() -> PluginHeader {
+    PluginHeader {
+        name: "urban".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
+        description: "城市规划：容积率、用地分类、日照、热岛、通风廊道".into(),
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct UrbanConfig {
-    pub plugin: PluginMeta,
+    #[serde(default = "default_urban_plugin")]
+    pub plugin: PluginHeader,
     #[serde(default)]
     pub density: DensityParams,
     #[serde(default)]
@@ -14,13 +24,6 @@ pub struct UrbanConfig {
     pub uhi: UhiParams,
     #[serde(default)]
     pub vegetation: VegetationParams,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct PluginMeta {
-    pub name: String,
-    pub version: String,
-    pub description: String,
 }
 
 /// 容积率 / 密度参数。
@@ -149,17 +152,20 @@ fn default_min_green_per_capita_m2() -> f64 {
 }
 
 // ── Default impls ──
-impl Default for PluginMeta {
+impl PluginConfig for UrbanConfig {}
+
+impl Default for UrbanConfig {
     fn default() -> Self {
         Self {
-            name: "urban".into(),
-            version: env!("CARGO_PKG_VERSION").into(),
-            description: "城市规划：容积率、用地分类、日照、热岛、通风廊道".into(),
+            plugin: default_urban_plugin(),
+            density: DensityParams::default(),
+            land_use: LandUseParams::default(),
+            solar: SolarParams::default(),
+            uhi: UhiParams::default(),
+            vegetation: VegetationParams::default(),
         }
     }
 }
-
-impl PluginConfig for UrbanConfig {}
 
 impl Default for DensityParams {
     fn default() -> Self {

@@ -1,22 +1,25 @@
 use geo_core::plugin::PluginConfig;
+pub use geo_core::plugin::PluginHeader;
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Deserialize, Default)]
+fn default_survey_plugin() -> PluginHeader {
+    PluginHeader {
+        name: "survey".into(),
+        version: env!("CARGO_PKG_VERSION").into(),
+        description: "测绘工程：方格网土方、断面法、TIN、控制网平差、高斯投影".into(),
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct SurveyConfig {
-    pub plugin: PluginMeta,
+    #[serde(default = "default_survey_plugin")]
+    pub plugin: PluginHeader,
     #[serde(default)]
     pub adjustment: AdjustmentParams,
     #[serde(default)]
     pub earthwork: EarthworkParams,
     #[serde(default)]
     pub contour: ContourParams,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct PluginMeta {
-    pub name: String,
-    pub version: String,
-    pub description: String,
 }
 
 /// 控制网平差参数。
@@ -74,17 +77,18 @@ fn default_contour_interval() -> f64 {
     1.0
 }
 
-impl Default for PluginMeta {
+impl PluginConfig for SurveyConfig {}
+
+impl Default for SurveyConfig {
     fn default() -> Self {
         Self {
-            name: "survey".into(),
-            version: env!("CARGO_PKG_VERSION").into(),
-            description: "测绘工程：方格网土方、断面法、TIN、控制网平差、高斯投影".into(),
+            plugin: default_survey_plugin(),
+            adjustment: AdjustmentParams::default(),
+            earthwork: EarthworkParams::default(),
+            contour: ContourParams::default(),
         }
     }
 }
-
-impl PluginConfig for SurveyConfig {}
 
 impl Default for AdjustmentParams {
     fn default() -> Self {

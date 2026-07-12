@@ -44,17 +44,9 @@ members = [
     "plugins/geo-plugin-remote-sensing",
     "plugins/geo-plugin-seismology",
     "plugins/geo-plugin-socioeconomic",
-    "plugins/geo-plugin-cryosphere",
     "plugins/geo-plugin-atmosphere",
-    "plugins/geo-plugin-planetary",
-    "plugins/geo-plugin-paleoclimate",
-    "plugins/geo-plugin-geology",
     "plugins/geo-plugin-volcanology",
-    "plugins/geo-plugin-biodiversity",
     "plugins/geo-plugin-groundwater",
-    "plugins/geo-plugin-ocean",
-    "plugins/geo-plugin-public-health",
-    "plugins/geo-plugin-ecosystem-services",
 
     # ── Round 3: Registry ──
     "core/geo-registry",

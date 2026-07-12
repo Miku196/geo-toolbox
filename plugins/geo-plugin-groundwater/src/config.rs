@@ -1,20 +1,13 @@
-use geo_core::plugin::PluginConfig;
+use geo_core::plugin::{PluginConfig, PluginHeader};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct GroundwaterConfig {
-    pub plugin: PluginMeta,
+    pub plugin: PluginHeader,
     #[serde(default)]
     pub aquifer: AquiferParams,
     #[serde(default)]
     pub recharge: RechargeParams,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct PluginMeta {
-    pub name: String,
-    pub version: String,
-    pub description: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -47,7 +40,7 @@ fn default_recharge_coeff() -> f64 {
 impl Default for GroundwaterConfig {
     fn default() -> Self {
         Self {
-            plugin: PluginMeta {
+            plugin: PluginHeader {
                 name: "groundwater".into(),
                 version: "0.1.0".into(),
                 description: "地下水资源评估".into(),

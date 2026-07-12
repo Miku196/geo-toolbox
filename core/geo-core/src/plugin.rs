@@ -388,7 +388,7 @@ pub struct PluginMeta {
 ///
 /// Previously each plugin defined its own identical 3-field struct.
 /// Using this shared type eliminates 9 duplicate definitions.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PluginHeader {
     /// Human-readable plugin name, e.g. "Carbon Accounting"
     pub name: String,
