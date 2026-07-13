@@ -45,18 +45,18 @@ pub fn populate_defaults(reg: &mut PluginRegistry, config: Option<&GeoConfig>) {
     geo_plugin_groundwater::tools::register_tools(reg);
 
     // ── Adapters: lightweight (always-on) ──
-    geo_adapter_duckdb::tools::register_tools(reg);
-    geo_adapter_stac::tools::register_tools(reg);
-    geo_adapter_osm::tools::register_tools(reg);
+    geo_adapters_io::duckdb::register_tools(reg);
+    geo_adapters_io::stac::register_tools(reg);
+    geo_adapters_io::osm::register_tools(reg);
 
     // ── Adapters: feature-gated ──
     #[cfg(feature = "postgis")]
     {
-        let _ = geo_adapter_postgis::tools::register_tools(reg);
+        let _ = geo_adapters_geo::postgis::register_tools(reg);
     }
     #[cfg(feature = "gee")]
     {
-        geo_adapter_gee::tools::register_tools(reg);
+        geo_adapters_geo::gee::register_tools(reg);
     }
     #[cfg(feature = "qgis")]
     {
@@ -72,14 +72,51 @@ pub fn populate_defaults(reg: &mut PluginRegistry, config: Option<&GeoConfig>) {
     }
     #[cfg(feature = "cad")]
     {
-        geo_adapter_cad::tools::register_tools(reg);
+        geo_adapters_io::cad::register_tools(reg);
     }
     #[cfg(feature = "gdal")]
     {
-        geo_adapter_cli::tools::register_tools(reg);
+        geo_adapters_geo::gdal::register_tools(reg);
     }
     #[cfg(feature = "iot")]
     {
-        let _ = geo_adapter_iot::tools::register_tools(reg);
+        let _ = geo_adapters_sim::iot::register_tools(reg);
     }
+}
+
+// ════════════════════════════════════════════════════════════════
+// Dependency Injection: Plugin ← dyn Trait ← Adapter
+//
+// Wiring 层持有 adapter 的具体实现，通过 Box<dyn Trait> 注入 Plugin。
+// Plugin 完全不依赖 Adapter crate — 违反者被 check-deps.sh 拦截。
+// ════════════════════════════════════════════════════════════════
+
+use geo_core::traits::{DssatGenerator, ModflowGenerator};
+
+/// 实例化 DSSAT 适配器并返回 trait 对象。
+/// 用于注入 `geo_plugin_agri::AgriPlugin` 构造函数。
+fn assemble_dssat_generator() -> Box<dyn DssatGenerator> {
+    Box::new(geo_adapters_sim::dssat::DssatAdapter)
+}
+
+/// 实例化 MODFLOW 适配器并返回 trait 对象。
+/// 用于注入 `geo_plugin_hydro::HydroPlugin` 构造函数。
+fn assemble_modflow_generator() -> Box<dyn ModflowGenerator> {
+    Box::new(geo_adapters_sim::modflow::ModflowAdapter)
+}
+
+/// 组装完整的 AgriPlugin（含 DSSAT 模型输入文件生成能力）。
+pub fn assemble_agri_plugin(
+    config: geo_plugin_agri::AgriConfig,
+) -> geo_plugin_agri::AgriPlugin {
+    let dssat = assemble_dssat_generator();
+    geo_plugin_agri::AgriPlugin::new(config).with_dssat_generator(dssat)
+}
+
+/// 组装完整的 HydroPlugin（含 MODFLOW 地下水模拟能力）。
+pub fn assemble_hydro_plugin(
+    config: geo_plugin_hydro::HydroConfig,
+) -> geo_plugin_hydro::HydroPlugin {
+    let modflow = assemble_modflow_generator();
+    geo_plugin_hydro::HydroPlugin::new(config).with_modflow_generator(modflow)
 }

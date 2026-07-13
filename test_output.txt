@@ -1,0 +1,29 @@
+
+running 19 tests
+test dssat::tests::test_generate_sol ... ok
+test dssat::tests::test_generate_cul ... ok
+test dssat::tests::test_soil_from_scs_group ... ok
+test dssat::tests::test_extraterrestrial_radiation ... ok
+test iot::iot_mqtt::tests::test_config_client_id_prefix ... ok
+test iot::iot_mqtt::tests::test_mqtt_config_default ... ok
+test dssat::tests::test_generate_wth ... ok
+test iot::iot_adapter::tests::test_plugin_trait ... ok
+test iot::iot_mqtt::tests::test_mqtt_config_custom ... ok
+test dssat::tests::test_monthly_to_daily ... ok
+test modflow::tests::test_generate_bas6 ... ok
+test modflow::tests::test_generate_dis ... ok
+test iot::iot_mqtt::tests::test_qos_conversion ... ok
+test modflow::tests::test_generate_nam ... ok
+test iot::iot_mqtt::tests::test_mqtt_stats ... ok
+test iot::iot_mqtt::tests::test_tls_options ... ok
+test modflow::tests::test_generate_lpf ... ok
+test iot::iot_adapter::tests::test_health_check ... ok
+test iot::iot_adapter::tests::test_external_adapter_trait ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

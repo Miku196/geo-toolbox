@@ -1307,7 +1307,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "flate2",
- "geo-adapter-stac",
+ "geo-adapters-io",
  "geo-core",
  "geo-raster",
  "reqwest",
@@ -1821,149 +1821,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "geo-adapter-cad"
-version = "0.1.0"
-dependencies = [
- "dxf",
- "geo",
- "geo-adapter-postgis",
- "geo-core",
- "geo-registry",
- "rust_xlsxwriter",
- "serde",
- "serde_json",
- "sqlx",
- "tera",
- "tokio",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "geo-adapter-cli"
-version = "0.1.0"
-dependencies = [
- "gdal",
- "geo-adapter-postgis",
- "geo-core",
- "geo-registry",
- "object_store",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "geo-adapter-dssat"
-version = "0.1.0"
-dependencies = [
- "approx",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "geo-adapter-duckdb"
-version = "0.1.0"
-dependencies = [
- "geo-core",
- "geo-registry",
- "rusqlite",
- "serde",
- "serde_json",
- "tracing",
-]
-
-[[package]]
-name = "geo-adapter-gee"
-version = "0.1.0"
-dependencies = [
- "async-nats",
- "async-trait",
- "chrono",
- "futures",
- "geo-core",
- "geo-registry",
- "rdkafka",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "geo-adapter-iot"
-version = "0.1.0"
-dependencies = [
- "csv",
- "geo-adapter-postgis",
- "geo-core",
- "geo-registry",
- "rumqttc",
- "serde",
- "serde_json",
- "sqlx",
- "tokio",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "geo-adapter-modflow"
-version = "0.1.0"
-dependencies = [
- "approx",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "geo-adapter-osm"
-version = "0.1.0"
-dependencies = [
- "geo-core",
- "geo-registry",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "geo-adapter-pdal"
-version = "0.1.0"
-dependencies = [
- "geo-core",
- "geo-io",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "geo-adapter-postgis"
-version = "0.1.0"
-dependencies = [
- "csv",
- "geo-core",
- "geo-registry",
- "object_store",
- "serde",
- "serde_json",
- "sqlx",
- "tokio",
- "tracing",
- "uuid",
-]
-
-[[package]]
 name = "geo-adapter-pygeoapi"
 version = "0.1.0"
 dependencies = [
@@ -1997,17 +1854,66 @@ dependencies = [
 ]
 
 [[package]]
-name = "geo-adapter-stac"
+name = "geo-adapters-geo"
+version = "0.1.0"
+dependencies = [
+ "async-nats",
+ "async-trait",
+ "chrono",
+ "csv",
+ "futures",
+ "gdal",
+ "geo-core",
+ "geo-io",
+ "geo-registry",
+ "object_store",
+ "rdkafka",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "geo-adapters-io"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "dxf",
+ "geo",
  "geo-core",
  "geo-registry",
  "reqwest",
+ "rusqlite",
+ "rust_xlsxwriter",
  "serde",
  "serde_json",
+ "sqlx",
+ "tera",
  "tokio",
  "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "geo-adapters-sim"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "csv",
+ "geo-core",
+ "geo-registry",
+ "rumqttc",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -2036,15 +1942,10 @@ dependencies = [
  "csv",
  "futures",
  "geo",
- "geo-adapter-cad",
- "geo-adapter-cli",
- "geo-adapter-duckdb",
- "geo-adapter-gee",
- "geo-adapter-iot",
- "geo-adapter-osm",
- "geo-adapter-postgis",
  "geo-adapter-qgis",
- "geo-adapter-stac",
+ "geo-adapters-geo",
+ "geo-adapters-io",
+ "geo-adapters-sim",
  "geo-carbon-math",
  "geo-core",
  "geo-index",
@@ -2104,6 +2005,18 @@ dependencies = [
  "serde",
  "serde_json",
  "toml",
+]
+
+[[package]]
+name = "geo-facade"
+version = "0.1.0"
+dependencies = [
+ "geo-core",
+ "geo-index",
+ "geo-io",
+ "geo-raster",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2168,7 +2081,7 @@ dependencies = [
 name = "geo-plugin-agri"
 version = "0.1.0"
 dependencies = [
- "geo-adapter-dssat",
+ "geo-adapters-sim",
  "geo-core",
  "geo-registry",
  "serde",
@@ -2220,7 +2133,6 @@ version = "0.1.0"
 dependencies = [
  "approx",
  "geo-core",
- "geo-io",
  "geo-raster",
  "geo-registry",
  "geo-stats",
@@ -2319,7 +2231,7 @@ name = "geo-plugin-hydro"
 version = "0.1.0"
 dependencies = [
  "approx",
- "geo-adapter-modflow",
+ "geo-adapters-sim",
  "geo-core",
  "geo-registry",
  "serde",
@@ -2566,15 +2478,10 @@ dependencies = [
 name = "geo-wiring"
 version = "0.1.0"
 dependencies = [
- "geo-adapter-cad",
- "geo-adapter-cli",
- "geo-adapter-duckdb",
- "geo-adapter-gee",
- "geo-adapter-iot",
- "geo-adapter-osm",
- "geo-adapter-postgis",
  "geo-adapter-qgis",
- "geo-adapter-stac",
+ "geo-adapters-geo",
+ "geo-adapters-io",
+ "geo-adapters-sim",
  "geo-carbon-math",
  "geo-core",
  "geo-index",

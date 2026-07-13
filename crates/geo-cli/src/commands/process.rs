@@ -31,7 +31,7 @@ async fn handle_gee(action: GeeAction) -> Result<(), Box<dyn std::error::Error>>
             output_gcs,
             params,
         } => {
-            use geo_adapter_gee::{dispatcher::GeeDispatcher, mq::create_mq};
+            use geo_adapters_geo::gee::{GeeDispatcher, create_mq};
             let mq = create_mq().await?;
             let dispatcher = GeeDispatcher::new(mq);
             let extra = params.as_deref().and_then(|p| serde_json::from_str(p).ok());
@@ -46,7 +46,7 @@ async fn handle_gee(action: GeeAction) -> Result<(), Box<dyn std::error::Error>>
             year,
             output_gcs,
         } => {
-            use geo_adapter_gee::{dispatcher::GeeDispatcher, mq::create_mq};
+            use geo_adapters_geo::gee::{GeeDispatcher, create_mq};
             let mq = create_mq().await?;
             let dispatcher = GeeDispatcher::new(mq);
             let cid = dispatcher
@@ -60,7 +60,7 @@ async fn handle_gee(action: GeeAction) -> Result<(), Box<dyn std::error::Error>>
             to,
             output_gcs,
         } => {
-            use geo_adapter_gee::{dispatcher::GeeDispatcher, mq::create_mq};
+            use geo_adapters_geo::gee::{GeeDispatcher, create_mq};
             let mq = create_mq().await?;
             let dispatcher = GeeDispatcher::new(mq);
             let cid = dispatcher
@@ -69,7 +69,7 @@ async fn handle_gee(action: GeeAction) -> Result<(), Box<dyn std::error::Error>>
             println!("Change detection task dispatched: {cid}");
         }
         GeeAction::Status { cid } => {
-            use geo_adapter_gee::tracker::GeeTracker;
+            use geo_adapters_geo::gee::GeeTracker;
             let queue_dir =
                 std::env::var("GEO_QUEUE_DIR").unwrap_or_else(|_| "./queue".to_string());
             let tracker = GeeTracker::new_file(&queue_dir);
@@ -79,7 +79,7 @@ async fn handle_gee(action: GeeAction) -> Result<(), Box<dyn std::error::Error>>
             }
         }
         GeeAction::Summary => {
-            use geo_adapter_gee::tracker::GeeTracker;
+            use geo_adapters_geo::gee::GeeTracker;
             let queue_dir =
                 std::env::var("GEO_QUEUE_DIR").unwrap_or_else(|_| "./queue".to_string());
             let tracker = GeeTracker::new_file(&queue_dir);
@@ -99,7 +99,7 @@ async fn handle_gdal(action: GdalAction) -> Result<(), Box<dyn std::error::Error
             output,
             compression,
         } => {
-            use geo_adapter_cli::raster::{CogOptions, RasterOps};
+            use geo_adapters_geo::gdal::{CogOptions, RasterOps};
             let opts = CogOptions {
                 compression,
                 ..CogOptions::default()
@@ -112,7 +112,7 @@ async fn handle_gdal(action: GdalAction) -> Result<(), Box<dyn std::error::Error
             output,
             epsg,
         } => {
-            use geo_adapter_cli::raster::RasterOps;
+            use geo_adapters_geo::gdal::RasterOps;
             let result = RasterOps::reproject(&input, &output, epsg, None).await?;
             println!("Reprojected: {}", result.display());
         }
@@ -123,7 +123,7 @@ async fn handle_gdal(action: GdalAction) -> Result<(), Box<dyn std::error::Error
             r#where,
             overwrite,
         } => {
-            use geo_adapter_cli::vector::{Ogr2OgrOptions, VectorOps};
+            use geo_adapters_geo::gdal::{Ogr2OgrOptions, VectorOps};
             let opts = Ogr2OgrOptions {
                 target_epsg: epsg,
                 where_clause: r#where,
@@ -139,7 +139,7 @@ async fn handle_gdal(action: GdalAction) -> Result<(), Box<dyn std::error::Error
             cog,
             local,
         } => {
-            use geo_adapter_cli::gcs_bridge::{GcsBridge, GcsBridgeConfig};
+            use geo_adapters_geo::gdal::{GcsBridge, GcsBridgeConfig};
             let mut config = GcsBridgeConfig::default();
             if local {
                 config.minio_endpoint = None;

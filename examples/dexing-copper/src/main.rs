@@ -11,7 +11,7 @@
 //! 数据源: ESA Copernicus Sentinel-2 MSI (10m)
 //! STAC: Microsoft Planetary Computer
 
-use geo_adapter_stac::StacClient;
+use geo_adapters_io::stac::StacClient;
 use geo_core::errors::{GeoError, GeoResult};
 use geo_raster::grid::RasterBand;
 use geo_raster::ndvi::{compute_ndvi, ndvi_difference};
@@ -42,7 +42,7 @@ async fn search_sentinel2_scenes(
     client: &StacClient,
     year: u16,
     verbose: bool,
-) -> GeoResult<Vec<geo_adapter_stac::StacItem>> {
+) -> GeoResult<Vec<geo_adapters_io::stac::StacItem>> {
     let date_from = format!("{year}-06-01");
     let date_to = format!("{year}-08-31");
 
@@ -79,7 +79,7 @@ async fn search_sentinel2_scenes(
 
 /// 从 STAC item 提取 B04 (Red) 和 B08 (NIR) 的 HTTPS 下载 URL。
 fn extract_band_hrefs(
-    item: &geo_adapter_stac::StacItem,
+    item: &geo_adapters_io::stac::StacItem,
 ) -> (Option<String>, Option<String>, Option<String>) {
     let assets = match &item.assets {
         Some(a) => a,
@@ -341,7 +341,7 @@ async fn sign_pc_asset_url(href: &str) -> Result<String, String> {
 /// 从 Planetary Computer 下载 S2B 场景 + SCL 云掩膜 + 多景中值合成。
 /// 仅使用 S2B (统一传感器), 自动遮蔽云/云影, 多景取中值。
 async fn download_with_scl(
-    scenes: &[geo_adapter_stac::StacItem],
+    scenes: &[geo_adapters_io::stac::StacItem],
     year: u16,
     output_dir: &std::path::Path,
 ) -> Option<(RasterBand, RasterBand)> {
@@ -352,7 +352,7 @@ async fn download_with_scl(
     }
 
     let pc_client =
-        geo_adapter_stac::StacClient::new("https://planetarycomputer.microsoft.com/api/stac/v1");
+        geo_adapters_io::stac::StacClient::new("https://planetarycomputer.microsoft.com/api/stac/v1");
 
     const SCL_CLOUD: &[u8] = &[3, 7, 8, 9, 10];
 

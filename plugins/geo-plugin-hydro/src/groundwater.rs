@@ -129,10 +129,8 @@ pub fn groundwater_flow_1d(
 // 3. MODFLOW 适配器 — 委托到 geo-adapter-modflow
 // ──────────────────────────────────────────────
 
-pub use geo_adapter_modflow::{
-    generate_bas6 as generate_modflow_bas6, generate_dis as generate_modflow_dis,
-    generate_lpf as generate_modflow_lpf, generate_nam as generate_modflow_nam, ModflowGrid,
-    ModflowStressPeriod,
+pub use geo_core::traits::{
+    ModflowGrid, ModflowStressPeriod,
 };
 
 // ──────────────────────────────────────────────

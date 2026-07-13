@@ -5,6 +5,7 @@ use geo_core::types::BBox;
 const BASE32: &[u8; 32] = b"0123456789bcdefghjkmnpqrstuvwxyz";
 
 /// 编码经纬度为 GeoHash 字符串。
+#[deprecated(note = "请使用 geo_facade::index::encode 替代")]
 pub fn encode(lon: f64, lat: f64, precision: usize) -> String {
     let precision = precision.clamp(1, 12);
     let mut min_lon = -180.0;

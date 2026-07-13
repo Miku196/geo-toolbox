@@ -48,7 +48,7 @@ pub async fn handle(
                 .connect(&ts_url)
                 .await?;
             println!("MQTT ingestor connecting to {broker}:{port}/{topic} ...");
-            let ingestor = geo_adapter_iot::mqtt::MqttIngestor::new(pool);
+            let ingestor = geo_adapters_sim::iot::iot_mqtt::MqttIngestor::new(pool);
             ingestor.start(&broker, port, &topic).await?;
         }
     }

@@ -34,22 +34,17 @@ geo-plugin-socioeconomic = { path = "../../plugins/geo-plugin-socioeconomic" }
 geo-plugin-atmosphere = { path = "../../plugins/geo-plugin-atmosphere" }
 geo-plugin-volcanology = { path = "../../plugins/geo-plugin-volcanology" }
 geo-plugin-groundwater = { path = "../../plugins/geo-plugin-groundwater" }
-geo-adapter-duckdb = { path = "../../adapters/geo-adapter-duckdb" }
-geo-adapter-stac = { path = "../../adapters/geo-adapter-stac" }
-geo-adapter-osm = { path = "../../adapters/geo-adapter-osm" }
-geo-adapter-postgis = { path = "../../adapters/geo-adapter-postgis", optional = true }
-geo-adapter-gee = { path = "../../adapters/geo-adapter-gee", optional = true }
+geo-adapters-io = { path = "../../adapters/geo-adapters-io" }
+geo-adapters-geo = { path = "../../adapters/geo-adapters-geo" }
+geo-adapters-sim = { path = "../../adapters/geo-adapters-sim", features = ["dssat", "modflow"] }
 geo-adapter-qgis = { path = "../../adapters/geo-adapter-qgis", optional = true }
-geo-adapter-cad = { path = "../../adapters/geo-adapter-cad", optional = true }
-geo-adapter-cli = { path = "../../adapters/geo-adapter-cli", optional = true }
-geo-adapter-iot = { path = "../../adapters/geo-adapter-iot", optional = true }
 tracing.workspace = true
 
 [features]
 default = []
-postgis = ["geo-adapter-postgis"]
-gee = ["geo-adapter-gee"]
+postgis = ["geo-adapters-geo/postgis"]
+gee = ["geo-adapters-geo/gee"]
 qgis = ["geo-adapter-qgis"]
-cad = ["geo-adapter-cad"]
-gdal = ["geo-adapter-cli"]
-iot = ["geo-adapter-iot"]
+cad = ["geo-adapters-io/cad"]
+gdal = ["geo-adapters-geo/gdal"]
+iot = ["geo-adapters-sim/iot"]

@@ -1,0 +1,51 @@
+[package]
+name = "geo-adapters-geo"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Geospatial adapters: PostGIS, GDAL CLI, PDAL, GEE"
+
+[features]
+default = ["postgis", "gdal", "pdal", "gee"]
+postgis = []
+minio = ["postgis", "dep:object_store"]
+timescale = ["postgis"]
+gdal = []
+gdal-bindings = ["gdal", "dep:gdal"]
+pdal = []
+gee = []
+nats = ["gee", "dep:async-nats"]
+kafka = ["gee", "dep:rdkafka"]
+file-queue = ["gee"]
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry", features = ["tokio-runtime"] }
+geo-io = { path = "../../core/geo-io" }
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+# PostGIS
+sqlx = { workspace = true, features = ["postgres", "runtime-tokio", "migrate", "uuid"] }
+csv.workspace = true
+
+# PDAL
+thiserror.workspace = true
+tempfile = "3"
+
+# GEE
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = "0.1"
+futures.workspace = true
+
+# Optional
+object_store = { workspace = true, optional = true }
+gdal = { workspace = true, optional = true }
+async-nats = { workspace = true, optional = true }
+rdkafka = { version = "0.36", optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt"] }

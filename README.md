@@ -5,8 +5,8 @@
 将 PostGIS、GEE、QGIS、GDAL 等重型 GIS 工具串联成自动化管线：
 数据采集 → 入库存储 → 遥感分析 → 碳核算 → 成果输出。
 
-采用 **Core → Plugin → Adapter 三层架构**：Rust 负责性能敏感路径，
-遥感计算和空间分析委托 Python 生态。
+采用 **五层洋葱架构**（Core → Facade → Plugin → Wiring → Adapter）：
+Rust 负责性能敏感路径，遥感计算和空间分析委托 Python 生态。
 
 [![Rust](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -18,25 +18,35 @@
 ## 架构
 
 ```
-┌───────────────────────────────────────────────────┐
-│                   geo-toolbox                     │
-├───────────────────────────────────────────────────┤
-│  Layer 1: Core (14 crates) — 纯 Rust，零外部依赖  │
-│  几何/CRS · 栅格 · 矢量 · 瓦片 · 时序 · 索引 ·    │
-│  统计 · IO · 报告 · 碳核算 · GeoParquet · OGC     │
-├───────────────────────────────────────────────────┤
-│  Layer 2: Plugins (26 crates) — 专业领域          │
-│  碳核算 · 生态 · 测绘 · 城乡规划 · 水文 · 地灾 ·  │
-│  农业 · 能源 · 林业 · 海岸带 · 遥感 · 气候 · 地貌 │
-├───────────────────────────────────────────────────┤
-│  Layer 3: Adapters (13 crates) — 外部桥接         │
-│  PostGIS · GEE · QGIS · DuckDB · STAC · OSM ·     │
-│  CAD · GDAL · IoT · DSSAT · MODFLOW · PDAL        │
-└───────────────────────────────────────────────────┘
-依赖方向（严格单向）：Adapter → Plugin → Core
-```
+┌──────────────────────────────────────────────────────────┐
+│                      geo-toolbox                         │
+├──────────────────────────────────────────────────────────┤
+│  Layer 1: Core (14 crates) — 纯 Rust，零外部依赖         │
+│  几何/CRS · 抽象 trait · 栅格 · 矢量 · 瓦片 · 时序 ·     │
+│  索引 · 统计 · IO · 报告 · 碳核算 · GeoParquet · OGC     │
+├──────────────────────────────────────────────────────────┤
+│  Layer 2: Facade (1 crate) — 高频函数聚合门面             │
+│  geo-facade — 统一重导出 io / index / raster 入口        │
+├──────────────────────────────────────────────────────────┤
+│  Layer 3: Plugins (18 crates) — 专业领域                 │
+│  碳核算 · 生态 · 测绘 · 城乡规划 · 水文 · 地灾 ·          │
+│  农业 · 能源 · 林业 · 海岸带 · 遥感 · 气候 · 地貌 ...     │
+├──────────────────────────────────────────────────────────┤
+│  Layer 4: Wiring (1 crate) — DI 依赖注入组合根            │
+│  geo-wiring — 唯一允许同时依赖 Plugin 和 Adapter 的工厂   │
+├──────────────────────────────────────────────────────────┤
+│  Layer 5: Adapters (5 crates) — 外部桥接，Feature-gated   │
+│  geo-adapters-geo (PostGIS/GDAL/PDAL/GEE) ·               │
+│  geo-adapters-io (DuckDB/STAC/OSM/CAD) ·                 │
+│  geo-adapters-sim (MODFLOW/DSSAT/IoT) · QGIS · PyO3      │
+└──────────────────────────────────────────────────────────┘
 
-核心原则：依赖单向、WASM 数据不出网、Rust 做胶水 Python 做重活、Feature flags 控制依赖。
+依赖方向（严格单向）：
+  Core ← Facade ← Plugin ← Wiring ← Adapter
+  Plugin 只依赖 trait（定义在 Core），不依赖 Adapter crate
+  Wiring 负责运行时将 Adapter 实现注入 Plugin（Box<dyn Trait>）
+
+核心原则：依赖单向 · WASM 数据不出网 · Rust 做胶水 Python 做重活 · Feature flags 控制依赖 · check-deps.sh 硬锁
 
 ---
 
@@ -137,24 +147,25 @@ const report = await carbon.calculate(geojson, factorsCsv, 2025);
 ```
 geo-toolbox/
 ├── core/                  # 核心引擎 (14 crates)
-├── plugins/               # 专业插件 (26 crates)
-├── adapters/              # 外部适配器 (13 crates)
-├── crates/                # 入口 (CLI / Server / WASM / Wiring)
+├── plugins/               # 专业插件 (18 crates)
+├── adapters/              # 外部适配器 (5 crates: 3 合并包 + QGIS + PyO3)
+├── crates/                # 入口 (CLI / Server / WASM) + 门面 (Facade) + 依赖注入 (Wiring)
 ├── bindings/              # Python / Jupyter / QGIS / MapLibre
 ├── examples/              # 成都碳收支 / 中国风险评估 / 德兴铜矿
 ├── fuzz/                  # Fuzz 测试目标
+├── scripts/               # CI / Git Hook 依赖检查
 └── docs/                  # 补充文档
 ```
 
 ---
 
-## 三层架构详解
+## 五层架构详解
 
 ### Layer 1: Core — 纯 Rust 核心引擎
 
 | Crate | 职责 |
 |-------|------|
-| `geo-core` | 几何基类、CRS、`Plugin` trait、`GeoError` |
+| `geo-core` | 几何基类、CRS、`Plugin` trait、抽象 trait（`DssatGenerator` / `ModflowGenerator`）、`GeoError` |
 | `geo-raster` | 栅格运算、NDVI、地形分析 |
 | `geo-vector` | 矢量空间运算 |
 | `geo-tile` | MVT/PMTiles 瓦片 |
@@ -168,7 +179,13 @@ geo-toolbox/
 | `geo-ogc` | WMS/WFS/WPS 标准 |
 | `geo-registry` | 插件注册调度中心 |
 
-### Layer 2: Plugins — 专业领域插件
+### Layer 2: Facade — 门面聚合层
+
+| Crate | 职责 |
+|-------|------|
+| `geo-facade` | 统一重导出 `geo-io` / `geo-index` / `geo-raster` 高频函数，降低 Plugin 调用深度 |
+
+### Layer 3: Plugins — 专业领域插件
 
 | 插件 | 核心能力 |
 |------|---------|
@@ -190,18 +207,10 @@ geo-toolbox/
 
 | 适配器 | 外部系统 | 方式 |
 |--------|---------|------|
-| `geo-adapter-postgis` | PostgreSQL+PostGIS | sqlx |
-| `geo-adapter-gee` | Google Earth Engine | NATS→Python |
+| `geo-adapters-geo` | PostGIS / GDAL / PDAL / GEE | Feature-gated |
+| `geo-adapters-io` | DuckDB / STAC / OSM / CAD | Feature-gated |
+| `geo-adapters-sim` | MODFLOW / DSSAT / IoT | Feature-gated |
 | `geo-adapter-qgis` | QGIS | Subprocess/REST |
-| `geo-adapter-duckdb` | DuckDB/SQLite | 嵌入式 |
-| `geo-adapter-stac` | STAC API | HTTP |
-| `geo-adapter-osm` | OpenStreetMap | Overpass API |
-| `geo-adapter-cad` | CAD/DXF | 格式导出 |
-| `geo-adapter-cli` | GDAL/DVC | 子进程 |
-| `geo-adapter-iot` | MQTT传感器 | MQTT |
-| `geo-adapter-dssat` | DSSAT作物模型 | 文件生成 |
-| `geo-adapter-modflow` | MODFLOW地下水 | 文件生成 |
-| `geo-adapter-pdal` | PDAL LiDAR | 管线处理 |
 | `geo-adapter-pygeoapi` | PyO3 FFI | WKB↔Shapely |
 
 ---

@@ -27,6 +27,7 @@ pub struct NdviResult {
 /// 从红波段（RED）和近红外波段（NIR）计算 NDVI。
 ///
 /// 自动跳过两组波段中任一为 nodata 的像素。
+#[deprecated(note = "请使用 geo_facade::raster::compute_ndvi 替代")]
 pub fn compute_ndvi(red: &RasterBand, nir: &RasterBand) -> GeoResult<NdviResult> {
     let sum = band::band_add(nir, red, "NIR+RED")?;
     let diff = band::band_sub(nir, red, "NIR-RED")?;

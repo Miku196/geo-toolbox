@@ -60,6 +60,7 @@ pub fn parse_feature_collection(geojson: &str) -> GeoResult<(Vec<GeoJsonFeature>
 }
 
 /// 从所有 feature 中提取整体边界框。
+#[deprecated(note = "请使用 geo_facade::io::extract_bbox 替代")]
 pub fn extract_bbox(geojson: &str) -> GeoResult<BBox> {
     let (_, bbox) = parse_feature_collection(geojson)?;
     bbox.ok_or_else(|| GeoError::Validation("Cannot compute bbox from empty/point features".into()))

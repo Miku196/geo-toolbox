@@ -4,6 +4,7 @@ exclude = ["fuzz"]
 members = [
     # ── 原有 crate ──
     "core/geo-core",
+    "core/geo-facade",
     "crates/geo-cli",
     "crates/geo-wasm",
     "crates/geo-server",
@@ -51,22 +52,12 @@ members = [
     # ── Round 3: Registry ──
     "core/geo-registry",
 
-    # ── Round 1: Adapter 层新增 (拓展路线图) ──
-    "adapters/geo-adapter-duckdb",
-    "adapters/geo-adapter-stac",
-    "adapters/geo-adapter-osm",
-
-    # ── Round 3: Adapters ──
-    "adapters/geo-adapter-postgis",
-    "adapters/geo-adapter-gee",
+    # ── Adapters (合并后) ──
+    "adapters/geo-adapters-geo",
+    "adapters/geo-adapters-io",
+    "adapters/geo-adapters-sim",
     "adapters/geo-adapter-qgis",
-    "adapters/geo-adapter-cad",
-    "adapters/geo-adapter-cli",
-    "adapters/geo-adapter-dssat",
-    "adapters/geo-adapter-iot",
-    "adapters/geo-adapter-modflow",
     "adapters/geo-adapter-pygeoapi",
-    "adapters/geo-adapter-pdal",
 
     # ── Examples ──
     "examples/dexing-copper",

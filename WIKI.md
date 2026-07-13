@@ -222,7 +222,7 @@ export DATABASE_URL=postgres://geo:geo@localhost/geo_test
 ```
 
 ```rust
-use geo_adapter_postgis::PostgisAdapter;
+use geo_adapters_geo::postgis::PostgisAdapter;
 let adapter = PostgisAdapter::from_env()?;
 adapter.push("features", &features).await?;
 let results = adapter.pull("SELECT * FROM features").await?;
@@ -241,7 +241,7 @@ export QGIS_BACKEND=rest
 ### 3.3 DuckDB 嵌入式数据库
 
 ```rust
-use geo_adapter_duckdb::DuckDbStore;
+use geo_adapters_io::duckdb::DuckDbStore;
 let store = DuckDbStore::new_in_memory()?;
 store.ingest_geojson("my_layer", geojson_str).await?;
 ```
@@ -249,7 +249,7 @@ store.ingest_geojson("my_layer", geojson_str).await?;
 ### 3.4 STAC 影像搜索
 
 ```rust
-use geo_adapter_stac::StacClient;
+use geo_adapters_io::stac::StacClient;
 let client = StacClient::new("https://planetarycomputer.microsoft.com/api/stac/v1");
 let items = client.search(bbox, "2024-01-01", "2024-06-01", 10).await?;
 ```
@@ -283,7 +283,7 @@ pub trait ExternalAdapter: Plugin {
 
 ### 4.2 创建适配器骨架
 
-详见 `adapters/` 下现有适配器源码作参考，推荐直接复制 `geo-adapter-duckdb` 或 `geo-adapter-stac` 作为模板。
+详见 `adapters/` 下现有适配器源码作参考，推荐直接复制 `geo-adapters-io` 作为模板（含 DuckDB / STAC / OSM / CAD 示例）。
 
 ---
 

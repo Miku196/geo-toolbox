@@ -134,6 +134,57 @@ pub enum GeoError {
 /// Convenience alias: `Result<T, GeoError>`.
 pub type GeoResult<T> = Result<T, GeoError>;
 
+// ── Geometry Facade Error ─────────────────────────────────────────
+
+/// Facade 层几何解析专用错误。
+///
+/// 与 `GeoError` 分离 — `GeoError` 为全 workspace 共享的通用错误,
+/// `GeometryFacadeError` 仅用于 Plugin 层 Facade 入口的几何解析路径。
+/// 防止 `GeoError` 枚举膨胀, 保持 facade 语义独立。
+#[derive(Error, Debug)]
+pub enum GeometryFacadeError {
+    /// GeoJSON 反序列化失败 (透传 serde_json::Error)。
+    #[error("GeoJSON 解析失败: {0}")]
+    GeoJsonParse(#[from] serde_json::Error),
+
+    /// 不支持的 GeoJSON 几何类型。
+    #[error("不支持的几何类型 '{actual}'. 支持: Point, MultiPoint, LineString, Polygon, MultiPolygon")]
+    UnsupportedGeometry {
+        actual: String,
+    },
+
+    /// 几何对象为空 — 无坐标、空数组、或所有 feature 解析失败。
+    #[error("几何为空: {0}")]
+    EmptyGeometry(String),
+}
+
+/// Facade 层专用 Result 别名。
+pub type FacadeResult<T> = Result<T, GeometryFacadeError>;
+
+// ── GeometryFacadeError 便捷构造函数 ──
+
+impl GeometryFacadeError {
+    /// 不支持的几何类型。
+    pub fn unsupported_geometry(actual: impl Into<String>) -> Self {
+        Self::UnsupportedGeometry {
+            actual: actual.into(),
+        }
+    }
+
+    /// 几何为空。
+    pub fn empty_geometry(reason: impl Into<String>) -> Self {
+        Self::EmptyGeometry(reason.into())
+    }
+}
+
+// ── GeometryFacadeError → GeoError 转换 ──
+
+impl From<GeometryFacadeError> for GeoError {
+    fn from(e: GeometryFacadeError) -> Self {
+        GeoError::Validation(e.to_string())
+    }
+}
+
 // ── Convenience constructors ──
 
 impl GeoError {

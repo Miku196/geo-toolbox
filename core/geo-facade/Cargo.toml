@@ -1,0 +1,14 @@
+[package]
+name = "geo-facade"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Facade layer — unified re-export surface for geo-io / geo-index / geo-raster"
+
+[dependencies]
+geo-core = { path = "../geo-core" }
+geo-io = { path = "../geo-io" }
+geo-index = { path = "../geo-index" }
+geo-raster = { path = "../geo-raster" }
+serde.workspace = true
+serde_json.workspace = true

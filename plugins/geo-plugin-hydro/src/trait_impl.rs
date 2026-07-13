@@ -16,8 +16,8 @@ impl Plugin for HydroPlugin {
         PluginCategory::Process
     }
     type Config = HydroConfig;
-    fn new(config: HydroConfig) -> Self {
-        Self::new(config)
+    fn new(_config: HydroConfig) -> Self {
+        panic!("HydroPlugin must be constructed via HydroPlugin::new(config, modflow), not Plugin::new()")
     }
 }
 

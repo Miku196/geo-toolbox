@@ -1,4 +1,5 @@
 use crate::config::HydroConfig;
+use geo_core::traits::ModflowGenerator;
 use serde::{Deserialize, Serialize};
 
 /// 汇流计算结果。
@@ -45,11 +46,18 @@ pub struct HydroAssessment {
 
 pub struct HydroPlugin {
     config: HydroConfig,
+    modflow_generator: Option<Box<dyn ModflowGenerator>>,
 }
 
 impl HydroPlugin {
     pub fn new(config: HydroConfig) -> Self {
-        Self { config }
+        Self { config, modflow_generator: None }
+    }
+
+    /// 注入 MODFLOW 生成器（由 geo-wiring 层组装）。
+    pub fn with_modflow_generator(mut self, gen: Box<dyn ModflowGenerator>) -> Self {
+        self.modflow_generator = Some(gen);
+        self
     }
     pub fn config(&self) -> &HydroConfig {
         &self.config
@@ -381,6 +389,14 @@ mod tests {
     use super::*;
     use crate::config::{HydroConfig, PluginHeader};
 
+    struct ModflowStub;
+    impl ModflowGenerator for ModflowStub {
+        fn generate_nam(&self, _model_name: &str, _units: &[(&str, usize)]) -> String { String::new() }
+        fn generate_dis(&self, _nlay: usize, _nrow: usize, _ncol: usize, _delr: f64, _delc: f64, _top: f64, _botm: f64, _nper: usize) -> String { String::new() }
+        fn generate_bas6(&self, _ibound_val: i32, _strt: f64, _nrow: usize, _ncol: usize) -> String { String::new() }
+        fn generate_lpf(&self, _hk: f64, _vka: f64, _ss: f64, _sy: f64, _nrow: usize, _ncol: usize) -> String { String::new() }
+    }
+
     fn default_plugin() -> HydroPlugin {
         HydroPlugin::new(HydroConfig {
             plugin: PluginHeader {
@@ -391,7 +407,7 @@ mod tests {
             flood: Default::default(),
             runoff: Default::default(),
             catchment: Default::default(),
-        })
+        }, Box::new(ModflowStub))
     }
 
     #[test]

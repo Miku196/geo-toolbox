@@ -16,6 +16,11 @@ pub mod guard;
 pub mod health;
 pub mod observability;
 pub mod plugin;
+pub mod traits;
 pub mod types;
 
-pub use errors::{GeoError, GeoResult};
+pub use errors::{FacadeResult, GeoError, GeoResult, GeometryFacadeError};
+pub use traits::{
+    CultivarParams, DailyWeather, DssatGenerator, ModflowGenerator,
+    ModflowGrid, ModflowStressPeriod, SoilLayer, SoilProfile, WeatherStation,
+};

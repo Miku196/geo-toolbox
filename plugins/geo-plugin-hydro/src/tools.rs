@@ -1,9 +1,17 @@
 //! Tool registration — Hydrology plugin.
 use crate::HydroPlugin;
+use geo_core::traits::ModflowGenerator;
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
 fn default_plugin() -> HydroPlugin {
-    HydroPlugin::new(Default::default())
+    struct NoopModflow;
+    impl ModflowGenerator for NoopModflow {
+        fn generate_nam(&self, _model_name: &str, _units: &[(&str, usize)]) -> String { String::new() }
+        fn generate_dis(&self, _nlay: usize, _nrow: usize, _ncol: usize, _delr: f64, _delc: f64, _top: f64, _botm: f64, _nper: usize) -> String { String::new() }
+        fn generate_bas6(&self, _ibound_val: i32, _strt: f64, _nrow: usize, _ncol: usize) -> String { String::new() }
+        fn generate_lpf(&self, _hk: f64, _vka: f64, _ss: f64, _sy: f64, _nrow: usize, _ncol: usize) -> String { String::new() }
+    }
+    HydroPlugin::new(Default::default()).with_modflow_generator(Box::new(NoopModflow))
 }
 pub fn register_tools(registry: &mut PluginRegistry) {
     register_plugin!(registry, "hydro", "Hydrology: flow accumulation, runoff, inundation, watershed", PluginCategory::Process, [

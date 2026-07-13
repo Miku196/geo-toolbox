@@ -15,12 +15,12 @@ pub async fn handle(
 
     match action {
         StoreAction::Migrate => {
-            let store = geo_adapter_postgis::PostgisStore::connect(&db_url).await?;
+            let store = geo_adapters_geo::postgis::PostgisStore::connect(&db_url).await?;
             match store.check_postgis().await {
                 Ok(version) => println!("PostGIS version: {version}"),
                 Err(e) => eprintln!("Warning: {e}"),
             }
-            geo_adapter_postgis::run_migrations(store.pool()).await?;
+            geo_adapters_geo::postgis::run_migrations(store.pool()).await?;
             println!("Migrations applied successfully.");
             let tables: Vec<(String,)> = sqlx::query_as(
                 "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename",
@@ -34,7 +34,7 @@ pub async fn handle(
         }
         StoreAction::Write { table, file } => {
             println!("[store] Writing {file} → {table} ...");
-            let store = geo_adapter_postgis::PostgisStore::connect(&db_url).await?;
+            let store = geo_adapters_geo::postgis::PostgisStore::connect(&db_url).await?;
             let content = tokio::fs::read_to_string(&file).await?;
             let geojson: serde_json::Value = serde_json::from_str(&content)?;
             let features = geojson["features"].as_array().ok_or_else(|| {
@@ -59,29 +59,29 @@ pub async fn handle(
             println!("  Wrote {count} rows to {table}");
         }
         StoreAction::Read { sql } => {
-            let store = geo_adapter_postgis::PostgisStore::connect(&db_url).await?;
+            let store = geo_adapters_geo::postgis::PostgisStore::connect(&db_url).await?;
             match store.query_json(&sql).await {
                 Ok(rows) => println!("{}", serde_json::to_string_pretty(&rows)?),
                 Err(e) => eprintln!("Query failed: {e}"),
             }
         }
         StoreAction::DvcSnapshot { file } => {
-            if !geo_adapter_postgis::dvc_available() {
+            if !geo_adapters_geo::postgis::dvc_available() {
                 eprintln!("Error: DVC CLI not found. Install with: pip install dvc");
                 return Ok(());
             }
-            let snapshot = geo_adapter_postgis::dvc_snapshot(&file)?;
+            let snapshot = geo_adapters_geo::postgis::dvc_snapshot(&file)?;
             println!("DVC snapshot: {} → {}", snapshot.file, snapshot.dvc_hash);
         }
         StoreAction::DvcPull { target } => {
-            if !geo_adapter_postgis::dvc_available() {
+            if !geo_adapters_geo::postgis::dvc_available() {
                 eprintln!("Error: DVC CLI not found.");
                 return Ok(());
             }
-            geo_adapter_postgis::dvc_pull(target.as_deref())?;
+            geo_adapters_geo::postgis::dvc_pull(target.as_deref())?;
             println!("DVC pull complete");
         }
-        StoreAction::DvcHash { file } => match geo_adapter_postgis::dvc_hash(&file) {
+        StoreAction::DvcHash { file } => match geo_adapters_geo::postgis::dvc_hash(&file) {
             Ok(hash) => println!("{hash}"),
             Err(e) => eprintln!("Error: {e}"),
         },

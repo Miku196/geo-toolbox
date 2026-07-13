@@ -1,11 +1,12 @@
 # Geo-Toolbox 领域词汇表
 
 > 地理空间分析工具箱 — 支持碳核算、矢量分析、栅格处理、瓦片服务。
-> 架构：Core 层 (无业务语义) → Plugin 层 (业务领域逻辑) → Adapter 层 (外部系统集成)。
+> 架构：Core（定义） → Facade（聚合） → Plugin（逻辑） → Wiring（装配） → Adapter（实现）。
+> 依赖方向严格单向。
 
 ## 架构层级
 
-### Core 层 — 基础能力
+### Core 层 — 基础能力（含抽象 trait）
 | 模块 | 职责 |
 |------|------|
 | `geo-core` | 跨 crate 共享类型：`GeoResult<T>`, `GeoFeature`, `BBox`, `Plugin` trait, `ExternalAdapter` trait, `PluginRegistry` |
@@ -21,6 +22,11 @@
 | `geo-ogc` | OGC 标准协议实现：WMS、WMTS、WFS、WPS、CSW |
 | `geo-parquet` | GeoParquet 格式读写 |
 | `geo-emission-factors` | 碳排放因子数据集 |
+
+### Facade 层 — 门面聚合
+| 模块 | 职责 |
+|------|------|
+| `geo-facade` | 统一重导出 io / index / raster 高频函数，降低 Plugin 调用链深度 |
 
 ### Plugin 层 — 业务插件
 | 模块 | 领域 |
@@ -39,14 +45,19 @@
 | `geo-plugin-geomorph` | 地貌 |
 | `geo-plugin-remote-sensing` | 遥感辐射校正+InSAR |
 
+### Wiring 层 — 依赖注入组合根
+| 模块 | 职责 |
+|------|------|
+| `geo-wiring` | 唯一允许同时依赖 Plugin 和 Adapter 的 DI 工厂；运行时将 Adapter 实例注入 Plugin（Box<dyn Trait>） |
+
 ### Adapter 层 — 外部系统
 | 模块 | 集成对象 |
 |------|----------|
-| `geo-adapter-duckdb` | SQLite 空间存储引擎 |
-| `geo-adapter-postgis` | PostGIS 数据库适配器 |
-| `geo-adapter-cli` | GDAL/OGR CLI 封装 |
+| `geo-adapters-geo` | PostGIS / GDAL / PDAL / GEE |
+| `geo-adapters-io` | DuckDB / STAC / OSM / CAD |
+| `geo-adapters-sim` | MODFLOW / DSSAT / IoT |
 | `geo-adapter-qgis` | QGIS Processing Toolbox 封装 |
-| `geo-adapter-iot` | MQTT IoT 传感器集成 |
+| `geo-adapter-pygeoapi` | PyO3 FFI |
 
 ### Crate 层 — 可交付制品
 | 模块 | 制品类型 |

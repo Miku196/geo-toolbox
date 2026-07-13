@@ -1,0 +1,41 @@
+[package]
+name = "geo-adapters-io"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "I/O adapters: DuckDB, STAC, OSM, CAD"
+
+[features]
+default = ["duckdb", "stac", "osm", "cad"]
+duckdb = ["dep:rusqlite"]
+stac = ["dep:reqwest", "dep:chrono"]
+osm = ["dep:reqwest"]
+cad = ["dep:sqlx", "dep:rust_xlsxwriter", "dep:dxf", "dep:tera", "dep:geo", "dep:uuid"]
+
+[dependencies]
+geo-core = { path = "../../core/geo-core" }
+geo-registry = { path = "../../core/geo-registry", features = ["tokio-runtime"] }
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+
+# duckdb
+rusqlite = { workspace = true, optional = true }
+
+# stac / osm
+reqwest = { workspace = true, optional = true }
+chrono = { version = "0.4", features = ["serde"], optional = true }
+
+# stac / osm / cad (used by duckdb too, but duckdb uses sync path only)
+tokio.workspace = true
+
+# cad
+sqlx = { workspace = true, optional = true }
+rust_xlsxwriter = { workspace = true, optional = true }
+dxf = { workspace = true, optional = true }
+tera = { workspace = true, optional = true }
+geo = { workspace = true, optional = true }
+uuid = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }

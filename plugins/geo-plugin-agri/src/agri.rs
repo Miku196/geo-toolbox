@@ -1,15 +1,23 @@
 use crate::config::AgriConfig;
 use geo_core::errors::GeoResult;
+use geo_core::traits::DssatGenerator;
 use serde::{Deserialize, Serialize};
 
-/// Agriculture plugin — crop yield, LAI, NPP, soil rating, irrigation.
+/// Agriculture plugin with DSSAT generator for crop model input files.
 pub struct AgriPlugin {
     pub config: AgriConfig,
+    pub dssat: Option<Box<dyn DssatGenerator>>,
 }
 
 impl AgriPlugin {
     pub fn new(config: AgriConfig) -> Self {
-        Self { config }
+        Self { config, dssat: None }
+    }
+
+    /// 注入 DSSAT 生成器（由 geo-wiring 层组装）。
+    pub fn with_dssat_generator(mut self, gen: Box<dyn DssatGenerator>) -> Self {
+        self.dssat = Some(gen);
+        self
     }
 
     /// ── NDVI → LAI conversion ──
@@ -304,8 +312,8 @@ pub struct SoilRatingResult {
 impl geo_core::plugin::Plugin for AgriPlugin {
     type Config = crate::AgriConfig;
 
-    fn new(config: crate::AgriConfig) -> Self {
-        Self::new(config)
+    fn new(_config: crate::AgriConfig) -> Self {
+        panic!("AgriPlugin must be constructed via AgriPlugin::new(config, dssat), not Plugin::new()")
     }
 
     fn name(&self) -> &str {
@@ -358,14 +366,27 @@ mod tests {
     use super::*;
     use crate::config::AgriConfig;
     use geo_core::plugin::ProcessPlugin;
+    use geo_core::traits::{CultivarParams, DailyWeather, DssatGenerator, SoilLayer, SoilProfile, WeatherStation};
 
-    fn test_config() -> AgriConfig {
-        AgriConfig::default()
+    struct DssatStub;
+
+    impl DssatGenerator for DssatStub {
+        fn generate_wth(&self, _station: &WeatherStation, _daily_data: &[DailyWeather]) -> String { String::new() }
+        fn generate_sol(&self, _profile: &SoilProfile) -> String { String::new() }
+        fn generate_cul(&self, _params: &CultivarParams) -> String { String::new() }
+        fn monthly_to_daily_wth(&self, _tmax: &[f64], _tmin: &[f64], _rain: &[f64], _lat: f64, _lon: f64) -> Vec<DailyWeather> { vec![] }
+        fn soil_from_scs_group(&self, _soil_id: &str, _group: &str, _lat: f64, _lon: f64) -> SoilProfile {
+            SoilProfile { soil_id: String::new(), soil_name: String::new(), albedo: 0.0, evaporation: 0.0, layers: vec![] }
+        }
+    }
+
+    fn make_plugin() -> AgriPlugin {
+        AgriPlugin::new(AgriConfig::default(), Box::new(DssatStub))
     }
 
     #[test]
     fn test_ndvi_to_lai() {
-        let p = AgriPlugin::new(test_config());
+        let p = make_plugin();
         // NDVI = 0.7, k = 0.5 → LAI = -ln(0.3)/0.5 ≈ 2.41
         let lai = p.ndvi_to_lai(0.7, 0.5);
         assert!((lai - 2.41).abs() < 0.01, "LAI expected ~2.41, got {lai}");
@@ -388,7 +409,7 @@ mod tests {
 
     #[test]
     fn test_estimate_npp() {
-        let p = AgriPlugin::new(test_config());
+        let p = make_plugin();
         // wheat: PAR=20, NDVI=0.7, k=0.55, LUE=1.8
         let npp = p.estimate_npp(20.0, 0.7, "wheat");
         assert!(npp > 0.0, "NPP should be positive");
@@ -397,7 +418,7 @@ mod tests {
 
     #[test]
     fn test_yield_estimation() {
-        let p = AgriPlugin::new(test_config());
+        let p = make_plugin();
         let result = p.estimate_yield(10.0, 0.7, "corn");
         assert!(result.yield_kg > 0.0, "Yield should be positive");
         assert_eq!(result.crop_type, "corn");
@@ -409,7 +430,7 @@ mod tests {
 
     #[test]
     fn test_yield_different_crops() {
-        let p = AgriPlugin::new(test_config());
+        let p = make_plugin();
         let wheat = p.estimate_yield(10.0, 0.7, "wheat");
         let rice = p.estimate_yield(10.0, 0.7, "rice");
         let soybean = p.estimate_yield(10.0, 0.7, "soybean");
@@ -427,7 +448,7 @@ mod tests {
 
     #[test]
     fn test_unknown_crop_fallback() {
-        let p = AgriPlugin::new(test_config());
+        let p = make_plugin();
         let result = p.estimate_yield(10.0, 0.7, "unknown_crop");
         assert!(result.yield_kg > 0.0);
         assert_eq!(result.crop_type, "unknown_crop");
@@ -435,7 +456,7 @@ mod tests {
 
     #[test]
     fn test_soil_rating_detailed() {
-        let p = AgriPlugin::new(test_config());
+        let p = make_plugin();
         // Excellent soil
         let r = p.soil_rating_detailed(4.0, 6.8, 150.0, 30.0, 200.0, "loam", true);
         assert!(
@@ -457,7 +478,7 @@ mod tests {
 
     #[test]
     fn test_soil_rating_simple() {
-        let p = AgriPlugin::new(test_config());
+        let p = make_plugin();
         assert_eq!(p.soil_rating(3.0, 6.5), "优");
         assert_eq!(p.soil_rating(0.5, 4.0), "差");
         assert_eq!(p.soil_rating(3.0, 4.0), "中");
@@ -466,7 +487,7 @@ mod tests {
 
     #[test]
     fn test_et0_calculation() {
-        let p = AgriPlugin::new(test_config());
+        let p = make_plugin();
         // Summer: Tmax=30, Tmin=20, lat=30°N, month=7
         let lat = 30.0_f64.to_radians();
         let et0 = p.estimate_et0_simple(30.0, 20.0, lat, 7);
@@ -476,7 +497,7 @@ mod tests {
 
     #[test]
     fn test_et0_winter_vs_summer() {
-        let p = AgriPlugin::new(test_config());
+        let p = make_plugin();
         let lat = 30.0_f64.to_radians();
         let summer = p.estimate_et0_simple(32.0, 22.0, lat, 7);
         let winter = p.estimate_et0_simple(10.0, 2.0, lat, 1);
@@ -485,7 +506,7 @@ mod tests {
 
     #[test]
     fn test_net_irrigation() {
-        let p = AgriPlugin::new(test_config());
+        let p = make_plugin();
         // Dry period: ET₀=5mm, rice (Kc=1.05), no rain
         let net = p.net_irrigation(5.0, "rice", 0.0);
         // ETc = 5*1.05 = 5.25, Peff = 0, net = 5.25
@@ -498,7 +519,7 @@ mod tests {
 
     #[test]
     fn test_gross_irrigation() {
-        let p = AgriPlugin::new(test_config());
+        let p = make_plugin();
         let gross = p.gross_irrigation(10.0);
         // eff=0.75 → 10/0.75 ≈ 13.33
         assert!((gross - 13.33).abs() < 0.01);
@@ -506,7 +527,7 @@ mod tests {
 
     #[test]
     fn test_execute() {
-        let p = AgriPlugin::new(test_config());
+        let p = make_plugin();
         let rt = tokio::runtime::Runtime::new().unwrap();
         let result = rt
             .block_on(p.execute(serde_json::json!({

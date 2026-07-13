@@ -1,5 +1,8 @@
-/// DSSAT 作物模型输入文件生成器 — 委托到 geo-adapter-dssat
-pub use geo_adapter_dssat::*;
+/// DSSAT 数据类型的重新导出 — 从 geo-core traits 引入。
+/// 这些类型由 geo-adapter-dssat 实现，但通过 trait 方法访问。
+pub use geo_core::traits::{
+    CultivarParams, DailyWeather, SoilLayer, SoilProfile, WeatherStation,
+};
 
 #[cfg(test)]
 mod tests {

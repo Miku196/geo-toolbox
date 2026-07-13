@@ -1,9 +1,145 @@
 //! 海岸带变化监测 — 侵蚀速率 + 海平面上升淹没。
 
-use geo_core::errors::GeoResult;
+use geo_core::errors::{FacadeResult, GeometryFacadeError};
 use geo_core::types::BBox;
 use geo_raster::RasterBand;
 use serde::Serialize;
+use serde_json::Value;
+
+// ── Facade: 内联 BBox 提取 (替代 geo_io::extract_bbox) ──────────
+
+/// 从 GeoJSON FeatureCollection 提取边界框 (min_x, min_y, max_x, max_y)。
+///
+/// 覆盖几何类型: Point, MultiPoint, LineString, Polygon, MultiPolygon。
+/// Polygon 遍历所有内外环, MultiPolygon 遍历所有 Polygon。
+/// 不支持的几何类型返回 `GeometryFacadeError::UnsupportedGeometry`。
+pub fn inline_extract_bbox(geojson: &str) -> Result<(f64, f64, f64, f64), String> {
+    let fc: Value = serde_json::from_str(geojson)
+        .map_err(|e| format!("GeoJSON 解析失败: {e}"))?;
+
+    let features = fc["features"].as_array()
+        .ok_or_else(|| "缺少 'features' 数组".to_string())?;
+
+    if features.is_empty() {
+        return Err("FeatureCollection 为空, 无法计算 bbox".into());
+    }
+
+    let mut min_x = f64::MAX;
+    let mut min_y = f64::MAX;
+    let mut max_x = f64::MIN;
+    let mut max_y = f64::MIN;
+    let mut found = false;
+
+    for (fi, feat) in features.iter().enumerate() {
+        let geom = &feat["geometry"];
+        for (x, y) in extract_coords(geom, fi)? {
+            min_x = min_x.min(x);
+            min_y = min_y.min(y);
+            max_x = max_x.max(x);
+            max_y = max_y.max(y);
+            found = true;
+        }
+    }
+
+    if found {
+        Ok((min_x, min_y, max_x, max_y))
+    } else {
+        Err("所有 feature 的几何坐标均为空".into())
+    }
+}
+
+/// 递归提取几何对象的所有坐标点 — 支持 5 种 GeoJSON 类型。
+fn extract_coords(geom: &Value, feat_idx: usize) -> Result<Vec<(f64, f64)>, String> {
+    let geom_type = geom["type"].as_str()
+        .ok_or_else(|| format!("features[{feat_idx}]: 缺少 geometry.type"))?;
+
+    let coords_val = &geom["coordinates"];
+
+    match geom_type {
+        "Point" => {
+            let pt = extract_point(coords_val)
+                .ok_or_else(|| format!("features[{feat_idx}]: Point 坐标解析失败"))?;
+            Ok(vec![pt])
+        }
+        "MultiPoint" => {
+            let arr = coords_val.as_array()
+                .ok_or_else(|| format!("features[{feat_idx}]: MultiPoint 坐标非数组"))?;
+            let pts: Vec<_> = arr.iter().filter_map(extract_point).collect();
+            if pts.is_empty() {
+                return Err(format!("features[{feat_idx}]: MultiPoint 无有效坐标"));
+            }
+            Ok(pts)
+        }
+        "LineString" => {
+            extract_ring(coords_val)
+                .ok_or_else(|| format!("features[{feat_idx}]: LineString 坐标解析失败"))
+        }
+        "Polygon" => {
+            let rings = coords_val.as_array()
+                .ok_or_else(|| format!("features[{feat_idx}]: Polygon 坐标非数组"))?;
+            if rings.is_empty() {
+                return Err(format!("features[{feat_idx}]: Polygon 无环"));
+            }
+            let mut all = Vec::new();
+            for (ri, ring) in rings.iter().enumerate() {
+                let ring_coords = extract_ring(ring).ok_or_else(|| {
+                    let label = if ri == 0 { "外环" } else { "内环" };
+                    format!("features[{feat_idx}]: Polygon {label}[{ri}] 解析失败")
+                })?;
+                all.extend(ring_coords);
+            }
+            Ok(all)
+        }
+        "MultiPolygon" => {
+            let polys = coords_val.as_array()
+                .ok_or_else(|| format!("features[{feat_idx}]: MultiPolygon 坐标非数组"))?;
+            let mut all = Vec::new();
+            for (pi, poly) in polys.iter().enumerate() {
+                let rings = poly.as_array().ok_or_else(|| {
+                    format!("features[{feat_idx}]: MultiPolygon[{pi}] 非数组")
+                })?;
+                for (ri, ring) in rings.iter().enumerate() {
+                    let ring_coords = extract_ring(ring).ok_or_else(|| {
+                        let label = if ri == 0 { "外环" } else { "内环" };
+                        format!("features[{feat_idx}]: MultiPolygon[{pi}] {label}[{ri}] 解析失败")
+                    })?;
+                    all.extend(ring_coords);
+                }
+            }
+            if all.is_empty() {
+                return Err(format!("features[{feat_idx}]: MultiPolygon 无有效坐标"));
+            }
+            Ok(all)
+        }
+        _ => Err(format!(
+            "features[{feat_idx}]: 不支持的几何类型 '{geom_type}'. \
+             支持: Point, MultiPoint, LineString, Polygon, MultiPolygon"
+        )),
+    }
+}
+
+/// 从 `[x, y]` JSON 数组解析单个坐标点。
+fn extract_point(v: &Value) -> Option<(f64, f64)> {
+    let arr = v.as_array()?;
+    if arr.len() < 2 {
+        return None;
+    }
+    Some((arr[0].as_f64()?, arr[1].as_f64()?))
+}
+
+/// 从 `[[x,y], ...]` 数组中提取坐标列表 (环/线)。
+fn extract_ring(ring: &Value) -> Option<Vec<(f64, f64)>> {
+    let arr = ring.as_array()?;
+    if arr.len() < 3 {
+        return None;
+    }
+    let pts: Vec<_> = arr.iter().filter_map(extract_point).collect();
+    if pts.len() < 3 {
+        None
+    } else {
+        Some(pts)
+    }
+}
 
 pub struct CoastalPlugin;
 
@@ -46,8 +182,10 @@ impl CoastalPlugin {
         baseline_year: u16,
         assessment_year: u16,
         sea_level_rise_m: f64,
-    ) -> GeoResult<ShorelineReport> {
-        let bbox = geo_io::extract_bbox(aoi_geojson)?;
+    ) -> FacadeResult<ShorelineReport> {
+        let (min_x, min_y, max_x, max_y) = inline_extract_bbox(aoi_geojson)
+            .map_err(GeometryFacadeError::empty_geometry)?;
+        let bbox = BBox::new(min_x, min_y, max_x, max_y);
         let years = (assessment_year - baseline_year).max(1) as f64;
 
         let mut eroded = 0usize;
