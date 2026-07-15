@@ -19,20 +19,27 @@ fn make_polygon(pts_per_ring: usize) -> Polygon<f64> {
     Polygon::new(exterior, vec![])
 }
 
-fn bench_buffer_10(c: &mut Criterion) {
-    let poly = make_polygon(10);
-    c.bench_function("buffer_10", |b| {
-        b.iter(|| {
-            buffer(
-                black_box(&poly),
-                black_box(100.0),
-                BufferMode::Precise {
-                    quadrant_segments: 4,
-                },
-            )
-        })
-    });
+macro_rules! bench_buffer {
+    ($name:ident, $count:expr, $label:expr) => {
+        fn $name(c: &mut Criterion) {
+            let poly = make_polygon($count);
+            c.bench_function($label, |b| {
+                b.iter(|| {
+                    buffer(
+                        black_box(&poly),
+                        black_box(100.0),
+                        BufferMode::Precise {
+                            quadrant_segments: 4,
+                        },
+                    )
+                })
+            });
+        }
+    };
 }
+
+bench_buffer!(bench_buffer_10, 10, "buffer_10");
+bench_buffer!(bench_buffer_1000, 1000, "buffer_1000");
 
 fn bench_buffer_100(c: &mut Criterion) {
     let poly = make_polygon(100);
@@ -49,21 +56,6 @@ fn bench_buffer_100(c: &mut Criterion) {
                     },
                 )
             });
-        })
-    });
-}
-
-fn bench_buffer_1000(c: &mut Criterion) {
-    let poly = make_polygon(1000);
-    c.bench_function("buffer_1000", |b| {
-        b.iter(|| {
-            buffer(
-                black_box(&poly),
-                black_box(100.0),
-                BufferMode::Precise {
-                    quadrant_segments: 4,
-                },
-            )
         })
     });
 }
@@ -97,54 +89,35 @@ fn bench_intersect_100(c: &mut Criterion) {
     });
 }
 
-fn bench_union_all_10(c: &mut Criterion) {
-    let polys: Vec<Polygon<f64>> = (0..10)
-        .map(|i| {
-            let offset = i as f64 * 0.1;
-            let exterior = LineString::new(vec![
-                Coord { x: offset, y: 0.0 },
-                Coord {
-                    x: offset + 0.05,
-                    y: 0.0,
-                },
-                Coord {
-                    x: offset + 0.05,
-                    y: 0.05,
-                },
-                Coord { x: offset, y: 0.05 },
-                Coord { x: offset, y: 0.0 },
-            ]);
-            Polygon::new(exterior, vec![])
-        })
-        .collect();
-    c.bench_function("union_all_10", |b| b.iter(|| union_all(black_box(&polys))));
+macro_rules! bench_union_all {
+    ($name:ident, $count:expr, $offset_step:expr, $size:expr, $label:expr) => {
+        fn $name(c: &mut Criterion) {
+            let polys: Vec<Polygon<f64>> = (0..$count)
+                .map(|i| {
+                    let offset = i as f64 * $offset_step;
+                    let exterior = LineString::new(vec![
+                        Coord { x: offset, y: 0.0 },
+                        Coord {
+                            x: offset + $size,
+                            y: 0.0,
+                        },
+                        Coord {
+                            x: offset + $size,
+                            y: $size,
+                        },
+                        Coord { x: offset, y: $size },
+                        Coord { x: offset, y: 0.0 },
+                    ]);
+                    Polygon::new(exterior, vec![])
+                })
+                .collect();
+            c.bench_function($label, |b| b.iter(|| union_all(black_box(&polys))));
+        }
+    };
 }
 
-fn bench_union_all_100(c: &mut Criterion) {
-    let polys: Vec<Polygon<f64>> = (0..100)
-        .map(|i| {
-            let offset = i as f64 * 0.01;
-            let exterior = LineString::new(vec![
-                Coord { x: offset, y: 0.0 },
-                Coord {
-                    x: offset + 0.005,
-                    y: 0.0,
-                },
-                Coord {
-                    x: offset + 0.005,
-                    y: 0.005,
-                },
-                Coord {
-                    x: offset,
-                    y: 0.005,
-                },
-                Coord { x: offset, y: 0.0 },
-            ]);
-            Polygon::new(exterior, vec![])
-        })
-        .collect();
-    c.bench_function("union_all_100", |b| b.iter(|| union_all(black_box(&polys))));
-}
+bench_union_all!(bench_union_all_10, 10, 0.1, 0.05, "union_all_10");
+bench_union_all!(bench_union_all_100, 100, 0.01, 0.005, "union_all_100");
 
 fn bench_simplify_100(c: &mut Criterion) {
     let poly = make_polygon(1000);
@@ -153,39 +126,36 @@ fn bench_simplify_100(c: &mut Criterion) {
     });
 }
 
-fn bench_kernel_density_100(c: &mut Criterion) {
-    let points: Vec<(f64, f64)> = (0..100)
-        .map(|i| (i as f64 * 0.01, i as f64 * 0.01))
-        .collect();
-    c.bench_function("kernel_density_100", |b| {
-        b.iter(|| {
-            kernel_density(
-                black_box(&points),
-                black_box(100),
-                black_box(100),
-                black_box((0.0, 0.0, 1.0, 1.0)),
-                black_box(0.1),
-            )
-        })
-    });
+macro_rules! bench_kernel_density {
+    ($name:ident, $count:expr, $x_step:expr, $use_sin:expr, $bounds:expr, $bandwidth:expr, $label:expr) => {
+        fn $name(c: &mut Criterion) {
+            let points: Vec<(f64, f64)> = (0..$count)
+                .map(|i| {
+                    let t = i as f64 * $x_step;
+                    if $use_sin {
+                        (t, t.sin())
+                    } else {
+                        (t, t)
+                    }
+                })
+                .collect();
+            c.bench_function($label, |b| {
+                b.iter(|| {
+                    kernel_density(
+                        black_box(&points),
+                        black_box(100),
+                        black_box(100),
+                        black_box($bounds),
+                        black_box($bandwidth),
+                    )
+                })
+            });
+        }
+    };
 }
 
-fn bench_kernel_density_1000(c: &mut Criterion) {
-    let points: Vec<(f64, f64)> = (0..1000)
-        .map(|i| (i as f64 * 0.001, (i as f64 * 0.001).sin()))
-        .collect();
-    c.bench_function("kernel_density_1000", |b| {
-        b.iter(|| {
-            kernel_density(
-                black_box(&points),
-                black_box(100),
-                black_box(100),
-                black_box((0.0, -1.0, 1.0, 1.0)),
-                black_box(0.05),
-            )
-        })
-    });
-}
+bench_kernel_density!(bench_kernel_density_100, 100, 0.01, false, (0.0, 0.0, 1.0, 1.0), 0.1, "kernel_density_100");
+bench_kernel_density!(bench_kernel_density_1000, 1000, 0.001, true, (0.0, -1.0, 1.0, 1.0), 0.05, "kernel_density_1000");
 
 fn bench_line_density_100(c: &mut Criterion) {
     let lines: Vec<(f64, f64, f64, f64)> = (0..100)

@@ -65,30 +65,13 @@ fn nearest_centroid_dist_sq(point: &[f64], centroids: &[Vec<f64>]) -> f64 {
         .fold(f64::MAX, f64::min)
 }
 
-// ── 公共函数 ──
+// ── 输入验证 ──
 
-/// 执行 K-means 聚类 (Lloyd 算法 + k-means++ 初始化)。
+/// 验证聚类输入是否合法。
 ///
-/// # 参数
-/// * `data` — 数据点列表，每个点为 Vec<f64> (所有点维度必须一致)
-/// * `k` — 聚类数量
-/// * `max_iters` — 最大迭代次数
-/// * `seed` — 可选的随机种子 (None = 使用当前时间)
-///
-/// # 返回
-/// * `Some(KMeansResult)` — 聚类结果
-/// * `None` — 如果输入无效 (空数据、k=0、k>点数、维度不一致)
-///
-/// # 算法
-/// 1. k-means++ 初始化：第一个质心随机，后续以 D² 加权概率选择
-/// 2. Lloyd 迭代：分配点到最近质心 → 更新质心
-/// 3. 收敛条件：所有质心移位 < 1e-6
-pub fn kmeans(
-    data: &[Vec<f64>],
-    k: usize,
-    max_iters: usize,
-    seed: Option<u64>,
-) -> Option<KMeansResult> {
+/// 检查：数据非空、k 范围正确、所有点维度一致。
+/// 如果有效，返回维度；否则返回 `None`。
+fn validate_inputs(data: &[Vec<f64>], k: usize) -> Option<usize> {
     if data.is_empty() || k == 0 || k > data.len() {
         return None;
     }
@@ -103,20 +86,22 @@ pub fn kmeans(
             return None;
         }
     }
+    Some(dim)
+}
 
+// ── k-means++ 初始化 ──
+
+/// 使用 k-means++ 算法初始化 k 个质心。
+///
+/// 第一个质心随机选择，后续质心以 D² 加权概率选择，
+/// 优先选择距已有质心较远的点。
+fn kmeans_plus_plus_init(
+    data: &[Vec<f64>],
+    k: usize,
+    _dim: usize,
+    rng: &mut Prng,
+) -> Vec<Vec<f64>> {
     let n = data.len();
-    let mut rng = match seed {
-        Some(s) => Prng::new(s),
-        None => {
-            let t = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_nanos();
-            Prng::new(t as u64)
-        }
-    };
-
-    // ── k-means++ 初始化 ──
     let mut centroids: Vec<Vec<f64>> = Vec::with_capacity(k);
 
     // 第一个质心：随机选择
@@ -155,8 +140,24 @@ pub fn kmeans(
         centroids.push(data[chosen].clone());
     }
 
-    // ── Lloyd 迭代 ──
-    let mut labels = vec![0_usize; n];
+    centroids
+}
+
+// ── Lloyd 迭代 ──
+
+/// 执行 Lloyd 迭代循环：分配点到最近质心 → 更新质心 → 重复直到收敛或达到最大迭代次数。
+///
+/// 就地修改 `centroids` 和 `labels`。
+/// 返回 (是否收敛, 实际迭代次数)。
+fn lloyd_iteration(
+    data: &[Vec<f64>],
+    k: usize,
+    dim: usize,
+    centroids: &mut Vec<Vec<f64>>,
+    labels: &mut Vec<usize>,
+    max_iters: usize,
+) -> (bool, usize) {
+    let n = data.len();
     let mut converged = false;
     let mut iterations = 0;
 
@@ -240,7 +241,7 @@ pub fn kmeans(
                 max_shift = shift;
             }
         }
-        centroids = new_centroids;
+        *centroids = new_centroids;
 
         if max_shift < 1e-6 {
             converged = true;
@@ -248,12 +249,66 @@ pub fn kmeans(
         }
     }
 
-    // 计算 inertia (总平方和)
+    (converged, iterations)
+}
+
+// ── 惯性计算 ──
+
+/// 计算聚类惯性（所有点到最近质心的距离平方和）。
+fn compute_inertia(data: &[Vec<f64>], labels: &[usize], centroids: &[Vec<f64>]) -> f64 {
     let mut inertia = 0.0_f64;
     for (i, pt) in data.iter().enumerate() {
         let d = euclidean(pt, &centroids[labels[i]]);
         inertia += d * d;
     }
+    inertia
+}
+
+// ── 公共函数 ──
+
+/// 执行 K-means 聚类 (Lloyd 算法 + k-means++ 初始化)。
+///
+/// # 参数
+/// * `data` — 数据点列表，每个点为 Vec<f64> (所有点维度必须一致)
+/// * `k` — 聚类数量
+/// * `max_iters` — 最大迭代次数
+/// * `seed` — 可选的随机种子 (None = 使用当前时间)
+///
+/// # 返回
+/// * `Some(KMeansResult)` — 聚类结果
+/// * `None` — 如果输入无效 (空数据、k=0、k>点数、维度不一致)
+///
+/// # 算法
+/// 1. k-means++ 初始化：第一个质心随机，后续以 D² 加权概率选择
+/// 2. Lloyd 迭代：分配点到最近质心 → 更新质心
+/// 3. 收敛条件：所有质心移位 < 1e-6
+pub fn kmeans(
+    data: &[Vec<f64>],
+    k: usize,
+    max_iters: usize,
+    seed: Option<u64>,
+) -> Option<KMeansResult> {
+    let dim = validate_inputs(data, k)?;
+
+    let n = data.len();
+    let mut rng = match seed {
+        Some(s) => Prng::new(s),
+        None => {
+            let t = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos();
+            Prng::new(t as u64)
+        }
+    };
+
+    let mut centroids = kmeans_plus_plus_init(data, k, dim, &mut rng);
+    let mut labels = vec![0_usize; n];
+
+    let (converged, iterations) =
+        lloyd_iteration(data, k, dim, &mut centroids, &mut labels, max_iters);
+
+    let inertia = compute_inertia(data, &labels, &centroids);
 
     Some(KMeansResult {
         centroids,

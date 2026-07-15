@@ -154,37 +154,26 @@ impl IpccEfDb {
     /// Rail — diesel (kg CO₂/km per passenger).
     pub const RAIL_DIESEL_PER_PAX_KM: f64 = 0.041;
 
-    // ── GWP Constants ──
-
-    /// AR5 100-year GWP values.
-    pub const GWP_CH4_AR5: f64 = 28.0;
-    pub const GWP_N2O_AR5: f64 = 265.0;
-    /// AR6 100-year GWP values (IPCC 2021).
-    pub const GWP_CH4_AR6: f64 = 27.0;
-    pub const GWP_N2O_AR6: f64 = 273.0;
-
-    /// Build GasFactor for methane, converting CH₄ mass to CO₂e.
-    pub fn ch4_factor(mass_ch4: f64, version: GwpVersion) -> GasFactor {
-        let gwp = gwp100(GreenhouseGas::CH4, version);
+    /// Build a GasFactor for any greenhouse gas, converting mass to CO₂e.
+    fn gg_factor(gas: GreenhouseGas, mass: f64, version: GwpVersion) -> GasFactor {
+        let gwp = gwp100(gas, version);
         GasFactor {
-            gas: GreenhouseGas::CH4,
-            factor: mass_ch4 * gwp,
+            gas,
+            factor: mass * gwp,
             unit: "tCO₂e".into(),
             gwp_version: version,
             uncertainty_pct: Some(30.0),
         }
     }
 
+    /// Build GasFactor for methane, converting CH₄ mass to CO₂e.
+    pub fn ch4_factor(mass_ch4: f64, version: GwpVersion) -> GasFactor {
+        Self::gg_factor(GreenhouseGas::CH4, mass_ch4, version)
+    }
+
     /// Build GasFactor for N₂O.
     pub fn n2o_factor(mass_n2o: f64, version: GwpVersion) -> GasFactor {
-        let gwp = gwp100(GreenhouseGas::N2O, version);
-        GasFactor {
-            gas: GreenhouseGas::N2O,
-            factor: mass_n2o * gwp,
-            unit: "tCO₂e".into(),
-            gwp_version: version,
-            uncertainty_pct: Some(30.0),
-        }
+        Self::gg_factor(GreenhouseGas::N2O, mass_n2o, version)
     }
 }
 

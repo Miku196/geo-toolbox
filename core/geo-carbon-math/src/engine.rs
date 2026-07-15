@@ -154,80 +154,12 @@ impl CarbonEngine {
             return Err("No emission factors provided".into());
         }
 
-        let year_i32 = year as i32;
-
-        let factor_map: HashMap<String, &EmissionFactor> = factors
-            .iter()
-            .filter(|f| f.is_valid_for_year(year_i32))
-            .fold(HashMap::new(), |mut acc, f| {
-                let key = match &f.subcategory {
-                    Some(sub) if !sub.is_empty() => format!("{}:{}", f.category, sub),
-                    _ => f.category.clone(),
-                };
-                acc.entry(key).or_insert(f);
-                acc
-            });
-
+        let factor_map = self.build_factor_map(factors, year as i32);
         if factor_map.is_empty() {
             return Err(format!("No emission factors valid for year {year}"));
         }
 
-        let mut aggregates: HashMap<(String, String, String), ClassAggregate> = HashMap::new();
-
-        for feature in features {
-            let class_lower = feature.landcover_class.to_lowercase();
-            let factor = match factor_map.get(class_lower.as_str()) {
-                Some(f) => *f,
-                None => {
-                    if let Some((cat, _)) = class_lower.split_once(':') {
-                        match factor_map.get(cat) {
-                            Some(f) => *f,
-                            None => continue,
-                        }
-                    } else {
-                        continue;
-                    }
-                }
-            };
-
-            let area_ha = feature.area_ha();
-            if area_ha <= 0.0 {
-                continue;
-            }
-
-            let key = (
-                class_lower.clone(),
-                factor.source.clone(),
-                factor.unit.clone(),
-            );
-            let entry = aggregates.entry(key).or_insert_with(|| ClassAggregate {
-                landcover_class: class_lower,
-                factor_source: factor.source.clone(),
-                factor_unit: factor.unit.clone(),
-                factor_value: factor.factor_value,
-                total_area_ha: 0.0,
-                feature_count: 0,
-                gas_contributions: Vec::new(),
-                uncertainty_pct: factor.uncertainty_pct,
-                gwp_version: factor.gas_factors.first().map(|gf| gf.gwp_version),
-                scope: factor.scope,
-            });
-
-            entry.total_area_ha += area_ha;
-            entry.feature_count += 1;
-
-            if factor.has_gas_breakdown() {
-                for gf in &factor.gas_factors {
-                    let tco2e = area_ha * gf.factor * gwp100(gf.gas, gf.gwp_version) / 1000.0;
-                    entry.gas_contributions.push((gf.gas, tco2e));
-                }
-            } else {
-                entry
-                    .gas_contributions
-                    .push((GreenhouseGas::CO2, area_ha * factor.factor_value));
-            }
-        }
-
+        let (aggregates, classified_count) = self.aggregate_features(features, &factor_map);
         if aggregates.is_empty() {
             let available: Vec<_> = factor_map.keys().collect();
             return Err(format!(
@@ -236,51 +168,9 @@ impl CarbonEngine {
                  Available factors: {available:?}"
             ));
         }
-
-        let classified_count: u32 = aggregates.values().map(|a| a.feature_count).sum();
         let skipped = features.len() as u32 - classified_count;
 
-        let mut classes: Vec<ClassResult> = aggregates
-            .into_values()
-            .map(|agg| {
-                let emission_tco2e = agg.total_area_ha * agg.factor_value;
-                let mut consolidated: HashMap<GreenhouseGas, f64> = HashMap::new();
-                for (gas, val) in &agg.gas_contributions {
-                    *consolidated.entry(*gas).or_insert(0.0) += val;
-                }
-                let contributions: Vec<(GreenhouseGas, f64)> = consolidated.into_iter().collect();
-                let gas_breakdown = GasBreakdown::from_gas_contributions(&contributions);
-                let uncertainty_tco2e = agg
-                    .uncertainty_pct
-                    .map(|pct| (emission_tco2e.abs() * pct / 100.0).abs());
-
-                ClassResult {
-                    landcover_class: agg.landcover_class,
-                    area_ha: round2(agg.total_area_ha),
-                    factor_value: agg.factor_value,
-                    emission_tco2e: round2(emission_tco2e),
-                    factor_source: FactorSourceUnit {
-                        source: agg.factor_source,
-                        unit: agg.factor_unit,
-                        gwp_version: agg
-                            .gwp_version
-                            .map(|v| format!("{v:?}"))
-                            .unwrap_or_default(),
-                    },
-                    feature_count: agg.feature_count,
-                    gas_breakdown,
-                    uncertainty_tco2e: uncertainty_tco2e.map(round2),
-                    scope: agg.scope,
-                }
-            })
-            .collect();
-
-        classes.sort_by(|a, b| {
-            b.emission_tco2e
-                .abs()
-                .partial_cmp(&a.emission_tco2e.abs())
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        let classes = self.build_class_results(aggregates);
 
         let total_area_ha: f64 = classes.iter().map(|c| c.area_ha).sum();
         let total_emission_tco2e: f64 = classes.iter().map(|c| c.emission_tco2e).sum();
@@ -302,39 +192,8 @@ impl CarbonEngine {
             }
         };
 
-        let audit_trail: Vec<AuditEntry> = classes
-            .iter()
-            .map(|c| {
-                let rel_unc = c.uncertainty_tco2e.and_then(|u| {
-                    if c.emission_tco2e.abs() > f64::EPSILON {
-                        Some(round2(u / c.emission_tco2e.abs() * 100.0))
-                    } else {
-                        None
-                    }
-                });
-                AuditEntry {
-                    landcover_class: c.landcover_class.clone(),
-                    lc_hash: String::new(),
-                    factor_id: c.factor_source.source.clone(),
-                    factor_hash: String::new(),
-                    gwp_version: c.factor_source.gwp_version.clone(),
-                    uncertainty_pct: rel_unc,
-                    complete: true,
-                    scope: c.scope,
-                }
-            })
-            .collect();
-
-        // Compute scope summary
-        let mut scope_summary = ScopeSummary::default();
-        for cls in &classes {
-            match cls.scope {
-                Some(EmissionScope::Scope1) => scope_summary.scope1_tco2e += cls.emission_tco2e,
-                Some(EmissionScope::Scope2) => scope_summary.scope2_tco2e += cls.emission_tco2e,
-                Some(EmissionScope::Scope3) => scope_summary.scope3_tco2e += cls.emission_tco2e,
-                None => scope_summary.scope1_tco2e += cls.emission_tco2e, // default to Scope 1
-            }
-        }
+        let audit_trail = self.compute_audit_trail(&classes);
+        let scope_summary = self.compute_scope_summary(&classes);
 
         Ok(CarbonReport {
             aoi_name: None,
@@ -586,6 +445,177 @@ impl CarbonEngine {
             audit_trail,
             scope_summary,
         })
+    }
+    // ── Private helpers ────────────────────────────────────────
+
+    fn build_factor_map<'a>(
+        &self,
+        factors: &'a [EmissionFactor],
+        year: i32,
+    ) -> HashMap<String, &'a EmissionFactor> {
+        factors
+            .iter()
+            .filter(|f| f.is_valid_for_year(year))
+            .fold(HashMap::new(), |mut acc, f| {
+                let key = match &f.subcategory {
+                    Some(sub) if !sub.is_empty() => format!("{}:{}", f.category, sub),
+                    _ => f.category.clone(),
+                };
+                acc.entry(key).or_insert(f);
+                acc
+            })
+    }
+
+    fn aggregate_features(
+        &self,
+        features: &[GeoFeature],
+        factor_map: &HashMap<String, &EmissionFactor>,
+    ) -> (HashMap<(String, String, String), ClassAggregate>, u32) {
+        let mut aggregates: HashMap<(String, String, String), ClassAggregate> = HashMap::new();
+
+        for feature in features {
+            let class_lower = feature.landcover_class.to_lowercase();
+            let factor = match factor_map.get(class_lower.as_str()) {
+                Some(f) => *f,
+                None => {
+                    if let Some((cat, _)) = class_lower.split_once(':') {
+                        match factor_map.get(cat) {
+                            Some(f) => *f,
+                            None => continue,
+                        }
+                    } else {
+                        continue;
+                    }
+                }
+            };
+
+            let area_ha = feature.area_ha();
+            if area_ha <= 0.0 {
+                continue;
+            }
+
+            let key = (
+                class_lower.clone(),
+                factor.source.clone(),
+                factor.unit.clone(),
+            );
+            let entry = aggregates.entry(key).or_insert_with(|| ClassAggregate {
+                landcover_class: class_lower,
+                factor_source: factor.source.clone(),
+                factor_unit: factor.unit.clone(),
+                factor_value: factor.factor_value,
+                total_area_ha: 0.0,
+                feature_count: 0,
+                gas_contributions: Vec::new(),
+                uncertainty_pct: factor.uncertainty_pct,
+                gwp_version: factor.gas_factors.first().map(|gf| gf.gwp_version),
+                scope: factor.scope,
+            });
+
+            entry.total_area_ha += area_ha;
+            entry.feature_count += 1;
+
+            if factor.has_gas_breakdown() {
+                for gf in &factor.gas_factors {
+                    let tco2e = area_ha * gf.factor * gwp100(gf.gas, gf.gwp_version) / 1000.0;
+                    entry.gas_contributions.push((gf.gas, tco2e));
+                }
+            } else {
+                entry
+                    .gas_contributions
+                    .push((GreenhouseGas::CO2, area_ha * factor.factor_value));
+            }
+        }
+
+        let classified_count: u32 = aggregates.values().map(|a| a.feature_count).sum();
+        (aggregates, classified_count)
+    }
+
+    fn build_class_results(
+        &self,
+        aggregates: HashMap<(String, String, String), ClassAggregate>,
+    ) -> Vec<ClassResult> {
+        let mut classes: Vec<ClassResult> = aggregates
+            .into_values()
+            .map(|agg| {
+                let emission_tco2e = agg.total_area_ha * agg.factor_value;
+                let mut consolidated: HashMap<GreenhouseGas, f64> = HashMap::new();
+                for (gas, val) in &agg.gas_contributions {
+                    *consolidated.entry(*gas).or_insert(0.0) += val;
+                }
+                let contributions: Vec<(GreenhouseGas, f64)> = consolidated.into_iter().collect();
+                let gas_breakdown = GasBreakdown::from_gas_contributions(&contributions);
+                let uncertainty_tco2e = agg
+                    .uncertainty_pct
+                    .map(|pct| (emission_tco2e.abs() * pct / 100.0).abs());
+
+                ClassResult {
+                    landcover_class: agg.landcover_class,
+                    area_ha: round2(agg.total_area_ha),
+                    factor_value: agg.factor_value,
+                    emission_tco2e: round2(emission_tco2e),
+                    factor_source: FactorSourceUnit {
+                        source: agg.factor_source,
+                        unit: agg.factor_unit,
+                        gwp_version: agg
+                            .gwp_version
+                            .map(|v| format!("{v:?}"))
+                            .unwrap_or_default(),
+                    },
+                    feature_count: agg.feature_count,
+                    gas_breakdown,
+                    uncertainty_tco2e: uncertainty_tco2e.map(round2),
+                    scope: agg.scope,
+                }
+            })
+            .collect();
+
+        classes.sort_by(|a, b| {
+            b.emission_tco2e
+                .abs()
+                .partial_cmp(&a.emission_tco2e.abs())
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        classes
+    }
+
+    fn compute_audit_trail(&self, classes: &[ClassResult]) -> Vec<AuditEntry> {
+        classes
+            .iter()
+            .map(|c| {
+                let rel_unc = c.uncertainty_tco2e.and_then(|u| {
+                    if c.emission_tco2e.abs() > f64::EPSILON {
+                        Some(round2(u / c.emission_tco2e.abs() * 100.0))
+                    } else {
+                        None
+                    }
+                });
+                AuditEntry {
+                    landcover_class: c.landcover_class.clone(),
+                    lc_hash: String::new(),
+                    factor_id: c.factor_source.source.clone(),
+                    factor_hash: String::new(),
+                    gwp_version: c.factor_source.gwp_version.clone(),
+                    uncertainty_pct: rel_unc,
+                    complete: true,
+                    scope: c.scope,
+                }
+            })
+            .collect()
+    }
+
+    fn compute_scope_summary(&self, classes: &[ClassResult]) -> ScopeSummary {
+        let mut scope_summary = ScopeSummary::default();
+        for cls in classes {
+            match cls.scope {
+                Some(EmissionScope::Scope1) => scope_summary.scope1_tco2e += cls.emission_tco2e,
+                Some(EmissionScope::Scope2) => scope_summary.scope2_tco2e += cls.emission_tco2e,
+                Some(EmissionScope::Scope3) => scope_summary.scope3_tco2e += cls.emission_tco2e,
+                None => scope_summary.scope1_tco2e += cls.emission_tco2e,
+            }
+        }
+        scope_summary
     }
 }
 

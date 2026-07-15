@@ -39,27 +39,23 @@ fn make_factors() -> Vec<EmissionFactor> {
     }]
 }
 
-fn bench_carbon_10_features(c: &mut Criterion) {
-    let features = make_features(10);
-    let factors = make_factors();
-    let engine = CarbonEngine::new();
-    c.bench_function("carbon_10_features", |b| {
-        b.iter(|| {
-            let _: CarbonReport = engine.calculate(&features, &factors, 2024).unwrap();
-        })
-    });
+macro_rules! bench_carbon_features {
+    ($name:ident, $count:expr, $label:expr) => {
+        fn $name(c: &mut Criterion) {
+            let features = make_features($count);
+            let factors = make_factors();
+            let engine = CarbonEngine::new();
+            c.bench_function($label, |b| {
+                b.iter(|| {
+                    let _: CarbonReport = engine.calculate(&features, &factors, 2024).unwrap();
+                })
+            });
+        }
+    };
 }
 
-fn bench_carbon_100_features(c: &mut Criterion) {
-    let features = make_features(100);
-    let factors = make_factors();
-    let engine = CarbonEngine::new();
-    c.bench_function("carbon_100_features", |b| {
-        b.iter(|| {
-            let _: CarbonReport = engine.calculate(&features, &factors, 2024).unwrap();
-        })
-    });
-}
+bench_carbon_features!(bench_carbon_10_features, 10, "carbon_10_features");
+bench_carbon_features!(bench_carbon_100_features, 100, "carbon_100_features");
 
 criterion_group!(benches, bench_carbon_10_features, bench_carbon_100_features);
 criterion_main!(benches);

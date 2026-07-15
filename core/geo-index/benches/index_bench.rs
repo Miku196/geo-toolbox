@@ -39,37 +39,28 @@ fn bench_geohash_bbox_to_geohashes(c: &mut Criterion) {
     });
 }
 
-fn bench_quadtree_load_100(c: &mut Criterion) {
-    let bboxes: Vec<BBox> = (0..100)
-        .map(|i| {
-            let lon = 116.0 + (i % 10) as f64 * 0.1;
-            let lat = 39.0 + (i / 10) as f64 * 0.1;
-            BBox::new(lon, lat, lon + 0.05, lat + 0.05)
-        })
-        .collect();
-    c.bench_function("quadtree_load_100", |b| {
-        b.iter(|| {
-            let mut qt = Quadtree::new();
-            qt.load(black_box(bboxes.clone()));
-        })
-    });
+macro_rules! bench_quadtree_load {
+    ($name:ident, $count:expr, $label:expr) => {
+        fn $name(c: &mut Criterion) {
+            let bboxes: Vec<BBox> = (0..$count)
+                .map(|i| {
+                    let lon = 116.0 + (i % if $count > 100 { 100 } else { $count }) as f64 * 0.1;
+                    let lat = 39.0 + (i / if $count > 100 { 100 } else { $count }) as f64 * 0.1;
+                    BBox::new(lon, lat, lon + 0.05, lat + 0.05)
+                })
+                .collect();
+            c.bench_function($label, |b| {
+                b.iter(|| {
+                    let mut qt = Quadtree::new();
+                    qt.load(black_box(bboxes.clone()));
+                })
+            });
+        }
+    };
 }
 
-fn bench_quadtree_load_10000(c: &mut Criterion) {
-    let bboxes: Vec<BBox> = (0..10000)
-        .map(|i| {
-            let lon = 116.0 + (i % 100) as f64 * 0.1;
-            let lat = 39.0 + (i / 100) as f64 * 0.1;
-            BBox::new(lon, lat, lon + 0.05, lat + 0.05)
-        })
-        .collect();
-    c.bench_function("quadtree_load_10000", |b| {
-        b.iter(|| {
-            let mut qt = Quadtree::new();
-            qt.load(black_box(bboxes.clone()));
-        })
-    });
-}
+bench_quadtree_load!(bench_quadtree_load_100, 100, "quadtree_load_100");
+bench_quadtree_load!(bench_quadtree_load_10000, 10000, "quadtree_load_10000");
 
 fn bench_quadtree_query(c: &mut Criterion) {
     let bboxes: Vec<BBox> = (0..5000)

@@ -134,7 +134,7 @@ pub fn morans_i(values: &[f64], weights: &[f64]) -> Option<MoranI> {
     } else {
         0.0
     };
-    let p_value = 2.0 * (1.0 - normal_cdf(z_score.abs()));
+    let p_value = 2.0 * (1.0 - crate::normal_cdf(z_score.abs()));
 
     Some(MoranI {
         i: i_stat,
@@ -147,21 +147,7 @@ pub fn morans_i(values: &[f64], weights: &[f64]) -> Option<MoranI> {
     })
 }
 
-/// Standard normal CDF approximation (Abramowitz & Stegun 7.1.26).
-fn normal_cdf(x: f64) -> f64 {
-    let a1 = 0.254829592;
-    let a2 = -0.284496736;
-    let a3 = 1.421413741;
-    let a4 = -1.453152027;
-    let a5 = 1.061405429;
-    let p = 0.3275911;
 
-    let sign = if x < 0.0 { -1.0 } else { 1.0 };
-    let x = x.abs() / (2.0f64).sqrt();
-    let t = 1.0 / (1.0 + p * x);
-    let y = 1.0 - ((((a5 * t + a4) * t) + a3) * t + a2) * t + a1 * t * (-x * x).exp();
-    0.5 * (1.0 + sign * y)
-}
 
 /// Build a rook-contiguity weight matrix for a regular grid.
 ///
