@@ -5,48 +5,104 @@
 将 PostGIS、GEE、QGIS、GDAL 等重型 GIS 工具串联成自动化管线：
 数据采集 → 入库存储 → 遥感分析 → 碳核算 → 成果输出。
 
-采用 **五层洋葱架构**（Core → Facade → Plugin → Wiring → Adapter）：
-Rust 负责性能敏感路径，遥感计算和空间分析委托 Python 生态。
+单仓库（monorepo）承载「一个基座 + 三个方向」：
+
+| 方向 | 载体 | 形态 | 说明 |
+|------|------|------|------|
+| 基座 | `core/` + `plugins/` + `adapters/` | Rust crates | 五层洋葱架构，240 个工具 |
+| ① AI 边缘计算 | `crates/geo-cli` | CLI 二进制 | minimal feature 裁剪，仅 14MB |
+| ② WASM 浏览器离线 | `crates/geo-wasm` + `bindings/maplibre` + `apps/field-pwa` | npm 包 / PWA | 数据不出浏览器 |
+| ③ GeoAgent | `crates/geo-agent` | HTTP 网关 | 自然语言 → JSON 工具调用 |
 
 [![Rust](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-1000+-pass-green.svg)]()
+[![Tools](https://img.shields.io/badge/tools-240-blue.svg)]()
 [![MCP Tools](https://img.shields.io/badge/mcp-89%20tools-blue.svg)]()
 
 ---
 
 ## 架构
 
+五层洋葱架构（Core → Facade → Plugin → Wiring → Adapter），依赖严格单向：
+
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                      geo-toolbox                         │
 ├──────────────────────────────────────────────────────────┤
-│  Layer 1: Core (14 crates) — 纯 Rust，零外部依赖         │
+│  Layer 1: Core (15 crates) — 纯 Rust，零外部依赖         │
 │  几何/CRS · 抽象 trait · 栅格 · 矢量 · 瓦片 · 时序 ·     │
-│  索引 · 统计 · IO · 报告 · 碳核算 · GeoParquet · OGC     │
+│  索引 · 统计 · IO · 报告 · 碳核算 · GeoParquet · OGC ·   │
+│  排放因子 · Facade · Registry                            │
 ├──────────────────────────────────────────────────────────┤
-│  Layer 2: Facade (1 crate) — 高频函数聚合门面             │
-│  geo-facade — 统一重导出 io / index / raster 入口        │
-├──────────────────────────────────────────────────────────┤
-│  Layer 3: Plugins (18 crates) — 专业领域                 │
+│  Layer 2: Plugins (18 crates) — 专业领域                 │
 │  碳核算 · 生态 · 测绘 · 城乡规划 · 水文 · 地灾 ·          │
-│  农业 · 能源 · 林业 · 海岸带 · 遥感 · 气候 · 地貌 ...     │
+│  农业 · 能源 · 林业 · 海岸带 · 遥感 · 气候 · 地貌 ·      │
+│  地震 · 社会经济 · 大气 · 火山 · 地下水                  │
 ├──────────────────────────────────────────────────────────┤
-│  Layer 4: Wiring (1 crate) — DI 依赖注入组合根            │
-│  geo-wiring — 唯一允许同时依赖 Plugin 和 Adapter 的工厂   │
+│  Layer 3: Wiring (geo-wiring) — DI 依赖注入组合根         │
+│  唯一允许同时依赖 Plugin 和 Adapter 的工厂                │
 ├──────────────────────────────────────────────────────────┤
-│  Layer 5: Adapters (5 crates) — 外部桥接，Feature-gated   │
-│  geo-adapters-geo (PostGIS/GDAL/PDAL/GEE) ·               │
+│  Layer 4: Adapters (5 crates) — 外部桥接，Feature-gated   │
+│  geo-adapters-geo (PostGIS/GDAL/PDAL/GEE) ·              │
 │  geo-adapters-io (DuckDB/STAC/OSM/CAD) ·                 │
 │  geo-adapters-sim (MODFLOW/DSSAT/IoT) · QGIS · PyO3      │
+├──────────────────────────────────────────────────────────┤
+│  Layer 5: 消费端 — CLI / WASM / Agent / Server / 绑定     │
 └──────────────────────────────────────────────────────────┘
+```
 
-依赖方向（严格单向）：
-  Core ← Facade ← Plugin ← Wiring ← Adapter
-  Plugin 只依赖 trait（定义在 Core），不依赖 Adapter crate
-  Wiring 负责运行时将 Adapter 实现注入 Plugin（Box<dyn Trait>）
+核心原则：依赖单向 · WASM 数据不出网 · Rust 做胶水 Python 做重活 · Feature flags 控制依赖
+---
 
-核心原则：依赖单向 · WASM 数据不出网 · Rust 做胶水 Python 做重活 · Feature flags 控制依赖 · check-deps.sh 硬锁
+## 三个方向
+
+### ① AI 边缘计算 — geo-cli
+
+裁剪到 minimal feature 后仅 **14MB** 的离线 CLI，适合边缘设备部署：
+
+```bash
+cargo build --release --no-default-features --features minimal -p geo-cli
+
+# 子命令模式
+geo carbon assess input.geojson
+geo hydro basin dem.tif
+
+# Unix 管道模式
+geo pipeline read input.geojson | geo buffer 500 | geo write output.geojson
+```
+
+### ② WASM 浏览器离线 — geo-wasm
+
+Rust 核心编译到 WASM，数据全程不出浏览器：
+
+```bash
+wasm-pack build --target web crates/geo-wasm --out-dir ../../pkg --out-name geo_wasm
+```
+
+```typescript
+import { CrsEngine, CarbonEngine } from 'geo-wasm';
+
+const crs = new CrsEngine();
+const [x, y] = await crs.transform(4326, 3857, 104.06, 30.57);
+
+const carbon = new CarbonEngine();
+const report = await carbon.calculate(geojson, factorsCsv, 2025);
+```
+
+配套：[MapLibre GL JS 插件](bindings/maplibre-gl-geo-toolbox/README.md) · [野外作业 PWA](apps/field-pwa/) · [ObservableHQ 示例](docs/observablehq/README.md)
+
+### ③ GeoAgent — geo-agent
+
+LLM 网关把自然语言请求转为 JSON 工具调用，离线时降级到关键词路由：
+
+```bash
+cargo run --release -p geo-agent
+curl -X POST http://127.0.0.1:3000/agent \
+  -H "Content-Type: application/json" \
+  -d '{"query": "计算这个区域的 NDVI，红色波段是第3波段，近红波段是第4波段"}'
+```
+
+详见 [crates/geo-agent/README.md](crates/geo-agent/README.md)。
 
 ---
 
@@ -55,9 +111,6 @@ Rust 负责性能敏感路径，遥感计算和空间分析委托 Python 生态�
 ```bash
 # 轻量编译（无需外部依赖）
 cargo build --release --no-default-features --features minimal
-
-# 列出所有坐标系
-cargo run -- crs list
 
 # 运行全部测试
 cargo test --workspace
@@ -71,9 +124,7 @@ cargo build --features minimal,postgis   # + PostGIS
 cargo build --features qgis              # + QGIS
 ```
 
----
-
-## 编译指南
+### 编译要求
 
 | 组件 | 版本 | 说明 |
 |------|:--:|------|
@@ -83,14 +134,9 @@ cargo build --features qgis              # + QGIS
 | GDAL | 3.8+ | GDAL 适配器需要 |
 | QGIS | 3.34+ | QGIS 适配器需要 |
 
-```bash
-# WASM 编译
-wasm-pack build --target web crates/geo-wasm --out-dir ../../pkg --out-name geo_wasm
-```
-
 ---
 
-## MCP 工具一览（89 tools）
+## 工具（240 tools · 89 MCP tools）
 
 geo-toolbox 内置 MCP Server + HTTP API + WMS，所有工具可直接被 AI Agent 调用。
 
@@ -106,144 +152,34 @@ geo-toolbox 内置 MCP Server + HTTP API + WMS，所有工具可直接被 AI Age
 
 **外部桥接**: `qgis_buffer/reproject`, `cli_cog_convert/ogr2ogr`, `gee_classify/status`, `cad_export_geojson`, `dvc_snapshot/hash`, `tile_encode_mvt`
 
+> 完整工具清单见 `crates/geo-agent/tools_schema.json`（240 个，由 `scripts/generate_agent_schemas.py` 生成）
 > 启动 MCP Server: `geo-toolbox mcp-serve`
-
 ---
 
-## CLI 使用
-
-```bash
-# 子命令模式
-geo carbon assess input.geojson
-geo hydro basin dem.tif
-
-# Unix 管道模式
-geo pipeline read input.geojson | geo buffer 500 | geo write output.geojson
-geo pipeline read city.geojson | geo filter key=class value=park | geo area
-```
-
----
-
-## 浏览器端 (WASM)
-
-```bash
-npm install geo-wasm
-```
-
-```typescript
-import { CrsEngine, CarbonEngine } from 'geo-wasm';
-
-const crs = new CrsEngine();
-const [x, y] = await crs.transform(4326, 3857, 104.06, 30.57);
-
-const carbon = new CarbonEngine();
-const report = await carbon.calculate(geojson, factorsCsv, 2025);
-```
-
----
-
-## 项目结构
+## 仓库布局
 
 ```
 geo-toolbox/
-├── core/                  # 核心引擎 (14 crates)
-├── plugins/               # 专业插件 (18 crates)
-├── adapters/              # 外部适配器 (5 crates: 3 合并包 + QGIS + PyO3)
-├── crates/                # 入口 (CLI / Server / WASM) + 门面 (Facade) + 依赖注入 (Wiring)
-├── bindings/              # Python / Jupyter / QGIS / MapLibre
-├── examples/              # 成都碳收支 / 中国风险评估 / 德兴铜矿
-├── fuzz/                  # Fuzz 测试目标
-├── scripts/               # CI / Git Hook 依赖检查
-└── docs/                  # 补充文档
+├── core/          # 基座算法（15 crates，含 geo-facade / geo-registry）
+├── plugins/       # 领域插件（18 crates）
+├── adapters/      # 外部桥接（5 crates，feature-gated）
+├── crates/        # 入口：geo-cli ① · geo-wasm ② · geo-agent ③ · geo-server · geo-wiring
+├── bindings/      # Python (PyO3) / MapLibre GL JS / Jupyter / QGIS
+├── apps/          # field-pwa 野外作业 PWA（方向二）
+├── examples/      # chengdu-carbon / china-risk-assessment / dexing-copper / maplibre-carbon
+├── contrib/       # 归档插件（8 个，已移出 workspace）
+├── fuzz/          # Fuzz 测试目标（geo-fuzz）
+├── scripts/       # CI / Git Hook / Schema 生成
+└── docs/          # ObservableHQ 等补充文档
 ```
-
----
-
-## 五层架构详解
-
-### Layer 1: Core — 纯 Rust 核心引擎
-
-| Crate | 职责 |
-|-------|------|
-| `geo-core` | 几何基类、CRS、`Plugin` trait、抽象 trait（`DssatGenerator` / `ModflowGenerator`）、`GeoError` |
-| `geo-raster` | 栅格运算、NDVI、地形分析 |
-| `geo-vector` | 矢量空间运算 |
-| `geo-tile` | MVT/PMTiles 瓦片 |
-| `geo-temporal` | 时空序列分析 |
-| `geo-index` | GeoHash/R-tree/四叉树 |
-| `geo-stats` | 空间统计 |
-| `geo-io` | GeoJSON/CSV/NMEA 解析 |
-| `geo-carbon-math` | IPCC 碳核算公式 |
-| `geo-report` | Tera 报告模板引擎 |
-| `geo-parquet` | GeoParquet 云原生格式 |
-| `geo-ogc` | WMS/WFS/WPS 标准 |
-| `geo-registry` | 插件注册调度中心 |
-
-### Layer 2: Facade — 门面聚合层
-
-| Crate | 职责 |
-|-------|------|
-| `geo-facade` | 统一重导出 `geo-io` / `geo-index` / `geo-raster` 高频函数，降低 Plugin 调用深度 |
-
-### Layer 3: Plugins — 专业领域插件
-
-| 插件 | 核心能力 |
-|------|---------|
-| `geo-plugin-carbon` | 碳核算、LCA、VCS/CCB、CCER报告 |
-| `geo-plugin-ecology` | NDVI变化、RUSLE/MUSLE土壤侵蚀、随机森林LULC |
-| `geo-plugin-hydro` | SCS-CN径流、InVEST碳+水、流域提取、单位线、地下水 |
-| `geo-plugin-energy` | Weibull风能、Jensen尾流、地热、PVWatts、输电走廊 |
-| `geo-plugin-geohazard` | 滑坡敏感性、Newmark位移、安全系数FS、降雨ID阈值 |
-| `geo-plugin-forestry` | 树高生长曲线、立地等级、碳汇潜力 |
-| `geo-plugin-coastal` | Bruun侵蚀、Holland风暴潮、蓝碳、波浪爬高 |
-| `geo-plugin-survey` | Gauss-Kruger投影、七参数转换、土方量 |
-| `geo-plugin-urban` | 容积率、建筑密度、城市洪水 |
-| `geo-plugin-agri` | 作物估产、土壤评级、DSSAT适配 |
-| `geo-plugin-remote-sensing` | 辐射校正、InSAR形变 |
-| `geo-plugin-climate` | GCM降尺度、IDF曲线、干旱指数、Kriging |
-| `geo-plugin-geomorph` | D8流向累积、Strahler河网 |
-
-### Layer 3: Adapters — 外部系统桥接
-
-| 适配器 | 外部系统 | 方式 |
-|--------|---------|------|
-| `geo-adapters-geo` | PostGIS / GDAL / PDAL / GEE | Feature-gated |
-| `geo-adapters-io` | DuckDB / STAC / OSM / CAD | Feature-gated |
-| `geo-adapters-sim` | MODFLOW / DSSAT / IoT | Feature-gated |
-| `geo-adapter-qgis` | QGIS | Subprocess/REST |
-| `geo-adapter-pygeoapi` | PyO3 FFI | WKB↔Shapely |
-
----
-
-## 开发
-
-```bash
-# 全量测试
-cargo test --workspace
-
-# benchmark
-cargo bench --workspace
-
-# 单 crate
-cargo test -p geo-plugin-carbon
-```
-
----
-
-## 示例
-
-- `examples/dexing-copper/` — 德兴铜矿生态修复评估
-- `examples/chengdu-carbon/` — 成都碳收支分析
-- `examples/china-risk-assessment/` — 中国地质灾害风险评估
-
----
 
 ## 文档
 
-- [使用指南 (WIKI)](WIKI.md) — API 参考、插件开发、适配器集成、FAQ
-- [开发路线图 (ROADMAP)](ROADMAP.md) — 进度与计划
-- [领域词汇表 (context.md)](context.md) — 架构概念与术语
+- [使用指南 (WIKI)](WIKI.md) — API 参考、插件开发、适配器集成、FAQ、术语表
+- [开发路线图 (ROADMAP)](ROADMAP.md) — 现状与计划
+- [仓库边界 (BOUNDARY)](BOUNDARY.md) — 单仓决策与工程约定
 
 ## License
 
 MIT
+

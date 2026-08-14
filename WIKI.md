@@ -382,3 +382,41 @@ curl "http://localhost:9378/wms?service=WMS&request=GetCapabilities"
 **林业**: 树高生长(Richards/Logistic/Korf/Gompertz/Weibull/Schumacher) · 立地指数
 
 **遥感**: TOA辐射校正 · DOS大气校正 · 云检测 · InSAR相干性 · Goldstein相位解缠
+
+**大气**: AOD→PM2.5反演 · 大气边界层 · 污染物扩散
+
+**地震**: 地震动参数(GMPE) · PSHA概率危险性 · 地震活动性
+
+**社会经济**: 设施可达性 · 土地利用变化 · 人口分布
+
+**火山**: 火山灰扩散 · 灾害分区 · 熔岩流模拟
+
+**地下水**: 达西定律 · Cooper-Jacob/Theis抽水试验 · 含水层参数
+
+---
+
+## 9. 术语表（Glossary）
+
+### 碳核算
+
+- **EmissionFactor** — 单个 GHG 的排放因子（值 + 单位 + GWP version）
+- **CarbonEngine** — 碳核算引擎入口，features + factors → CarbonReport
+- **CarbonPool** — 5 个 IPCC 碳池：AGB、BGB、Deadwood、Litter、SOC
+- **BiomassParams / SocParams** — 生物量参数（WD/BEF/CF/R）/ 土壤有机碳参数（SOCref/FLU/FMG/FI）
+- **EcoZone × LandUseScenario** — 4 生态区 × 4 土地利用情景的 ScenarioMatrix
+- **GwpVersion** — IPCC 评估报告版本 (AR4/AR5/AR6)
+
+### 空间运算
+
+- **BufferMode** — Bbox（快速）/ ConvexHull（中等）/ Precise（精确）
+- **RusleAssessment** — RUSLE 年均土壤流失 A=R·K·LS·C·P；**MusleResult** — 事件版 A=11.8·(Q·qp)^0.56·K·LS·C·P
+- **RadiometricResult / InsarResult** — 辐射校正 / InSAR 形变结果
+- **MvtEncoder/Decoder · PmtilesWriter/Reader** — MVT 瓦片、PMTiles v3 归档
+
+### 服务与插件系统
+
+- **WmsService / WmtsService / WfsService / WpsService / CswService** — OGC 标准服务实现
+- **Plugin trait** — 插件基 trait（name/version/description/category/is_healthy）
+- **ExternalAdapter** — 外部适配器 trait（push/pull/execute/health_check）
+- **PluginRegistry** — 插件注册中心，管理生命周期与工具发现
+

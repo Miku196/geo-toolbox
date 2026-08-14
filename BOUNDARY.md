@@ -46,3 +46,27 @@ cargo check --workspace --all-targets 0 error 0 warning
 cargo clippy --workspace --all-targets 0 deny
 cargo audit 0 vulnerabilities（例外见 .cargo/audit.toml）
 cargo test --workspace 全绿
+
+## 工程约定（合并自 context.md）
+
+### 架构原则
+
+1. **Core 层不依赖 Plugin/Adapter 层** — Core 是纯基础能力
+2. **通过 PluginRegistry 发现工具** — 插件注册后在 CLI / Server / WASM 中统一调用
+3. **插件使用 trait 接口隔离** — 每个 plugin 通过 Plugin trait 暴露能力
+4. **Adapter 使用 trait 接口** — ExternalAdapter 统一 push/pull/execute
+5. **深度优先于广度** — 优先让一个模块做深做透，而非分散的浅封装
+
+### 可观测性
+
+- 全项目使用 tokio tracing（非 `log` 宏）；结构化字段：`tracing::info!(field = value, "msg")`
+- 统一 key 命名：path / table / count / latency_ms / error / bbox / crs / source / bytes
+- 关键入口 `#[tracing::instrument]`；`GEO_LOG_FORMAT=json` 切 JSON；geo-server 响应头返回 X-Trace-Id
+
+### 系统韧性
+
+- **ResourceGuard**（`geo-core::guard`）— 输入 50MB / 100 万要素 / 10k² 栅格上限
+- **CachedHealth**（`geo-core::health`）— TTL 缓存健康探针，is_ok() O(1)
+- **BlockingPool** — CPU 密集算法（STL 分解、Mann-Kendall、栅格卷积）经 `spawn_blocking` 隔离
+- **ScenarioMatrix** — 4 EcoZone × 4 LandUseScenario 单选查找 IPCC 参数，禁止枚举
+
