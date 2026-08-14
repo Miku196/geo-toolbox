@@ -9,6 +9,7 @@ members = [
     "crates/geo-wasm",
     "crates/geo-server",
     "crates/geo-wiring",
+    "crates/geo-agent",
     "core/geo-parquet",
     "core/geo-ogc",
 
@@ -83,7 +84,10 @@ uuid         = { version = "1", features = ["v4", "serde"] }
 clap         = { version = "4", features = ["derive"] }
 tokio        = { version = "1", features = ["full"] }
 tracing            = "0.1"
-tracing-subscriber = "0.3"
+axum              = "0.7"
+serde_yaml        = "0.9"
+dotenv            = "0.15"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 thiserror    = "2"
 rustc-hash   = "2"
 r2d2         = "0.8"

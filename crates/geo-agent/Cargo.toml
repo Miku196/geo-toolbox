@@ -1,0 +1,23 @@
+[package]
+name = "geo-agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "AI Agent API gateway for geo-toolbox — NL→JSON instruction translation via cloud LLM APIs"
+
+[[bin]]
+name = "geo-agent"
+path = "src/main.rs"
+
+[dependencies]
+axum = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+tokio = { workspace = true }
+dotenv = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }

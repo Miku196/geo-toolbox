@@ -1,0 +1,4238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "geo-toolbox Tool Schemas",
+  "description": "Complete tool definitions for geo-toolbox AI Agent function calling",
+  "tools": [
+    {"name":"ndvi","description":"Compute NDVI (Normalized Difference Vegetation Index) from red and NIR band GeoTIFFs","input_schema":{"type":"object","properties":{"red":{"type":"string","description":"Path to red band GeoTIFF"},"nir":{"type":"string","description":"Path to NIR band GeoTIFF"},"output":{"type":"string","description":"Output GeoTIFF path (default: ndvi.tif)"}},"required":["red","nir"]},"file":"crates\\geo-cli\\src\\commands\\raster.rs"},
+    {"name":"slope","description":"Compute terrain slope (degrees) from a DEM GeoTIFF","input_schema":{"type":"object","properties":{"dem":{"type":"string","description":"Path to DEM GeoTIFF"},"output":{"type":"string","description":"Output GeoTIFF path (default: slope.tif)"},"cell_size_m":{"type":"number","description":"Cell size in meters (default: 1.0)"}},"required":["dem"]},"file":"crates\\geo-cli\\src\\commands\\raster.rs"},
+    {
+      "name": "cli_cog_convert",
+      "description": "Convert raster to COG via gdal_translate",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "input",
+          "output"
+        ]
+      },
+      "file": "adapters\\geo-adapters-geo\\src\\gdal\\gdal_tools.rs"
+    },
+    {
+      "name": "cli_ogr2ogr",
+      "description": "Convert vector format via ogr2ogr",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "input",
+          "output"
+        ]
+      },
+      "file": "adapters\\geo-adapters-geo\\src\\gdal\\gdal_tools.rs"
+    },
+    {
+      "name": "cli_gdalwarp",
+      "description": "Reproject/resample/clip raster via gdalwarp",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "input",
+          "output"
+        ]
+      },
+      "file": "adapters\\geo-adapters-geo\\src\\gdal\\gdal_tools.rs"
+    },
+    {
+      "name": "cli_gdal_translate",
+      "description": "Translate raster format/bands/scale via gdal_translate",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "input": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "input",
+          "output"
+        ]
+      },
+      "file": "adapters\\geo-adapters-geo\\src\\gdal\\gdal_tools.rs"
+    },
+    {
+      "name": "gee_classify",
+      "description": "Submit landcover classification task to GEE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "aoi": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "aoi",
+          "year",
+          "output_gcs"
+        ]
+      },
+      "file": "adapters\\geo-adapters-geo\\src\\gee\\gee_tools.rs"
+    },
+    {
+      "name": "gee_status",
+      "description": "Check GEE task status by correlation ID",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "cid": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cid"
+        ]
+      },
+      "file": "adapters\\geo-adapters-geo\\src\\gee\\gee_tools.rs"
+    },
+    {
+      "name": "dvc_snapshot",
+      "description": "Run DVC add + push on a file for version tracking",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ]
+      },
+      "file": "adapters\\geo-adapters-geo\\src\\postgis\\postgis_tools.rs"
+    },
+    {
+      "name": "dvc_hash",
+      "description": "Get the DVC MD5 hash of a tracked file",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ]
+      },
+      "file": "adapters\\geo-adapters-geo\\src\\postgis\\postgis_tools.rs"
+    },
+    {
+      "name": "cad_export_geojson",
+      "description": "Export PostGIS query to GeoJSON file",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "sql": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sql",
+          "output",
+          "db_url"
+        ]
+      },
+      "file": "adapters\\geo-adapters-io\\src\\cad.rs"
+    },
+    {
+      "name": "duckdb_query",
+      "description": "Execute SQL on in-memory DuckDB, return JSON",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "sql": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sql"
+        ]
+      },
+      "file": "adapters\\geo-adapters-io\\src\\duckdb.rs"
+    },
+    {
+      "name": "duckdb_ingest_geojson",
+      "description": "Ingest GeoJSON into DuckDB",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "table": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "table",
+          "geojson"
+        ]
+      },
+      "file": "adapters\\geo-adapters-io\\src\\duckdb.rs"
+    },
+    {
+      "name": "osm_query_bbox",
+      "description": "Query OSM features by bbox and type",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "min_lon": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "min_lon",
+          "min_lat",
+          "max_lon",
+          "max_lat",
+          "feature_type"
+        ]
+      },
+      "file": "adapters\\geo-adapters-io\\src\\osm.rs"
+    },
+    {
+      "name": "stac_search",
+      "description": "Search STAC catalog by bbox and date range",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "collection": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "min_lon",
+          "min_lat",
+          "max_lon",
+          "max_lat",
+          "date_from",
+          "date_to"
+        ]
+      },
+      "file": "adapters\\geo-adapters-io\\src\\stac.rs"
+    },
+    {
+      "name": "iot_ingest_message",
+      "description": "Parse and validate an IoT sensor JSON message",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "file": "adapters\\geo-adapters-sim\\src\\iot\\iot_tools.rs"
+    },
+    {
+      "name": "biodiversity_fit_sdm",
+      "description": "Fit bioclimatic envelope SDM from occurrence records",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "species": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lon",
+          "lat",
+          "env_values"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-biodiversity\\src\\tools.rs"
+    },
+    {
+      "name": "biodiversity_assess_habitat",
+      "description": "Compute landscape patch metrics from habitat raster",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "habitat": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "habitat",
+          "rows",
+          "cols",
+          "cell_area"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-biodiversity\\src\\tools.rs"
+    },
+    {
+      "name": "biodiversity_gap_analysis",
+      "description": "GAP analysis: how much of a species range is protected",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "species": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "min_x",
+          "min_y",
+          "max_x",
+          "max_y"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-biodiversity\\src\\tools.rs"
+    },
+    {
+      "name": "biodiversity_diversity",
+      "description": "Compute Shannon/Simpson diversity indices from species abundances",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "abundances": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "abundances"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-biodiversity\\src\\tools.rs"
+    },
+    {
+      "name": "biodiversity_connectivity",
+      "description": "Compute connectivity index from patch bounding boxes",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "patch_bboxes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "min_x",
+          "min_y",
+          "max_x",
+          "max_y"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-biodiversity\\src\\tools.rs"
+    },
+    {
+      "name": "cryo_swe_simulate",
+      "description": "Snow Water Equivalent simulation from precipitation + temperature",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "precip_mm": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "precip_mm",
+          "temp_c"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-cryosphere\\src\\tools.rs"
+    },
+    {
+      "name": "cryo_glacier_balance",
+      "description": "Glacier mass balance: accumulation, ablation, net",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "accumulation_mwe": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "accumulation_mwe",
+          "ablation_mwe",
+          "area_km2"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-cryosphere\\src\\tools.rs"
+    },
+    {
+      "name": "cryo_permafrost_alt",
+      "description": "Active layer thickness from Stefan solution",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "thawing_degree_days": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "thawing_degree_days"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-cryosphere\\src\\tools.rs"
+    },
+    {
+      "name": "cryo_freeze_thaw_index",
+      "description": "Freezing/Thawing degree days from daily temps",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "daily_temp_c": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "daily_temp_c"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-cryosphere\\src\\tools.rs"
+    },
+    {
+      "name": "eco_water_yield",
+      "description": "Water yield (Budyko curve)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "precip_mm": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "precip_mm",
+          "pet_mm"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-ecosystem-services\\src\\tools.rs"
+    },
+    {
+      "name": "eco_sediment",
+      "description": "Sediment retention (SDR model)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "soil_loss_t_ha_yr": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "soil_loss_t_ha_yr",
+          "upstream_area_ha"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-ecosystem-services\\src\\tools.rs"
+    },
+    {
+      "name": "eco_habitat",
+      "description": "Habitat quality (InVEST-style)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "habitat_suitability": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "distance",
+          "max_distance"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-ecosystem-services\\src\\tools.rs"
+    },
+    {
+      "name": "eco_carbon",
+      "description": "Carbon storage (4-pool IPCC)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "agb_tc_ha": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "agb_tc_ha",
+          "bgb_tc_ha",
+          "soc_tc_ha"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-ecosystem-services\\src\\tools.rs"
+    },
+    {
+      "name": "eco_nutrient",
+      "description": "Nutrient retention",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "n_load_kg_ha_yr": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "n_load_kg_ha_yr",
+          "buffer_width_m",
+          "slope_pct"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-ecosystem-services\\src\\tools.rs"
+    },
+    {
+      "name": "geo_stratigraphy",
+      "description": "3D stratigraphic model from DEM and layer definitions",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dem": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "top_depth_m",
+          "base_depth_m",
+          "lithology_code"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-geology\\src\\tools.rs"
+    },
+    {
+      "name": "geo_structure",
+      "description": "Fault plane, fold geometry, or structure attitude",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "description": "Which structure to compute"
+          }
+        },
+        "required": [
+          "mode",
+          "strike_deg"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-geology\\src\\tools.rs"
+    },
+    {
+      "name": "geo_lithology",
+      "description": "Classify lithology from geological map codes and return engineering parameters",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "codes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "codes"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-geology\\src\\tools.rs"
+    },
+    {
+      "name": "ocean_coral_bleaching",
+      "description": "Coral bleaching risk from DHW (Degree Heating Weeks)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "weekly_sst": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "weekly_sst",
+          "max_monthly_mean"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-ocean\\src\\tools.rs"
+    },
+    {
+      "name": "ocean_upwelling",
+      "description": "Ekman upwelling index from wind stress",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "wind_stress_n_m2": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "wind_stress_n_m2",
+          "latitude_deg"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-ocean\\src\\tools.rs"
+    },
+    {
+      "name": "ocean_geostrophic",
+      "description": "Geostrophic current from SSH gradient",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dssh_dx": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "dssh_dx",
+          "dssh_dy",
+          "latitude_deg"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-ocean\\src\\tools.rs"
+    },
+    {
+      "name": "ocean_slr",
+      "description": "Sea level rise projection",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "current_rate_mm_yr": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "current_rate_mm_yr",
+          "acceleration_mm_yr2",
+          "base_year"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-ocean\\src\\tools.rs"
+    },
+    {
+      "name": "ocean_fisheries",
+      "description": "Fisheries potential from chlorophyll and SST",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chlorophyll_mg_m3": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "chlorophyll_mg_m3",
+          "sst_c",
+          "target_type"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-ocean\\src\\tools.rs"
+    },
+    {
+      "name": "ocean_acidification",
+      "description": "Aragonite saturation state",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "ph": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ph",
+          "sst_c"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-ocean\\src\\tools.rs"
+    },
+    {
+      "name": "paleo_sea_level",
+      "description": "Glacial-interglacial sea level reconstruction from eustatic curve",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "ages_ka": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ages_ka",
+          "eustatic_curve"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-paleoclimate\\src\\tools.rs"
+    },
+    {
+      "name": "paleo_coastline",
+      "description": "Paleocoastline restoration from modern DEM and sea level offset",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "elevation_m": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "elevation_m",
+          "cols"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-paleoclimate\\src\\tools.rs"
+    },
+    {
+      "name": "paleo_proxy_temperature",
+      "description": "Invert paleoclimate proxies (d18O, CH4, pollen, alkenone) to temperature",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "proxies": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-paleoclimate\\src\\tools.rs"
+    },
+    {
+      "name": "planetary_coordinate_transform",
+      "description": "Transform coordinates between planetary frames (Lunar MEP, Mars2000, Earth ITRF, J2000)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "lon_deg": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lon_deg",
+          "lat_deg"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-planetary\\src\\tools.rs"
+    },
+    {
+      "name": "planetary_solar_position",
+      "description": "Solar elevation, azimuth, declination, extraterrestrial radiation",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "lat_deg": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat_deg",
+          "lon_deg",
+          "day_of_year"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-planetary\\src\\tools.rs"
+    },
+    {
+      "name": "planetary_celestial_to_geo",
+      "description": "Convert J2000 celestial coordinates (RA, Dec) to Earth geographic coordinates",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "ra_deg": {
+            "type": "number",
+            "description": "Right ascension in degrees"
+          }
+        },
+        "required": [
+          "ra_deg",
+          "dec_deg"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-planetary\\src\\tools.rs"
+    },
+    {
+      "name": "health_uhi",
+      "description": "Urban Heat Island intensity",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "urban_temp_c": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "urban_temp_c",
+          "rural_temp_c"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-public-health\\src\\tools.rs"
+    },
+    {
+      "name": "health_pm25",
+      "description": "PM2.5 exposure and AQI",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "pm25_ug_m3": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "pm25_ug_m3"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-public-health\\src\\tools.rs"
+    },
+    {
+      "name": "health_vector",
+      "description": "Disease vector habitat suitability",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "temp_c": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "temp_c",
+          "precip_mm_month",
+          "vector_type"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-public-health\\src\\tools.rs"
+    },
+    {
+      "name": "health_risk",
+      "description": "Composite environmental health risk index",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "pm25_ug_m3": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "pm25_ug_m3",
+          "max_temp_c",
+          "water_quality_index"
+        ]
+      },
+      "file": "contrib\\archived-plugins\\geo-plugin-public-health\\src\\tools.rs"
+    },
+    {
+      "name": "carbon_calculate_raw",
+      "description": "Calculate carbon emissions from GeoJSON features + CSV factors",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "geojson": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "geojson",
+          "csv",
+          "year"
+        ]
+      },
+      "file": "core\\geo-carbon-math\\src\\tools.rs"
+    },
+    {
+      "name": "geohash_encode",
+      "description": "Encode lat/lon to GeoHash",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lon"
+        ]
+      },
+      "file": "core\\geo-index\\src\\tools.rs"
+    },
+    {
+      "name": "geohash_decode",
+      "description": "Decode GeoHash to bounding box",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "geohash": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "geohash"
+        ]
+      },
+      "file": "core\\geo-index\\src\\tools.rs"
+    },
+    {
+      "name": "geohash_neighbors",
+      "description": "Get 8 neighbor GeoHashes",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "geohash": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "geohash"
+        ]
+      },
+      "file": "core\\geo-index\\src\\tools.rs"
+    },
+    {
+      "name": "h3_latlon_to_h3",
+      "description": "Convert lat/lon to H3 index at given resolution",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lon",
+          "resolution"
+        ]
+      },
+      "file": "core\\geo-index\\src\\tools.rs"
+    },
+    {
+      "name": "h3_hex_boundary",
+      "description": "Get GeoJSON boundary of an H3 hexagon",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "i": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "i",
+          "j",
+          "resolution"
+        ]
+      },
+      "file": "core\\geo-index\\src\\tools.rs"
+    },
+    {
+      "name": "h3_neighbors",
+      "description": "Get 6 neighbors of an H3 hexagon",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "i": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "i",
+          "j",
+          "resolution"
+        ]
+      },
+      "file": "core\\geo-index\\src\\tools.rs"
+    },
+    {
+      "name": "h3_grid_disk",
+      "description": "Get all H3 hexagons within radius km of a point",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lon",
+          "radius_km",
+          "resolution"
+        ]
+      },
+      "file": "core\\geo-index\\src\\tools.rs"
+    },
+    {
+      "name": "h3_cover_bbox",
+      "description": "Cover a bounding box with H3 hexagons",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "west": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "west",
+          "south",
+          "east",
+          "north",
+          "resolution"
+        ]
+      },
+      "file": "core\\geo-index\\src\\tools.rs"
+    },
+    {
+      "name": "crs_list",
+      "description": "List all registered coordinate reference systems",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": []
+      },
+      "file": "core\\geo-io\\src\\tools.rs"
+    },
+    {
+      "name": "crs_transform",
+      "description": "Transform coordinates between CRS",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "from_epsg": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_epsg",
+          "to_epsg",
+          "x",
+          "y"
+        ]
+      },
+      "file": "core\\geo-io\\src\\tools.rs"
+    },
+    {
+      "name": "validate_coord",
+      "description": "Validate a coordinate pair (longitude, latitude)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "lon": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lon",
+          "lat"
+        ]
+      },
+      "file": "core\\geo-io\\src\\tools.rs"
+    },
+    {
+      "name": "ingest_camofox",
+      "description": "Parse a CamoFox JSON file and return records",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ]
+      },
+      "file": "core\\geo-io\\src\\tools.rs"
+    },
+    {
+      "name": "ingest_nmea",
+      "description": "Parse an NMEA GPS log file and return fixes",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ]
+      },
+      "file": "core\\geo-io\\src\\tools.rs"
+    },
+    {
+      "name": "vector_buffer",
+      "description": "Create buffer",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "file": "core\\geo-registry\\src\\macros.rs"
+    },
+    {
+      "name": "zonal_stats",
+      "description": "Compute zonal statistics for raster data within bboxes",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "zones": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "zones",
+          "raster_data",
+          "raster_cols"
+        ]
+      },
+      "file": "core\\geo-stats\\src\\tools.rs"
+    },
+    {
+      "name": "morans_i",
+      "description": "Moran's I spatial autocorrelation (grid-based)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "values",
+          "nrows",
+          "ncols"
+        ]
+      },
+      "file": "core\\geo-stats\\src\\tools.rs"
+    },
+    {
+      "name": "gistar",
+      "description": "Getis-Ord Gi* hotspot analysis (grid-based)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "values",
+          "nrows",
+          "ncols"
+        ]
+      },
+      "file": "core\\geo-stats\\src\\tools.rs"
+    },
+    {
+      "name": "idw_grid",
+      "description": "IDW spatial interpolation (regular grid)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "x_src": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "min_x",
+          "min_y",
+          "max_x",
+          "max_y"
+        ]
+      },
+      "file": "core\\geo-stats\\src\\tools.rs"
+    },
+    {
+      "name": "jenks_classify",
+      "description": "Jenks Natural Breaks classification",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "values",
+          "k"
+        ]
+      },
+      "file": "core\\geo-stats\\src\\tools.rs"
+    },
+    {
+      "name": "temporal_trend",
+      "description": "Compute Mann-Kendall trend + linear slope",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "values"
+        ]
+      },
+      "file": "core\\geo-temporal\\src\\tools.rs"
+    },
+    {
+      "name": "tile_latlon_to_tile",
+      "description": "Convert lat/lon to tile z/x/y",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "lon": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lon",
+          "lat",
+          "zoom"
+        ]
+      },
+      "file": "core\\geo-tile\\src\\tools.rs"
+    },
+    {
+      "name": "tile_bounds",
+      "description": "Get lat/lon bounds of a tile",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "z"
+        ]
+      },
+      "file": "core\\geo-tile\\src\\tools.rs"
+    },
+    {
+      "name": "tile_url",
+      "description": "Get tile URL for OSM/Gaode/Tianditu",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "osm|gaode|tianditu"
+          }
+        },
+        "required": [
+          "source",
+          "x",
+          "y",
+          "z"
+        ]
+      },
+      "file": "core\\geo-tile\\src\\tools.rs"
+    },
+    {
+      "name": "tile_encode_mvt",
+      "description": "Encode GeoJSON features to MVT (Mapbox Vector Tile) bytes",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "layer": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "layer",
+          "features",
+          "x",
+          "y",
+          "z"
+        ]
+      },
+      "file": "core\\geo-tile\\src\\tools.rs"
+    },
+    {
+      "name": "vector_intersect",
+      "description": "Compute intersection of two Polygons",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "geojson_a": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "geojson_a",
+          "geojson_b"
+        ]
+      },
+      "file": "core\\geo-vector\\src\\tools.rs"
+    },
+    {
+      "name": "vector_area",
+      "description": "Compute area of a Polygon in m虏 and ha",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "geojson": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "geojson"
+        ]
+      },
+      "file": "core\\geo-vector\\src\\tools.rs"
+    },
+    {
+      "name": "vector_centroid",
+      "description": "Compute centroid of a Polygon",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "geojson": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "geojson"
+        ]
+      },
+      "file": "core\\geo-vector\\src\\tools.rs"
+    },
+    {
+      "name": "vector_difference",
+      "description": "A - B: erase/remove area of B from A",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "geojson_a": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "geojson_a",
+          "geojson_b"
+        ]
+      },
+      "file": "core\\geo-vector\\src\\tools.rs"
+    },
+    {
+      "name": "vector_sym_difference",
+      "description": "A XOR B: non-overlapping parts of two Polygons",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "geojson_a": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "geojson_a",
+          "geojson_b"
+        ]
+      },
+      "file": "core\\geo-vector\\src\\tools.rs"
+    },
+    {
+      "name": "vector_clip",
+      "description": "Clip a MultiPolygon by a Polygon boundary",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "geojson_target": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "geojson_target",
+          "geojson_clip"
+        ]
+      },
+      "file": "core\\geo-vector\\src\\tools.rs"
+    },
+    {
+      "name": "agri_yield",
+      "description": "Estimate crop yield from NDVI and area",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "area_ha": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "area_ha",
+          "ndvi_mean"
+        ]
+      },
+      "file": "plugins\\geo-plugin-agri\\src\\tools.rs"
+    },
+    {
+      "name": "agri_soil",
+      "description": "Comprehensive soil quality rating (0-100)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "organic_matter_pct": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "organic_matter_pct",
+          "ph"
+        ]
+      },
+      "file": "plugins\\geo-plugin-agri\\src\\tools.rs"
+    },
+    {
+      "name": "agri_lai",
+      "description": "NDVI -> LAI -> fIPAR -> NPP conversion chain",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "ndvi": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ndvi"
+        ]
+      },
+      "file": "plugins\\geo-plugin-agri\\src\\tools.rs"
+    },
+    {
+      "name": "agri_irrigation",
+      "description": "Net & gross irrigation requirement",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "et0_mm_day": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "et0_mm_day"
+        ]
+      },
+      "file": "plugins\\geo-plugin-agri\\src\\tools.rs"
+    },
+    {
+      "name": "agri_usle",
+      "description": "USLE soil erosion (t/ha/yr)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "r_factor": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "r_factor",
+          "k_factor",
+          "ls_factor",
+          "c_factor"
+        ]
+      },
+      "file": "plugins\\geo-plugin-agri\\src\\tools.rs"
+    },
+    {
+      "name": "agri_ls_factor",
+      "description": "LS factor from slope length & gradient",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "slope_length_m": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "slope_length_m",
+          "slope_pct"
+        ]
+      },
+      "file": "plugins\\geo-plugin-agri\\src\\tools.rs"
+    },
+    {
+      "name": "agri_soil_carbon",
+      "description": "Soil organic carbon dynamics",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "initial_soc_tc_ha": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "initial_soc_tc_ha",
+          "c_input_tc_ha_yr",
+          "k_decay"
+        ]
+      },
+      "file": "plugins\\geo-plugin-agri\\src\\tools.rs"
+    },
+    {
+      "name": "agri_k_factor",
+      "description": "K factor from soil texture",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "silt_pct": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "silt_pct",
+          "sand_pct",
+          "clay_pct",
+          "organic_matter_pct"
+        ]
+      },
+      "file": "plugins\\geo-plugin-agri\\src\\tools.rs"
+    },
+    {
+      "name": "atmo_boundary_layer",
+      "description": "Boundary layer parameters: ABL height, heat fluxes, Monin-Obukhov length, stability",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "temp_profile": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "temp_profile",
+          "wind_profile"
+        ]
+      },
+      "file": "plugins\\geo-plugin-atmosphere\\src\\tools.rs"
+    },
+    {
+      "name": "atmo_dispersion",
+      "description": "Gaussian plume dispersion: centerline concentration, max ground concentration",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "emission_rate_g_s": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "emission_rate_g_s",
+          "wind_speed_m_s"
+        ]
+      },
+      "file": "plugins\\geo-plugin-atmosphere\\src\\tools.rs"
+    },
+    {
+      "name": "atmo_aod_pm25",
+      "description": "AOD550 鈫?PM2.5 concentration 鈫?AQI air quality index",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "aod_values": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "aod_values"
+        ]
+      },
+      "file": "plugins\\geo-plugin-atmosphere\\src\\tools.rs"
+    },
+    {
+      "name": "atmo_concentration_point",
+      "description": "Gaussian plume point concentration at (x,y,z)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "emission_rate_g_s": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "emission_rate_g_s",
+          "wind_speed_m_s"
+        ]
+      },
+      "file": "plugins\\geo-plugin-atmosphere\\src\\tools.rs"
+    },
+    {
+      "name": "carbon_calculate_geojson",
+      "description": "Calculate carbon from GeoJSON FeatureCollection",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "geojson": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "geojson",
+          "year"
+        ]
+      },
+      "file": "plugins\\geo-plugin-carbon\\src\\tools.rs"
+    },
+    {
+      "name": "carbon_pool_stock",
+      "description": "5-pool carbon stock model (AGB/BGB/Deadwood/Litter/SOC)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "area_ha": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "area_ha",
+          "stem_volume_m3_ha"
+        ]
+      },
+      "file": "plugins\\geo-plugin-carbon\\src\\tools.rs"
+    },
+    {
+      "name": "carbon_scenario",
+      "description": "Carbon scenario (A/R, IFM, Deforestation) with 5-pool model",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "scenario": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scenario",
+          "area_ha",
+          "before_class",
+          "after_class",
+          "after_stem_volume"
+        ]
+      },
+      "file": "plugins\\geo-plugin-carbon\\src\\tools.rs"
+    },
+    {
+      "name": "carbon_vcs",
+      "description": "VCS/CCB methodology match for carbon scenario",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "scenario": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scenario"
+        ]
+      },
+      "file": "plugins\\geo-plugin-carbon\\src\\tools.rs"
+    },
+    {
+      "name": "gaussian_plume",
+      "description": "Gaussian plume dispersion model",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "emission_rate_g_s": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "emission_rate_g_s",
+          "wind_speed_m_s",
+          "source_height_m",
+          "distance_m"
+        ]
+      },
+      "file": "plugins\\geo-plugin-carbon\\src\\tools.rs"
+    },
+    {
+      "name": "ccer_report",
+      "description": "CCER project design document report",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "project_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_name",
+          "baseline_tco2e",
+          "project_tco2e"
+        ]
+      },
+      "file": "plugins\\geo-plugin-carbon\\src\\tools.rs"
+    },
+    {
+      "name": "carbon_price_scenario",
+      "description": "Carbon price by scenario (EU ETS, China, CA, voluntary)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "tonnes_co2e": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "tonnes_co2e",
+          "scenario"
+        ]
+      },
+      "file": "plugins\\geo-plugin-carbon\\src\\tools.rs"
+    },
+    {
+      "name": "carbon_offset_revenue",
+      "description": "Carbon offset project revenue (CCER/VCS)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "project_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_type",
+          "area_ha",
+          "annual_sink_tco2e_per_ha",
+          "credit_period_yrs",
+          "price_per_tonne"
+        ]
+      },
+      "file": "plugins\\geo-plugin-carbon\\src\\tools.rs"
+    },
+    {
+      "name": "carbon_vcs_additionality",
+      "description": "VCS additionality assessment (regulatory+barrier+investment+common practice)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "project_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_type",
+          "baseline_scenario"
+        ]
+      },
+      "file": "plugins\\geo-plugin-carbon\\src\\tools.rs"
+    },
+    {
+      "name": "carbon_vcs_validation",
+      "description": "VCS validation check for carbon project",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "project_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_type",
+          "area_ha",
+          "baseline_tco2e",
+          "project_tco2e"
+        ]
+      },
+      "file": "plugins\\geo-plugin-carbon\\src\\tools.rs"
+    },
+    {
+      "name": "carbon_gold_standard_sdg",
+      "description": "Gold Standard SDG impact mapping",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "scenario_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scenario_type"
+        ]
+      },
+      "file": "plugins\\geo-plugin-carbon\\src\\tools.rs"
+    },
+    {
+      "name": "carbon_aod_to_pm25",
+      "description": "Aerosol Optical Depth (550nm) to PM2.5 concentration",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "aod_550": {
+            "type": "number",
+            "description": "AOD at 550nm"
+          }
+        },
+        "required": [
+          "aod_550"
+        ]
+      },
+      "file": "plugins\\geo-plugin-carbon\\src\\tools.rs"
+    },
+    {
+      "name": "carbon_aod_to_pm25_pblh",
+      "description": "AOD to PM2.5 with PBLH vertical correction",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "aod_550": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "aod_550",
+          "pblh_m"
+        ]
+      },
+      "file": "plugins\\geo-plugin-carbon\\src\\tools.rs"
+    },
+    {
+      "name": "carbon_boundary_layer",
+      "description": "Atmospheric boundary layer height from wind speed and stability",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "wind_speed_m_s": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "wind_speed_m_s"
+        ]
+      },
+      "file": "plugins\\geo-plugin-carbon\\src\\tools.rs"
+    },
+    {
+      "name": "carbon_heat_fluxes",
+      "description": "Turbulent heat fluxes (sensible + latent) from temperature and wind profiles",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "temp_profile": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "temp_profile",
+          "wind_profile"
+        ]
+      },
+      "file": "plugins\\geo-plugin-carbon\\src\\tools.rs"
+    },
+    {
+      "name": "climate_gcm_downscale",
+      "description": "Delta-method GCM statistical downscaling",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "obs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "obs",
+          "hist",
+          "proj"
+        ]
+      },
+      "file": "plugins\\geo-plugin-climate\\src\\tools.rs"
+    },
+    {
+      "name": "climate_quantile_mapping",
+      "description": "Quantile mapping bias correction",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "obs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "obs",
+          "hist",
+          "proj"
+        ]
+      },
+      "file": "plugins\\geo-plugin-climate\\src\\tools.rs"
+    },
+    {
+      "name": "climate_idf_curve",
+      "description": "IDF rainfall curve from Sherman parameters",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "durations": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "durations",
+          "params"
+        ]
+      },
+      "file": "plugins\\geo-plugin-climate\\src\\tools.rs"
+    },
+    {
+      "name": "climate_idf_fit",
+      "description": "Fit IDF Sherman parameters from duration-intensity data",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "durations": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "durations",
+          "intensities"
+        ]
+      },
+      "file": "plugins\\geo-plugin-climate\\src\\tools.rs"
+    },
+    {
+      "name": "climate_spi",
+      "description": "Standardized Precipitation Index",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "precip": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "precip"
+        ]
+      },
+      "file": "plugins\\geo-plugin-climate\\src\\tools.rs"
+    },
+    {
+      "name": "climate_spei",
+      "description": "Standardized Precipitation-Evapotranspiration Index",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "precip": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "precip",
+          "temp"
+        ]
+      },
+      "file": "plugins\\geo-plugin-climate\\src\\tools.rs"
+    },
+    {
+      "name": "climate_pdsi",
+      "description": "Palmer Drought Severity Index",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "temp": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "temp",
+          "precip"
+        ]
+      },
+      "file": "plugins\\geo-plugin-climate\\src\\tools.rs"
+    },
+    {
+      "name": "climate_kriging",
+      "description": "Ordinary Kriging spatial interpolation",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "points": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "points",
+          "bbox",
+          "variogram"
+        ]
+      },
+      "file": "plugins\\geo-plugin-climate\\src\\tools.rs"
+    },
+    {
+      "name": "climate_variogram",
+      "description": "Empirical semivariogram from point data",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "points": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "points"
+        ]
+      },
+      "file": "plugins\\geo-plugin-climate\\src\\tools.rs"
+    },
+    {
+      "name": "coastal_shoreline",
+      "description": "Assess shoreline erosion and inundation between two periods",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "aoi_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "aoi_name",
+          "dem_data",
+          "ndvi_old",
+          "ndvi_new",
+          "cols",
+          "rows",
+          "baseline_year",
+          "assessment_year"
+        ]
+      },
+      "file": "plugins\\geo-plugin-coastal\\src\\tools.rs"
+    },
+    {
+      "name": "coastal_storm_surge",
+      "description": "SLOSH simplified storm surge model: Holland wind + wind setup + inundation",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "dem",
+          "cols",
+          "rows",
+          "cell_size_m",
+          "land_mask",
+          "ul_lat",
+          "ul_lon"
+        ]
+      },
+      "file": "plugins\\geo-plugin-coastal\\src\\tools.rs"
+    },
+    {
+      "name": "coastal_blue_carbon",
+      "description": "Blue carbon stock & sequestration: mangrove/salt-marsh/seagrass",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "ecosystem": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ecosystem",
+          "area_ha"
+        ]
+      },
+      "file": "plugins\\geo-plugin-coastal\\src\\tools.rs"
+    },
+    {
+      "name": "coastal_blue_carbon_aggregate",
+      "description": "Aggregate multiple blue carbon assessments",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ecosystem",
+          "area_ha"
+        ]
+      },
+      "file": "plugins\\geo-plugin-coastal\\src\\tools.rs"
+    },
+    {
+      "name": "coastal_storm_surge_1d",
+      "description": "1D storm surge profile: quick max surge along transect",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "coast_distance_km",
+          "bathymetry_m"
+        ]
+      },
+      "file": "plugins\\geo-plugin-coastal\\src\\tools.rs"
+    },
+    {
+      "name": "coastal_slr_scenario",
+      "description": "IPCC AR6 SLR level for a given scenario and year",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "scenario": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scenario",
+          "year"
+        ]
+      },
+      "file": "plugins\\geo-plugin-coastal\\src\\tools.rs"
+    },
+    {
+      "name": "coastal_slr_inundation",
+      "description": "Bathtub inundation from SLR and DEM",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dem": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "dem",
+          "cols",
+          "rows",
+          "cell_size_m",
+          "slr_m"
+        ]
+      },
+      "file": "plugins\\geo-plugin-coastal\\src\\tools.rs"
+    },
+    {
+      "name": "coastal_slr_impact",
+      "description": "Comprehensive SLR impact assessment",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dem": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "dem",
+          "cols",
+          "rows",
+          "cell_size_m",
+          "scenario",
+          "year"
+        ]
+      },
+      "file": "plugins\\geo-plugin-coastal\\src\\tools.rs"
+    },
+    {
+      "name": "coastal_slr_erosion",
+      "description": "Bruun Rule erosion from sea level rise",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "slr_m": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "slr_m",
+          "shoreline_length_km",
+          "beach_slope_pct",
+          "closure_depth_m"
+        ]
+      },
+      "file": "plugins\\geo-plugin-coastal\\src\\tools.rs"
+    },
+    {
+      "name": "coastal_cvi_calculate",
+      "description": "Coastal Vulnerability Index (Gornitz 1991)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "geomorphology": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "geomorphology",
+          "shoreline_change_m_yr",
+          "coastal_slope_pct",
+          "slr_mm_yr",
+          "wave_height_m",
+          "tidal_range_m"
+        ]
+      },
+      "file": "plugins\\geo-plugin-coastal\\src\\tools.rs"
+    },
+    {
+      "name": "ecology_ndvi_change",
+      "description": "NDVI change detection from two RasterBand arrays",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "red_before": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "red_before",
+          "nir_before",
+          "red_after",
+          "nir_after",
+          "cols",
+          "rows"
+        ]
+      },
+      "file": "plugins\\geo-plugin-ecology\\src\\tools.rs"
+    },
+    {
+      "name": "ecology_rusle_assessment",
+      "description": "RUSLE soil loss assessment from DEM + NDVI",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dem": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "dem",
+          "ndvi",
+          "rows",
+          "cols",
+          "cellsize_m",
+          "r_factor"
+        ]
+      },
+      "file": "plugins\\geo-plugin-ecology\\src\\tools.rs"
+    },
+    {
+      "name": "ecology_rusle_simple",
+      "description": "RUSLE with manual factor arrays (R, K, LS, C, P grids)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "r_factor": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "r_factor",
+          "k_factor",
+          "ls_factor",
+          "c_factor",
+          "p_factor",
+          "cells"
+        ]
+      },
+      "file": "plugins\\geo-plugin-ecology\\src\\tools.rs"
+    },
+    {
+      "name": "ecology_rf_lulc",
+      "description": "Random Forest LULC classification",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "features": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "features"
+        ]
+      },
+      "file": "plugins\\geo-plugin-ecology\\src\\tools.rs"
+    },
+    {
+      "name": "ecology_musle_single",
+      "description": "MUSLE single storm soil loss (modified USLE for event sediment yield)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "runoff_m3": {
+            "type": "number",
+            "description": "Storm runoff volume (m鲁)"
+          }
+        },
+        "required": [
+          "runoff_m3",
+          "peak_flow_m3s",
+          "k_factor",
+          "area_ha"
+        ]
+      },
+      "file": "plugins\\geo-plugin-ecology\\src\\tools.rs"
+    },
+    {
+      "name": "ecology_musle_assessment",
+      "description": "MUSLE multi-event assessment: compute soil loss for each storm",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "events",
+          "k_factor",
+          "area_ha"
+        ]
+      },
+      "file": "plugins\\geo-plugin-ecology\\src\\tools.rs"
+    },
+    {
+      "name": "ecology_musle_annual",
+      "description": "MUSLE annual average soil loss from event series",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "events",
+          "k_factor",
+          "area_ha"
+        ]
+      },
+      "file": "plugins\\geo-plugin-ecology\\src\\tools.rs"
+    },
+    {
+      "name": "ecology_habitat_quality",
+      "description": "InVEST-like habitat quality: degradation + quality from landcover + threats",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "landcover": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "landcover",
+          "habitat_suitability",
+          "threat_layers",
+          "threat_weights",
+          "sensitivity",
+          "cols"
+        ]
+      },
+      "file": "plugins\\geo-plugin-ecology\\src\\tools.rs"
+    },
+    {
+      "name": "ecology_species_distribution",
+      "description": "MaxEnt species distribution: presence points + env layers -> suitability map",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "env_layers": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "env_layers",
+          "presence_pixels",
+          "background_pixels"
+        ]
+      },
+      "file": "plugins\\geo-plugin-ecology\\src\\tools.rs"
+    },
+    {
+      "name": "ecology_ecoservice",
+      "description": "Ecosystem services: carbon sequestration, water yield, recreation potential",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "class_areas_ha": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "class_areas_ha",
+          "carbon_densities",
+          "landcover_changes",
+          "precip_mm",
+          "et_mm",
+          "landcover_counts",
+          "accessibility"
+        ]
+      },
+      "file": "plugins\\geo-plugin-ecology\\src\\tools.rs"
+    },
+    {
+      "name": "energy_solar_suitability",
+      "description": "Assess solar site suitability from DEM + radiation",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "aoi_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "aoi_name",
+          "aoi_geojson",
+          "dem_data",
+          "radiation_data",
+          "cols",
+          "rows"
+        ]
+      },
+      "file": "plugins\\geo-plugin-energy\\src\\tools.rs"
+    },
+    {
+      "name": "energy_geothermal",
+      "description": "Geothermal power potential: heat flux 鈫?MW, LCOE",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "heat_flux_mw_m2",
+          "area_km2"
+        ]
+      },
+      "file": "plugins\\geo-plugin-energy\\src\\tools.rs"
+    },
+    {
+      "name": "energy_geothermal_gradient",
+      "description": "Geothermal from temperature gradient + conductivity",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "gradient_c_per_km",
+          "area_km2"
+        ]
+      },
+      "file": "plugins\\geo-plugin-energy\\src\\tools.rs"
+    },
+    {
+      "name": "energy_transmission_corridor",
+      "description": "Least-cost path for power transmission corridor",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "cost_surface",
+          "nrows",
+          "ncols",
+          "start_idx",
+          "end_idx"
+        ]
+      },
+      "file": "plugins\\geo-plugin-energy\\src\\tools.rs"
+    },
+    {
+      "name": "energy_pvwatts_annual",
+      "description": "PVWatts v5 annual energy estimation",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "monthly_poa": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "monthly_poa",
+          "module_capacity_kw"
+        ]
+      },
+      "file": "plugins\\geo-plugin-energy\\src\\tools.rs"
+    },
+    {
+      "name": "energy_pvwatts_cell_temp",
+      "description": "PV cell temperature from Sandia model",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "poa_irradiance_w_m2": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "poa_irradiance_w_m2",
+          "ambient_temp_c"
+        ]
+      },
+      "file": "plugins\\geo-plugin-energy\\src\\tools.rs"
+    },
+    {
+      "name": "energy_turbine_power",
+      "description": "Turbine power output at given wind speed with air density",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "wind_speed_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "wind_speed_ms"
+        ]
+      },
+      "file": "plugins\\geo-plugin-energy\\src\\tools.rs"
+    },
+    {
+      "name": "energy_turbine_aep",
+      "description": "Annual energy from Weibull distribution (k=shape, c=scale)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "weibull_k": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "weibull_k",
+          "weibull_c"
+        ]
+      },
+      "file": "plugins\\geo-plugin-energy\\src\\tools.rs"
+    },
+    {
+      "name": "energy_jensen_wake",
+      "description": "Jensen single wake model: downwind wind speed deficit",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "free_stream_wind_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "free_stream_wind_ms",
+          "distance_m"
+        ]
+      },
+      "file": "plugins\\geo-plugin-energy\\src\\tools.rs"
+    },
+    {
+      "name": "energy_farm_wake_efficiency",
+      "description": "Farm-level wake efficiency for wind farm layout",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "turbine_positions": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "turbine_positions"
+        ]
+      },
+      "file": "plugins\\geo-plugin-energy\\src\\tools.rs"
+    },
+    {
+      "name": "energy_wind_shear",
+      "description": "Wind shear: extrapolate wind speed to hub height",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "wind_speed_ref_ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "wind_speed_ref_ms"
+        ]
+      },
+      "file": "plugins\\geo-plugin-energy\\src\\tools.rs"
+    },
+    {
+      "name": "forestry_carbon_stock",
+      "description": "Assess forest carbon stock change between two periods",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "aoi_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "aoi_name",
+          "red_old",
+          "nir_old",
+          "red_new",
+          "nir_new",
+          "cols",
+          "rows",
+          "year_old",
+          "year_new"
+        ]
+      },
+      "file": "plugins\\geo-plugin-forestry\\src\\tools.rs"
+    },
+    {
+      "name": "forestry_site_index",
+      "description": "Forest site index (Richards/Logistic growth curves)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "species": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "species",
+          "site_class"
+        ]
+      },
+      "file": "plugins\\geo-plugin-forestry\\src\\tools.rs"
+    },
+    {
+      "name": "forestry_site_class",
+      "description": "Determine site class from tree height and age",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "measured_height_m": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "measured_height_m",
+          "age",
+          "species"
+        ]
+      },
+      "file": "plugins\\geo-plugin-forestry\\src\\tools.rs"
+    },
+    {
+      "name": "forestry_harvest_selective",
+      "description": "Selective harvest simulation (basal area removal)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "basal_area_before_m2_ha": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "basal_area_before_m2_ha",
+          "harvest_intensity_pct"
+        ]
+      },
+      "file": "plugins\\geo-plugin-forestry\\src\\tools.rs"
+    },
+    {
+      "name": "forestry_harvest_clearcut",
+      "description": "Clearcut harvest simulation",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "area_ha": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "area_ha",
+          "volume_m3_ha"
+        ]
+      },
+      "file": "plugins\\geo-plugin-forestry\\src\\tools.rs"
+    },
+    {
+      "name": "forestry_sustainable_yield",
+      "description": "Sustainable yield (AAC) calculation for forest management",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "area_ha": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "area_ha",
+          "volume_m3_ha",
+          "rotation_yrs"
+        ]
+      },
+      "file": "plugins\\geo-plugin-forestry\\src\\tools.rs"
+    },
+    {
+      "name": "forestry_harvest_carbon_impact",
+      "description": "Carbon debt/payback analysis for forest harvest",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "area_ha": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "area_ha",
+          "pre_harvest_carbon_tco2e_ha",
+          "harvest_method",
+          "harvest_intensity_pct",
+          "regeneration_carbon_tco2e_ha_yr"
+        ]
+      },
+      "file": "plugins\\geo-plugin-forestry\\src\\tools.rs"
+    },
+    {
+      "name": "geohazard_fs",
+      "description": "Factor of Safety (infinite slope model)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "slope_deg": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "slope_deg",
+          "soil_depth_m",
+          "cohesion_kpa",
+          "friction_deg"
+        ]
+      },
+      "file": "plugins\\geo-plugin-geohazard\\src\\tools.rs"
+    },
+    {
+      "name": "geohazard_newmark",
+      "description": "Newmark displacement (Jibson 2007)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "slope_deg": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "slope_deg",
+          "factor_of_safety",
+          "pga_g"
+        ]
+      },
+      "file": "plugins\\geo-plugin-geohazard\\src\\tools.rs"
+    },
+    {
+      "name": "geohazard_rainfall_threshold",
+      "description": "Rainfall intensity-duration threshold",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "alpha": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "alpha",
+          "beta",
+          "duration_hours"
+        ]
+      },
+      "file": "plugins\\geo-plugin-geohazard\\src\\tools.rs"
+    },
+    {
+      "name": "geohazard_debris_flow_runout",
+      "description": "Debris flow volume-runout empirical model",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "watershed_area_km2": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "watershed_area_km2",
+          "rainfall_24h_mm",
+          "elevation_drop_m",
+          "channel_gradient_deg"
+        ]
+      },
+      "file": "plugins\\geo-plugin-geohazard\\src\\tools.rs"
+    },
+    {
+      "name": "geomorph_d8_flow_dir",
+      "description": "D8 flow direction from DEM",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dem": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "dem",
+          "rows",
+          "cols"
+        ]
+      },
+      "file": "plugins\\geo-plugin-geomorph\\src\\tools.rs"
+    },
+    {
+      "name": "geomorph_d8_flow_dir_filled",
+      "description": "D8 flow direction (pit-filled)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dem": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "dem",
+          "rows",
+          "cols"
+        ]
+      },
+      "file": "plugins\\geo-plugin-geomorph\\src\\tools.rs"
+    },
+    {
+      "name": "geomorph_d8_flow_acc",
+      "description": "D8 flow accumulation",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "flow_dir": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flow_dir",
+          "rows",
+          "cols"
+        ]
+      },
+      "file": "plugins\\geo-plugin-geomorph\\src\\tools.rs"
+    },
+    {
+      "name": "geomorph_extract_streams",
+      "description": "Extract stream network from flow accumulation",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "flow_acc": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flow_acc",
+          "rows",
+          "cols"
+        ]
+      },
+      "file": "plugins\\geo-plugin-geomorph\\src\\tools.rs"
+    },
+    {
+      "name": "geomorph_strahler",
+      "description": "Strahler stream order",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "flow_dir": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flow_dir",
+          "stream_mask",
+          "rows",
+          "cols"
+        ]
+      },
+      "file": "plugins\\geo-plugin-geomorph\\src\\tools.rs"
+    },
+    {
+      "name": "geomorph_valley_cs",
+      "description": "Valley cross-section from DEM at channel cell",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dem": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "dem",
+          "dem_rows",
+          "dem_cols",
+          "channel_row",
+          "channel_col"
+        ]
+      },
+      "file": "plugins\\geo-plugin-geomorph\\src\\tools.rs"
+    },
+    {
+      "name": "geomorph_stream_segments",
+      "description": "Extract individual stream segments",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "flow_dir": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flow_dir",
+          "stream_mask",
+          "order",
+          "rows",
+          "cols"
+        ]
+      },
+      "file": "plugins\\geo-plugin-geomorph\\src\\tools.rs"
+    },
+    {
+      "name": "groundwater_pumping_test",
+      "description": "Analyze pumping test (Cooper-Jacob method)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "time_min": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "time_min",
+          "drawdown_m",
+          "pumping_rate_m3_day",
+          "r_m"
+        ]
+      },
+      "file": "plugins\\geo-plugin-groundwater\\src\\tools.rs"
+    },
+    {
+      "name": "groundwater_theis_drawdown",
+      "description": "Compute Theis drawdown at a given distance and time",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "t_day": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "t_day",
+          "r_m",
+          "transmissivity_m2_day",
+          "storativity",
+          "pumping_rate_m3_day"
+        ]
+      },
+      "file": "plugins\\geo-plugin-groundwater\\src\\tools.rs"
+    },
+    {
+      "name": "groundwater_theis_profile",
+      "description": "Compute Theis drawdown at multiple distances",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "t_day": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "t_day",
+          "distances_m",
+          "transmissivity_m2_day",
+          "storativity",
+          "pumping_rate_m3_day"
+        ]
+      },
+      "file": "plugins\\geo-plugin-groundwater\\src\\tools.rs"
+    },
+    {
+      "name": "groundwater_recharge",
+      "description": "Estimate recharge via water balance method",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "precipitation_mm": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "precipitation_mm",
+          "evapotranspiration_mm",
+          "runoff_coefficient"
+        ]
+      },
+      "file": "plugins\\geo-plugin-groundwater\\src\\tools.rs"
+    },
+    {
+      "name": "groundwater_trend",
+      "description": "Analyze water table trend from time series",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "years": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "years",
+          "water_level_m"
+        ]
+      },
+      "file": "plugins\\geo-plugin-groundwater\\src\\tools.rs"
+    },
+    {
+      "name": "groundwater_chloride_recharge",
+      "description": "Estimate recharge using chloride mass balance",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "precipitation_mm": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "precipitation_mm",
+          "cl_precip_mg_l",
+          "cl_gw_mg_l"
+        ]
+      },
+      "file": "plugins\\geo-plugin-groundwater\\src\\tools.rs"
+    },
+    {
+      "name": "groundwater_specific_capacity",
+      "description": "Estimate transmissivity from specific capacity",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "specific_capacity_m2_day": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "specific_capacity_m2_day"
+        ]
+      },
+      "file": "plugins\\geo-plugin-groundwater\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_inundation",
+      "description": "Inundation area from catchment area and rainfall",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "catchment_area_ha": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "catchment_area_ha",
+          "rainfall_mm"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_runoff",
+      "description": "Runoff coefficient and peak discharge (Rational Method)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "impervious_ratio": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "impervious_ratio",
+          "rainfall_intensity_mmh",
+          "catchment_area_ha"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_flow_accumulation",
+      "description": "D8 flow accumulation from DEM",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dem": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "dem",
+          "rows",
+          "cols"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_inundation_detail",
+      "description": "Detailed inundation analysis from DEM + water volume",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dem": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "dem",
+          "water_volume_m3",
+          "rows",
+          "cols"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_scs_cn_assessment",
+      "description": "SCS-CN runoff assessment from landuse/soil grid + rainfall",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "landuse": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "landuse",
+          "soil_group",
+          "rainfall_mm",
+          "cells"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_scs_cn_single",
+      "description": "SCS-CN single cell runoff from CN and rainfall",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "rainfall_mm": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "rainfall_mm",
+          "cn"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_invest_carbon",
+      "description": "InVEST carbon storage from landuse grid",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "landuse": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "landuse"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_invest_water_yield",
+      "description": "InVEST water yield from precipitation/PET/AWC grids",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "precipitation": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "precipitation",
+          "pet",
+          "awc"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_watershed",
+      "description": "Watershed extraction from D8 flow direction grid",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "flow_dir": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flow_dir",
+          "nrows",
+          "ncols",
+          "pour_row",
+          "pour_col"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_tr55_cn_lookup",
+      "description": "TR-55 CN lookup by landuse and soil group",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "landuse": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "landuse",
+          "soil_group"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_tr55_sheet_flow",
+      "description": "TR-55 sheet flow time of concentration",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "length_m": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "length_m",
+          "slope_pct",
+          "manning_n",
+          "rainfall_2yr_24h_mm"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_tr55_shallow_flow",
+      "description": "TR-55 shallow concentrated flow time",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "length_m": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "length_m",
+          "slope_pct"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_tr55_peak_discharge",
+      "description": "TR-55 peak discharge (graphical method)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "runoff_mm": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "runoff_mm",
+          "area_km2",
+          "tc_hrs"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_tr55_assessment",
+      "description": "Full TR-55 hydrology assessment",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "landuse": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "landuse",
+          "soil_group",
+          "rainfall_mm",
+          "area_km2"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_muskingum_route",
+      "description": "Muskingum flood routing (coefficients + routing)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "inflow": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "inflow",
+          "k_hrs",
+          "x",
+          "dt_hrs"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_muskingum_cunge",
+      "description": "Muskingum-Cunge routing (rectangular channel)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "inflow": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "inflow",
+          "channel_length_m",
+          "channel_slope",
+          "channel_width_m"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "hydro_muskingum_attenuation",
+      "description": "Muskingum flood wave attenuation analysis",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "inflow": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "inflow",
+          "k_hrs",
+          "x",
+          "dt_hrs"
+        ]
+      },
+      "file": "plugins\\geo-plugin-hydro\\src\\tools.rs"
+    },
+    {
+      "name": "remote_toa_radiance",
+      "description": "TOA radiance: DN 脳 gain + bias (per band)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dn_bands": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "dn_bands",
+          "gain",
+          "bias"
+        ]
+      },
+      "file": "plugins\\geo-plugin-remote-sensing\\src\\tools.rs"
+    },
+    {
+      "name": "remote_full_pipeline",
+      "description": "Full radiometric pipeline: DN 鈫?TOA radiance 鈫?TOA reflectance 鈫?DOS correction 鈫?cloud mask",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dn_bands": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "dn_bands",
+          "gain",
+          "bias"
+        ]
+      },
+      "file": "plugins\\geo-plugin-remote-sensing\\src\\tools.rs"
+    },
+    {
+      "name": "remote_cloud_mask",
+      "description": "Cloud mask from red+NIR bands using NDVI + brightness threshold",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "red_band": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "red_band",
+          "nir_band"
+        ]
+      },
+      "file": "plugins\\geo-plugin-remote-sensing\\src\\tools.rs"
+    },
+    {
+      "name": "remote_insar_coherence",
+      "description": "InSAR coherence between master and slave SLC images",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "master": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "master",
+          "slave"
+        ]
+      },
+      "file": "plugins\\geo-plugin-remote-sensing\\src\\tools.rs"
+    },
+    {
+      "name": "remote_insar_full",
+      "description": "Full InSAR pipeline: coherence 鈫?wrapped phase 鈫?unwrapping 鈫?LOS displacement",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "master": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "master",
+          "slave",
+          "cols"
+        ]
+      },
+      "file": "plugins\\geo-plugin-remote-sensing\\src\\tools.rs"
+    },
+    {
+      "name": "remote_insar_displacement_class",
+      "description": "Classify InSAR displacement magnitude",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "displacement_mm": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "displacement_mm"
+        ]
+      },
+      "file": "plugins\\geo-plugin-remote-sensing\\src\\tools.rs"
+    },
+    {
+      "name": "seismology_ground_motion",
+      "description": "PGA/PGV/intensity from magnitude + distance + site class",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "magnitude": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "magnitude",
+          "distance_km"
+        ]
+      },
+      "file": "plugins\\geo-plugin-seismology\\src\\tools.rs"
+    },
+    {
+      "name": "seismology_response_spectrum",
+      "description": "Acceleration response spectrum from PGA",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "pga_g": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "pga_g"
+        ]
+      },
+      "file": "plugins\\geo-plugin-seismology\\src\\tools.rs"
+    },
+    {
+      "name": "seismology_psha_curve",
+      "description": "Probabilistic seismic hazard curve for given source(s)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "longitude",
+          "latitude",
+          "annual_rate",
+          "b_value",
+          "m_min",
+          "m_max"
+        ]
+      },
+      "file": "plugins\\geo-plugin-seismology\\src\\tools.rs"
+    },
+    {
+      "name": "seismology_uhs",
+      "description": "Uniform hazard spectrum from seismic sources",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sources",
+          "site_lon",
+          "site_lat"
+        ]
+      },
+      "file": "plugins\\geo-plugin-seismology\\src\\tools.rs"
+    },
+    {
+      "name": "seismology_deagg",
+      "description": "PSHA deaggregation: source contribution analysis",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "sources": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sources",
+          "site_lon",
+          "site_lat"
+        ]
+      },
+      "file": "plugins\\geo-plugin-seismology\\src\\tools.rs"
+    },
+    {
+      "name": "seismicity_catalog",
+      "description": "G-R analysis from earthquake catalog magnitudes",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "magnitudes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "magnitudes"
+        ]
+      },
+      "file": "plugins\\geo-plugin-seismology\\src\\tools.rs"
+    },
+    {
+      "name": "seismicity_poisson",
+      "description": "Poisson probability of earthquake occurrence",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "annual_rate": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "annual_rate",
+          "time_years"
+        ]
+      },
+      "file": "plugins\\geo-plugin-seismology\\src\\tools.rs"
+    },
+    {
+      "name": "socio_pop_density",
+      "description": "Dasymetric population density from admin pop + landcover weights",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "admin_pop": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "admin_pop",
+          "landcover_weights"
+        ]
+      },
+      "file": "plugins\\geo-plugin-socioeconomic\\src\\tools.rs"
+    },
+    {
+      "name": "socio_nightlight_gdp",
+      "description": "GDP estimation from nightlight values",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "ntl_values": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ntl_values"
+        ]
+      },
+      "file": "plugins\\geo-plugin-socioeconomic\\src\\tools.rs"
+    },
+    {
+      "name": "socio_wealth_index",
+      "description": "Composite wealth index from NTL + building + road density",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "ntl": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ntl",
+          "building_density",
+          "road_density"
+        ]
+      },
+      "file": "plugins\\geo-plugin-socioeconomic\\src\\tools.rs"
+    },
+    {
+      "name": "socio_transition_matrix",
+      "description": "Compute LULC transition probability matrix from two time points",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "from_lulc": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_lulc",
+          "to_lulc",
+          "n_classes"
+        ]
+      },
+      "file": "plugins\\geo-plugin-socioeconomic\\src\\tools.rs"
+    },
+    {
+      "name": "socio_ca_markov",
+      "description": "CA-Markov LULC change simulation",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "current_lulc": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_lulc",
+          "transition_matrix",
+          "cols"
+        ]
+      },
+      "file": "plugins\\geo-plugin-socioeconomic\\src\\tools.rs"
+    },
+    {
+      "name": "socio_travel_time",
+      "description": "Travel time from origin to all cells via Dijkstra",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "origin_idx": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "origin_idx",
+          "cost_surface",
+          "cols"
+        ]
+      },
+      "file": "plugins\\geo-plugin-socioeconomic\\src\\tools.rs"
+    },
+    {
+      "name": "socio_market_potential",
+      "description": "Market potential (gravity model)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "population": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "population",
+          "travel_time"
+        ]
+      },
+      "file": "plugins\\geo-plugin-socioeconomic\\src\\tools.rs"
+    },
+    {
+      "name": "survey_earthwork",
+      "description": "Grid method earthwork calculation (cut/fill/net volumes)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "existing_elevation": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "existing_elevation",
+          "design_elevation",
+          "grid_cols",
+          "grid_rows"
+        ]
+      },
+      "file": "plugins\\geo-plugin-survey\\src\\tools.rs"
+    },
+    {
+      "name": "survey_cross_section",
+      "description": "Average end area cross-section earthwork (road/rail)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "cut_areas_m2": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "cut_areas_m2",
+          "fill_areas_m2",
+          "distances_m"
+        ]
+      },
+      "file": "plugins\\geo-plugin-survey\\src\\tools.rs"
+    },
+    {
+      "name": "survey_adjustment",
+      "description": "Control network adjustment (simplified least squares)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "observations": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "observations"
+        ]
+      },
+      "file": "plugins\\geo-plugin-survey\\src\\tools.rs"
+    },
+    {
+      "name": "survey_tin",
+      "description": "TIN (triangular prism) earthwork volume calculation",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "points": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "points",
+          "design_elevation"
+        ]
+      },
+      "file": "plugins\\geo-plugin-survey\\src\\tools.rs"
+    },
+    {
+      "name": "survey_gauss_forward",
+      "description": "Gauss-Kr眉ger forward: (B,L,L0) ?plane (X,Y)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "b": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "b",
+          "l",
+          "l0"
+        ]
+      },
+      "file": "plugins\\geo-plugin-survey\\src\\tools.rs"
+    },
+    {
+      "name": "survey_gauss_inverse",
+      "description": "Gauss-Kr眉ger inverse: plane (X,Y) ?(B,L)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "l0"
+        ]
+      },
+      "file": "plugins\\geo-plugin-survey\\src\\tools.rs"
+    },
+    {
+      "name": "survey_zone_transform",
+      "description": "Coordinate zone transform between Gauss-Kr眉ger zones",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "from_zone",
+          "to_zone"
+        ]
+      },
+      "file": "plugins\\geo-plugin-survey\\src\\tools.rs"
+    },
+    {
+      "name": "survey_zone_info",
+      "description": "Get zone info from longitude (3-degree and 6-degree bands)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "lon": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lon"
+        ]
+      },
+      "file": "plugins\\geo-plugin-survey\\src\\tools.rs"
+    },
+    {
+      "name": "survey_utm_zone_info",
+      "description": "UTM zone info from longitude",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "lon": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lon"
+        ]
+      },
+      "file": "plugins\\geo-plugin-survey\\src\\tools.rs"
+    },
+    {
+      "name": "survey_latlon_to_utm",
+      "description": "WGS84 lat/lon -> UTM easting/northing",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lon"
+        ]
+      },
+      "file": "plugins\\geo-plugin-survey\\src\\tools.rs"
+    },
+    {
+      "name": "survey_utm_to_latlon",
+      "description": "UTM easting/northing -> WGS84 lat/lon",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "easting": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "easting",
+          "northing",
+          "zone"
+        ]
+      },
+      "file": "plugins\\geo-plugin-survey\\src\\tools.rs"
+    },
+    {
+      "name": "survey_vincenty_inverse",
+      "description": "Vincenty inverse: distance + azimuth between 2 points (WGS84)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "a_lat": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "a_lat",
+          "a_lon",
+          "b_lat",
+          "b_lon"
+        ]
+      },
+      "file": "plugins\\geo-plugin-survey\\src\\tools.rs"
+    },
+    {
+      "name": "survey_vincenty_direct",
+      "description": "Vincenty direct: destination point from start + azimuth + distance",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lon",
+          "azimuth_deg",
+          "distance_m"
+        ]
+      },
+      "file": "plugins\\geo-plugin-survey\\src\\tools.rs"
+    },
+    {
+      "name": "survey_haversine_distance",
+      "description": "Haversine great-circle distance between 2 points",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "lat1": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat1",
+          "lon1",
+          "lat2",
+          "lon2"
+        ]
+      },
+      "file": "plugins\\geo-plugin-survey\\src\\tools.rs"
+    },
+    {
+      "name": "urban_far",
+      "description": "Compute FAR, building density, average height, and compliance check",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "total_floor_area_m2": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "total_floor_area_m2",
+          "building_footprint_m2",
+          "site_area_m2"
+        ]
+      },
+      "file": "plugins\\geo-plugin-urban\\src\\tools.rs"
+    },
+    {
+      "name": "urban_land_use",
+      "description": "Classify land use (NLCD) from NDVI and impervious surface arrays",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "ndvi_values": {
+            "type": "number"
+          }
+        },
+        "required": []
+      },
+      "file": "plugins\\geo-plugin-urban\\src\\tools.rs"
+    },
+    {
+      "name": "urban_heat_island",
+      "description": "Compute urban heat island index",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "impervious_ratio": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "impervious_ratio",
+          "building_density",
+          "green_ratio"
+        ]
+      },
+      "file": "plugins\\geo-plugin-urban\\src\\tools.rs"
+    },
+    {
+      "name": "urban_green_space",
+      "description": "Compute green ratio, per capita green space, and compliance",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "green_area_m2": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "green_area_m2",
+          "total_area_m2"
+        ]
+      },
+      "file": "plugins\\geo-plugin-urban\\src\\tools.rs"
+    },
+    {
+      "name": "urban_solar",
+      "description": "Solar / shadow analysis for a building (winter + summer)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "building_height_m": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "building_height_m"
+        ]
+      },
+      "file": "plugins\\geo-plugin-urban\\src\\tools.rs"
+    },
+    {
+      "name": "urban_assess",
+      "description": "Comprehensive urban planning assessment (all indicators at once)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "total_floor_area_m2": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "total_floor_area_m2",
+          "building_footprint_m2",
+          "site_area_m2"
+        ]
+      },
+      "file": "plugins\\geo-plugin-urban\\src\\tools.rs"
+    },
+    {
+      "name": "urban_flood_inlet_capacity",
+      "description": "Inlet capacity (curb/grate/area/combination)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "inlet_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inlet_type",
+          "grate_area_m2"
+        ]
+      },
+      "file": "plugins\\geo-plugin-urban\\src\\tools.rs"
+    },
+    {
+      "name": "urban_flood_pipe_capacity",
+      "description": "Pipe capacity via Manning's equation",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "diameter_m": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "diameter_m",
+          "slope"
+        ]
+      },
+      "file": "plugins\\geo-plugin-urban\\src\\tools.rs"
+    },
+    {
+      "name": "urban_flood_risk",
+      "description": "Urban pluvial flood risk from runoff vs drainage",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "runoff_volume_m3": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "runoff_volume_m3",
+          "drainage_capacity_m3_s",
+          "area_ha"
+        ]
+      },
+      "file": "plugins\\geo-plugin-urban\\src\\tools.rs"
+    },
+    {
+      "name": "urban_flood_dual_drainage",
+      "description": "Dual drainage (major + minor system) analysis",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "major_system_capacity_m3_s": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "major_system_capacity_m3_s",
+          "minor_system_capacity_m3_s",
+          "runoff_m3"
+        ]
+      },
+      "file": "plugins\\geo-plugin-urban\\src\\tools.rs"
+    },
+    {
+      "name": "urban_flood_assessment",
+      "description": "Comprehensive urban flood assessment",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "total_runoff_m3": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "total_runoff_m3",
+          "pipe_capacities",
+          "area_ha"
+        ]
+      },
+      "file": "plugins\\geo-plugin-urban\\src\\tools.rs"
+    },
+    {
+      "name": "urban_accessibility_score",
+      "description": "15-minute city: facility accessibility score",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "facilities": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "facilities",
+          "origin_lat",
+          "origin_lon"
+        ]
+      },
+      "file": "plugins\\geo-plugin-urban\\src\\tools.rs"
+    },
+    {
+      "name": "urban_accessibility_assessment",
+      "description": "15-minute city composite assessment",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "population": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "population",
+          "area_km2"
+        ]
+      },
+      "file": "plugins\\geo-plugin-urban\\src\\tools.rs"
+    },
+    {
+      "name": "urban_service_area_gap",
+      "description": "Service area gap analysis against planning standards",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "population_density_per_km2": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "population_density_per_km2",
+          "facility_type",
+          "existing_count",
+          "area_km2"
+        ]
+      },
+      "file": "plugins\\geo-plugin-urban\\src\\tools.rs"
+    },
+    {
+      "name": "volc_ash_dispersion",
+      "description": "Volcanic ash dispersion: centerline concentration, deposition, settling velocity",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "emission_rate_kg_s": {
+            "type": "number",
+            "description": "Ash emission rate"
+          }
+        },
+        "required": [
+          "emission_rate_kg_s",
+          "wind_speed_m_s"
+        ]
+      },
+      "file": "plugins\\geo-plugin-volcanology\\src\\tools.rs"
+    },
+    {
+      "name": "volc_lava_flow",
+      "description": "Lava flow path simulation using Dijkstra-based least-cost path",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dem": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "dem",
+          "vent_row",
+          "vent_col",
+          "rows",
+          "cols"
+        ]
+      },
+      "file": "plugins\\geo-plugin-volcanology\\src\\tools.rs"
+    },
+    {
+      "name": "volc_hazard_zone",
+      "description": "Classify volcanic hazard level from ash, lava, and distance factors",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "file": "plugins\\geo-plugin-volcanology\\src\\tools.rs"
+    }
+  ],
+  "count": 238
+}

@@ -1,0 +1,157 @@
+# geo-toolbox-agent keyword routing rules
+# Each rule maps keywords → tool name for offline fallback
+
+rules:
+  - tool: "carbon_calculate_geojson"
+    keywords: ["碳排放计算", "carbon calculation", "碳核算", "carbon accounting", "calculate carbon"]
+    default_params: {}
+  - tool: "hydro_scs_cn"
+    keywords: ["SCS", "径流", "runoff", "CN", "curve number", "径流计算"]
+    default_params: {}
+  - tool: "ecology_rusle"
+    keywords: ["RUSLE", "土壤流失", "soil loss", "土壤侵蚀", "水土流失"]
+    default_params: {}
+  - tool: "coastal_slr"
+    keywords: ["海平面上升", "sea level rise", "SLR", "淹没", "inundation"]
+    default_params: {}
+  - tool: "agri_yield"
+    keywords: ["农业", "agriculture", "crop", "作物", "yield", "产量", "灌溉", "irrigation"]
+    default_params: {}
+  - tool: "agri_soil"
+    keywords: ["农业", "agriculture", "crop", "作物", "yield", "产量", "灌溉", "irrigation"]
+    default_params: {}
+  - tool: "agri_lai"
+    keywords: ["农业", "agriculture", "crop", "作物", "yield", "产量", "灌溉", "irrigation"]
+    default_params: {}
+  - tool: "eco_carbon"
+    keywords: ["carbon", "碳", "排放", "emission", "碳汇", "carbon stock", "碳储量", "LCA", "碳足迹"]
+    default_params: {}
+  - tool: "carbon_calculate_raw"
+    keywords: ["carbon", "碳", "排放", "emission", "碳汇", "carbon stock", "碳储量", "LCA", "碳足迹"]
+    default_params: {}
+  - tool: "agri_soil_carbon"
+    keywords: ["carbon", "碳", "排放", "emission", "碳汇", "carbon stock", "碳储量", "LCA", "碳足迹"]
+    default_params: {}
+  - tool: "paleo_proxy_temperature"
+    keywords: ["气候", "climate", "GCM", "降尺度", "SPI", "SPEI", "drought", "干旱", "Kriging"]
+    default_params: {}
+  - tool: "climate_gcm_downscale"
+    keywords: ["气候", "climate", "GCM", "降尺度", "SPI", "SPEI", "drought", "干旱", "Kriging"]
+    default_params: {}
+  - tool: "climate_quantile_mapping"
+    keywords: ["气候", "climate", "GCM", "降尺度", "SPI", "SPEI", "drought", "干旱", "Kriging"]
+    default_params: {}
+  - tool: "ocean_slr"
+    keywords: ["海岸", "coastal", "sea level", "海平面", "风暴潮", "storm surge"]
+    default_params: {}
+  - tool: "paleo_sea_level"
+    keywords: ["海岸", "coastal", "sea level", "海平面", "风暴潮", "storm surge"]
+    default_params: {}
+  - tool: "paleo_coastline"
+    keywords: ["海岸", "coastal", "sea level", "海平面", "风暴潮", "storm surge"]
+    default_params: {}
+  - tool: "ndvi"
+    keywords: ["NDVI", "ndvi", "植被指数", "归一化植被指数", "遥感指数", "红波段", "近红波段"]
+    default_params: {}
+  - tool: "ecology_ndvi_change"
+    keywords: ["生态", "ecology", "restoration", "修复", "RUSLE", "土壤流失", "erosion"]
+    default_params: {}
+  - tool: "ecology_rusle_assessment"
+    keywords: ["生态", "ecology", "restoration", "修复", "RUSLE", "土壤流失", "erosion"]
+    default_params: {}
+  - tool: "planetary_solar_position"
+    keywords: ["能源", "energy", "solar", "光伏", "wind", "风电", "太阳辐射"]
+    default_params: {}
+  - tool: "energy_solar_suitability"
+    keywords: ["能源", "energy", "solar", "光伏", "wind", "风电", "太阳辐射"]
+    default_params: {}
+  - tool: "energy_geothermal"
+    keywords: ["能源", "energy", "solar", "光伏", "wind", "风电", "太阳辐射"]
+    default_params: {}
+  - tool: "carbon_scenario"
+    keywords: ["林业", "forest", "森林", "biomass", "生物量"]
+    default_params: {}
+  - tool: "ecology_rf_lulc"
+    keywords: ["林业", "forest", "森林", "biomass", "生物量"]
+    default_params: {}
+  - tool: "forestry_carbon_stock"
+    keywords: ["林业", "forest", "森林", "biomass", "生物量"]
+    default_params: {}
+  - tool: "geohazard_fs"
+    keywords: ["灾害", "滑坡", "泥石流", "地震", "landslide", "debris", "hazard"]
+    default_params: {}
+  - tool: "geohazard_newmark"
+    keywords: ["灾害", "滑坡", "泥石流", "地震", "landslide", "debris", "hazard"]
+    default_params: {}
+  - tool: "geohazard_rainfall_threshold"
+    keywords: ["灾害", "滑坡", "泥石流", "地震", "landslide", "debris", "hazard"]
+    default_params: {}
+  - tool: "cad_export_geojson"
+    keywords: ["geojson", "GeoJSON", "矢量", "vector"]
+    default_params: {}
+  - tool: "duckdb_ingest_geojson"
+    keywords: ["geojson", "GeoJSON", "矢量", "vector"]
+    default_params: {}
+  - tool: "geomorph_d8_flow_dir"
+    keywords: ["地貌", "geomorph", "D8", "流向", "河网"]
+    default_params: {}
+  - tool: "geomorph_d8_flow_dir_filled"
+    keywords: ["地貌", "geomorph", "D8", "流向", "河网"]
+    default_params: {}
+  - tool: "geomorph_d8_flow_acc"
+    keywords: ["地貌", "geomorph", "D8", "流向", "河网"]
+    default_params: {}
+  - tool: "groundwater_pumping_test"
+    keywords: ["地下水", "groundwater", "达西", "Darcy", "MODFLOW"]
+    default_params: {}
+  - tool: "groundwater_theis_drawdown"
+    keywords: ["地下水", "groundwater", "达西", "Darcy", "MODFLOW"]
+    default_params: {}
+  - tool: "groundwater_theis_profile"
+    keywords: ["地下水", "groundwater", "达西", "Darcy", "MODFLOW"]
+    default_params: {}
+  - tool: "hydro_inundation"
+    keywords: ["水文", "径流", "flood", "洪水", "流域", "watershed", "river", "河流", "SCS", "单位线"]
+    default_params: {}
+  - tool: "hydro_runoff"
+    keywords: ["水文", "径流", "flood", "洪水", "流域", "watershed", "river", "河流", "SCS", "单位线"]
+    default_params: {}
+  - tool: "hydro_flow_accumulation"
+    keywords: ["水文", "径流", "flood", "洪水", "流域", "watershed", "river", "河流", "SCS", "单位线"]
+    default_params: {}
+  - tool: "ocean_coral_bleaching"
+    keywords: ["海洋", "ocean", "酸", "acidification", "珊瑚", "coral", "渔业", "fisheries"]
+    default_params: {}
+  - tool: "ocean_upwelling"
+    keywords: ["海洋", "ocean", "酸", "acidification", "珊瑚", "coral", "渔业", "fisheries"]
+    default_params: {}
+  - tool: "ocean_geostrophic"
+    keywords: ["海洋", "ocean", "酸", "acidification", "珊瑚", "coral", "渔业", "fisheries"]
+    default_params: {}
+  - tool: "cli_cog_convert"
+    keywords: ["raster", "栅格", "tiff", "GeoTIFF"]
+    default_params: {}
+  - tool: "cli_gdalwarp"
+    keywords: ["raster", "栅格", "tiff", "GeoTIFF"]
+    default_params: {}
+  - tool: "cli_gdal_translate"
+    keywords: ["raster", "栅格", "tiff", "GeoTIFF"]
+    default_params: {}
+  - tool: "seismology_ground_motion"
+    keywords: ["地震", "seismic", "震源", "ground motion"]
+    default_params: {}
+  - tool: "seismology_response_spectrum"
+    keywords: ["地震", "seismic", "震源", "ground motion"]
+    default_params: {}
+  - tool: "seismology_psha_curve"
+    keywords: ["地震", "seismic", "震源", "ground motion"]
+    default_params: {}
+  - tool: "geo_stratigraphy"
+    keywords: ["slope", "坡度", "DEM", "高程", "地形", "terrain"]
+    default_params: {}
+  - tool: "temporal_trend"
+    keywords: ["slope", "坡度", "DEM", "高程", "地形", "terrain"]
+    default_params: {}
+  - tool: "socio_nightlight_gdp"
+    keywords: ["社会经济", "GDP", "人口", "population", "socioeconomic"]
+    default_params: {}
