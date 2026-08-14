@@ -448,68 +448,68 @@ mod tests {
     /// X ≈ 3383300, Y ≈ 355000
     #[test]
     fn test_gauss_forward_chengdu() {
-        let B = 30.57_f64.to_radians();
-        let L = 104.06_f64.to_radians();
-        let L0 = 105.0_f64.to_radians();
+        let b = 30.57_f64.to_radians();
+        let l = 104.06_f64.to_radians();
+        let l0 = 105.0_f64.to_radians();
 
-        let (X, Y) = gauss_forward(B, L, L0, Ellipsoid::CGCS2000);
+        let (x, y) = gauss_forward(b, l, l0, Ellipsoid::CGCS2000);
 
         // Chengdu: roughly 3383km north, ~355km east (after 500km false easting)
         assert!(
-            (X - 3_383_000.0).abs() < 10_000.0,
+            (x - 3_383_000.0).abs() < 10_000.0,
             "X={}, expected ~3383000",
-            X
+            x
         );
-        assert!((Y - 500_000.0).abs() < 1_000_000.0, "Y={}", Y);
+        assert!((y - 500_000.0).abs() < 1_000_000.0, "Y={}", y);
 
         // Roundtrip test
-        let (B2, L2) = gauss_inverse(X, Y, L0, Ellipsoid::CGCS2000);
-        assert!((B2 - B).abs() < 1e-8, "B diff: {}", (B2 - B).abs());
-        assert!((L2 - L).abs() < 1e-8, "L diff: {}", (L2 - L).abs());
+        let (b2, l2) = gauss_inverse(x, y, l0, Ellipsoid::CGCS2000);
+        assert!((b2 - b).abs() < 1e-8, "B diff: {}", (b2 - b).abs());
+        assert!((l2 - l).abs() < 1e-8, "L diff: {}", (l2 - l).abs());
     }
 
     /// Test Beijing (B=39.9°, L=116.4°) in 3° zone 39 (CM=117°), 6° zone 20 (CM=117°)
     #[test]
     fn test_gauss_forward_beijing() {
-        let B = 39.9_f64.to_radians();
-        let L = 116.4_f64.to_radians();
+        let b = 39.9_f64.to_radians();
+        let l = 116.4_f64.to_radians();
 
         // 3° zone 39, CM=117°
-        let L0 = 117.0_f64.to_radians();
-        let (X, Y) = gauss_forward(B, L, L0, Ellipsoid::CGCS2000);
-        assert!(X > 4_400_000.0 && X < 4_500_000.0, "X={}", X);
+        let l0 = 117.0_f64.to_radians();
+        let (x, y) = gauss_forward(b, l, l0, Ellipsoid::CGCS2000);
+        assert!(x > 4_400_000.0 && x < 4_500_000.0, "X={}", x);
 
         // Roundtrip
-        let (B2, L2) = gauss_inverse(X, Y, L0, Ellipsoid::CGCS2000);
-        assert!((B2 - B).abs() < 1e-8);
-        assert!((L2 - L).abs() < 1e-8);
+        let (b2, l2) = gauss_inverse(x, y, l0, Ellipsoid::CGCS2000);
+        assert!((b2 - b).abs() < 1e-8);
+        assert!((l2 - l).abs() < 1e-8);
     }
 
     /// Zone transform test: 3° zone 35 (CM=105°) → 3° zone 36 (CM=108°)
     #[test]
     fn test_zone_transform() {
-        let B = 30.57_f64.to_radians();
-        let L = 104.06_f64.to_radians();
-        let L0_35 = central_meridian(35, true).to_radians();
-        let L0_36 = central_meridian(36, true).to_radians();
+        let b = 30.57_f64.to_radians();
+        let l = 104.06_f64.to_radians();
+        let l0_35 = central_meridian(35, true).to_radians();
+        let l0_36 = central_meridian(36, true).to_radians();
 
-        let (X35, Y35) = gauss_forward(B, L, L0_35, Ellipsoid::CGCS2000);
-        let (B2, L2) = gauss_inverse(X35, Y35, L0_35, Ellipsoid::CGCS2000);
-        assert!((B2 - B).abs() < 1e-8);
-        assert!((L2 - L).abs() < 1e-8);
+        let (x35, y35) = gauss_forward(b, l, l0_35, Ellipsoid::CGCS2000);
+        let (b2, l2) = gauss_inverse(x35, y35, l0_35, Ellipsoid::CGCS2000);
+        assert!((b2 - b).abs() < 1e-8);
+        assert!((l2 - l).abs() < 1e-8);
 
-        let (X36, Y36) = zone_transform(X35, Y35, 35, 36, true, Ellipsoid::CGCS2000);
+        let (x36, y36) = zone_transform(x35, y35, 35, 36, true, Ellipsoid::CGCS2000);
         // Verify by computing forward directly in zone 36
-        let (X36_direct, Y36_direct) = gauss_forward(B, L, L0_36, Ellipsoid::CGCS2000);
+        let (x36_direct, y36_direct) = gauss_forward(b, l, l0_36, Ellipsoid::CGCS2000);
         assert!(
-            (X36 - X36_direct).abs() < 1.0,
+            (x36 - x36_direct).abs() < 1.0,
             "X diff: {}",
-            (X36 - X36_direct).abs()
+            (x36 - x36_direct).abs()
         );
         assert!(
-            (Y36 - Y36_direct).abs() < 1.0,
+            (y36 - y36_direct).abs() < 1.0,
             "Y diff: {}",
-            (Y36 - Y36_direct).abs()
+            (y36 - y36_direct).abs()
         );
     }
 
@@ -577,13 +577,13 @@ mod tests {
 
     #[test]
     fn test_footpoint_latitude() {
-        let B0 = 30.0_f64.to_radians();
-        let arc = meridian_arc(B0, Ellipsoid::CGCS2000);
-        let Bf = footpoint_latitude(arc, Ellipsoid::CGCS2000);
+        let b0 = 30.0_f64.to_radians();
+        let arc = meridian_arc(b0, Ellipsoid::CGCS2000);
+        let bf = footpoint_latitude(arc, Ellipsoid::CGCS2000);
         assert!(
-            (Bf - B0).abs() < 1e-10,
+            (bf - b0).abs() < 1e-10,
             "footpoint diff: {}",
-            (Bf - B0).abs()
+            (bf - b0).abs()
         );
     }
 
@@ -613,20 +613,20 @@ mod tests {
             Ellipsoid::Beijing54,
             Ellipsoid::WGS84,
         ] {
-            for &(B, L, L0) in &test_cases {
-                let (X, Y) = gauss_forward(B, L, L0, ell);
-                let (B2, L2) = gauss_inverse(X, Y, L0, ell);
+            for &(b, l, l0) in &test_cases {
+                let (x, y) = gauss_forward(b, l, l0, ell);
+                let (b2, l2) = gauss_inverse(x, y, l0, ell);
                 assert!(
-                    (B2 - B).abs() < 1e-8,
+                    (b2 - b).abs() < 1e-8,
                     "{}: B diff {}",
                     ell.label(),
-                    (B2 - B).abs()
+                    (b2 - b).abs()
                 );
                 assert!(
-                    (L2 - L).abs() < 1e-8,
+                    (l2 - l).abs() < 1e-8,
                     "{}: L diff {}",
                     ell.label(),
-                    (L2 - L).abs()
+                    (l2 - l).abs()
                 );
             }
         }

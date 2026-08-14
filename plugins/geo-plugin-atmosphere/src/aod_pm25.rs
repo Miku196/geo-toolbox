@@ -141,7 +141,7 @@ mod tests {
 
     #[test]
     fn test_pm25_to_aqi_hazardous() {
-        let (aqis, _, class) = pm25_to_aqi(&[300.0]);
+        let (_aqis, _, class) = pm25_to_aqi(&[300.0]);
         assert_eq!(class, "Hazardous");
     }
 
@@ -165,6 +165,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_comparisons)] // aqi_mean: u32, >=0 恒真; 保留断言以明确 AQI 非负语义
     fn test_full_pipeline() {
         let aods = vec![0.1, 0.3, 0.6, 1.2, 2.0];
         let result = aod_pm25_pipeline(&aods, 0.55, 0.85, "summer");

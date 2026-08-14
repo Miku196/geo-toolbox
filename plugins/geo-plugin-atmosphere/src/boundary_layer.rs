@@ -257,7 +257,7 @@ mod tests {
     #[test]
     fn test_heat_fluxes_nighttime() {
         // 夜间逆温：地表 5°C → 2m 10°C
-        let (shf, lhf) = turbulent_heat_fluxes(&[5.0, 10.0, 8.0], &[1.0, 2.0, 3.0]);
+        let (shf, _lhf) = turbulent_heat_fluxes(&[5.0, 10.0, 8.0], &[1.0, 2.0, 3.0]);
         assert!(shf < 0.0, "shf should be negative (stable), got {}", shf);
     }
 

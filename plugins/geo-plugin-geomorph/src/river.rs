@@ -374,7 +374,7 @@ mod tests {
         // 3 rows, 4 cols, all flowing south
         let rows = 3;
         let cols = 4;
-        let mut dirs = vec![2u8; rows * cols]; // south
+        let dirs = vec![2u8; rows * cols]; // south
         let mask = vec![true; rows * cols];
         let order = vec![1u8; rows * cols];
         let segments = extract_stream_segments(&dirs, &mask, &order, rows, cols);

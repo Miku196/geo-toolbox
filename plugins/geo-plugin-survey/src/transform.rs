@@ -367,7 +367,7 @@ mod tests {
     #[test]
     fn test_molodensky_self() {
         // 相同椭球 → 无变化
-        let (lat, lon, h) = molodensky_transform_standard(
+        let (lat, _lon, _h) = molodensky_transform_standard(
             30.5,
             114.3,
             50.0,
@@ -389,7 +389,7 @@ mod tests {
 
     #[test]
     fn test_helmert_wgs84_to_cgcs2000() {
-        let (lat, lon, h) =
+        let (lat, lon, _h) =
             helmert_transform_standard(30.5, 114.3, 50.0, Ellipsoid::WGS84, Ellipsoid::CGCS2000)
                 .unwrap();
         assert!((lat - 30.5).abs() < 1e-6);
@@ -425,7 +425,7 @@ mod tests {
                 .unwrap();
         // 反向
         let params = standard_helmert_params(Ellipsoid::CGCS2000, Ellipsoid::WGS84).unwrap();
-        let (lat2, lon2, h2) = helmert_transform_geodetic(lat, lon, h, Ellipsoid::WGS84, &params);
+        let (lat2, lon2, _h2) = helmert_transform_geodetic(lat, lon, h, Ellipsoid::WGS84, &params);
         assert!((lat2 - 30.5).abs() < 1e-6);
         assert!((lon2 - 114.3).abs() < 1e-6);
     }

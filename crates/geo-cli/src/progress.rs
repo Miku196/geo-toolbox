@@ -105,7 +105,6 @@ impl Progress {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
 
     #[test]
     fn test_progress_create_save_load() {

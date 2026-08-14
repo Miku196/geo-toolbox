@@ -302,7 +302,7 @@ mod tests {
         // 10 10 10    Top row cells should drain south (dir=2)
         //  5  5  5    Bottom row cells are lower
         let dem = vec![10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 5.0, 5.0, 5.0];
-        let result = d8_flow_direction(&dem, 3, 3);
+        let _result = d8_flow_direction(&dem, 3, 3);
         // Cell (0,1) = 10.0, south neighbor (1,1) = 10.0 → equal
         // Southeast neighbor (1,2) = 10.0 → equal
         // With all equal, no slope → pit
