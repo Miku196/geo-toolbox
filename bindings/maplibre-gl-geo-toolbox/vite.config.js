@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+﻿import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: '.',
@@ -13,6 +13,15 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
+    lib: {
+      entry: 'src/index.js',
+      name: 'MaplibreGlGeoToolbox',
+      formats: ['es'],
+      fileName: 'index',
+    },
+    rollupOptions: {
+      external: ['maplibre-gl'],
+    },
   },
   optimizeDeps: {
     exclude: ['geo-wasm'],

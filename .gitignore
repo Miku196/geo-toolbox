@@ -36,3 +36,10 @@ fuzz/Cargo.lock
 
 # Output data (generated)
 output/
+
+# Agent/tool caches
+.pi/
+# Build artifacts
+bindings/maplibre-gl-geo-toolbox/dist/
+bindings/maplibre-gl-geo-toolbox/pkg/
+bindings/maplibre-gl-geo-toolbox/.vite/
