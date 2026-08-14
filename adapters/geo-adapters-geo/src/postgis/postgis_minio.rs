@@ -15,8 +15,13 @@ use geo_core::errors::{GeoError, GeoResult};
 use object_store::aws::AmazonS3Builder;
 use object_store::gcp::GoogleCloudStorageBuilder;
 use object_store::path::Path as ObjectPath;
+use object_store::signer::Signer;
 use object_store::ObjectStore;
+use object_store::ObjectStoreExt;
 
+use futures::StreamExt;
+use reqwest::Method;
+use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -58,6 +63,7 @@ pub enum StorageBackend {
 /// ```
 pub struct ObjectStoreClient {
     inner: Box<dyn ObjectStore>,
+    signer: Arc<dyn Signer>,
     bucket: String,
 }
 
@@ -75,7 +81,8 @@ impl ObjectStoreClient {
             .map_err(|e| GeoError::ObjectStore(e.to_string()))?;
 
         Ok(Self {
-            inner: Box::new(store),
+            inner: Box::new(store.clone()),
+            signer: Arc::new(store),
             bucket: bucket.to_string(),
         })
     }
@@ -97,7 +104,8 @@ impl ObjectStoreClient {
             .map_err(|e| GeoError::ObjectStore(e.to_string()))?;
 
         Ok(Self {
-            inner: Box::new(store),
+            inner: Box::new(store.clone()),
+            signer: Arc::new(store),
             bucket: bucket.to_string(),
         })
     }
@@ -156,12 +164,13 @@ impl ObjectStoreClient {
     /// Upload arbitrary bytes to a key.
     pub async fn put(&self, key: &str, data: bytes::Bytes) -> GeoResult<()> {
         let path = ObjectPath::from(key);
+        let len = data.len();
         self.inner
-            .put(&path, data)
+            .put(&path, data.into())
             .await
             .map_err(|e| GeoError::ObjectStore(e.to_string()))?;
 
-        tracing::info!("Object uploaded: {key} ({} bytes)", data.len());
+        tracing::info!("Object uploaded: {key} ({len} bytes)");
         Ok(())
     }
 
@@ -200,21 +209,13 @@ impl ObjectStoreClient {
         Ok(())
     }
 
-    /// Generate a presigned download URL (S3 only, 1-hour expiry).
+    /// Generate a presigned download URL, valid for the given expiry.
     #[cfg(feature = "minio")]
     pub async fn presigned_get(&self, key: &str, expiry: Duration) -> GeoResult<String> {
-        use object_store::signer::Signer;
         let path = ObjectPath::from(key);
-        // object_store 0.11 signer API
         let url = self
-            .inner
-            .signed_url(
-                object_store::signer::SignOptions {
-                    expires_in: expiry,
-                    ..Default::default()
-                },
-                &path,
-            )
+            .signer
+            .signed_url(Method::GET, &path, expiry)
             .await
             .map_err(|e| GeoError::ObjectStore(e.to_string()))?;
         Ok(url.to_string())

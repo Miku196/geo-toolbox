@@ -18,7 +18,7 @@ nats = ["gee", "dep:async-nats"]
 kafka = ["gee", "dep:rdkafka"]
 file-queue = ["gee"]
 # 显式 feature：gdal_gcs_bridge.rs 用 cfg(feature = "object_store") 门控 MinIO 上传实现
-object_store = ["dep:object_store"]
+object_store = ["dep:object_store", "dep:bytes", "dep:reqwest"]
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
@@ -45,6 +45,8 @@ futures.workspace = true
 
 # Optional
 object_store = { workspace = true, optional = true }
+bytes = { version = "1", optional = true }
+reqwest = { workspace = true, optional = true }
 gdal = { workspace = true, optional = true }
 async-nats = { workspace = true, optional = true }
 rdkafka = { version = "0.36", optional = true }

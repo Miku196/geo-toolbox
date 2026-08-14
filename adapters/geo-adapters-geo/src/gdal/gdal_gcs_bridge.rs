@@ -231,6 +231,7 @@ impl GcsBridge {
         use object_store::aws::AmazonS3Builder;
         use object_store::path::Path as ObjectPath;
         use object_store::ObjectStore;
+        use object_store::ObjectStoreExt;
 
         let endpoint =
             self.config.minio_endpoint.as_ref().ok_or_else(|| {

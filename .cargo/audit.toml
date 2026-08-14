@@ -9,4 +9,7 @@ ignore = [
     # rsa 0.9.10: Marvin timing attack — upstream provides NO fixed version.
     # Transitive dep (rustls/token chain); revisit when the dep chain changes.
     "RUSTSEC-2023-0071",
+    # rustls-webpki 0.102.8 x4: sole remaining source is rumqttc, which hardcodes webpki 0.102.8 in all released versions (incl. main).
+    # Track upstream; revisit on rumqttc release or TLS backend switch (use-native-tls).
+    "RUSTSEC-2026-0049", "RUSTSEC-2026-0098", "RUSTSEC-2026-0099", "RUSTSEC-2026-0104",
 ]
