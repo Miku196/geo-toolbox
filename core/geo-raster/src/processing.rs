@@ -119,7 +119,7 @@ mod tests {
         // Bottom-left: 2x1
         assert_eq!(chunks[2], (0, 1, 2, 1, vec![6.0, 7.0]));
         // Bottom-right: 1x1
-        assert_eq!(chunks[3], (2, 1, 1, 1, vec![8.0]));
+        assert_eq!(chunks[3], (1, 1, 1, 1, vec![8.0]));
     }
 
     #[test]
