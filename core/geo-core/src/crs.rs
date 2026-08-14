@@ -572,4 +572,76 @@ mod tests {
         let reg = CrsRegistry::new();
         assert!(reg.transform_point(4326, 32649, 104.0, 30.0).is_err());
     }
+
+    // ── GeoidGrid::query ──────────────────────────────────────────
+
+    /// Build a 4×4 geoid grid (cell_size 1°) over lon [-180, -176],
+    /// lat [-90, -86]. The interior cell (row 1, col 1) spans
+    /// lat ∈ [-89, -88], lon ∈ [-179, -178] — strictly interior, so all
+    /// four corners interpolate. Its heights are n00=1, n10=2, n01=3,
+    /// n11=4; every other node is 100.0 so a stray index read fails loudly.
+    fn sample_grid() -> GeoidGrid {
+        GeoidGrid {
+            rows: 4,
+            cols: 4,
+            cell_size_deg: 1.0,
+            origin_lat: -90.0,
+            origin_lon: -180.0,
+            // row-major, rows are lat bands (row 0 = southernmost)
+            height_anomaly: vec![
+                100.0, 100.0, 100.0, 100.0, // row 0
+                100.0, 1.0, 2.0, 100.0, //    row 1: n00=1, n10=2
+                100.0, 3.0, 4.0, 100.0, //    row 2: n01=3, n11=4
+                100.0, 100.0, 100.0, 100.0, // row 3
+            ],
+        }
+    }
+
+    #[test]
+    fn test_geoid_query_hit_corners() {
+        // Interior cell corners → exact corner values (bilinear collapse).
+        let g = sample_grid();
+        assert!((g.query(-89.0, -179.0) - 1.0).abs() < 1e-9); // n00
+        assert!((g.query(-89.0, -178.0) - 2.0).abs() < 1e-9); // n10
+        assert!((g.query(-88.0, -179.0) - 3.0).abs() < 1e-9); // n01
+        assert!((g.query(-88.0, -178.0) - 4.0).abs() < 1e-9); // n11
+    }
+
+    #[test]
+    fn test_geoid_query_bilinear_center() {
+        // Center of the interior cell averages all corners: (1+2+3+4)/4 = 2.5.
+        let g = sample_grid();
+        assert!((g.query(-88.5, -178.5) - 2.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_geoid_query_out_of_bounds_returns_zero() {
+        let g = sample_grid();
+        // Outside the grid on every side → 0.0 (no height correction).
+        assert_eq!(g.query(-95.0, -178.5), 0.0); // south of origin
+        assert_eq!(g.query(-85.0, -178.5), 0.0); // north of grid
+        assert_eq!(g.query(-88.5, -185.0), 0.0); // west of origin
+        assert_eq!(g.query(-88.5, -175.0), 0.0); // east of grid
+    }
+
+    #[test]
+    fn test_geoid_query_zero_grid_is_identity() {
+        // zero() grid (rows=cols=1) has no interpolable cell, so any
+        // query returns 0.0 — the identity (no correction) default.
+        let g = GeoidGrid::zero();
+        assert_eq!(g.query(0.0, 0.0), 0.0);
+    }
+
+    #[test]
+    fn test_geoid_height_datum_roundtrip() {
+        // ellipsoidal → normal (H = h − N) and back (h = H + N) round-trip.
+        let g = sample_grid();
+        let (lat, lon, h) = (-88.5, -178.5, 100.0);
+        let n = g.query(lat, lon);
+        assert!((n - 2.5).abs() < 1e-9);
+        let h_normal = g.ellipsoidal_to_normal(lat, lon, h);
+        assert!((h_normal - (h - n)).abs() < 1e-9);
+        let h_back = g.normal_to_ellipsoidal(lat, lon, h_normal);
+        assert!((h_back - h).abs() < 1e-9);
+    }
 }

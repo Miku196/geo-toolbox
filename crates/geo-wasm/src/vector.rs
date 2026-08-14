@@ -579,4 +579,92 @@ mod tests {
         let result = union_all_inner(&polys).unwrap();
         assert!(result.contains("MultiPolygon"));
     }
+
+    // ── parse_geometry / parse_ring (pure, native-testable) ──────
+
+    fn poly_value() -> serde_json::Value {
+        serde_json::from_str(&sample_poly()).unwrap()
+    }
+
+    #[test]
+    fn test_parse_geometry_polygon_hit() {
+        let v = poly_value();
+        match parse_geometry(&v) {
+            Some(ParsedGeom::Polygon(p)) => {
+                assert_eq!(p.exterior().coords().count(), 5); // ring closes
+            }
+            _ => panic!("expected Polygon variant from parse_geometry"),
+        }
+    }
+
+    #[test]
+    fn test_parse_geometry_multipolygon_hit() {
+        let v: serde_json::Value = serde_json::from_str(
+            r#"{"type":"MultiPolygon","coordinates":[
+                [[[0,0],[1,0],[1,1],[0,0]]],
+                [[[2,2],[3,2],[3,3],[2,2]]]
+            ]}"#,
+        )
+        .unwrap();
+        match parse_geometry(&v) {
+            Some(ParsedGeom::MultiPolygon(mp)) => assert_eq!(mp.0.len(), 2),
+            _ => panic!("expected MultiPolygon variant from parse_geometry"),
+        }
+    }
+
+    #[test]
+    fn test_parse_geometry_missing_type_gives_none() {
+        // No "type" field → None (unsupported/malformed input).
+        let v: serde_json::Value = serde_json::from_str(r#"{"coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}"#).unwrap();
+        assert!(parse_geometry(&v).is_none());
+    }
+
+    #[test]
+    fn test_parse_geometry_unknown_type_gives_none() {
+        // Point / LineString are unsupported by the thin WASM vector layer.
+        let v: serde_json::Value = serde_json::from_str(r#"{"type":"Point","coordinates":[0,0]}"#).unwrap();
+        assert!(parse_geometry(&v).is_none());
+    }
+
+    #[test]
+    fn test_parse_geometry_polygon_bad_ring_gives_none() {
+        // A ring with < 3 points cannot form a valid LineString → parse_ring
+        // returns None → filter_map drops it → polygon with empty exterior → None.
+        let v: serde_json::Value = serde_json::from_str(
+            r#"{"type":"Polygon","coordinates":[[[0,0],[1,1]]]}"#,
+        )
+        .unwrap();
+        assert!(parse_geometry(&v).is_none());
+    }
+
+    #[test]
+    fn test_parse_ring_valid() {
+        let ring: serde_json::Value = serde_json::from_str(r#"[[0,0],[1,0],[1,1],[0,1]]"#).unwrap();
+        let ls = parse_ring(&ring).expect("closed-ish ring of 4 points is valid");
+        assert_eq!(ls.coords().count(), 4);
+    }
+
+    #[test]
+    fn test_parse_ring_too_few_points_is_none() {
+        let ring: serde_json::Value = serde_json::from_str(r#"[[0,0],[1,1]]"#).unwrap();
+        assert!(parse_ring(&ring).is_none());
+    }
+
+    #[test]
+    fn test_parse_ring_filters_non_numeric() {
+        // A coordinate whose y is not a number is silently dropped; the
+        // remaining 3 valid points still form a valid ring.
+        let ring: serde_json::Value = serde_json::from_str(r#"[[0,"a"],[1,0],[1,1],[0,1]]"#).unwrap();
+        let ls = parse_ring(&ring).expect("3 valid points remain after filtering");
+        assert_eq!(ls.coords().count(), 3);
+    }
+
+    #[test]
+    fn test_parse_ring_drops_below_minimum_is_none() {
+        // Two bad points + two good points → only 2 survive → below the
+        // 3-point minimum → None.
+        let ring: serde_json::Value =
+            serde_json::from_str(r#"[[0,"a"],[1,"b"],[1,0],[0,1]]"#).unwrap();
+        assert!(parse_ring(&ring).is_none());
+    }
 }
