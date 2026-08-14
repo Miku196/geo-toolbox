@@ -11,7 +11,10 @@ pub struct AgriPlugin {
 
 impl AgriPlugin {
     pub fn new(config: AgriConfig) -> Self {
-        Self { config, dssat: None }
+        Self {
+            config,
+            dssat: None,
+        }
     }
 
     /// 注入 DSSAT 生成器（由 geo-wiring 层组装）。
@@ -313,7 +316,9 @@ impl geo_core::plugin::Plugin for AgriPlugin {
     type Config = crate::AgriConfig;
 
     fn new(_config: crate::AgriConfig) -> Self {
-        panic!("AgriPlugin must be constructed via AgriPlugin::new(config, dssat), not Plugin::new()")
+        panic!(
+            "AgriPlugin must be constructed via AgriPlugin::new(config, dssat), not Plugin::new()"
+        )
     }
 
     fn name(&self) -> &str {
@@ -366,17 +371,46 @@ mod tests {
     use super::*;
     use crate::config::AgriConfig;
     use geo_core::plugin::ProcessPlugin;
-    use geo_core::traits::{CultivarParams, DailyWeather, DssatGenerator, SoilProfile, WeatherStation};
+    use geo_core::traits::{
+        CultivarParams, DailyWeather, DssatGenerator, SoilProfile, WeatherStation,
+    };
 
     struct DssatStub;
 
     impl DssatGenerator for DssatStub {
-        fn generate_wth(&self, _station: &WeatherStation, _daily_data: &[DailyWeather]) -> String { String::new() }
-        fn generate_sol(&self, _profile: &SoilProfile) -> String { String::new() }
-        fn generate_cul(&self, _params: &CultivarParams) -> String { String::new() }
-        fn monthly_to_daily_wth(&self, _tmax: &[f64], _tmin: &[f64], _rain: &[f64], _lat: f64, _lon: f64) -> Vec<DailyWeather> { vec![] }
-        fn soil_from_scs_group(&self, _soil_id: &str, _group: &str, _lat: f64, _lon: f64) -> SoilProfile {
-            SoilProfile { soil_id: String::new(), soil_name: String::new(), albedo: 0.0, evaporation: 0.0, layers: vec![] }
+        fn generate_wth(&self, _station: &WeatherStation, _daily_data: &[DailyWeather]) -> String {
+            String::new()
+        }
+        fn generate_sol(&self, _profile: &SoilProfile) -> String {
+            String::new()
+        }
+        fn generate_cul(&self, _params: &CultivarParams) -> String {
+            String::new()
+        }
+        fn monthly_to_daily_wth(
+            &self,
+            _tmax: &[f64],
+            _tmin: &[f64],
+            _rain: &[f64],
+            _lat: f64,
+            _lon: f64,
+        ) -> Vec<DailyWeather> {
+            vec![]
+        }
+        fn soil_from_scs_group(
+            &self,
+            _soil_id: &str,
+            _group: &str,
+            _lat: f64,
+            _lon: f64,
+        ) -> SoilProfile {
+            SoilProfile {
+                soil_id: String::new(),
+                soil_name: String::new(),
+                albedo: 0.0,
+                evaporation: 0.0,
+                layers: vec![],
+            }
         }
     }
 

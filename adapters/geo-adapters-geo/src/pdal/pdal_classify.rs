@@ -2,7 +2,7 @@
 //!
 //! Wraps common PDAL pipeline recipes into single-call operations.
 
-use super::pdal_adapter::{PdalAdapter};
+use super::pdal_adapter::PdalAdapter;
 use super::pdal_pipeline::PdalPipeline;
 
 /// PDAL error type.
@@ -36,7 +36,8 @@ pub async fn ground_to_dem(
         ],
     };
 
-    let _pipeline_json = serde_json::to_string(&pipeline).map_err(|e| PdalError::Pipeline(e.to_string()))?;
+    let _pipeline_json =
+        serde_json::to_string(&pipeline).map_err(|e| PdalError::Pipeline(e.to_string()))?;
 
     // Build pipeline via JSON directly for SMRF which isn't in the stage enum
     let pipeline_json = serde_json::json!({
@@ -46,7 +47,9 @@ pub async fn ground_to_dem(
             { "type": "writers.gdal", "filename": output_dem, "resolution": resolution, "output_type": "idw" }
         ]
     });
-    let _ = adapter.exec_pipeline(&pipeline_json).map_err(|e| PdalError::Pipeline(e.to_string()))?;
+    let _ = adapter
+        .exec_pipeline(&pipeline_json)
+        .map_err(|e| PdalError::Pipeline(e.to_string()))?;
     Ok(())
 }
 
@@ -63,7 +66,9 @@ pub async fn classify_and_save(
             { "type": "writers.las", "filename": output_las }
         ]
     });
-    let _ = adapter.exec_pipeline(&pipeline_json).map_err(|e| PdalError::Pipeline(e.to_string()))?;
+    let _ = adapter
+        .exec_pipeline(&pipeline_json)
+        .map_err(|e| PdalError::Pipeline(e.to_string()))?;
     Ok(())
 }
 
@@ -82,7 +87,9 @@ pub async fn decimate_and_classify(
             { "type": "writers.las", "filename": output_las }
         ]
     });
-    let _ = adapter.exec_pipeline(&pipeline_json).map_err(|e| PdalError::Pipeline(e.to_string()))?;
+    let _ = adapter
+        .exec_pipeline(&pipeline_json)
+        .map_err(|e| PdalError::Pipeline(e.to_string()))?;
     Ok(())
 }
 

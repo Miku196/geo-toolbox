@@ -171,7 +171,7 @@ mod tests {
         let result = aod_pm25_pipeline(&aods, 0.55, 0.85, "summer");
         assert_eq!(result.pm25_ug_m3.len(), 5);
         assert!(result.pm25_mean > 0.0);
-        assert!(result.aqi_mean >= 0);
+        // aqi_mean is u32: non-negativity is guaranteed by the type; asserted via debug_assert in the field comment
         assert!(!result.aqi_classification.is_empty());
     }
 

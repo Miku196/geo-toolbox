@@ -51,7 +51,10 @@ pub struct HydroPlugin {
 
 impl HydroPlugin {
     pub fn new(config: HydroConfig) -> Self {
-        Self { config, modflow_generator: None }
+        Self {
+            config,
+            modflow_generator: None,
+        }
     }
 
     /// 注入 MODFLOW 生成器（由 geo-wiring 层组装）。
@@ -391,10 +394,42 @@ mod tests {
 
     struct ModflowStub;
     impl ModflowGenerator for ModflowStub {
-        fn generate_nam(&self, _model_name: &str, _units: &[(&str, usize)]) -> String { String::new() }
-        fn generate_dis(&self, _nlay: usize, _nrow: usize, _ncol: usize, _delr: f64, _delc: f64, _top: f64, _botm: f64, _nper: usize) -> String { String::new() }
-        fn generate_bas6(&self, _ibound_val: i32, _strt: f64, _nrow: usize, _ncol: usize) -> String { String::new() }
-        fn generate_lpf(&self, _hk: f64, _vka: f64, _ss: f64, _sy: f64, _nrow: usize, _ncol: usize) -> String { String::new() }
+        fn generate_nam(&self, _model_name: &str, _units: &[(&str, usize)]) -> String {
+            String::new()
+        }
+        fn generate_dis(
+            &self,
+            _nlay: usize,
+            _nrow: usize,
+            _ncol: usize,
+            _delr: f64,
+            _delc: f64,
+            _top: f64,
+            _botm: f64,
+            _nper: usize,
+        ) -> String {
+            String::new()
+        }
+        fn generate_bas6(
+            &self,
+            _ibound_val: i32,
+            _strt: f64,
+            _nrow: usize,
+            _ncol: usize,
+        ) -> String {
+            String::new()
+        }
+        fn generate_lpf(
+            &self,
+            _hk: f64,
+            _vka: f64,
+            _ss: f64,
+            _sy: f64,
+            _nrow: usize,
+            _ncol: usize,
+        ) -> String {
+            String::new()
+        }
     }
 
     fn default_plugin() -> HydroPlugin {

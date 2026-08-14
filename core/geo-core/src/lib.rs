@@ -21,6 +21,6 @@ pub mod types;
 
 pub use errors::{FacadeResult, GeoError, GeoResult, GeometryFacadeError};
 pub use traits::{
-    CultivarParams, DailyWeather, DssatGenerator, ModflowGenerator,
-    ModflowGrid, ModflowStressPeriod, SoilLayer, SoilProfile, WeatherStation,
+    CultivarParams, DailyWeather, DssatGenerator, ModflowGenerator, ModflowGrid,
+    ModflowStressPeriod, SoilLayer, SoilProfile, WeatherStation,
 };

@@ -59,21 +59,19 @@ impl CarbonEngine {
         // IPCC Tier 1 默认排放因子 (tCO₂e/ha·yr)
         // 负值 = 碳汇 (吸收森林)
         const BASE_FACTORS: &[(&str, f64)] = &[
-            ("forest",    -5.0),
-            ("grassland",  0.5),
-            ("wetland",   -0.3),
-            ("cropland",   2.0),
-            ("built_up",   1.0),
-            ("water",      0.0),
-            ("bare",       0.2),
+            ("forest", -5.0),
+            ("grassland", 0.5),
+            ("wetland", -0.3),
+            ("cropland", 2.0),
+            ("built_up", 1.0),
+            ("water", 0.0),
+            ("bare", 0.2),
         ];
 
         // 解析覆盖
         let overrides: HashMap<String, f64> =
             serde_json::from_str(overrides_json).map_err(|e| {
-                geo_core::errors::GeoError::Validation(format!(
-                    "overrides_json 解析失败: {e}"
-                ))
+                geo_core::errors::GeoError::Validation(format!("overrides_json 解析失败: {e}"))
             })?;
 
         // 构建 CSV: 覆盖值替换基线值

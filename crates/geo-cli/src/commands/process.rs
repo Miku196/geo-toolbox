@@ -31,7 +31,7 @@ async fn handle_gee(action: GeeAction) -> Result<(), Box<dyn std::error::Error>>
             output_gcs,
             params,
         } => {
-            use geo_adapters_geo::gee::{GeeDispatcher, create_mq};
+            use geo_adapters_geo::gee::{create_mq, GeeDispatcher};
             let mq = create_mq().await?;
             let dispatcher = GeeDispatcher::new(mq);
             let extra = params.as_deref().and_then(|p| serde_json::from_str(p).ok());
@@ -46,7 +46,7 @@ async fn handle_gee(action: GeeAction) -> Result<(), Box<dyn std::error::Error>>
             year,
             output_gcs,
         } => {
-            use geo_adapters_geo::gee::{GeeDispatcher, create_mq};
+            use geo_adapters_geo::gee::{create_mq, GeeDispatcher};
             let mq = create_mq().await?;
             let dispatcher = GeeDispatcher::new(mq);
             let cid = dispatcher
@@ -60,7 +60,7 @@ async fn handle_gee(action: GeeAction) -> Result<(), Box<dyn std::error::Error>>
             to,
             output_gcs,
         } => {
-            use geo_adapters_geo::gee::{GeeDispatcher, create_mq};
+            use geo_adapters_geo::gee::{create_mq, GeeDispatcher};
             let mq = create_mq().await?;
             let dispatcher = GeeDispatcher::new(mq);
             let cid = dispatcher

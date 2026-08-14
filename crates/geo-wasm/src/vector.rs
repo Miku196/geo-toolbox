@@ -615,14 +615,16 @@ mod tests {
     #[test]
     fn test_parse_geometry_missing_type_gives_none() {
         // No "type" field → None (unsupported/malformed input).
-        let v: serde_json::Value = serde_json::from_str(r#"{"coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}"#).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(r#"{"coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}"#).unwrap();
         assert!(parse_geometry(&v).is_none());
     }
 
     #[test]
     fn test_parse_geometry_unknown_type_gives_none() {
         // Point / LineString are unsupported by the thin WASM vector layer.
-        let v: serde_json::Value = serde_json::from_str(r#"{"type":"Point","coordinates":[0,0]}"#).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(r#"{"type":"Point","coordinates":[0,0]}"#).unwrap();
         assert!(parse_geometry(&v).is_none());
     }
 
@@ -630,10 +632,8 @@ mod tests {
     fn test_parse_geometry_polygon_bad_ring_gives_none() {
         // A ring with < 3 points cannot form a valid LineString → parse_ring
         // returns None → filter_map drops it → polygon with empty exterior → None.
-        let v: serde_json::Value = serde_json::from_str(
-            r#"{"type":"Polygon","coordinates":[[[0,0],[1,1]]]}"#,
-        )
-        .unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(r#"{"type":"Polygon","coordinates":[[[0,0],[1,1]]]}"#).unwrap();
         assert!(parse_geometry(&v).is_none());
     }
 
@@ -654,7 +654,8 @@ mod tests {
     fn test_parse_ring_filters_non_numeric() {
         // A coordinate whose y is not a number is silently dropped; the
         // remaining 3 valid points still form a valid ring.
-        let ring: serde_json::Value = serde_json::from_str(r#"[[0,"a"],[1,0],[1,1],[0,1]]"#).unwrap();
+        let ring: serde_json::Value =
+            serde_json::from_str(r#"[[0,"a"],[1,0],[1,1],[0,1]]"#).unwrap();
         let ls = parse_ring(&ring).expect("3 valid points remain after filtering");
         assert_eq!(ls.coords().count(), 3);
     }

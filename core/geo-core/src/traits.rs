@@ -186,13 +186,6 @@ pub trait ModflowGenerator: Send + Sync {
     /// 生成 .BAS6 基础文件。
     fn generate_bas6(&self, ibound_val: i32, strt: f64, nrow: usize, ncol: usize) -> String;
     /// 生成 .LPF 层属性流文件。
-    fn generate_lpf(
-        &self,
-        hk: f64,
-        vka: f64,
-        ss: f64,
-        sy: f64,
-        nrow: usize,
-        ncol: usize,
-    ) -> String;
+    fn generate_lpf(&self, hk: f64, vka: f64, ss: f64, sy: f64, nrow: usize, ncol: usize)
+        -> String;
 }

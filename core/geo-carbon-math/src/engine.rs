@@ -899,8 +899,10 @@ mod tests {
 
     #[test]
     fn test_round2_positive() {
-        assert_eq!(round2(3.14159), 3.14);
-        assert_eq!(round2(2.718), 2.72);
+        let pi2 = (std::f64::consts::PI * 100.0).round() / 100.0;
+        assert_eq!(round2(std::f64::consts::PI), pi2);
+        let e2 = (std::f64::consts::E * 100.0).round() / 100.0;
+        assert_eq!(round2(std::f64::consts::E), e2);
         assert_eq!(round2(1.0), 1.0);
         assert_eq!(round2(0.005), 0.01);
         assert_eq!(round2(0.004), 0.0);
@@ -908,7 +910,8 @@ mod tests {
 
     #[test]
     fn test_round2_negative() {
-        assert_eq!(round2(-3.14159), -3.14);
+        let pi2 = (std::f64::consts::PI * 100.0).round() / 100.0;
+        assert_eq!(round2(-std::f64::consts::PI), -pi2);
         assert_eq!(round2(-0.005), -0.01);
         assert_eq!(round2(-0.004), 0.0);
     }

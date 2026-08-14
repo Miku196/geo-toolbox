@@ -147,8 +147,6 @@ pub fn morans_i(values: &[f64], weights: &[f64]) -> Option<MoranI> {
     })
 }
 
-
-
 /// Build a rook-contiguity weight matrix for a regular grid.
 ///
 /// Rook: neighbors are up/down/left/right (shares an edge).
@@ -239,8 +237,8 @@ mod tests {
         assert_eq!(w.len(), 36);
         // Cell 0 (r0,c0) should be neighbor to (r0,c1) and (r1,c0) only
         let idx = |r: usize, c: usize| r * 3 + c;
-        assert!(w[0 * 6 + idx(0, 1)] > 0.0); // right
-        assert!(w[0 * 6 + idx(1, 0)] > 0.0); // down
-        assert!(w[0 * 6 + idx(0, 0)] == 0.0); // self
+        assert!(w[idx(0, 1)] > 0.0); // right
+        assert!(w[idx(1, 0)] > 0.0); // down
+        assert!(w[idx(0, 0)] == 0.0); // self
     }
 }

@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use geo_core::plugin::PluginHeader;
+use serde::{Deserialize, Serialize};
 
 /// 遥感插件配置。
 #[derive(Debug, Clone, Serialize, Deserialize)]

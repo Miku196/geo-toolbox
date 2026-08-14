@@ -13,8 +13,8 @@
 
 use geo_adapters_io::stac::StacClient;
 use geo_core::errors::{GeoError, GeoResult};
-use geo_raster::grid::RasterBand;
 use geo_facade::raster::compute_ndvi;
+use geo_raster::grid::RasterBand;
 use geo_raster::ndvi::ndvi_difference;
 use std::path::PathBuf;
 
@@ -352,8 +352,9 @@ async fn download_with_scl(
         return None;
     }
 
-    let pc_client =
-        geo_adapters_io::stac::StacClient::new("https://planetarycomputer.microsoft.com/api/stac/v1");
+    let pc_client = geo_adapters_io::stac::StacClient::new(
+        "https://planetarycomputer.microsoft.com/api/stac/v1",
+    );
 
     const SCL_CLOUD: &[u8] = &[3, 7, 8, 9, 10];
 

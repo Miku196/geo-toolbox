@@ -212,7 +212,8 @@ impl MqttIngestor {
                         map.insert(
                             key.to_string(),
                             serde_json::Value::Number(
-                                serde_json::Number::from_f64(v).unwrap_or_else(|| serde_json::Number::from_f64(0.0).unwrap()),
+                                serde_json::Number::from_f64(v)
+                                    .unwrap_or_else(|| serde_json::Number::from_f64(0.0).unwrap()),
                             ),
                         );
                     } else {

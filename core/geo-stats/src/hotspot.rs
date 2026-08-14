@@ -139,8 +139,6 @@ pub fn gistar(values: &[f64], weights: &[f64], confidence: f64) -> Option<Vec<Gi
     Some(results)
 }
 
-
-
 /// Build a queen-contiguity weight matrix with self-inclusion.
 ///
 /// Each cell has weight 1.0 for itself and all 8 neighbors.
@@ -194,8 +192,8 @@ mod tests {
     fn test_weights_self_include() {
         let w = queen_weights_self(1, 3);
         // Each of 3 cells should be neighbor to itself and its adjacent
-        assert!(w[0 * 3 + 0] > 0.0); // self
-        assert!(w[0 * 3 + 1] > 0.0); // right neighbor
-        assert!(w[0 * 3 + 2] == 0.0); // non-neighbor
+        assert!(w[0] > 0.0); // self
+        assert!(w[1] > 0.0); // right neighbor
+        assert!(w[2] == 0.0); // non-neighbor
     }
 }

@@ -148,7 +148,9 @@ pub enum GeometryFacadeError {
     GeoJsonParse(#[from] serde_json::Error),
 
     /// 不支持的 GeoJSON 几何类型。
-    #[error("不支持的几何类型 '{actual}'. 支持: Point, MultiPoint, LineString, Polygon, MultiPolygon")]
+    #[error(
+        "不支持的几何类型 '{actual}'. 支持: Point, MultiPoint, LineString, Polygon, MultiPolygon"
+    )]
     UnsupportedGeometry {
         /// The unsupported geometry type string.
         actual: String,

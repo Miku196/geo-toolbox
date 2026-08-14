@@ -2,7 +2,7 @@
 ///
 /// 生成 .WTH（天气）/ .SOIL（土壤）/ .CUL（品种）/ .FILEX 等标准输入文件。
 /// 纯 Rust，无外部依赖。
-use geo_core::traits::{WeatherStation, DailyWeather, SoilLayer, SoilProfile, CultivarParams};
+use geo_core::traits::{CultivarParams, DailyWeather, SoilLayer, SoilProfile, WeatherStation};
 
 /// 生成 DSSAT .WTH 天气文件。
 pub fn generate_wth(station: &WeatherStation, daily_data: &[DailyWeather]) -> String {
@@ -198,15 +198,20 @@ pub fn soil_from_scs_group(soil_id: &str, group: &str, lat: f64, lon: f64) -> So
 // ════════════════════════════════════════════════════════════════
 
 use geo_core::traits::{
-    CultivarParams as CoreCultivarParams, DailyWeather as CoreDailyWeather,
-    DssatGenerator, SoilProfile as CoreSoilProfile, WeatherStation as CoreWeatherStation};
+    CultivarParams as CoreCultivarParams, DailyWeather as CoreDailyWeather, DssatGenerator,
+    SoilProfile as CoreSoilProfile, WeatherStation as CoreWeatherStation,
+};
 
 /// DSSAT adapter — delegates to free functions.
 /// Implements `DssatGenerator` for DI via `geo-wiring`.
 pub struct DssatAdapter;
 
 impl DssatGenerator for DssatAdapter {
-    fn generate_wth(&self, station: &CoreWeatherStation, daily_data: &[CoreDailyWeather]) -> String {
+    fn generate_wth(
+        &self,
+        station: &CoreWeatherStation,
+        daily_data: &[CoreDailyWeather],
+    ) -> String {
         generate_wth(
             &WeatherStation {
                 name: station.name.clone(),
@@ -215,13 +220,16 @@ impl DssatGenerator for DssatAdapter {
                 elevation_m: station.elevation_m,
                 wmo_code: station.wmo_code.clone(),
             },
-            &daily_data.iter().map(|d| DailyWeather {
-                julian_day: d.julian_day,
-                solar_rad_mj_m2: d.solar_rad_mj_m2,
-                tmax_c: d.tmax_c,
-                tmin_c: d.tmin_c,
-                rainfall_mm: d.rainfall_mm,
-            }).collect::<Vec<_>>(),
+            &daily_data
+                .iter()
+                .map(|d| DailyWeather {
+                    julian_day: d.julian_day,
+                    solar_rad_mj_m2: d.solar_rad_mj_m2,
+                    tmax_c: d.tmax_c,
+                    tmin_c: d.tmin_c,
+                    rainfall_mm: d.rainfall_mm,
+                })
+                .collect::<Vec<_>>(),
         )
     }
 
@@ -229,19 +237,23 @@ impl DssatGenerator for DssatAdapter {
         generate_sol(&SoilProfile {
             soil_id: profile.soil_id.clone(),
             soil_name: profile.soil_name.clone(),
-            layers: profile.layers.iter().map(|l| SoilLayer {
-                depth_cm: l.depth_cm,
-                clay_pct: l.clay_pct,
-                silt_pct: l.silt_pct,
-                sand_pct: l.sand_pct,
-                organic_c_pct: l.organic_c_pct,
-                bulk_density_g_cm3: l.bulk_density_g_cm3,
-                ph: l.ph,
-                ll: l.ll,
-                dul: l.dul,
-                sat: l.sat,
-                ks: l.ks,
-            }).collect(),
+            layers: profile
+                .layers
+                .iter()
+                .map(|l| SoilLayer {
+                    depth_cm: l.depth_cm,
+                    clay_pct: l.clay_pct,
+                    silt_pct: l.silt_pct,
+                    sand_pct: l.sand_pct,
+                    organic_c_pct: l.organic_c_pct,
+                    bulk_density_g_cm3: l.bulk_density_g_cm3,
+                    ph: l.ph,
+                    ll: l.ll,
+                    dul: l.dul,
+                    sat: l.sat,
+                    ks: l.ks,
+                })
+                .collect(),
             albedo: profile.albedo,
             evaporation: profile.evaporation,
         })
@@ -268,36 +280,52 @@ impl DssatGenerator for DssatAdapter {
         latitude: f64,
         elevation_m: f64,
     ) -> Vec<CoreDailyWeather> {
-        monthly_to_daily_wth(tmax_monthly, tmin_monthly, rain_monthly, latitude, elevation_m)
-            .into_iter()
-            .map(|d| CoreDailyWeather {
-                julian_day: d.julian_day,
-                solar_rad_mj_m2: d.solar_rad_mj_m2,
-                tmax_c: d.tmax_c,
-                tmin_c: d.tmin_c,
-                rainfall_mm: d.rainfall_mm,
-            })
-            .collect()
+        monthly_to_daily_wth(
+            tmax_monthly,
+            tmin_monthly,
+            rain_monthly,
+            latitude,
+            elevation_m,
+        )
+        .into_iter()
+        .map(|d| CoreDailyWeather {
+            julian_day: d.julian_day,
+            solar_rad_mj_m2: d.solar_rad_mj_m2,
+            tmax_c: d.tmax_c,
+            tmin_c: d.tmin_c,
+            rainfall_mm: d.rainfall_mm,
+        })
+        .collect()
     }
 
-    fn soil_from_scs_group(&self, soil_id: &str, group: &str, lat: f64, lon: f64) -> CoreSoilProfile {
+    fn soil_from_scs_group(
+        &self,
+        soil_id: &str,
+        group: &str,
+        lat: f64,
+        lon: f64,
+    ) -> CoreSoilProfile {
         let profile = soil_from_scs_group(soil_id, group, lat, lon);
         CoreSoilProfile {
             soil_id: profile.soil_id,
             soil_name: profile.soil_name,
-            layers: profile.layers.into_iter().map(|l| geo_core::traits::SoilLayer {
-                depth_cm: l.depth_cm,
-                clay_pct: l.clay_pct,
-                silt_pct: l.silt_pct,
-                sand_pct: l.sand_pct,
-                organic_c_pct: l.organic_c_pct,
-                bulk_density_g_cm3: l.bulk_density_g_cm3,
-                ph: l.ph,
-                ll: l.ll,
-                dul: l.dul,
-                sat: l.sat,
-                ks: l.ks,
-            }).collect(),
+            layers: profile
+                .layers
+                .into_iter()
+                .map(|l| geo_core::traits::SoilLayer {
+                    depth_cm: l.depth_cm,
+                    clay_pct: l.clay_pct,
+                    silt_pct: l.silt_pct,
+                    sand_pct: l.sand_pct,
+                    organic_c_pct: l.organic_c_pct,
+                    bulk_density_g_cm3: l.bulk_density_g_cm3,
+                    ph: l.ph,
+                    ll: l.ll,
+                    dul: l.dul,
+                    sat: l.sat,
+                    ks: l.ks,
+                })
+                .collect(),
             albedo: profile.albedo,
             evaporation: profile.evaporation,
         }

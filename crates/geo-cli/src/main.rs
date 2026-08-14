@@ -451,7 +451,11 @@ async fn dispatch_cli(
             commands::raster::handle_ndvi(&red, &nir, out)?;
             Ok(())
         }
-        Commands::Slope { input, output, cell_size } => {
+        Commands::Slope {
+            input,
+            output,
+            cell_size,
+        } => {
             let out = output.as_deref().unwrap_or("slope.tif");
             commands::raster::handle_slope(&input, &out, cell_size)?;
             Ok(())
@@ -556,10 +560,7 @@ async fn execute_tool(
             .as_str()
             .ok_or_else(|| format!("Request {}: missing 'tool' field", i))?;
         let params = r.get("params").cloned().unwrap_or(serde_json::Value::Null);
-        let id = r
-            .get("id")
-            .and_then(|v| v.as_str())
-            .unwrap_or(tool_name);
+        let id = r.get("id").and_then(|v| v.as_str()).unwrap_or(tool_name);
 
         eprintln!(
             "[{}/{}] Executing tool '{}'...",

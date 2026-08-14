@@ -321,7 +321,7 @@ mod tests {
         let dem = vec![20.0, 15.0, 20.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0];
         let result = d8_flow_direction(&dem, 3, 3);
         // Cell (0,1) should drain south: direction 2 (S)
-        let idx = 0 * 3 + 1;
+        let idx = 1; // row 0, col 1
         assert_eq!(result.directions[idx], 2, "cell (0,1) should drain south");
     }
 

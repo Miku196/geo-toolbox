@@ -1,8 +1,6 @@
 /// DSSAT 数据类型的重新导出 — 从 geo-core traits 引入。
 /// 这些类型由 geo-adapter-dssat 实现，但通过 trait 方法访问。
-pub use geo_core::traits::{
-    CultivarParams, DailyWeather, SoilLayer, SoilProfile, WeatherStation,
-};
+pub use geo_core::traits::{CultivarParams, DailyWeather, SoilLayer, SoilProfile, WeatherStation};
 
 /// 生成 DSSAT .WTH 天气文件。
 pub fn generate_wth(station: &WeatherStation, daily_data: &[DailyWeather]) -> String {

@@ -99,8 +99,8 @@ pub fn k_factor_texture(
     // Simplified K factor estimation
     let m = (silt_pct + sand_pct * (100.0 - clay_pct) / 100.0) / 100.0;
     let k1 = 2.1e-4 * (12.0 - organic_matter_pct) * m.powf(1.14);
-    let k2 = 3.25 * (2.0 - 2.0); // structure code (simplified)
-    let k3 = 2.5 * (3.0 - 3.0); // permeability code (simplified)
+    let k2 = 0.0; // structure code (simplified; TODO: real formula)
+    let k3 = 0.0; // permeability code (simplified; TODO: real formula)
     (k1 + k2 + k3).max(0.01).min(0.7)
 }
 

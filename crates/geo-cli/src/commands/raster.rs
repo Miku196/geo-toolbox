@@ -37,8 +37,14 @@ pub fn handle_ndvi(
     geo_raster::tiff_writer::write_geotiff(&result.ndvi, &tiff_path, &tiff_info)?;
     eprintln!("✅ NDVI written to {}", tiff_path.display());
     eprintln!("   Mean NDVI: {:.4}", result.mean_ndvi.unwrap_or(f64::NAN));
-    eprintln!("   Healthy pixels: {:.1}%", result.healthy_ratio.unwrap_or(0.0) * 100.0);
-    eprintln!("   Degraded pixels: {:.1}%", result.degraded_ratio.unwrap_or(0.0) * 100.0);
+    eprintln!(
+        "   Healthy pixels: {:.1}%",
+        result.healthy_ratio.unwrap_or(0.0) * 100.0
+    );
+    eprintln!(
+        "   Degraded pixels: {:.1}%",
+        result.degraded_ratio.unwrap_or(0.0) * 100.0
+    );
     Ok(())
 }
 
@@ -51,10 +57,25 @@ pub fn handle_slope(
     eprintln!("Reading DEM from {dem_path}...");
     let dem = read_tiff_f64(dem_path)?;
 
-    eprintln!("Computing slope ({}×{} px, {cell_size_m}m/cell)...", dem.cols, dem.rows);
-    let result = geo_raster::compute_slope_degrees(&dem.data, dem.rows, dem.cols, cell_size_m, Some(dem.nodata));
+    eprintln!(
+        "Computing slope ({}×{} px, {cell_size_m}m/cell)...",
+        dem.cols, dem.rows
+    );
+    let result = geo_raster::compute_slope_degrees(
+        &dem.data,
+        dem.rows,
+        dem.cols,
+        cell_size_m,
+        Some(dem.nodata),
+    );
 
-    let band = RasterBand::new("slope_degrees", result.rows, result.cols, result.slope_degrees, -9999.0);
+    let band = RasterBand::new(
+        "slope_degrees",
+        result.rows,
+        result.cols,
+        result.slope_degrees,
+        -9999.0,
+    );
     let tiff_path = std::path::Path::new(output_path).with_extension("tif");
     let tiff_info = geo_raster::tiff_writer::GeoTiffInfo::new(1.0, 1.0, 0.0, 0.0, None);
     geo_raster::tiff_writer::write_geotiff(&band, &tiff_path, &tiff_info)?;
@@ -88,5 +109,11 @@ fn read_tiff_f64(path: &str) -> Result<RasterBand, Box<dyn std::error::Error>> {
         _ => return Err("Unsupported TIFF data type (U64/I64)".into()),
     };
 
-    Ok(RasterBand::new("band", height as usize, width as usize, data, -9999.0))
+    Ok(RasterBand::new(
+        "band",
+        height as usize,
+        width as usize,
+        data,
+        -9999.0,
+    ))
 }

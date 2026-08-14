@@ -3,9 +3,9 @@ pub mod crs;
 pub mod ingest;
 pub mod output;
 pub mod pipeline;
-pub mod raster;
 #[cfg(any(feature = "gee", feature = "gdal", feature = "qgis"))]
 pub mod process;
+pub mod raster;
 
 #[cfg(feature = "postgis")]
 pub mod store;

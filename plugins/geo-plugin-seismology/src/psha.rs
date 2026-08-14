@@ -78,7 +78,7 @@ pub fn annual_rate_in_interval(annual_rate: f64, b: f64, m_min: f64, m1: f64, m2
     if m1c >= m2 {
         return 0.0;
     }
-    let beta = b * 2.302585; // ln(10)
+    let beta = b * std::f64::consts::LN_10; // ln(10)
     annual_rate * ((-beta * (m1c - m_min)).exp() - (-beta * (m2 - m_min)).exp())
 }
 
@@ -94,7 +94,7 @@ pub fn psha_exceedance(
     if distance_km <= 0.0 {
         return 0.0;
     }
-    let _beta = source.b_value * 2.302585;
+    let _beta = source.b_value * std::f64::consts::LN_10;
     // 对震级区间求和 (M_min ~ M_max, 步长 0.1)
     let n_bins = ((source.m_max - source.m_min) / 0.1) as usize;
     let mut total_rate = 0.0;

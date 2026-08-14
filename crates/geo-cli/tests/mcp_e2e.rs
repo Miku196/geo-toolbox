@@ -48,14 +48,20 @@ impl McpProcess {
         let stdin = child.stdin.take().expect("child stdin");
         let stdout = BufReader::new(child.stdout.take().expect("child stdout"));
 
-        McpProcess { child, stdin, stdout }
+        McpProcess {
+            child,
+            stdin,
+            stdout,
+        }
     }
 
     /// Write one JSON-RPC request line and flush.
     fn send(&mut self, request: &serde_json::Value) {
         let mut line = serde_json::to_string(request).expect("serialize request");
         line.push('\n');
-        self.stdin.write_all(line.as_bytes()).expect("write to child stdin");
+        self.stdin
+            .write_all(line.as_bytes())
+            .expect("write to child stdin");
         self.stdin.flush().expect("flush child stdin");
     }
 
@@ -84,9 +90,8 @@ impl McpProcess {
                         // Log noise or blank line — skip and keep reading.
                         continue;
                     }
-                    return serde_json::from_str(trimmed).unwrap_or_else(|e| {
-                        panic!("non-JSON response line {line:?}: {e}")
-                    });
+                    return serde_json::from_str(trimmed)
+                        .unwrap_or_else(|e| panic!("non-JSON response line {line:?}: {e}"));
                 }
                 Err(e) => {
                     self.kill();
@@ -150,9 +155,14 @@ fn mcp_e2e_full_handshake_and_crs_list() {
     proc.send(&serde_json::json!({"jsonrpc": "2.0", "id": 2, "method": "tools/list"}));
     let list = proc.recv();
     assert_eq!(list["id"], 2);
-    let tools = list["result"]["tools"].as_array().expect("tools/list should return a tools array");
+    let tools = list["result"]["tools"]
+        .as_array()
+        .expect("tools/list should return a tools array");
     let names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
-    assert!(names.contains(&"crs_list"), "tools should include crs_list, got: {names:?}");
+    assert!(
+        names.contains(&"crs_list"),
+        "tools should include crs_list, got: {names:?}"
+    );
 
     // 4. tools/call crs_list
     proc.send(&serde_json::json!({
@@ -164,14 +174,26 @@ fn mcp_e2e_full_handshake_and_crs_list() {
     // NOTE(bug): `mcp::dispatch_tool` builds the success response as
     // `{"jsonrpc":"2.0","result":{...}}` WITHOUT echoing the request `id`,
     // violating JSON-RPC 2.0. We therefore assert on the payload, not the id.
-    assert!(call["result"].is_object(), "tools/call should return a result object, got: {call}");
-    assert!(!call["result"]["isError"].as_bool().unwrap_or(false), "crs_list call should not error: {call}");
+    assert!(
+        call["result"].is_object(),
+        "tools/call should return a result object, got: {call}"
+    );
+    assert!(
+        !call["result"]["isError"].as_bool().unwrap_or(false),
+        "crs_list call should not error: {call}"
+    );
 
-    let text = call["result"]["content"][0]["text"].as_str().expect("content[0].text");
-    let crs: serde_json::Value = serde_json::from_str(text).expect("crs_list text should be a JSON array");
+    let text = call["result"]["content"][0]["text"]
+        .as_str()
+        .expect("content[0].text");
+    let crs: serde_json::Value =
+        serde_json::from_str(text).expect("crs_list text should be a JSON array");
     let arr = crs.as_array().expect("crs_list result should be an array");
     assert!(!arr.is_empty(), "crs_list should list at least one CRS");
-    assert!(arr.iter().any(|c| c["epsg"] == 4326), "crs_list should contain EPSG:4326, got: {text}");
+    assert!(
+        arr.iter().any(|c| c["epsg"] == 4326),
+        "crs_list should contain EPSG:4326, got: {text}"
+    );
 }
 
 #[test]
@@ -181,7 +203,10 @@ fn mcp_e2e_pre_handshake_rejection() {
     let resp = proc.recv();
     assert_eq!(resp["id"], 9);
     assert_eq!(resp["error"]["code"], -32002);
-    assert!(resp["error"]["message"].as_str().unwrap_or("").contains("initialized"));
+    assert!(resp["error"]["message"]
+        .as_str()
+        .unwrap_or("")
+        .contains("initialized"));
 }
 
 #[test]

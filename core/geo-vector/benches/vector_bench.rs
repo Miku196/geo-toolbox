@@ -105,7 +105,10 @@ macro_rules! bench_union_all {
                             x: offset + $size,
                             y: $size,
                         },
-                        Coord { x: offset, y: $size },
+                        Coord {
+                            x: offset,
+                            y: $size,
+                        },
                         Coord { x: offset, y: 0.0 },
                     ]);
                     Polygon::new(exterior, vec![])
@@ -154,8 +157,24 @@ macro_rules! bench_kernel_density {
     };
 }
 
-bench_kernel_density!(bench_kernel_density_100, 100, 0.01, false, (0.0, 0.0, 1.0, 1.0), 0.1, "kernel_density_100");
-bench_kernel_density!(bench_kernel_density_1000, 1000, 0.001, true, (0.0, -1.0, 1.0, 1.0), 0.05, "kernel_density_1000");
+bench_kernel_density!(
+    bench_kernel_density_100,
+    100,
+    0.01,
+    false,
+    (0.0, 0.0, 1.0, 1.0),
+    0.1,
+    "kernel_density_100"
+);
+bench_kernel_density!(
+    bench_kernel_density_1000,
+    1000,
+    0.001,
+    true,
+    (0.0, -1.0, 1.0, 1.0),
+    0.05,
+    "kernel_density_1000"
+);
 
 fn bench_line_density_100(c: &mut Criterion) {
     let lines: Vec<(f64, f64, f64, f64)> = (0..100)

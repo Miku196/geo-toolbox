@@ -227,12 +227,7 @@ impl ExcelDashboard {
         Self { pool }
     }
 
-    pub async fn from_sql(
-        &self,
-        sql: &str,
-        output_path: &str,
-        sheet_name: &str,
-    ) -> GeoResult<()> {
+    pub async fn from_sql(&self, sql: &str, output_path: &str, sheet_name: &str) -> GeoResult<()> {
         errors::validate_select_sql(sql)?;
         let rows = sqlx::query(sql)
             .fetch_all(&self.pool)

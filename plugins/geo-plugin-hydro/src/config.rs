@@ -74,7 +74,6 @@ fn default_slope_threshold() -> f64 {
     0.01
 }
 
-
 impl PluginConfig for HydroConfig {}
 
 impl Default for HydroConfig {

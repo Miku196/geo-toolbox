@@ -308,10 +308,18 @@ impl JsChunkIterator {
             let obj = js_sys::Object::new();
             js_sys::Reflect::set(&obj, &JsValue::from("x"), &JsValue::from(cx as u32)).ok();
             js_sys::Reflect::set(&obj, &JsValue::from("y"), &JsValue::from(cy as u32)).ok();
-            js_sys::Reflect::set(&obj, &JsValue::from("tile_cols"), &JsValue::from(tcol as u32))
-                .ok();
-            js_sys::Reflect::set(&obj, &JsValue::from("tile_rows"), &JsValue::from(trow as u32))
-                .ok();
+            js_sys::Reflect::set(
+                &obj,
+                &JsValue::from("tile_cols"),
+                &JsValue::from(tcol as u32),
+            )
+            .ok();
+            js_sys::Reflect::set(
+                &obj,
+                &JsValue::from("tile_rows"),
+                &JsValue::from(trow as u32),
+            )
+            .ok();
             js_sys::Reflect::set(
                 &obj,
                 &JsValue::from("data"),

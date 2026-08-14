@@ -113,9 +113,7 @@ fn assemble_modflow_generator() -> Box<dyn ModflowGenerator> {
 
 /// 组装完整的 AgriPlugin（含 DSSAT 模型输入文件生成能力）。
 #[cfg(feature = "geo-adapters-sim")]
-pub fn assemble_agri_plugin(
-    config: geo_plugin_agri::AgriConfig,
-) -> geo_plugin_agri::AgriPlugin {
+pub fn assemble_agri_plugin(config: geo_plugin_agri::AgriConfig) -> geo_plugin_agri::AgriPlugin {
     let dssat = assemble_dssat_generator();
     geo_plugin_agri::AgriPlugin::new(config).with_dssat_generator(dssat)
 }

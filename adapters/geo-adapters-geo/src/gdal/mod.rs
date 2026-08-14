@@ -15,5 +15,5 @@ pub use gdal_raster::{
     CogOptions, DataType, GdalTranslateOptions, GdalWarpOptions, OutputDriver, RasterFormat,
     RasterInfo, RasterOps, ResamplingMethod,
 };
-pub use gdal_vector::{Ogr2OgrOptions, VectorOps};
 pub use gdal_tools::register_tools;
+pub use gdal_vector::{Ogr2OgrOptions, VectorOps};

@@ -1,7 +1,5 @@
 //! Tool registration — Agriculture plugin.
-use geo_core::traits::{
-    CultivarParams, DailyWeather, DssatGenerator, SoilProfile, WeatherStation,
-};
+use geo_core::traits::{CultivarParams, DailyWeather, DssatGenerator, SoilProfile, WeatherStation};
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
 
@@ -9,12 +7,39 @@ use geo_registry::{register_plugin, PluginRegistry};
 pub(crate) fn default_agri_plugin() -> crate::AgriPlugin {
     struct NoopDssat;
     impl DssatGenerator for NoopDssat {
-        fn generate_wth(&self, _station: &WeatherStation, _daily_data: &[DailyWeather]) -> String { String::new() }
-        fn generate_sol(&self, _profile: &SoilProfile) -> String { String::new() }
-        fn generate_cul(&self, _params: &CultivarParams) -> String { String::new() }
-        fn monthly_to_daily_wth(&self, _tmax: &[f64], _tmin: &[f64], _rain: &[f64], _lat: f64, _lon: f64) -> Vec<DailyWeather> { vec![] }
-        fn soil_from_scs_group(&self, _soil_id: &str, _group: &str, _lat: f64, _lon: f64) -> SoilProfile {
-            SoilProfile { soil_id: String::new(), soil_name: String::new(), albedo: 0.0, evaporation: 0.0, layers: vec![] }
+        fn generate_wth(&self, _station: &WeatherStation, _daily_data: &[DailyWeather]) -> String {
+            String::new()
+        }
+        fn generate_sol(&self, _profile: &SoilProfile) -> String {
+            String::new()
+        }
+        fn generate_cul(&self, _params: &CultivarParams) -> String {
+            String::new()
+        }
+        fn monthly_to_daily_wth(
+            &self,
+            _tmax: &[f64],
+            _tmin: &[f64],
+            _rain: &[f64],
+            _lat: f64,
+            _lon: f64,
+        ) -> Vec<DailyWeather> {
+            vec![]
+        }
+        fn soil_from_scs_group(
+            &self,
+            _soil_id: &str,
+            _group: &str,
+            _lat: f64,
+            _lon: f64,
+        ) -> SoilProfile {
+            SoilProfile {
+                soil_id: String::new(),
+                soil_name: String::new(),
+                albedo: 0.0,
+                evaporation: 0.0,
+                layers: vec![],
+            }
         }
     }
     crate::AgriPlugin::new(Default::default()).with_dssat_generator(Box::new(NoopDssat))

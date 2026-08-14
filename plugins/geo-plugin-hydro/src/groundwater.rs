@@ -129,9 +129,7 @@ pub fn groundwater_flow_1d(
 // 3. MODFLOW 输入文件生成（.DIS / .BAS6 / .LPF）
 // ──────────────────────────────────────────────
 
-pub use geo_core::traits::{
-    ModflowGrid, ModflowStressPeriod,
-};
+pub use geo_core::traits::{ModflowGrid, ModflowStressPeriod};
 
 /// 生成 MODFLOW-2005 .DIS 离散化文件。
 #[allow(clippy::too_many_arguments)]

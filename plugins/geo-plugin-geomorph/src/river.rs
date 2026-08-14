@@ -343,7 +343,7 @@ mod tests {
         let result = strahler_order(&fd.directions, &stream, 3, 4);
         // Top row should be first order
         for c in 0..4 {
-            let idx = 0 * 4 + c;
+            let idx = c; // row 0
             if stream[idx] {
                 assert!(
                     result.order[idx] >= 1,
