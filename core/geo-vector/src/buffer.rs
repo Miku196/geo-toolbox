@@ -1,4 +1,4 @@
-use geo::algorithm::{Area, BooleanOps, BoundingRect, ConvexHull};
+use geo::algorithm::{BooleanOps, BoundingRect, ConvexHull};
 use geo_types::{Coord, LineString, MultiPolygon, Polygon};
 
 /// 缓冲区模式选择。

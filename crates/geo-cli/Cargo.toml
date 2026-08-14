@@ -12,15 +12,17 @@ path = "src/main.rs"
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
 geo-registry = { path = "../../core/geo-registry", features = ["tokio-runtime"] }
-geo-wiring = { path = "../geo-wiring" }
+geo-wiring = { path = "../geo-wiring", default-features = false }
 geo-io = { path = "../../core/geo-io" }
 geo-raster = { path = "../../core/geo-raster" }
+tiff.workspace = true
 geo-report = { path = "../../core/geo-report" }
 geo-carbon-math = { path = "../../core/geo-carbon-math" }
 geo-tile = { path = "../../core/geo-tile" }
 geo-temporal = { path = "../../core/geo-temporal" }
 geo-vector = { path = "../../core/geo-vector" }
 geo-index = { path = "../../core/geo-index" }
+geo-facade = { path = "../../core/geo-facade" }
 geo-stats = { path = "../../core/geo-stats" }
 geo-plugin-carbon = { path = "../../plugins/geo-plugin-carbon" }
 geo-plugin-ecology = { path = "../../plugins/geo-plugin-ecology" }
@@ -53,9 +55,12 @@ chrono = { version = "0.4", features = ["serde"] }
 futures.workspace = true
 
 [features]
-default = ["postgis", "cad", "gee", "qgis", "gdal"]
+default = ["postgis", "cad", "gee", "qgis", "gdal", "duckdb", "stac", "osm"]
 postgis = ["geo-adapters-geo/postgis", "geo-wiring/postgis", "sqlx"]
 cad = ["geo-adapters-io/cad", "geo-wiring/cad"]
+duckdb = ["geo-wiring/duckdb"]
+stac = ["geo-wiring/stac"]
+osm = ["geo-wiring/osm"]
 iot = ["geo-adapters-sim", "geo-adapters-sim/iot", "geo-wiring/iot"]
 gee = ["geo-adapters-geo/gee", "geo-wiring/gee"]
 qgis = ["geo-adapter-qgis", "geo-wiring/qgis"]

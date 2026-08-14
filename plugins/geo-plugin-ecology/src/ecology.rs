@@ -11,7 +11,8 @@ use crate::config::EcologyConfig;
 use geo_carbon_math::{CarbonEngine, CarbonReport, EmissionFactor, GeoFeature};
 use geo_core::errors::{GeoError, GeoResult};
 use geo_core::types::BBox;
-use geo_raster::ndvi::{compute_ndvi, ndvi_difference, NdviResult};
+use geo_facade::raster::compute_ndvi;
+use geo_raster::ndvi::{ndvi_difference, NdviResult};
 use geo_raster::RasterBand;
 use serde::{Deserialize, Serialize};
 
@@ -149,7 +150,7 @@ impl EcologyPlugin {
     /// 运行完整的生态修复评估（使用参数结构体）。
     pub fn assess_restoration(&self, input: &AssessmentInput) -> GeoResult<RestorationAssessment> {
         // 1. 解析 AOI
-        let aoi_bbox = geo_io::extract_bbox(input.aoi_geojson)?;
+        let aoi_bbox = geo_facade::io::extract_bbox(input.aoi_geojson)?;
 
         // 2. 计算两期 NDVI
         let prev_ndvi = compute_ndvi(input.baseline_red, input.baseline_nir)?;

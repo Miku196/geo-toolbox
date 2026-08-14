@@ -17,6 +17,8 @@ gee = []
 nats = ["gee", "dep:async-nats"]
 kafka = ["gee", "dep:rdkafka"]
 file-queue = ["gee"]
+# 显式 feature：gdal_gcs_bridge.rs 用 cfg(feature = "object_store") 门控 MinIO 上传实现
+object_store = ["dep:object_store"]
 
 [dependencies]
 geo-core = { path = "../../core/geo-core" }

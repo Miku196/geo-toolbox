@@ -9,6 +9,7 @@ use geo_wiring::PluginRegistry;
 
 mod commands;
 mod mcp;
+mod progress;
 
 // ── CLI Surface ────────────────────────────────────────────────────────────
 
@@ -61,6 +62,35 @@ enum Commands {
         #[command(subcommand)]
         action: PluginsAction,
     },
+    /// Compute NDVI from two single-band GeoTIFFs (red + NIR bands).
+    Ndvi {
+        /// Path to red band GeoTIFF
+        red: String,
+        /// Path to NIR band GeoTIFF
+        nir: String,
+        /// Output path (GeoTIFF, defaults to ndvi.tif)
+        output: Option<String>,
+    },
+    /// Compute terrain slope from a DEM GeoTIFF.
+    Slope {
+        /// Path to DEM GeoTIFF
+        input: String,
+        /// Output path (GeoTIFF, defaults to slope.tif)
+        output: Option<String>,
+        /// Cell size in meters (default: 30.0 for SRTM)
+        #[arg(long, default_value_t = 30.0)]
+        cell_size: f64,
+    },
+    /// Execute a JSON tool request (Agent-compatible). Reads {"tool":"name","params":{...}} from stdin or arg.
+    /// Execute a JSON tool request (Agent-compatible). Reads {"tool":"name","params":{...}} from stdin or arg.
+    Execute {
+        /// JSON payload string, or "-" to read from stdin
+        json: String,
+        /// Pretty-print the output
+        #[arg(long)]
+        pretty: bool,
+    },
+
     /// Pipeline mode: Unix pipe geospatial processing (read→buffer→simplify→reproject→write)
     Pipeline {
         #[command(subcommand)]
@@ -415,6 +445,17 @@ async fn dispatch_cli(
         Commands::Carbon(action) => commands::carbon::handle(registry, action).await,
         Commands::Output(action) => commands::output::handle(registry, action).await,
 
+        Commands::Execute { json, pretty } => execute_tool(registry, &json, pretty).await,
+        Commands::Ndvi { red, nir, output } => {
+            let out = output.as_deref().unwrap_or("ndvi.tif");
+            commands::raster::handle_ndvi(&red, &nir, out)?;
+            Ok(())
+        }
+        Commands::Slope { input, output, cell_size } => {
+            let out = output.as_deref().unwrap_or("slope.tif");
+            commands::raster::handle_slope(&input, &out, cell_size)?;
+            Ok(())
+        }
         Commands::McpServe { .. } => unreachable!(),
     }
 }
@@ -482,5 +523,74 @@ fn handle_plugins(
             }
         }
     }
+    Ok(())
+}
+
+// ── execute handler ────────────────────────────────────────────────────────
+
+async fn execute_tool(
+    registry: &PluginRegistry,
+    json: &str,
+    pretty: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let input = if json == "-" {
+        let mut buf = String::new();
+        use std::io::Read;
+        std::io::stdin().read_to_string(&mut buf)?;
+        buf
+    } else {
+        json.to_string()
+    };
+
+    let req: serde_json::Value = serde_json::from_str(&input)?;
+
+    // Support both {"tool":"name","params":{...}} and array of them (batch)
+    let requests: Vec<serde_json::Value> = if let Some(arr) = req.as_array() {
+        arr.clone()
+    } else {
+        vec![req]
+    };
+
+    for (i, r) in requests.iter().enumerate() {
+        let tool_name = r["tool"]
+            .as_str()
+            .ok_or_else(|| format!("Request {}: missing 'tool' field", i))?;
+        let params = r.get("params").cloned().unwrap_or(serde_json::Value::Null);
+        let id = r
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap_or(tool_name);
+
+        eprintln!(
+            "[{}/{}] Executing tool '{}'...",
+            i + 1,
+            requests.len(),
+            tool_name
+        );
+
+        let result = registry.dispatch(tool_name, params).await?;
+
+        if requests.len() == 1 && !pretty {
+            println!("{}", serde_json::to_string(&result)?);
+        } else {
+            let label = if requests.len() > 1 {
+                format!("[{}] {}:", i, id)
+            } else {
+                String::new()
+            };
+            if !label.is_empty() {
+                println!("{}", label);
+            }
+            if pretty {
+                println!("{}", serde_json::to_string_pretty(&result)?);
+            } else {
+                println!("{}", serde_json::to_string(&result)?);
+            }
+            if i < requests.len() - 1 {
+                println!();
+            }
+        }
+    }
+
     Ok(())
 }

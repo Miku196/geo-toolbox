@@ -83,6 +83,8 @@ mod tests {
     }
 
     #[test]
+    // 测试旧路径 compute_ndvi（已 deprecated，迁移至 geo_facade::raster::compute_ndvi），故 allow
+    #[allow(deprecated)]
     fn test_ndvi_compute() {
         // Typical values: RED=0.05, NIR=0.50 → NDVI ≈ 0.818
         let red = make_band(vec![0.05, 0.10, 0.40, -999.0]);
@@ -104,6 +106,8 @@ mod tests {
     }
 
     #[test]
+    // 测试旧路径 compute_ndvi（已 deprecated），故 allow
+    #[allow(deprecated)]
     fn test_ndvi_difference() {
         let red1 = make_band(vec![0.10, 0.20]);
         let nir1 = make_band(vec![0.40, 0.30]);

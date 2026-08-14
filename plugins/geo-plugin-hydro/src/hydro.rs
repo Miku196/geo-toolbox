@@ -407,7 +407,8 @@ mod tests {
             flood: Default::default(),
             runoff: Default::default(),
             catchment: Default::default(),
-        }, Box::new(ModflowStub))
+        })
+        .with_modflow_generator(Box::new(ModflowStub))
     }
 
     #[test]

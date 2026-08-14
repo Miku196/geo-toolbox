@@ -1,5 +1,3 @@
-use geo::algorithm::{Area, BooleanOps, BoundingRect, ConvexHull};
-use geo_types::{Coord, LineString, MultiPolygon, Polygon};
 
 /// 核密度估计 (Kernel Density Estimation)。
 ///

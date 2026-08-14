@@ -34,14 +34,21 @@ geo-plugin-socioeconomic = { path = "../../plugins/geo-plugin-socioeconomic" }
 geo-plugin-atmosphere = { path = "../../plugins/geo-plugin-atmosphere" }
 geo-plugin-volcanology = { path = "../../plugins/geo-plugin-volcanology" }
 geo-plugin-groundwater = { path = "../../plugins/geo-plugin-groundwater" }
-geo-adapters-io = { path = "../../adapters/geo-adapters-io" }
-geo-adapters-geo = { path = "../../adapters/geo-adapters-geo" }
-geo-adapters-sim = { path = "../../adapters/geo-adapters-sim", features = ["dssat", "modflow"] }
+geo-adapters-io = { path = "../../adapters/geo-adapters-io", default-features = false }
+geo-adapters-geo = { path = "../../adapters/geo-adapters-geo", optional = true }
+geo-adapters-sim = { path = "../../adapters/geo-adapters-sim", features = ["dssat", "modflow"], optional = true }
 geo-adapter-qgis = { path = "../../adapters/geo-adapter-qgis", optional = true }
 tracing.workspace = true
 
 [features]
-default = []
+# Default = full functionality: both heavy adapter families + I/O adapters.
+default = ["geo-adapters-geo", "geo-adapters-sim", "duckdb", "stac", "osm"]
+# Explicit opt-in features for the optional adapter dependencies.
+geo-adapters-geo = ["dep:geo-adapters-geo"]
+geo-adapters-sim = ["dep:geo-adapters-sim"]
+duckdb = ["geo-adapters-io/duckdb"]
+stac = ["geo-adapters-io/stac"]
+osm = ["geo-adapters-io/osm"]
 postgis = ["geo-adapters-geo/postgis"]
 gee = ["geo-adapters-geo/gee"]
 qgis = ["geo-adapter-qgis"]

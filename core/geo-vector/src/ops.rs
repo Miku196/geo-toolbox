@@ -1,5 +1,5 @@
-use geo::algorithm::{Area, BooleanOps, BoundingRect, ConvexHull};
-use geo_types::{Coord, LineString, MultiPolygon, Polygon};
+use geo::algorithm::{Area, BooleanOps, BoundingRect};
+use geo_types::{LineString, MultiPolygon, Polygon};
 
 // ═══════════════════════ 通用运算 ═══════════════════════
 

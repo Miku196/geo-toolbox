@@ -13,6 +13,9 @@ pub mod quadtree;
 pub mod rtree;
 pub mod tools;
 
+// encode 已 deprecated（迁移至 geo_facade::index::encode）；
+// 根路径 re-export 保留以兼容旧调用方，故 allow(deprecated)。
+#[allow(deprecated)]
 pub use geohash::{bbox_to_geohashes, decode, encode, neighbors, GeohashBounds};
 pub use h3::{
     h3_cover_bbox, h3_edge_length_km, h3_from_string, h3_grid_disk, h3_hex_area_km2,

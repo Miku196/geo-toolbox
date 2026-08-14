@@ -1,9 +1,7 @@
-/// MODFLOW-2005 输入文件生成适配器。
-///
-/// 生成 .NAM / .DIS / .BAS6 / .LPF / .PCG 等标准输入文件。
-/// 纯 Rust，无外部依赖，输出为 String 可直接写入文件。
-use serde::{Deserialize, Serialize};
-use geo_core::traits::{ModflowGrid, ModflowStressPeriod};
+//! MODFLOW-2005 输入文件生成适配器。
+//!
+//! 生成 .NAM / .DIS / .BAS6 / .LPF / .PCG 等标准输入文件。
+//! 纯 Rust，无外部依赖，输出为 String 可直接写入文件。
 
 /// 生成 MODFLOW-2005 .NAM 名称文件。
 pub fn generate_nam(model_name: &str, units: &[(&str, usize)]) -> String {

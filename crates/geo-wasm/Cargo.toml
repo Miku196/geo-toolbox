@@ -19,6 +19,7 @@ geo-core = { path = "../../core/geo-core" }
 geo-carbon-math = { path = "../../core/geo-carbon-math" }
 geo-tile = { path = "../../core/geo-tile" }
 geo-index = { path = "../../core/geo-index" }
+geo-facade = { path = "../../core/geo-facade" }
 geo-raster = { path = "../../core/geo-raster" }
 geo-vector = { path = "../../core/geo-vector" }
 geo-stats = { path = "../../core/geo-stats" }

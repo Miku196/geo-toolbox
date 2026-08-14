@@ -10,6 +10,7 @@ geo-core = { path = "../../core/geo-core" }
 geo-registry = { path = "../../core/geo-registry" }
 geo-raster = { path = "../../core/geo-raster" }
 geo-io = { path = "../../core/geo-io" }
+geo-facade = { path = "../../core/geo-facade" }
 serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true

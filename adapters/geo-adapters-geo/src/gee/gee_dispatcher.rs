@@ -215,7 +215,7 @@ impl GeeDispatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::gee_mq::FileMq;
+    use crate::gee::gee_mq::FileMq;
 
     #[tokio::test]
     async fn test_dispatch_classification_via_mq() {

@@ -1,6 +1,8 @@
 //! Tool registration — GeoHash index.
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};
+// 内部调用 crate::encode（已 deprecated，迁移至 geo_facade::index::encode），故 allow(deprecated)。
+#[allow(deprecated)]
 pub fn register_tools(registry: &mut PluginRegistry) {
     register_plugin!(registry, "index", "GeoHash spatial index: encode, decode, neighbors", PluginCategory::Process, [
         sync "geohash_encode" => "Encode lat/lon to GeoHash" ; serde_json::json!({"type":"object","properties":{"lat":{"type":"number"},"lon":{"type":"number"},"precision":{"type":"integer"}},"required":["lat","lon"]}) => |args| -> ToolResult {

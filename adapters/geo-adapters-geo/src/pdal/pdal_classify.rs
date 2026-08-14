@@ -88,8 +88,6 @@ pub async fn decimate_and_classify(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_pipeline_json_builds() {
         let json = serde_json::json!({

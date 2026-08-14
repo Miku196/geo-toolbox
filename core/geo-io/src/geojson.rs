@@ -171,6 +171,8 @@ mod tests {
     }
 
     #[test]
+    // 测试旧路径（已 deprecated，迁移至 geo_facade::io::extract_bbox），故 allow
+    #[allow(deprecated)]
     fn test_extract_bbox() {
         let geojson = r#"{
             "type": "FeatureCollection",

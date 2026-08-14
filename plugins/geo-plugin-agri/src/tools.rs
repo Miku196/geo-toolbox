@@ -1,6 +1,6 @@
 //! Tool registration — Agriculture plugin.
 use geo_core::traits::{
-    CultivarParams, DailyWeather, DssatGenerator, SoilLayer, SoilProfile, WeatherStation,
+    CultivarParams, DailyWeather, DssatGenerator, SoilProfile, WeatherStation,
 };
 use geo_registry::registry::ToolResult;
 use geo_registry::{register_plugin, PluginRegistry};

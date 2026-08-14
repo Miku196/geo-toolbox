@@ -492,7 +492,6 @@ pub fn wave_energy_flux(hs_m: f64, tp_s: f64, depth_m: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use approx::assert_relative_eq;
 
     #[test]
     fn test_predict_tide_m2_only() {

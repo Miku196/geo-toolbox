@@ -8,6 +8,7 @@ description = "德兴铜矿生态修复效果评估 — Sentinel-2 NDVI + 碳汇
 [dependencies]
 geo-core = { path = "../../core/geo-core" }
 geo-raster = { path = "../../core/geo-raster" }
+geo-facade = { path = "../../core/geo-facade" }
 geo-adapters-io = { path = "../../adapters/geo-adapters-io" }
 
 serde.workspace = true

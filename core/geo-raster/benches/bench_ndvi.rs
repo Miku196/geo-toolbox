@@ -1,3 +1,5 @@
+// bench 直接测量旧路径 compute_ndvi（已 deprecated，迁移至 geo_facade::raster::compute_ndvi），故整文件 allow
+#![allow(deprecated)]
 use criterion::{criterion_group, criterion_main, Criterion};
 use geo_raster::ndvi::{compute_ndvi, ndvi_difference};
 use geo_raster::RasterBand;

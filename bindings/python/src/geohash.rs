@@ -1,6 +1,7 @@
-//! Geohash encoding/decoding.
+﻿//! Geohash encoding/decoding.
 
-use geo_index::geohash::{decode, encode, neighbors};
+use geo_index::geohash::{decode, neighbors};
+use geo_facade::index::encode;
 use pyo3::prelude::*;
 
 /// Encode WGS84 lat/lon to a geohash string.

@@ -91,6 +91,8 @@ pub fn decode(hash: &str) -> Option<(f64, f64, BBox)> {
 }
 
 /// 计算邻域 8 个 GeoHash。
+// 内部调用 encode（已 deprecated，迁移至 geo_facade::index::encode；实现仍留在此处），故 allow(deprecated)。
+#[allow(deprecated)]
 pub fn neighbors(hash: &str) -> Vec<String> {
     let dirs: [(f64, f64); 8] = [
         (0.0, 1.0),
@@ -125,6 +127,7 @@ pub fn neighbors(hash: &str) -> Vec<String> {
 }
 
 /// 边界框覆盖为 GeoHash 集合。
+#[allow(deprecated)]
 pub fn bbox_to_geohashes(bbox: &BBox, precision: usize) -> Vec<String> {
     let mut hashes = Vec::new();
     let step_lon = if precision <= 3 {
@@ -166,6 +169,8 @@ mod tests {
     use super::*;
 
     #[test]
+    // 测试旧路径 encode（已 deprecated，迁移至 geo_facade::index::encode），故 allow
+    #[allow(deprecated)]
     fn test_encode_decode() {
         let hash = encode(104.0657, 30.5723, 8);
         assert_eq!(hash.len(), 8);
@@ -177,6 +182,8 @@ mod tests {
     }
 
     #[test]
+    // 测试旧路径 encode（已 deprecated），故 allow
+    #[allow(deprecated)]
     fn test_neighbors() {
         let hash = encode(104.0, 30.5, 6);
         let nb = neighbors(&hash);

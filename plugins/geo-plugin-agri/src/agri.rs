@@ -366,7 +366,7 @@ mod tests {
     use super::*;
     use crate::config::AgriConfig;
     use geo_core::plugin::ProcessPlugin;
-    use geo_core::traits::{CultivarParams, DailyWeather, DssatGenerator, SoilLayer, SoilProfile, WeatherStation};
+    use geo_core::traits::{CultivarParams, DailyWeather, DssatGenerator, SoilProfile, WeatherStation};
 
     struct DssatStub;
 
@@ -381,7 +381,7 @@ mod tests {
     }
 
     fn make_plugin() -> AgriPlugin {
-        AgriPlugin::new(AgriConfig::default(), Box::new(DssatStub))
+        AgriPlugin::new(AgriConfig::default()).with_dssat_generator(Box::new(DssatStub))
     }
 
     #[test]

@@ -1,3 +1,5 @@
+// bench 直接测量旧路径 encode（已 deprecated，迁移至 geo_facade::index::encode），故整文件 allow
+#![allow(deprecated)]
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use geo_core::types::BBox;
 use geo_index::{bbox_to_geohashes, decode, encode, neighbors, Quadtree, RTree};

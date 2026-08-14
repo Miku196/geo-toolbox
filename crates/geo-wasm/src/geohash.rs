@@ -14,7 +14,7 @@ pub fn geohash_encode(lon: f64, lat: f64, precision: usize) -> String {
 }
 
 fn geohash_encode_inner(lon: f64, lat: f64, precision: usize) -> String {
-    geo_index::geohash::encode(lon, lat, precision)
+    geo_facade::index::encode(lon, lat, precision)
 }
 
 /// Decode a geohash into its center coordinate and bounding box.

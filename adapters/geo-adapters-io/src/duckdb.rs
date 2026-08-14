@@ -313,7 +313,6 @@ impl ExternalAdapter for DuckDbAdapter {
 
 use geo_registry::{register_plugin, PluginRegistry};
 pub fn register_tools(registry: &mut PluginRegistry) {
-    use geo_core::plugin::PluginCategory;
     register_plugin!(registry, "duckdb", "DuckDB embedded spatial database", PluginCategory::Store, [
         async "duckdb_query" => "Execute SQL on in-memory DuckDB, return JSON" ; serde_json::json!({"type":"object","properties":{"sql":{"type":"string"}},"required":["sql"]}) => |args| Box::pin(async move {
         let store = DuckDbStore::in_memory().map_err(|e| geo_core::GeoError::Database(e.to_string()))?;

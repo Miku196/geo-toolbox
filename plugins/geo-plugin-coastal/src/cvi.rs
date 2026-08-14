@@ -250,7 +250,7 @@ mod tests {
     #[test]
     fn test_cvi_calculate_moderate() {
         let result = cvi_calculate("medium_cliff", -1.5, 6.0, 2.0, 0.9, 1.5);
-        let rank = result["rank"].as_str().unwrap();
+        let _rank = result["rank"].as_str().unwrap();
         // Should be High or Moderate
         let cvi = result["cvi"].as_f64().unwrap();
         assert!(cvi > 0.0 && cvi < 50.0, "cvi={cvi}");

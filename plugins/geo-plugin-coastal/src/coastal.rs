@@ -316,7 +316,6 @@ mod tests {
     }
 
     #[test]
-    #[test]
     fn test_bruun_erosion() {
         let p = CoastalPlugin::new();
         // R = S * L / (B + h*) = 1.0 * 1000 / (10 + 5) = 66.7m

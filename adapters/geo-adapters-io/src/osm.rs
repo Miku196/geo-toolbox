@@ -1,7 +1,6 @@
 //! OpenStreetMap Overpass API adapter.
 
 use geo_core::errors::{GeoError, GeoResult};
-use geo_core::plugin::PluginCategory;
 use serde::Deserialize;
 
 // ---------------------------------------------------------------------------

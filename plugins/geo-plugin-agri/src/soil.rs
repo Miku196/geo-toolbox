@@ -1,5 +1,4 @@
 //! Soil erosion (USLE/RUSLE) and soil organic carbon dynamics.
-use geo_core::errors::GeoResult;
 use serde::Serialize;
 
 // ── USLE Soil Erosion ─────────────────────────────────────────────

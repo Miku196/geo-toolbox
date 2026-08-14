@@ -2,6 +2,7 @@ use super::super::OutputAction;
 use geo_registry::PluginRegistry;
 
 /// Create a Postgres connection pool from DATABASE_URL env var.
+#[cfg(any(feature = "postgis", feature = "cad"))]
 async fn connect_db() -> Result<sqlx::PgPool, Box<dyn std::error::Error>> {
     let db_url = std::env::var("DATABASE_URL").map_err(|_| "DATABASE_URL must be set")?;
     let pool = sqlx::postgres::PgPoolOptions::new()

@@ -217,7 +217,7 @@ mod tests {
                     flow_dir[idx] = if r < 1 { Some(2) } else { Some(6) };
                 } else if c == 1 {
                     // col 1 cells drain toward col 0
-                    let down_r = if r == 1 {
+                    let _down_r = if r == 1 {
                         1
                     } else if r == 0 {
                         1

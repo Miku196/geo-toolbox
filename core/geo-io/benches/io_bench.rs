@@ -1,3 +1,5 @@
+// bench 直接测量旧路径 extract_bbox（已 deprecated，迁移至 geo_facade::io::extract_bbox），故整文件 allow
+#![allow(deprecated)]
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 fn bench_parse_feature_collection_10(c: &mut Criterion) {

@@ -39,7 +39,7 @@ fn compute_ndvi_inner(
 ) -> GeoResult<String> {
     let red = geo_raster::RasterBand::new("red", rows, cols, red_data, -9999.0);
     let nir = geo_raster::RasterBand::new("nir", rows, cols, nir_data, -9999.0);
-    let result = geo_raster::ndvi::compute_ndvi(&red, &nir)
+    let result = geo_facade::raster::compute_ndvi(&red, &nir)
         .map_err(|e| geo_core::errors::GeoError::Other(e.to_string()))?;
     serde_json::to_string(&serde_json::json!({
         "ndvi_data": result.ndvi.data,
@@ -223,6 +223,120 @@ pub fn resample_cubic(
     nodata: Option<f64>,
 ) -> Vec<f64> {
     geo_raster::resample::resample_cubic(&data, src_rows, src_cols, dst_rows, dst_cols, nodata)
+}
+
+// ── Zonal Statistics ────────────────────────────────────────────
+// ── Terrain ─────────────────────────────────────────────────────
+
+/// Compute terrain slope from a DEM raster (Horn 1981 algorithm).
+///
+/// ## Parameters
+/// - `dem_data`: flat array of elevation values (row-major), meters
+/// - `rows`: number of rows
+/// - `cols`: number of columns
+/// - `cell_size_m`: pixel resolution in meters (projected CRS)
+/// - `nodata`: NoData value (optional, default NaN)
+///
+/// ## Returns
+/// JSON string with `slope_degrees`, `slope_percent`, `rows`, `cols`,
+/// `mean_degrees`, `max_degrees`.
+#[wasm_bindgen(js_name = computeSlope)]
+pub fn compute_slope(
+    dem_data: Vec<f64>,
+    rows: usize,
+    cols: usize,
+    cell_size_m: f64,
+    nodata: Option<f64>,
+) -> Result<String, JsValue> {
+    compute_slope_inner(dem_data, rows, cols, cell_size_m, nodata)
+        .map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+fn compute_slope_inner(
+    dem_data: Vec<f64>,
+    rows: usize,
+    cols: usize,
+    cell_size_m: f64,
+    nodata: Option<f64>,
+) -> GeoResult<String> {
+    let result = geo_raster::compute_slope_degrees(&dem_data, rows, cols, cell_size_m, nodata);
+    serde_json::to_string(&serde_json::json!({
+        "slope_degrees": result.slope_degrees,
+        "slope_percent": result.slope_percent,
+        "rows": result.rows,
+        "cols": result.cols,
+        "mean_degrees": result.mean_degrees,
+        "max_degrees": result.max_degrees,
+    }))
+    .map_err(geo_core::errors::GeoError::Serde)
+}
+
+// ── Chunk Iterator ──────────────────────────────────────────────
+
+/// Iterate over a raster in fixed-size tiles (default 256×256).
+///
+/// This helps avoid browser OOM when processing large rasters.
+/// Each call to `next()` returns a JS object with `{x, y, cols, rows, data}`
+/// or `null` when iteration is complete.
+#[wasm_bindgen]
+pub struct JsChunkIterator {
+    inner: geo_raster::processing::ChunkIterator,
+}
+
+#[wasm_bindgen]
+impl JsChunkIterator {
+    /// Create a new chunk iterator.
+    ///
+    /// - `data`: flat row-major f64 array
+    /// - `cols`, `rows`: raster dimensions
+    /// - `chunk_size`: tile size in pixels (e.g. 256)
+    #[wasm_bindgen(constructor)]
+    pub fn new(data: Vec<f64>, cols: usize, rows: usize, chunk_size: usize) -> JsChunkIterator {
+        JsChunkIterator {
+            inner: geo_raster::processing::ChunkIterator::new(data, cols, rows, chunk_size),
+        }
+    }
+
+    /// Returns the next tile, or `null` when complete.
+    ///
+    /// Return object has fields: `x` (tile col), `y` (tile row),
+    /// `tile_cols`, `tile_rows` (actual pixels in this tile),
+    /// `data` (Float64Array of pixel values).
+    #[wasm_bindgen]
+    pub fn next(&mut self) -> Option<js_sys::Object> {
+        self.inner.next().map(|(cx, cy, tcol, trow, data)| {
+            let obj = js_sys::Object::new();
+            js_sys::Reflect::set(&obj, &JsValue::from("x"), &JsValue::from(cx as u32)).ok();
+            js_sys::Reflect::set(&obj, &JsValue::from("y"), &JsValue::from(cy as u32)).ok();
+            js_sys::Reflect::set(&obj, &JsValue::from("tile_cols"), &JsValue::from(tcol as u32))
+                .ok();
+            js_sys::Reflect::set(&obj, &JsValue::from("tile_rows"), &JsValue::from(trow as u32))
+                .ok();
+            js_sys::Reflect::set(
+                &obj,
+                &JsValue::from("data"),
+                &serde_wasm_bindgen::to_value(&data).unwrap_or(JsValue::NULL),
+            )
+            .ok();
+            obj
+        })
+    }
+
+    /// Total number of tiles.
+    #[wasm_bindgen(getter)]
+    pub fn total(&self) -> usize {
+        self.inner.total_chunks()
+    }
+
+    /// Grid dimensions as [tiles_x, tiles_y].
+    #[wasm_bindgen(getter)]
+    pub fn grid(&self) -> js_sys::Array {
+        let (gx, gy) = self.inner.grid_dims();
+        let arr = js_sys::Array::new_with_length(2);
+        arr.set(0, JsValue::from(gx as u32));
+        arr.set(1, JsValue::from(gy as u32));
+        arr
+    }
 }
 
 // ── Zonal Statistics ────────────────────────────────────────────

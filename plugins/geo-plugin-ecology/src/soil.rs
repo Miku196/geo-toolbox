@@ -419,7 +419,6 @@ pub fn van_genuchten_from_sand_clay(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use approx::assert_relative_eq;
 
     #[test]
     fn test_texture_classification() {

@@ -191,13 +191,13 @@ mod tests {
     #[test]
     fn test_turbulent_heat_fluxes_stable() {
         // 夜间逆温: 地表 5°C, 2m 8°C → 负感热通量
-        let (shf, lhf) = turbulent_heat_fluxes(&[5.0, 8.0, 9.0, 8.0], &[1.0, 2.0, 3.0]);
+        let (shf, _lhf) = turbulent_heat_fluxes(&[5.0, 8.0, 9.0, 8.0], &[1.0, 2.0, 3.0]);
         assert!(shf < 0.0);
     }
 
     #[test]
     fn test_turbulent_heat_fluxes_short_profile() {
-        let (shf, lhf) = turbulent_heat_fluxes(&[20.0], &[2.0]);
+        let (shf, _lhf) = turbulent_heat_fluxes(&[20.0], &[2.0]);
         assert!((shf - 0.0).abs() < 1e-10); // only 1 temp point
     }
 

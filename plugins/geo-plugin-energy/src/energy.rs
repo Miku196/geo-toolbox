@@ -72,7 +72,7 @@ impl EnergyPlugin {
         dem: &RasterBand,
         radiation: &RasterBand,
     ) -> GeoResult<SolarAssessment> {
-        let bbox = geo_io::extract_bbox(aoi_geojson)?;
+        let bbox = geo_facade::io::extract_bbox(aoi_geojson)?;
         let cfg = &self.config.solar;
 
         let mut suitable = 0usize;
@@ -154,7 +154,7 @@ impl EnergyPlugin {
         dem: &RasterBand,
         wind_speed: &RasterBand,
     ) -> GeoResult<WindAssessment> {
-        let bbox = geo_io::extract_bbox(aoi_geojson)?;
+        let bbox = geo_facade::io::extract_bbox(aoi_geojson)?;
         let cfg = &self.config.wind;
 
         let mut suitable = 0usize;

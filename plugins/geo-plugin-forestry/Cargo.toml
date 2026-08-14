@@ -12,6 +12,7 @@ geo-carbon-math = { path = "../../core/geo-carbon-math" }
 geo-raster = { path = "../../core/geo-raster" }
 geo-stats = { path = "../../core/geo-stats" }
 geo-io = { path = "../../core/geo-io" }
+geo-facade = { path = "../../core/geo-facade" }
 geo-temporal = { path = "../../core/geo-temporal" }
 serde.workspace = true
 serde_json.workspace = true

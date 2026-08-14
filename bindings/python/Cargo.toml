@@ -1,16 +1,16 @@
-[package]
+﻿[package]
 name = "geo-toolbox-python"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Python bindings for geo-toolbox — tile math, CRS, carbon, spatial ops, IO, geohash"
+description = "Python bindings for geo-toolbox 鈥?tile math, CRS, carbon, spatial ops, IO, geohash"
 
 [lib]
 name = "_geo_toolbox"
 crate-type = ["cdylib"]
 
 [dependencies]
-# Core layer — needed by registry.rs for populate_sync_tools()
+# Core layer 鈥?needed by registry.rs for populate_sync_tools()
 geo-core = { path = "../../core/geo-core" }
 geo-io = { path = "../../core/geo-io" }
 geo-carbon-math = { path = "../../core/geo-carbon-math" }
@@ -18,12 +18,13 @@ geo-tile = { path = "../../core/geo-tile" }
 geo-temporal = { path = "../../core/geo-temporal" }
 geo-vector = { path = "../../core/geo-vector" }
 geo-index = { path = "../../core/geo-index" }
+geo-facade = { path = "../../core/geo-facade" }
 geo-stats = { path = "../../core/geo-stats" }
 geo-report = { path = "../../core/geo-report" }
 geo-registry = { path = "../../core/geo-registry" }
-# Plugin and Adapter layers excluded — python bindings are core-only
+# Plugin and Adapter layers excluded 鈥?python bindings are core-only
 # Python binding runtime
-pyo3 = { version = "0.23", features = ["extension-module"] }
+pyo3 = { version = "0.25", features = ["extension-module"] }
 serde_json = { workspace = true }
 geo = { workspace = true }
 geo-types = { workspace = true }

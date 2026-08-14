@@ -14,7 +14,8 @@
 use geo_adapters_io::stac::StacClient;
 use geo_core::errors::{GeoError, GeoResult};
 use geo_raster::grid::RasterBand;
-use geo_raster::ndvi::{compute_ndvi, ndvi_difference};
+use geo_facade::raster::compute_ndvi;
+use geo_raster::ndvi::ndvi_difference;
 use std::path::PathBuf;
 
 // ── 常量 ────────────────────────────────────────────────

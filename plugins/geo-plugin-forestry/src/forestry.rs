@@ -1,6 +1,6 @@
 use geo_core::errors::{GeoError, GeoResult};
 use geo_core::types::BBox;
-use geo_raster::ndvi::compute_ndvi;
+use geo_facade::raster::compute_ndvi;
 use geo_raster::RasterBand;
 use serde::{Deserialize, Serialize};
 
@@ -289,7 +289,7 @@ impl ForestryPlugin {
         sample_volume_m3_ha: f64,
         forest_area_ha: f64,
     ) -> GeoResult<CarbonStockAssessment> {
-        let bbox = geo_io::extract_bbox(aoi_geojson)?;
+        let bbox = geo_facade::io::extract_bbox(aoi_geojson)?;
         let cp = &self.config.carbon;
 
         let ndvi_base = compute_ndvi(baseline_red, baseline_nir)?;
@@ -361,7 +361,7 @@ impl ForestryPlugin {
         ndvi_series: &[RasterBand],
         years: &[u16],
     ) -> GeoResult<String> {
-        let _bbox = geo_io::extract_bbox(aoi_geojson)?;
+        let _bbox = geo_facade::io::extract_bbox(aoi_geojson)?;
 
         if ndvi_series.len() < 4 || ndvi_series.len() != years.len() {
             return Err(GeoError::invalid_input("time_steps", "need at least 4"));
