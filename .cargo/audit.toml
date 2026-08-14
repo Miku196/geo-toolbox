@@ -1,0 +1,12 @@
+# cargo audit exceptions — reviewed 2026-08-14
+[advisories]
+ignore = [
+    # pyo3 0.25.1: nth/nth_back OOB read — fixed in >=0.29.0 which is NOT published yet
+    # (verified against rsproxy index 2026-08-14; latest is 0.28.1). Re-check on next pyo3 bump.
+    "RUSTSEC-2026-0176",
+    # pyo3 0.25.1: missing Sync bound on PyCFunction::new_closure — same fix version (0.29.0), not published.
+    "RUSTSEC-2026-0177",
+    # rsa 0.9.10: Marvin timing attack — upstream provides NO fixed version.
+    # Transitive dep (rustls/token chain); revisit when the dep chain changes.
+    "RUSTSEC-2023-0071",
+]
