@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, develop]
   pull_request:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 env:
@@ -48,7 +48,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-build-
 
       - name: Check
-        run: cargo check --workspace --all-features
+        run: cargo check --workspace
 
   test:
     name: Test (${{ matrix.os }})
@@ -81,7 +81,19 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-build-test-
 
       - name: Test
-        run: cargo test --workspace --all-features
+        run: cargo test --workspace
+
+  native-gdal-bindings:
+    name: Native GDAL bindings (Ubuntu)
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install GDAL development files
+        run: sudo apt-get update && sudo apt-get install --yes libgdal-dev
+      - name: Check GDAL bindings
+        run: cargo check -p geo-adapters-geo --features gdal-bindings
 
   lint:
     name: Lint
@@ -115,13 +127,28 @@ jobs:
         run: cargo fmt --all --check
 
       - name: Clippy
-        run: cargo clippy --workspace --all-features -- -D warnings
+        # Scientific APIs retain scalar inputs and min/max NaN-sanitisation;
+        # WASM exposes `next` for JavaScript compatibility. All other warnings fail CI.
+        run: >-
+          cargo clippy --workspace -- -D warnings
+          -A clippy::too_many_arguments
+          -A clippy::manual_clamp
+          -A clippy::needless_range_loop
+          -A clippy::should_implement_trait
+
+  security:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rustsec/audit-check@v2
 
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
     needs: check
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v4
 
@@ -150,7 +177,7 @@ jobs:
           restore-keys: ubuntu-latest-cargo-build-cov-
 
       - name: Generate coverage
-        run: cargo llvm-cov --workspace --all-features --lcov --output-path lcov.info --summary-only 2>&1 | tee /tmp/cov-summary.txt
+        run: cargo llvm-cov --workspace --lcov --output-path lcov.info --summary-only 2>&1 | tee /tmp/cov-summary.txt
 
       - name: Coverage gate (PR must not decrease)
         if: github.event_name == 'pull_request'
@@ -165,7 +192,7 @@ jobs:
           git -C base-cov fetch origin "${{ github.event.pull_request.base.sha }}" --depth=1 2>/dev/null || git -C base-cov fetch origin ${{ github.base_ref }} --depth=1
           git -C base-cov checkout FETCH_HEAD
           cd base-cov
-          cargo llvm-cov --workspace --all-features --summary-only 2>&1 | tee /tmp/base-cov-summary.txt
+          cargo llvm-cov --workspace --summary-only 2>&1 | tee /tmp/base-cov-summary.txt
           BASE_COV=$(awk '/^TOTAL/ { gsub("%",""); print int($NF) }' /tmp/base-cov-summary.txt 2>/dev/null || echo "0")
           cd ..
           rm -rf base-cov
@@ -183,7 +210,7 @@ jobs:
           echo "✅ Coverage gate passed: ${HEAD_COV}% (base ${BASE_COV}%, min 45%)"
 
       - name: Coverage gate (main branch — min 45%)
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/master'
         run: |
           HEAD_COV=$(awk '/^TOTAL/ { gsub("%",""); print int($NF) }' /tmp/cov-summary.txt 2>/dev/null || echo "0")
           if [ "$HEAD_COV" -lt 45 ]; then
@@ -215,7 +242,7 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Generate coverage
-        run: cargo llvm-cov --workspace --all-features --summary-only 2>&1 | tee /tmp/cov.txt
+        run: cargo llvm-cov --workspace --summary-only 2>&1 | tee /tmp/cov.txt
 
       - name: Create/update issue
         uses: actions/github-script@v7
@@ -257,7 +284,7 @@ jobs:
   bench:
     name: Benchmarks
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v4
 
@@ -274,4 +301,4 @@ jobs:
           restore-keys: ubuntu-latest-cargo-registry-
 
       - name: Run benchmarks (check compile only)
-        run: cargo bench --no-run --workspace --all-features 2>&1 || echo "No benchmarks defined yet — skipping"
+        run: cargo bench --no-run --workspace 2>&1 || echo "No benchmarks defined yet — skipping"

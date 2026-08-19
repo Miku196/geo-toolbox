@@ -3,7 +3,7 @@ use chrono::Local;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 /// Daily usage record
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -31,7 +31,8 @@ pub struct ProviderUsage {
 }
 
 /// Cost per 1M tokens (approximate, as of 2025)
-const COST_PER_M_TOKEN: fn(&str, &str) -> (f64, f64) = |provider: &str, model: &str| match provider {
+const COST_PER_M_TOKEN: fn(&str, &str) -> (f64, f64) = |provider: &str, model: &str| match provider
+{
     "openai" => match model {
         "gpt-4o" => (2.50, 10.00),
         "gpt-4o-mini" => (0.15, 0.60),
@@ -71,7 +72,7 @@ impl MetricsStore {
         }
     }
 
-    fn load_day(log_dir: &PathBuf, date: &str) -> Option<DayUsage> {
+    fn load_day(log_dir: &Path, date: &str) -> Option<DayUsage> {
         let path = log_dir.join(format!("usage-{}.json", date));
         if path.exists() {
             fs::read_to_string(&path)
@@ -82,7 +83,7 @@ impl MetricsStore {
         }
     }
 
-    fn save_day(log_dir: &PathBuf, usage: &DayUsage) {
+    fn save_day(log_dir: &Path, usage: &DayUsage) {
         let path = log_dir.join(format!("usage-{}.json", usage.date));
         if let Ok(json) = serde_json::to_string_pretty(usage) {
             let _ = fs::write(&path, json);
@@ -118,7 +119,10 @@ impl MetricsStore {
         today.estimated_cost_usd += cost;
 
         // Update or create provider entry
-        let prov = today.by_provider.iter_mut().find(|p| p.provider == provider && p.model == model);
+        let prov = today
+            .by_provider
+            .iter_mut()
+            .find(|p| p.provider == provider && p.model == model);
         if let Some(p) = prov {
             p.calls += 1;
             p.prompt_tokens += usage.prompt_tokens;
@@ -148,7 +152,7 @@ impl MetricsStore {
 }
 
 /// Write a line to the text usage log
-pub fn log_to_file(log_dir: &PathBuf, line: &str) {
+pub fn log_to_file(log_dir: &Path, line: &str) {
     let today = Local::now().format("%Y-%m-%d").to_string();
     let path = log_dir.join(format!("usage-{}.log", today));
     if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&path) {

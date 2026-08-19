@@ -258,6 +258,10 @@ pub fn baseflow_exchange(
 }
 
 /// 完整耦合计算。
+///
+/// The existing public function is retained for compatibility. A future API
+/// revision should replace the scalar parameter list with an input struct.
+#[allow(clippy::too_many_arguments)]
 pub fn coupled_water_balance(
     rainfall_m: f64,
     cn: f64,

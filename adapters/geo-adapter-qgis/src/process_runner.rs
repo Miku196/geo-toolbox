@@ -78,8 +78,14 @@ impl BatchQgisRunner {
         // Defense-in-depth: any path-bearing parameter (input/output/overlay/
         // raster) must resolve inside the allowed roots before it is handed to
         // the backend, even when callers bypass the convenience methods.
-        const PATH_KEYS: &[&str] =
-            &["INPUT", "OUTPUT", "OVERLAY", "INPUT_RASTER", "POLYGONS", "RASTER"];
+        const PATH_KEYS: &[&str] = &[
+            "INPUT",
+            "OUTPUT",
+            "OVERLAY",
+            "INPUT_RASTER",
+            "POLYGONS",
+            "RASTER",
+        ];
         for (key, value) in &tool.params {
             if PATH_KEYS.contains(&key.as_str()) {
                 require_safe_path(value)?;
@@ -599,7 +605,29 @@ mod tests {
             .is_err());
         // An absolute system path is likewise refused.
         let params_abs = vec![("OUTPUT".into(), "/etc/passwd".into())];
-        assert!(runner.parse_output_path("nothing here", &params_abs).is_err());
+        assert!(runner
+            .parse_output_path("nothing here", &params_abs)
+            .is_err());
+    }
+
+    #[tokio::test]
+    async fn test_run_tool_rejects_unsafe_paths_before_spawning_qgis() {
+        let runner = BatchQgisRunner::new(QgisProcessConfig {
+            executable: PathBuf::from("qgis_process_that_must_not_run"),
+            timeout: Duration::from_secs(1),
+            profile: None,
+        });
+        let tool = QgisTool {
+            algorithm: "native:buffer".into(),
+            params: vec![("INPUT".into(), "../../outside-allowed-root.gpkg".into())],
+        };
+
+        let err = runner
+            .run_tool(&tool)
+            .await
+            .expect_err("unsafe input must be rejected before spawning QGIS");
+
+        assert!(matches!(err, GeoError::Validation(_)));
     }
 
     // ── JobQueue tests ──

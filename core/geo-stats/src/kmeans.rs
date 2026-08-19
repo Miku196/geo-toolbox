@@ -154,7 +154,7 @@ fn lloyd_iteration(
     k: usize,
     dim: usize,
     centroids: &mut Vec<Vec<f64>>,
-    labels: &mut Vec<usize>,
+    labels: &mut [usize],
     max_iters: usize,
 ) -> (bool, usize) {
     let n = data.len();

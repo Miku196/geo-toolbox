@@ -53,6 +53,7 @@ pub struct BoundaryLayerResult {
 /// 估算大气边界层高度 (m)。
 ///
 /// 基于 Pasquill-Gifford 稳定度 + 风速/粗糙度修正。
+#[allow(clippy::manual_clamp)] // min/max intentionally maps NaN inputs to bounded values.
 pub fn atmospheric_boundary_layer_height(
     wind_speed_m_s: f64,
     roughness_m: f64,

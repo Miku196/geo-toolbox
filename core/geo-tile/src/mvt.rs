@@ -175,7 +175,7 @@ impl MvtEncoder {
                         "Point coordinates must be an array [lon, lat], got: {coords}"
                     ))
                 })?;
-                let x = arr.get(0).and_then(|v| v.as_f64()).ok_or_else(|| {
+                let x = arr.first().and_then(|v| v.as_f64()).ok_or_else(|| {
                     GeoError::Validation("Point longitude (coordinates[0]) must be a number".into())
                 })?;
                 let y = arr.get(1).and_then(|v| v.as_f64()).ok_or_else(|| {
@@ -715,12 +715,20 @@ mod tests {
         // MoveTo = cmd+dx+dy (3) + LineTo(count=1) = cmd+dx+dy (3) => 6
         assert_eq!(two_pt.len(), 6);
         assert_eq!(two_pt[0], 1 | (1 << 3), "MoveTo count must be 1|(1<<3)=9");
-        assert_eq!(two_pt[3], 2 | (1 << 3), "LineTo count=1 must be 2|(1<<3)=10");
+        assert_eq!(
+            two_pt[3],
+            2 | (1 << 3),
+            "LineTo count=1 must be 2|(1<<3)=10"
+        );
 
         // ClosePath count=1 -> 7 | (1<<3) == 15 (old code wrote (7<<3)|1 == 57).
         let poly = encode_polygon(&[vec![(10, 10), (20, 20), (30, 30)]]);
         let last = *poly.last().unwrap();
-        assert_eq!(last, 7 | (1 << 3), "ClosePath must be 7|(1<<3)=15, got {last}");
+        assert_eq!(
+            last,
+            7 | (1 << 3),
+            "ClosePath must be 7|(1<<3)=15, got {last}"
+        );
 
         // A spec decoder reads the ClosePath back as command_id 7, count 1.
         assert_eq!(last & 0x07, 7);

@@ -23,21 +23,13 @@ use pyo3::prelude::*;
 use pyo3::types::PyModule;
 
 /// PyGeoAdapter bridges Rust geo-types with Python geospatial libraries.
-
 ///
-
 /// # Zero-copy guarantees
-
 ///
-
 /// - **WKB bytes**: geometry ↔ shapely conversion uses WKB as shared byte buffer;
-
 ///   no per-coordinate copy.
-
 /// - **numpy arrays**: raster ↔ numpy conversion maps flat `&[f64/f32]` slices;
-
 ///   shape/strides metadata is separate.
-
 pub struct PyGeoAdapter {
     name: String,
 
@@ -58,27 +50,20 @@ impl PyGeoAdapter {
     }
 
     /// Convert a Rust GeoFeature (as WKB bytes) into a Python shapely geometry object.
-
     ///
-
     /// Returns the WKB bytes that can be loaded via `shapely.from_wkb()` on the Python side.
-
     pub fn feature_to_shapely_bytes<'a>(&self, wkb: &'a [u8]) -> &'a [u8] {
         geometry_to_shapely(wkb)
     }
 
     /// Convert a Python shapely geometry (as WKB bytes) into Rust geo-types.
-
     ///
-
     /// Accepts WKB bytes produced by `shapely.to_wkb()`.
-
     pub fn shapely_bytes_to_feature(&self, wkb: &[u8]) -> GeoResult<Vec<u8>> {
         shapely_to_geometry(wkb)
     }
 
     /// Convert a numpy 2D/3D array (flat bytes) into a geo-raster Band.
-
     pub fn numpy_to_raster(
         &self,
 
@@ -96,7 +81,6 @@ impl PyGeoAdapter {
     }
 
     /// Convert a geo-raster Band into a numpy-compatible flat f64 buffer.
-
     pub fn raster_to_numpy(&self, band_data: &[f64], rows: usize, cols: usize) -> Vec<f64> {
         geo_raster_to_numpy(band_data, rows, cols)
     }

@@ -90,6 +90,7 @@ pub fn r_factor_annual(precip_mm: f64, max_30min_intensity_mm_hr: f64) -> f64 {
 
 /// Estimate K factor (soil erodibility) from soil texture.
 /// Based on Wischmeier nomograph approximation.
+#[allow(clippy::manual_clamp)] // min/max intentionally maps NaN inputs to bounded values.
 pub fn k_factor_texture(
     silt_pct: f64,
     sand_pct: f64,

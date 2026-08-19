@@ -24,8 +24,8 @@ impl ChunkIterator {
     /// Create a new chunk iterator over the row-major data buffer,
     /// splitting it into chunk_size-sized tiles (edge tiles may be smaller).
     pub fn new(data: Vec<f64>, cols: usize, rows: usize, chunk_size: usize) -> Self {
-        let chunks_x = (cols + chunk_size - 1) / chunk_size;
-        let chunks_y = (rows + chunk_size - 1) / chunk_size;
+        let chunks_x = cols.div_ceil(chunk_size);
+        let chunks_y = rows.div_ceil(chunk_size);
         let total = chunks_x * chunks_y;
         Self {
             data,

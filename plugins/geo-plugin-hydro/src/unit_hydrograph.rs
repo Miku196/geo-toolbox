@@ -157,7 +157,7 @@ pub fn snyder_uh(
     let mut ordinates = vec![0.0_f64; n_steps];
     let time_to_peak = tp_adj;
 
-    for i in 0..n_steps {
+    for (i, ordinate) in ordinates.iter_mut().enumerate() {
         let t = i as f64 * dt_hours;
         let q = if t <= time_to_peak {
             // Rising limb
@@ -168,7 +168,7 @@ pub fn snyder_uh(
         } else {
             0.0
         };
-        ordinates[i] = q.max(0.0);
+        *ordinate = q.max(0.0);
     }
 
     let total_volume_m3 = compute_volume(&ordinates, dt_hours);
@@ -235,7 +235,7 @@ pub fn scs_uh(
     let n_steps = n_steps.max(10);
     let mut ordinates = vec![0.0_f64; n_steps];
 
-    for i in 0..n_steps {
+    for (i, ordinate) in ordinates.iter_mut().enumerate() {
         let t = i as f64 * dt_hours;
         let t_over_tp = t / tp;
 
@@ -252,7 +252,7 @@ pub fn scs_uh(
             0.0
         };
 
-        ordinates[i] = (q_over_qp * qp).max(0.0);
+        *ordinate = (q_over_qp * qp).max(0.0);
     }
 
     // Compute volume
@@ -353,7 +353,7 @@ pub fn clark_uh(
     let mut outflow = vec![0.0_f64; n_steps];
     let mut o_prev = 0.0;
 
-    for t_step in 0..n_steps {
+    for (t_step, outflow_at_step) in outflow.iter_mut().enumerate() {
         // Inflow at this time step
         let i = if (t_step as f64 * dt_hours) < tc_hours {
             inflow_rate
@@ -363,8 +363,8 @@ pub fn clark_uh(
 
         // Linear reservoir routing
         let o = c * i + (1.0 - c) * o_prev;
-        outflow[t_step] = o.max(0.0);
-        o_prev = outflow[t_step];
+        *outflow_at_step = o.max(0.0);
+        o_prev = *outflow_at_step;
     }
 
     // Scale by actual excess (rainfall_excess_mm / 10 = excess in cm)

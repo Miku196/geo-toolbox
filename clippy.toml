@@ -1,0 +1,6 @@
+# Public scientific APIs retain scalar parameters for backwards compatibility.
+# New APIs should prefer input structs once they exceed seven related fields.
+too-many-arguments-threshold = 12
+
+# Geospatial tuple inputs are retained for compatibility; new APIs should use named types.
+type-complexity-threshold = 500

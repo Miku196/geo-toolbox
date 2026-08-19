@@ -457,7 +457,7 @@ async fn dispatch_cli(
             cell_size,
         } => {
             let out = output.as_deref().unwrap_or("slope.tif");
-            commands::raster::handle_slope(&input, &out, cell_size)?;
+            commands::raster::handle_slope(&input, out, cell_size)?;
             Ok(())
         }
         Commands::McpServe { .. } => unreachable!(),

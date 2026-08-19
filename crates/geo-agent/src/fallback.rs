@@ -65,7 +65,7 @@ impl KeywordRouter {
             }
         }
 
-        scores.sort_by(|a, b| b.1.cmp(&a.1));
+        scores.sort_by_key(|score| std::cmp::Reverse(score.1));
 
         if let Some((idx, score)) = scores.first() {
             warn!(

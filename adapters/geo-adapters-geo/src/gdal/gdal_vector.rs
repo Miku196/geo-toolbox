@@ -378,6 +378,18 @@ mod tests {
         assert!(!opts.skip_failures);
     }
 
+    #[tokio::test]
+    async fn test_convert_rejects_missing_input_before_spawning_ogr2ogr() {
+        let missing_input = std::env::temp_dir().join("geo-toolbox-missing-vector-input.gpkg");
+        let output = std::env::temp_dir().join("geo-toolbox-output.geojson");
+
+        let err = VectorOps::convert(&missing_input, &output, None)
+            .await
+            .expect_err("missing input must fail before invoking ogr2ogr");
+
+        assert!(matches!(err, GeoError::Io(ref io) if io.kind() == std::io::ErrorKind::NotFound));
+    }
+
     #[test]
     fn test_convert_args_order_destination_source_then_layers() {
         let opts = Ogr2OgrOptions {

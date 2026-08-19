@@ -9,14 +9,14 @@
 
 | 维度 | 状态 | 说明 |
 |------|------|------|
-| 仓库形态 | ✅ 单仓 | split 分仓库已合并归档（D:\geo\split-archived） |
+| 仓库形态 | ✅ 单仓 | 历史 split 副本已清理，主仓为唯一源码 |
 | 结构 | ✅ 15 core / 18 plugins / 5 adapters / 5 入口 | crates: cli·wasm·agent·server·wiring |
 | 编译质量 | ✅ 0 error 0 warning | `cargo check --workspace` |
 | Lint | ✅ clippy 0 deny | workspace 级 `-D warnings` |
-| 安全 | ⚠️ 7 vulns（5 项已豁免） | pyo3 wait-0.29、rsa no-fix、rumqttc 锁 webpki，见 .cargo/audit.toml |
+| 安全 | ✅ 无未豁免 RustSec 漏洞 | `cargo audit` 通过；7 项无上游修复的例外记录于 `.cargo/audit.toml` |
 | 测试 | ✅ 90 test targets 全绿 | 含 MCP E2E、高风险函数覆盖 |
 | 工具数量 | ✅ 240 tools / 89 MCP tools | `crates/geo-agent/tools_schema.json` |
-| 归档插件 | 8 个 | contrib/archived-plugins（不再构建） |
+| 归档插件 | 0 个 | 已移除不再维护的归档副本 |
 
 ---
 
@@ -57,6 +57,17 @@
 | pyo3 0.29 升级 | RUSTSEC-2026-0176/0177（wait-0.29） | pyo3 0.29 正式发布 |
 | rumqttc webpki 修复 | RUSTSEC-2026-0049/0098/0099/0104 | 上游解锁 webpki 0.102.8 |
 | rsa 替换 | RUSTSEC-2023-0071 no-fix | 迁移至 rustcrypto 系列 |
+
+---
+
+## 🛡️ 可靠性路线
+
+- [x] CI 覆盖 `master` / `develop`，含 Windows + Linux check/test、fmt、clippy、coverage、fuzz
+- [x] `cargo audit` 门禁；修复 `h2` RUSTSEC-2026-0258（升级至 0.4.16）
+- [x] 外部适配器边界测试：GDAL 输入在 spawn 前校验，QGIS 路径在 spawn 前拒绝越界
+- [ ] 真实外部服务契约：以容器/fixture 覆盖 PostGIS、MQTT、GDAL、QGIS 的成功、超时和失败映射
+- [ ] OGC capabilities 随注册的数据源、渲染器和处理器动态收敛，不声明不可用操作
+- [ ] 若对外分发瓦片，实现并用官方 fixture 验证 PMTiles v3；否则保持 GT v1 内部格式
 
 ---
 

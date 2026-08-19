@@ -22,7 +22,7 @@ pub struct ToolRegistry {
     pub tools: Vec<ToolDef>,
     /// name → description index for keyword matching
     #[allow(dead_code)]
-pub keywords: HashMap<String, Vec<String>>,
+    pub keywords: HashMap<String, Vec<String>>,
 }
 
 impl ToolRegistry {
@@ -88,7 +88,7 @@ impl ToolRegistry {
         }
 
         let mut scored: Vec<(String, usize)> = scores.into_iter().collect();
-        scored.sort_by(|a, b| b.1.cmp(&a.1));
+        scored.sort_by_key(|score| std::cmp::Reverse(score.1));
         scored.into_iter().map(|(name, _)| name).take(5).collect()
     }
 

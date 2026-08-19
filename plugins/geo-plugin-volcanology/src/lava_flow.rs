@@ -49,18 +49,20 @@ struct CostNode {
 
 impl PartialEq for CostNode {
     fn eq(&self, other: &Self) -> bool {
-        self.cost == other.cost
+        self.cost.total_cmp(&other.cost) == Ordering::Equal
     }
 }
 impl Eq for CostNode {}
 impl PartialOrd for CostNode {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        other.cost.partial_cmp(&self.cost) // 最小堆
+        Some(self.cmp(other))
     }
 }
 impl Ord for CostNode {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap_or(Ordering::Equal)
+        // Reverse order so BinaryHeap behaves as a min-heap; total_cmp is a
+        // total order even when a cost becomes NaN.
+        other.cost.total_cmp(&self.cost)
     }
 }
 

@@ -18,6 +18,7 @@ pub enum Tr55SoilGroup {
 }
 
 impl Tr55SoilGroup {
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
         match s.to_uppercase().as_str() {
             "A" => Tr55SoilGroup::A,
@@ -37,6 +38,7 @@ pub enum RainfallType {
 }
 
 impl RainfallType {
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
         match s.to_uppercase().as_str() {
             "I" => RainfallType::I,

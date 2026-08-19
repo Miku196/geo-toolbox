@@ -3,6 +3,12 @@
 use geo_core::errors::{GeoError, GeoResult};
 use geo_core::plugin::{ExternalAdapter, GeoFeature, Plugin, PluginCategory};
 pub struct CliAdapter;
+impl Default for CliAdapter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CliAdapter {
     pub fn new() -> Self {
         Self
@@ -91,7 +97,10 @@ mod tests {
     #[tokio::test]
     async fn test_cli_push_pull_not_implemented() {
         let a = CliAdapter::new();
-        assert!(matches!(a.push("t", &[]).await, Err(GeoError::Unimplemented(_))));
+        assert!(matches!(
+            a.push("t", &[]).await,
+            Err(GeoError::Unimplemented(_))
+        ));
         assert!(matches!(a.pull("q").await, Err(GeoError::Unimplemented(_))));
     }
 
