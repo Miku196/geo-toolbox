@@ -82,7 +82,11 @@ jobs:
 
       - name: Test
         # Some tests modify process-global environment state; run serially for deterministic CI.
-        run: cargo test --workspace -- --test-threads=1
+        # The Python cdylib requires a Python linker and is checked separately below.
+        run: cargo test --workspace --exclude geo-toolbox-python -- --test-threads=1
+
+      - name: Check Python bindings
+        run: cargo check -p geo-toolbox-python --lib
 
   native-gdal-bindings:
     name: Native GDAL bindings (Ubuntu)
