@@ -1,5 +1,7 @@
 # geo-toolbox
 
+English | [简体中文](README.zh-CN.md)
+
 Rust geospatial toolbox for building reproducible GIS automation pipelines. It combines pure Rust spatial primitives with feature-gated adapters for PostGIS, GDAL, PDAL, Google Earth Engine, QGIS, DuckDB, STAC, OSM, CAD, and simulation tools.
 
 ## What It Provides
