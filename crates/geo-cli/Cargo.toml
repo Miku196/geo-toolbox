@@ -34,10 +34,6 @@ geo-plugin-hydro = { path = "../../plugins/geo-plugin-hydro" }
 geo-plugin-geohazard = { path = "../../plugins/geo-plugin-geohazard" }
 geo-plugin-agri = { path = "../../plugins/geo-plugin-agri" }
 geo-plugin-urban = { path = "../../plugins/geo-plugin-urban" }
-geo-adapters-io = { path = "../../adapters/geo-adapters-io" }
-geo-adapters-geo = { path = "../../adapters/geo-adapters-geo" }
-geo-adapters-sim = { path = "../../adapters/geo-adapters-sim", optional = true }
-geo-adapter-qgis = { path = "../../adapters/geo-adapter-qgis", optional = true }
 
 clap.workspace = true
 geo.workspace = true
@@ -56,15 +52,15 @@ futures.workspace = true
 
 [features]
 default = ["postgis", "cad", "gee", "qgis", "gdal", "duckdb", "stac", "osm"]
-postgis = ["geo-adapters-geo/postgis", "geo-wiring/postgis", "sqlx"]
-cad = ["geo-adapters-io/cad", "geo-wiring/cad"]
+postgis = ["geo-wiring/postgis", "sqlx"]
+cad = ["geo-wiring/cad"]
 duckdb = ["geo-wiring/duckdb"]
 stac = ["geo-wiring/stac"]
 osm = ["geo-wiring/osm"]
-iot = ["geo-adapters-sim", "geo-adapters-sim/iot", "geo-wiring/iot"]
-gee = ["geo-adapters-geo/gee", "geo-wiring/gee"]
-qgis = ["geo-adapter-qgis", "geo-wiring/qgis"]
-gdal = ["geo-adapters-geo/gdal", "geo-wiring/gdal"]
-mqtt = ["iot"]
+iot = ["geo-wiring/iot"]
+gee = ["geo-wiring/gee"]
+qgis = ["geo-wiring/qgis"]
+gdal = ["geo-wiring/gdal"]
+mqtt = ["iot", "geo-wiring/mqtt"]
 minimal = []
 proj-crs = ["proj"]

@@ -6,7 +6,7 @@ use geo_vector::{
 
 fn make_polygon(pts_per_ring: usize) -> Polygon<f64> {
     let exterior = LineString::new(
-        (0..pts_per_ring)
+        (0..=pts_per_ring)
             .map(|i| {
                 let angle = 2.0 * std::f64::consts::PI * i as f64 / pts_per_ring as f64;
                 Coord {
@@ -20,26 +20,32 @@ fn make_polygon(pts_per_ring: usize) -> Polygon<f64> {
 }
 
 macro_rules! bench_buffer {
-    ($name:ident, $count:expr, $label:expr) => {
+    ($name:ident, $count:expr, $label:expr, $mode:expr) => {
         fn $name(c: &mut Criterion) {
             let poly = make_polygon($count);
             c.bench_function($label, |b| {
-                b.iter(|| {
-                    buffer(
-                        black_box(&poly),
-                        black_box(100.0),
-                        BufferMode::Precise {
-                            quadrant_segments: 4,
-                        },
-                    )
-                })
+                b.iter(|| buffer(black_box(&poly), black_box(100.0), $mode))
             });
         }
     };
 }
 
-bench_buffer!(bench_buffer_10, 10, "buffer_10");
-bench_buffer!(bench_buffer_1000, 1000, "buffer_1000");
+bench_buffer!(
+    bench_buffer_10,
+    10,
+    "buffer_precise_10",
+    BufferMode::Precise {
+        quadrant_segments: 4,
+    }
+);
+bench_buffer!(
+    bench_buffer_1000,
+    1000,
+    "buffer_convexhull_1000",
+    BufferMode::ConvexHull {
+        quadrant_segments: 4,
+    }
+);
 
 fn bench_buffer_100(c: &mut Criterion) {
     let poly = make_polygon(100);

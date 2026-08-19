@@ -31,7 +31,7 @@ async fn handle_gee(action: GeeAction) -> Result<(), Box<dyn std::error::Error>>
             output_gcs,
             params,
         } => {
-            use geo_adapters_geo::gee::{create_mq, GeeDispatcher};
+            use geo_wiring::gee::{create_mq, GeeDispatcher};
             let mq = create_mq().await?;
             let dispatcher = GeeDispatcher::new(mq);
             let extra = params.as_deref().and_then(|p| serde_json::from_str(p).ok());
@@ -46,7 +46,7 @@ async fn handle_gee(action: GeeAction) -> Result<(), Box<dyn std::error::Error>>
             year,
             output_gcs,
         } => {
-            use geo_adapters_geo::gee::{create_mq, GeeDispatcher};
+            use geo_wiring::gee::{create_mq, GeeDispatcher};
             let mq = create_mq().await?;
             let dispatcher = GeeDispatcher::new(mq);
             let cid = dispatcher
@@ -60,7 +60,7 @@ async fn handle_gee(action: GeeAction) -> Result<(), Box<dyn std::error::Error>>
             to,
             output_gcs,
         } => {
-            use geo_adapters_geo::gee::{create_mq, GeeDispatcher};
+            use geo_wiring::gee::{create_mq, GeeDispatcher};
             let mq = create_mq().await?;
             let dispatcher = GeeDispatcher::new(mq);
             let cid = dispatcher
@@ -69,7 +69,7 @@ async fn handle_gee(action: GeeAction) -> Result<(), Box<dyn std::error::Error>>
             println!("Change detection task dispatched: {cid}");
         }
         GeeAction::Status { cid } => {
-            use geo_adapters_geo::gee::GeeTracker;
+            use geo_wiring::gee::GeeTracker;
             let queue_dir =
                 std::env::var("GEO_QUEUE_DIR").unwrap_or_else(|_| "./queue".to_string());
             let tracker = GeeTracker::new_file(&queue_dir);
@@ -79,7 +79,7 @@ async fn handle_gee(action: GeeAction) -> Result<(), Box<dyn std::error::Error>>
             }
         }
         GeeAction::Summary => {
-            use geo_adapters_geo::gee::GeeTracker;
+            use geo_wiring::gee::GeeTracker;
             let queue_dir =
                 std::env::var("GEO_QUEUE_DIR").unwrap_or_else(|_| "./queue".to_string());
             let tracker = GeeTracker::new_file(&queue_dir);
@@ -99,7 +99,7 @@ async fn handle_gdal(action: GdalAction) -> Result<(), Box<dyn std::error::Error
             output,
             compression,
         } => {
-            use geo_adapters_geo::gdal::{CogOptions, RasterOps};
+            use geo_wiring::gdal::{CogOptions, RasterOps};
             let opts = CogOptions {
                 compression,
                 ..CogOptions::default()
@@ -112,7 +112,7 @@ async fn handle_gdal(action: GdalAction) -> Result<(), Box<dyn std::error::Error
             output,
             epsg,
         } => {
-            use geo_adapters_geo::gdal::RasterOps;
+            use geo_wiring::gdal::RasterOps;
             let result = RasterOps::reproject(&input, &output, epsg, None).await?;
             println!("Reprojected: {}", result.display());
         }
@@ -123,7 +123,7 @@ async fn handle_gdal(action: GdalAction) -> Result<(), Box<dyn std::error::Error
             r#where,
             overwrite,
         } => {
-            use geo_adapters_geo::gdal::{Ogr2OgrOptions, VectorOps};
+            use geo_wiring::gdal::{Ogr2OgrOptions, VectorOps};
             let opts = Ogr2OgrOptions {
                 target_epsg: epsg,
                 where_clause: r#where,
@@ -139,7 +139,7 @@ async fn handle_gdal(action: GdalAction) -> Result<(), Box<dyn std::error::Error
             cog,
             local,
         } => {
-            use geo_adapters_geo::gdal::{GcsBridge, GcsBridgeConfig};
+            use geo_wiring::gdal::{GcsBridge, GcsBridgeConfig};
             let mut config = GcsBridgeConfig::default();
             if local {
                 config.minio_endpoint = None;
@@ -164,7 +164,7 @@ async fn handle_qgis(action: QgisAction) -> Result<(), Box<dyn std::error::Error
             output,
             server,
         } => {
-            use geo_adapter_qgis::grpc_client::{QgisClient, QgisInput, QgisJob, QgisToolStep};
+            use geo_wiring::qgis::{QgisClient, QgisInput, QgisJob, QgisToolStep};
             let client = QgisClient::new(&server);
             let params_value: serde_json::Value = serde_json::from_str(&params)?;
             let job = QgisJob {
@@ -194,7 +194,7 @@ async fn handle_qgis(action: QgisAction) -> Result<(), Box<dyn std::error::Error
             output,
             extra,
         } => {
-            use geo_adapter_qgis::process_runner::{BatchQgisRunner, QgisProcessConfig, QgisTool};
+            use geo_wiring::qgis::{BatchQgisRunner, QgisProcessConfig, QgisTool};
             let runner = BatchQgisRunner::new(QgisProcessConfig::default());
             let extra_pairs: Vec<[String; 2]> = serde_json::from_str(&extra)?;
             let mut params = vec![("INPUT".into(), input.clone())];
@@ -213,7 +213,7 @@ async fn handle_qgis(action: QgisAction) -> Result<(), Box<dyn std::error::Error
             println!("Batch complete: {}", result.display());
         }
         QgisAction::Health { server } => {
-            use geo_adapter_qgis::grpc_client::QgisClient;
+            use geo_wiring::qgis::QgisClient;
             let client = QgisClient::new(&server);
             let healthy = client.health_check().await?;
             println!(

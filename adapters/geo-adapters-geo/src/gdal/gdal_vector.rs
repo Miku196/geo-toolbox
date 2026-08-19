@@ -86,6 +86,61 @@ pub struct Ogr2OgrOptions {
 /// Vector operations via `ogr2ogr`.
 pub struct VectorOps;
 
+fn build_convert_args(
+    input: &Path,
+    output: &Path,
+    output_format: VectorFormat,
+    opts: &Ogr2OgrOptions,
+) -> Vec<String> {
+    let mut args = Vec::new();
+
+    if opts.overwrite {
+        args.push("-overwrite".into());
+    }
+    if opts.skip_failures {
+        args.push("-skipfailures".into());
+    }
+
+    args.push("-f".into());
+    args.push(output_format.driver_name().to_string());
+
+    if let Some(simplify) = opts.simplify {
+        args.push("-simplify".into());
+        args.push(simplify.to_string());
+    }
+    if let Some(tgt_epsg) = opts.target_epsg {
+        args.push("-t_srs".into());
+        args.push(format!("EPSG:{tgt_epsg}"));
+    }
+    if let Some(src_epsg) = opts.source_epsg {
+        args.push("-s_srs".into());
+        args.push(format!("EPSG:{src_epsg}"));
+    }
+    if let Some(where_clause) = &opts.where_clause {
+        args.push("-where".into());
+        args.push(where_clause.clone());
+    }
+    if let Some(limit) = opts.limit {
+        args.push("-limit".into());
+        args.push(limit.to_string());
+    }
+    if let Some((lon_col, lat_col)) = &opts.geometry_columns {
+        args.push("-oo".into());
+        args.push(format!("GEOM_POSSIBLE_NAMES={lon_col},{lat_col}"));
+        args.push("-oo".into());
+        args.push("AUTODETECT_TYPE=YES".into());
+    }
+
+    // ogr2ogr requires destination and source before optional layer names.
+    args.push(output.to_string_lossy().into_owned());
+    args.push(input.to_string_lossy().into_owned());
+    if let Some(layers) = &opts.layers {
+        args.extend(layers.iter().cloned());
+    }
+
+    args
+}
+
 impl VectorOps {
     /// Convert between any two OGR-supported vector formats.
     ///
@@ -113,66 +168,7 @@ impl VectorOps {
             ))
         })?;
 
-        // Build ogr2ogr arguments.
-        let mut args: Vec<String> = Vec::new();
-
-        if opts.overwrite {
-            args.push("-overwrite".into());
-        }
-
-        if opts.skip_failures {
-            args.push("-skipfailures".into());
-        }
-
-        args.push("-f".into());
-        args.push(output_format.driver_name().to_string());
-
-        if let Some(simplify) = opts.simplify {
-            args.push("-simplify".into());
-            args.push(simplify.to_string());
-        }
-
-        if let Some(tgt_epsg) = opts.target_epsg {
-            args.push("-t_srs".into());
-            args.push(format!("EPSG:{tgt_epsg}"));
-        }
-
-        if let Some(src_epsg) = opts.source_epsg {
-            args.push("-s_srs".into());
-            args.push(format!("EPSG:{src_epsg}"));
-        }
-
-        if let Some(where_clause) = &opts.where_clause {
-            args.push("-where".into());
-            args.push(where_clause.clone());
-        }
-
-        if let Some(limit) = opts.limit {
-            args.push("-limit".into());
-            args.push(limit.to_string());
-        }
-
-        if let Some((lon_col, lat_col)) = &opts.geometry_columns {
-            args.push("-oo".into());
-            args.push(format!("GEOM_POSSIBLE_NAMES={lon_col},{lat_col}"));
-            args.push("-oo".into());
-            args.push("AUTODETECT_TYPE=YES".into());
-        }
-
-        // Layers
-        if let Some(layers) = &opts.layers {
-            for layer in layers {
-                args.push(layer.clone());
-            }
-            args.push(input.to_string_lossy().to_string());
-        }
-        // If no layers specified, add output and input at the end.
-        // Actually ogr2ogr syntax is: ogr2ogr [options] dst_datasource src_datasource [layers]
-        // We already added dst at position 2 (after -f driver). Now add src.
-        if opts.layers.is_none() {
-            args.push(input.to_string_lossy().to_string());
-        }
-
+        let args = build_convert_args(input, &output, output_format, &opts);
         Self::run_ogr2ogr(&args).await?;
 
         tracing::info!(
@@ -380,5 +376,37 @@ mod tests {
         assert!(opts.target_epsg.is_none());
         assert!(!opts.overwrite);
         assert!(!opts.skip_failures);
+    }
+
+    #[test]
+    fn test_convert_args_order_destination_source_then_layers() {
+        let opts = Ogr2OgrOptions {
+            overwrite: true,
+            target_epsg: Some(3857),
+            layers: Some(vec!["roads".into(), "buildings".into()]),
+            ..Default::default()
+        };
+
+        let args = build_convert_args(
+            Path::new("input.gpkg"),
+            Path::new("output.geojson"),
+            VectorFormat::GeoJson,
+            &opts,
+        );
+
+        assert_eq!(
+            args,
+            vec![
+                "-overwrite",
+                "-f",
+                "GeoJSON",
+                "-t_srs",
+                "EPSG:3857",
+                "output.geojson",
+                "input.gpkg",
+                "roads",
+                "buildings",
+            ]
+        );
     }
 }

@@ -83,7 +83,7 @@ pub fn populate_defaults(reg: &mut PluginRegistry, config: Option<&GeoConfig>) {
     }
     #[cfg(feature = "iot")]
     {
-        let _ = geo_adapters_sim::iot::register_tools(reg);
+        let _ = geo_adapters_sim::iot::iot_tools::register_tools(reg);
     }
 }
 
@@ -126,3 +126,54 @@ pub fn assemble_hydro_plugin(
     let modflow = assemble_modflow_generator();
     geo_plugin_hydro::HydroPlugin::new(config).with_modflow_generator(modflow)
 }
+// ════════════════════════════════════════════════════════════════
+// Composition-root adapter facade consumed by geo-cli
+//
+// geo-cli must NOT depend on adapter crates directly (five-layer
+// single-direction dependency rule).  It reaches every adapter exclusively
+// through these wiring-provided re-exports.  geo-wiring remains the ONLY
+// crate in the stack that depends on Plugin + Adapter.
+// ════════════════════════════════════════════════════════════════
+
+/// PostGIS adapter surface used by `geo-cli store` / `output report`.
+#[cfg(feature = "postgis")]
+pub mod postgis {
+    pub use geo_adapters_geo::postgis::{
+        dvc_available, dvc_hash, dvc_pull, dvc_snapshot, run_migrations, PostgisCarbonEngine,
+        PostgisStore,
+    };
+}
+
+/// GEE adapter surface used by `geo-cli process gee`.
+#[cfg(feature = "gee")]
+pub mod gee {
+    pub use geo_adapters_geo::gee::{create_mq, GeeDispatcher, GeeTracker};
+}
+
+/// GDAL adapter surface used by `geo-cli process gdal`.
+#[cfg(feature = "gdal")]
+pub mod gdal {
+    pub use geo_adapters_geo::gdal::{
+        CogOptions, GcsBridge, GcsBridgeConfig, Ogr2OgrOptions, RasterOps, VectorOps,
+    };
+}
+
+/// CAD (I/O) adapter surface used by `geo-cli output` (Geojson/Dxf/Excel).
+#[cfg(feature = "cad")]
+pub mod cad {
+    pub use geo_adapters_io::cad::{DxfExporter, ExcelDashboard, GeoJsonExporter};
+}
+
+/// IoT / MQTT adapter surface used by `geo-cli ingest mqtt`.
+#[cfg(feature = "mqtt")]
+pub mod iot {
+    pub use geo_adapters_sim::iot::iot_mqtt::{MqttConfig, MqttIngestor};
+}
+
+/// QGIS adapter surface used by `geo-cli process qgis`.
+#[cfg(feature = "qgis")]
+pub mod qgis {
+    pub use geo_adapter_qgis::grpc_client::{QgisClient, QgisInput, QgisJob, QgisToolStep};
+    pub use geo_adapter_qgis::process_runner::{BatchQgisRunner, QgisProcessConfig, QgisTool};
+}
+

@@ -92,7 +92,7 @@ async fn handle_geojson_from_db(
     aggregate: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let pool = connect_db().await?;
-    let exporter = geo_adapters_io::cad::GeoJsonExporter::new(pool);
+    let exporter = geo_wiring::cad::GeoJsonExporter::new(pool);
     let count = if aggregate {
         exporter.from_aggregate_sql(sql, output).await?
     } else {
@@ -114,7 +114,7 @@ async fn handle_report(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let pool = connect_db().await?;
     let aoi_id = uuid::Uuid::parse_str(aoi)?;
-    let engine = geo_adapters_geo::postgis::PostgisCarbonEngine::new(pool);
+    let engine = geo_wiring::postgis::PostgisCarbonEngine::new(pool);
     let results = engine.query_by_aoi(aoi_id).await?;
     let total: f64 = results.iter().map(|r| r.emission_tco2e).sum();
     let breakdown: Vec<geo_report::report::LandcoverBreakdown> = results
@@ -170,7 +170,7 @@ pub async fn handle(
         #[cfg(feature = "cad")]
         OutputAction::Excel { sql, output, sheet } => {
             let pool = connect_db().await?;
-            let dashboard = geo_adapters_io::cad::ExcelDashboard::new(pool);
+            let dashboard = geo_wiring::cad::ExcelDashboard::new(pool);
             dashboard.from_sql(&sql, &output, &sheet).await?;
             println!("Excel dashboard: {output}");
         }
@@ -207,7 +207,7 @@ pub async fn handle(
             to_epsg,
         } => {
             let pool = connect_db().await?;
-            let exporter = geo_adapters_io::cad::DxfExporter::new(pool);
+            let exporter = geo_wiring::cad::DxfExporter::new(pool);
             let count = exporter.from_sql(&sql, &output, from_epsg, to_epsg).await?;
             println!("DXF: {output} ({count} entities)");
         }
