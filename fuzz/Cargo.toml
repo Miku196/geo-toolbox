@@ -15,6 +15,7 @@ arbitrary = { version = "1", features = ["derive"] }
 geo-core = { path = "../core/geo-core" }
 geo-io = { path = "../core/geo-io" }
 serde_json = "1"
+geojson = "0.24.2"
 
 [lib]
 path = "fuzz_lib.rs"

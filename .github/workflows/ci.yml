@@ -81,7 +81,8 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-build-test-
 
       - name: Test
-        run: cargo test --workspace
+        # Some tests modify process-global environment state; run serially for deterministic CI.
+        run: cargo test --workspace -- --test-threads=1
 
   native-gdal-bindings:
     name: Native GDAL bindings (Ubuntu)
@@ -143,6 +144,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   coverage:
     name: Coverage

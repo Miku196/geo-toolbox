@@ -1,7 +1,7 @@
-/// Fuzz target: WKT (Well-Known Text) parsing.
-///
-/// Exercise geo_core::types::from_wkt with arbitrary input.
-/// The goal is to ensure no panic on malformed or truncated WKT strings.
+//! Fuzz target: WKT (Well-Known Text) parsing.
+//!
+//! Exercise geo_core::types::from_wkt with arbitrary input.
+//! The goal is to ensure no panic on malformed or truncated WKT strings.
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;

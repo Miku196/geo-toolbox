@@ -158,7 +158,8 @@ pub fn from_wkt(wkt_str: &str) -> Result<Geometry<f64>, crate::GeoError> {
     }
 
     Err(crate::GeoError::Validation(format!(
-        "unsupported WKT: {trimmed}"
+        "unsupported WKT input ({} bytes)",
+        trimmed.len()
     )))
 }
 
@@ -193,6 +194,15 @@ mod tests {
             }
             _ => panic!("expected Point"),
         }
+    }
+
+    #[test]
+    fn test_from_wkt_error_does_not_echo_unbounded_input() {
+        let input = "X".repeat(16 * 1024);
+        let err = from_wkt(&input).expect_err("unsupported WKT must be rejected");
+
+        assert!(err.to_string().contains("unsupported WKT input"));
+        assert!(!err.to_string().contains(&input));
     }
 
     #[test]
