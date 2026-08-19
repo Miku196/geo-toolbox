@@ -20,10 +20,17 @@
 //! | Setup complexity   | None (just QGIS CLIs) | Need PyQGIS service daemon|
 //! | Best for          | Infrequent batch jobs | Frequent interactive use  |
 
+use crate::path_safety::{default_allowed_roots, validate_safe_path};
 use geo_core::errors::{GeoError, GeoResult};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+
+/// Validate a path string against the adapter's allowed roots and map the
+/// failure to a `GeoError::Validation`.
+fn require_safe_path(path: &str) -> GeoResult<PathBuf> {
+    validate_safe_path(path, &default_allowed_roots()).map_err(GeoError::Validation)
+}
 
 /// A single QGIS processing tool invocation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,6 +75,17 @@ impl BatchQgisRunner {
 
     /// Run a single QGIS tool and return the output path.
     pub async fn run_tool(&self, tool: &QgisTool) -> GeoResult<PathBuf> {
+        // Defense-in-depth: any path-bearing parameter (input/output/overlay/
+        // raster) must resolve inside the allowed roots before it is handed to
+        // the backend, even when callers bypass the convenience methods.
+        const PATH_KEYS: &[&str] =
+            &["INPUT", "OUTPUT", "OVERLAY", "INPUT_RASTER", "POLYGONS", "RASTER"];
+        for (key, value) in &tool.params {
+            if PATH_KEYS.contains(&key.as_str()) {
+                require_safe_path(value)?;
+            }
+        }
+
         let mut args: Vec<String> = vec!["run".to_string()];
 
         if let Some(profile) = &self.config.profile {
@@ -107,7 +125,7 @@ impl BatchQgisRunner {
         // Parse output to find the result path.
         // qgis_process outputs the result path in stdout as the last line, usually.
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let result_path = self.parse_output_path(&stdout, &tool.params);
+        let result_path = self.parse_output_path(&stdout, &tool.params)?;
 
         tracing::info!(
             "qgis_process completed: {} → {}",
@@ -124,14 +142,14 @@ impl BatchQgisRunner {
         tools: &[QgisTool],
         initial_input: &Path,
     ) -> GeoResult<PathBuf> {
-        geo_core::errors::validate_safe_path(&initial_input.to_string_lossy())?;
+        let initial_input = require_safe_path(&initial_input.to_string_lossy())?;
         if tools.is_empty() {
             return Err(GeoError::Validation(
                 "Pipeline requires at least one tool".into(),
             ));
         }
 
-        let mut current_input = initial_input.to_path_buf();
+        let mut current_input = initial_input;
 
         for (i, tool) in tools.iter().enumerate() {
             // Replace INPUT with current_input path.
@@ -179,16 +197,14 @@ impl BatchQgisRunner {
         distance: f64,
         output: impl AsRef<Path>,
     ) -> GeoResult<PathBuf> {
-        geo_core::errors::validate_safe_path(&input.as_ref().to_string_lossy())?;
+        let input = require_safe_path(&input.as_ref().to_string_lossy())?;
+        let output = require_safe_path(&output.as_ref().to_string_lossy())?;
         self.run_tool(&QgisTool {
             algorithm: "native:buffer".into(),
             params: vec![
-                ("INPUT".into(), input.as_ref().to_string_lossy().to_string()),
+                ("INPUT".into(), input.to_string_lossy().to_string()),
                 ("DISTANCE".into(), distance.to_string()),
-                (
-                    "OUTPUT".into(),
-                    output.as_ref().to_string_lossy().to_string(),
-                ),
+                ("OUTPUT".into(), output.to_string_lossy().to_string()),
             ],
         })
         .await
@@ -201,16 +217,14 @@ impl BatchQgisRunner {
         target_epsg: u16,
         output: impl AsRef<Path>,
     ) -> GeoResult<PathBuf> {
-        geo_core::errors::validate_safe_path(&input.as_ref().to_string_lossy())?;
+        let input = require_safe_path(&input.as_ref().to_string_lossy())?;
+        let output = require_safe_path(&output.as_ref().to_string_lossy())?;
         self.run_tool(&QgisTool {
             algorithm: "native:reprojectlayer".into(),
             params: vec![
-                ("INPUT".into(), input.as_ref().to_string_lossy().to_string()),
+                ("INPUT".into(), input.to_string_lossy().to_string()),
                 ("TARGET_CRS".into(), format!("EPSG:{target_epsg}")),
-                (
-                    "OUTPUT".into(),
-                    output.as_ref().to_string_lossy().to_string(),
-                ),
+                ("OUTPUT".into(), output.to_string_lossy().to_string()),
             ],
         })
         .await
@@ -223,20 +237,15 @@ impl BatchQgisRunner {
         overlay: impl AsRef<Path>,
         output: impl AsRef<Path>,
     ) -> GeoResult<PathBuf> {
-        geo_core::errors::validate_safe_path(&input.as_ref().to_string_lossy())?;
-        geo_core::errors::validate_safe_path(&overlay.as_ref().to_string_lossy())?;
+        let input = require_safe_path(&input.as_ref().to_string_lossy())?;
+        let overlay = require_safe_path(&overlay.as_ref().to_string_lossy())?;
+        let output = require_safe_path(&output.as_ref().to_string_lossy())?;
         self.run_tool(&QgisTool {
             algorithm: "native:clip".into(),
             params: vec![
-                ("INPUT".into(), input.as_ref().to_string_lossy().to_string()),
-                (
-                    "OVERLAY".into(),
-                    overlay.as_ref().to_string_lossy().to_string(),
-                ),
-                (
-                    "OUTPUT".into(),
-                    output.as_ref().to_string_lossy().to_string(),
-                ),
+                ("INPUT".into(), input.to_string_lossy().to_string()),
+                ("OVERLAY".into(), overlay.to_string_lossy().to_string()),
+                ("OUTPUT".into(), output.to_string_lossy().to_string()),
             ],
         })
         .await
@@ -249,20 +258,15 @@ impl BatchQgisRunner {
         overlay: impl AsRef<Path>,
         output: impl AsRef<Path>,
     ) -> GeoResult<PathBuf> {
-        geo_core::errors::validate_safe_path(&input.as_ref().to_string_lossy())?;
-        geo_core::errors::validate_safe_path(&overlay.as_ref().to_string_lossy())?;
+        let input = require_safe_path(&input.as_ref().to_string_lossy())?;
+        let overlay = require_safe_path(&overlay.as_ref().to_string_lossy())?;
+        let output = require_safe_path(&output.as_ref().to_string_lossy())?;
         self.run_tool(&QgisTool {
             algorithm: "native:intersection".into(),
             params: vec![
-                ("INPUT".into(), input.as_ref().to_string_lossy().to_string()),
-                (
-                    "OVERLAY".into(),
-                    overlay.as_ref().to_string_lossy().to_string(),
-                ),
-                (
-                    "OUTPUT".into(),
-                    output.as_ref().to_string_lossy().to_string(),
-                ),
+                ("INPUT".into(), input.to_string_lossy().to_string()),
+                ("OVERLAY".into(), overlay.to_string_lossy().to_string()),
+                ("OUTPUT".into(), output.to_string_lossy().to_string()),
             ],
         })
         .await
@@ -275,20 +279,15 @@ impl BatchQgisRunner {
         overlay: impl AsRef<Path>,
         output: impl AsRef<Path>,
     ) -> GeoResult<PathBuf> {
-        geo_core::errors::validate_safe_path(&input.as_ref().to_string_lossy())?;
-        geo_core::errors::validate_safe_path(&overlay.as_ref().to_string_lossy())?;
+        let input = require_safe_path(&input.as_ref().to_string_lossy())?;
+        let overlay = require_safe_path(&overlay.as_ref().to_string_lossy())?;
+        let output = require_safe_path(&output.as_ref().to_string_lossy())?;
         self.run_tool(&QgisTool {
             algorithm: "native:union".into(),
             params: vec![
-                ("INPUT".into(), input.as_ref().to_string_lossy().to_string()),
-                (
-                    "OVERLAY".into(),
-                    overlay.as_ref().to_string_lossy().to_string(),
-                ),
-                (
-                    "OUTPUT".into(),
-                    output.as_ref().to_string_lossy().to_string(),
-                ),
+                ("INPUT".into(), input.to_string_lossy().to_string()),
+                ("OVERLAY".into(), overlay.to_string_lossy().to_string()),
+                ("OUTPUT".into(), output.to_string_lossy().to_string()),
             ],
         })
         .await
@@ -302,27 +301,19 @@ impl BatchQgisRunner {
         output: impl AsRef<Path>,
         stats: &[&str], // e.g., ["mean", "sum", "count"]
     ) -> GeoResult<PathBuf> {
-        geo_core::errors::validate_safe_path(&polygons.as_ref().to_string_lossy())?;
-        geo_core::errors::validate_safe_path(&raster.as_ref().to_string_lossy())?;
+        let polygons = require_safe_path(&polygons.as_ref().to_string_lossy())?;
+        let raster = require_safe_path(&raster.as_ref().to_string_lossy())?;
+        let output = require_safe_path(&output.as_ref().to_string_lossy())?;
         let stats_str = stats.join(",");
         self.run_tool(&QgisTool {
             algorithm: "native:zonalstatisticsfb".into(),
             params: vec![
-                (
-                    "INPUT".into(),
-                    polygons.as_ref().to_string_lossy().to_string(),
-                ),
-                (
-                    "INPUT_RASTER".into(),
-                    raster.as_ref().to_string_lossy().to_string(),
-                ),
+                ("INPUT".into(), polygons.to_string_lossy().to_string()),
+                ("INPUT_RASTER".into(), raster.to_string_lossy().to_string()),
                 ("RASTER_BAND".into(), "1".into()),
                 ("COLUMN_PREFIX".into(), "zs_".into()),
                 ("STATISTICS".into(), stats_str),
-                (
-                    "OUTPUT".into(),
-                    output.as_ref().to_string_lossy().to_string(),
-                ),
+                ("OUTPUT".into(), output.to_string_lossy().to_string()),
             ],
         })
         .await
@@ -349,27 +340,41 @@ impl BatchQgisRunner {
 
     // ─── Private helpers ───
 
-    /// Extract the output file path from qgis_process stdout or params.
-    fn parse_output_path(&self, stdout: &str, params: &[(String, String)]) -> PathBuf {
-        // Try to find OUTPUT=... in stdout first.
+    /// Extract the output file path from qgis_process stdout or params and
+    /// whitelist-validate it against the allowed roots.
+    ///
+    /// The returned path is taken from untrusted backend stdout/params, so it
+    /// must pass validation before it is used as a pipeline INPUT or returned
+    /// to callers.
+    fn parse_output_path(&self, stdout: &str, params: &[(String, String)]) -> GeoResult<PathBuf> {
+        let mut candidate: Option<&str> = None;
+
+        // Try to find OUTPUT: ... in stdout first.
         for line in stdout.lines() {
             if line.contains("OUTPUT:") {
                 let path = line.split("OUTPUT:").nth(1).unwrap_or("").trim();
                 if !path.is_empty() {
-                    return PathBuf::from(path);
+                    candidate = Some(path);
+                    break;
                 }
             }
         }
 
         // Fall back to the OUTPUT param value.
-        for (key, value) in params {
-            if key == "OUTPUT" {
-                return PathBuf::from(value);
+        if candidate.is_none() {
+            for (key, value) in params {
+                if key == "OUTPUT" {
+                    candidate = Some(value);
+                    break;
+                }
             }
         }
 
-        // Last resort.
-        PathBuf::from("output.gpkg")
+        // Last resort: a relative name under the workspace (an allowed root).
+        let candidate = candidate.unwrap_or("output.gpkg");
+
+        validate_safe_path(candidate, &default_allowed_roots())
+            .map_err(|e| GeoError::Validation(format!("unsafe output path from backend: {e}")))
     }
 }
 
@@ -572,11 +577,29 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_output_from_params() {
+    fn test_parse_output_from_params_safe() {
         let runner = BatchQgisRunner::new(QgisProcessConfig::default());
-        let params = vec![("OUTPUT".into(), "/tmp/my_result.gpkg".into())];
-        let path = runner.parse_output_path("some output text", &params);
-        assert_eq!(path, PathBuf::from("/tmp/my_result.gpkg"));
+        // A candidate inside an allowed root (the temp dir) parses fine.
+        let safe = std::env::temp_dir().join("mysafe_result.gpkg");
+        let params = vec![("OUTPUT".into(), safe.to_string_lossy().to_string())];
+        let path = runner
+            .parse_output_path("some output text", &params)
+            .expect("path inside allowed root should parse");
+        assert_eq!(path, safe);
+    }
+
+    #[test]
+    fn test_parse_output_rejects_escape() {
+        let runner = BatchQgisRunner::new(QgisProcessConfig::default());
+        // Backend claiming an output outside the allowed roots must be rejected
+        // before it can be fed back as a pipeline INPUT.
+        let params = vec![("OUTPUT".into(), "../../../../etc/evil".into())];
+        assert!(runner
+            .parse_output_path("OUTPUT: ../../../../etc/evil", &params)
+            .is_err());
+        // An absolute system path is likewise refused.
+        let params_abs = vec![("OUTPUT".into(), "/etc/passwd".into())];
+        assert!(runner.parse_output_path("nothing here", &params_abs).is_err());
     }
 
     // ── JobQueue tests ──

@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::grpc_client::QgisClient;
+use crate::path_safety::{default_allowed_roots, validate_safe_path};
 use crate::process_runner::{BatchQgisRunner, QgisProcessConfig};
 
 /// Backend selection for QGIS processing.
@@ -419,33 +420,43 @@ impl ExternalAdapter for QgisAdapter {
         command: &str,
         params: serde_json::Value,
     ) -> GeoResult<serde_json::Value> {
+        // Validate every path parameter against the adapter's allowed roots
+        // (workspace + temp dir) before anything reaches the backend. Any
+        // escape (absolute system path, `..` traversal, symlink out) is a
+        // Validation error and aborts the operation.
+        fn safe_path(name: &str, params: &serde_json::Value) -> GeoResult<PathBuf> {
+            let raw = params[name].as_str().unwrap_or("");
+            validate_safe_path(raw, &default_allowed_roots())
+                .map_err(|e| GeoError::Validation(format!("{name} is unsafe: {e}")))
+        }
+
         match command {
             "buffer" => {
-                let input = Path::new(params["input"].as_str().unwrap_or("input"));
+                let input = safe_path("input", &params)?;
                 let distance = params["distance"].as_f64().unwrap_or(0.0);
-                let output = Path::new(params["output"].as_str().unwrap_or("output"));
-                let result = self.buffer(input, distance, output).await?;
+                let output = safe_path("output", &params)?;
+                let result = self.buffer(&input, distance, &output).await?;
                 Ok(serde_json::json!({"output": result.to_string_lossy()}))
             }
             "reproject" => {
-                let input = Path::new(params["input"].as_str().unwrap_or("input"));
+                let input = safe_path("input", &params)?;
                 let epsg = params["epsg"].as_u64().unwrap_or(4326) as u16;
-                let output = Path::new(params["output"].as_str().unwrap_or("output"));
-                let result = self.reproject(input, epsg, output).await?;
+                let output = safe_path("output", &params)?;
+                let result = self.reproject(&input, epsg, &output).await?;
                 Ok(serde_json::json!({"output": result.to_string_lossy()}))
             }
             "clip" => {
-                let input = Path::new(params["input"].as_str().unwrap_or("input"));
-                let overlay = Path::new(params["overlay"].as_str().unwrap_or("overlay"));
-                let output = Path::new(params["output"].as_str().unwrap_or("output"));
-                let result = self.clip(input, overlay, output).await?;
+                let input = safe_path("input", &params)?;
+                let overlay = safe_path("overlay", &params)?;
+                let output = safe_path("output", &params)?;
+                let result = self.clip(&input, &overlay, &output).await?;
                 Ok(serde_json::json!({"output": result.to_string_lossy()}))
             }
             "intersect" => {
-                let input = Path::new(params["input"].as_str().unwrap_or("input"));
-                let overlay = Path::new(params["overlay"].as_str().unwrap_or("overlay"));
-                let output = Path::new(params["output"].as_str().unwrap_or("output"));
-                let result = self.intersect(input, overlay, output).await?;
+                let input = safe_path("input", &params)?;
+                let overlay = safe_path("overlay", &params)?;
+                let output = safe_path("output", &params)?;
+                let result = self.intersect(&input, &overlay, &output).await?;
                 Ok(serde_json::json!({"output": result.to_string_lossy()}))
             }
             _ => Err(GeoError::Other(format!("Unknown QGIS command: {command}"))),
@@ -469,5 +480,45 @@ mod tests {
         let adapter = QgisAdapter::new_rest("http://localhost:9100");
         assert_eq!(adapter.name(), "qgis");
         assert!(adapter.requires_network());
+    }
+
+    #[tokio::test]
+    async fn test_execute_rejects_unsafe_output() {
+        // Path validation runs before any backend call, so an unsafe output
+        // must be rejected with a Validation error without invoking qgis.
+        let adapter = QgisAdapter::new_subprocess(QgisProcessConfig::default());
+        let mut bad_outputs = vec!["../../../../etc/evil", "/etc/evil"];
+        #[cfg(windows)]
+        bad_outputs.push("C:\\Windows\\System32\\evil");
+
+        for bad in bad_outputs {
+            let params = serde_json::json!({
+                "input": "data.gpkg",
+                "distance": 10.0,
+                "output": bad,
+            });
+            let res = adapter.execute("buffer", params).await;
+            assert!(
+                matches!(res, Err(GeoError::Validation(_))),
+                "expected Validation error for {bad:?}, got {res:?}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_execute_accepts_workspace_relative_output() {
+        // A safe workspace-relative output must pass path validation and move
+        // on to the (here unavailable) backend — not be rejected as unsafe.
+        let adapter = QgisAdapter::new_subprocess(QgisProcessConfig::default());
+        let params = serde_json::json!({
+            "input": "data.gpkg",
+            "distance": 10.0,
+            "output": "out.gpkg",
+        });
+        let res = adapter.execute("buffer", params).await;
+        assert!(
+            !matches!(res, Err(GeoError::Validation(_))),
+            "safe relative output must not be rejected by validation: {res:?}"
+        );
     }
 }

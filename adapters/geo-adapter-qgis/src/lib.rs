@@ -2,6 +2,7 @@
 #![allow(missing_docs)]
 pub mod adapter;
 pub mod grpc_client;
+pub mod path_safety;
 pub mod process_runner;
 pub mod tools;
 pub use adapter::QgisAdapter;

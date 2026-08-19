@@ -36,22 +36,38 @@ impl ExternalAdapter for CadAdapter {
         "dxf"
     }
     async fn health_check(&self) -> GeoResult<bool> {
-        Ok(true)
+        // CadAdapter has no CAD/DXF backend wired on itself (exporting lives on
+        // DxfExporter / GeoJsonExporter), so it is genuinely unavailable here.
+        // Report Ok(false) instead of a fake Ok(true).
+        Ok(false)
     }
     async fn external_version(&self) -> GeoResult<String> {
-        Ok("DXF R12".into())
+        // No real DXF/DWG driver is queried for a version by this adapter.
+        Err(GeoError::Unimplemented(
+            "cad CadAdapter: external_version not queried — no DXF/DWG driver wired".into(),
+        ))
     }
     fn requires_network(&self) -> bool {
         false
     }
     async fn push(&self, _t: &str, _d: &[GeoFeature]) -> GeoResult<u64> {
-        Ok(0)
+        Err(GeoError::Unimplemented(
+            "cad CadAdapter: push not implemented — DXF/DWG export wiring unfinished (use cad_export_geojson / DxfExporter)"
+                .into(),
+        ))
     }
     async fn pull(&self, _q: &str) -> GeoResult<Vec<GeoFeature>> {
-        Ok(vec![])
+        Err(GeoError::Unimplemented(
+            "cad CadAdapter: pull not implemented — no CAD data source wiring".into(),
+        ))
     }
     async fn execute(&self, _c: &str, _p: serde_json::Value) -> GeoResult<serde_json::Value> {
-        Ok(serde_json::json!({"status":"ok"}))
+        // Explicit failure instead of a fake {"status":"ok"}: the DXF/DWG export
+        // backend is not wired to CadAdapter::execute.
+        Err(GeoError::Unimplemented(
+            "cad CadAdapter: execute not implemented (DXF/DWG exporter not wired to this adapter; use DxfExporter/GeoJsonExporter)"
+                .into(),
+        ))
     }
 }
 
@@ -520,11 +536,47 @@ pub fn register_tools(registry: &mut geo_registry::PluginRegistry) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use geo_core::errors::GeoError;
 
     #[test]
     fn test_cad_adapter() {
         let a = CadAdapter::new();
         assert!(!a.requires_network());
+    }
+
+    #[tokio::test]
+    async fn test_cad_execute_does_not_fake_success() {
+        // The DXF export backend is not wired to CadAdapter::execute: it must fail
+        // explicitly instead of returning a fake {"status":"ok"}.
+        let a = CadAdapter::new();
+        let err = a
+            .execute("dxf_export", serde_json::json!({"input": "x.geojson"}))
+            .await
+            .expect_err("execute must not fake success");
+        assert!(matches!(err, GeoError::Unimplemented(_)), "got {err:?}");
+    }
+
+    #[tokio::test]
+    async fn test_cad_push_pull_not_implemented() {
+        let a = CadAdapter::new();
+        assert!(matches!(a.push("t", &[]).await, Err(GeoError::Unimplemented(_))));
+        assert!(matches!(a.pull("q").await, Err(GeoError::Unimplemented(_))));
+    }
+
+    #[tokio::test]
+    async fn test_cad_health_check_reports_unavailable() {
+        let a = CadAdapter::new();
+        // With no CAD/DXF backend wired, health must not blindly report Ok(true).
+        assert_eq!(a.health_check().await.unwrap(), false);
+    }
+
+    #[tokio::test]
+    async fn test_cad_external_version_not_faked() {
+        let a = CadAdapter::new();
+        assert!(matches!(
+            a.external_version().await,
+            Err(GeoError::Unimplemented(_))
+        ));
     }
 
     #[test]
