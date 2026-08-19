@@ -172,11 +172,7 @@ mod tests {
 
         let type_raw = u32::from_le_bytes([wkb[1], wkb[2], wkb[3], wkb[4]]);
         assert_eq!(type_raw & 0xFF, 1, "geometry type must be Point");
-        assert_eq!(
-            type_raw & 0xFF000000,
-            0,
-            "no EWKB Z/SRID flag for 2D data"
-        );
+        assert_eq!(type_raw & 0xFF000000, 0, "no EWKB Z/SRID flag for 2D data");
         assert_eq!(type_raw, 1, "type must be exactly 1 (2D Point)");
         assert_eq!((wkb.len() - 5) / 8, 2, "2D point has exactly 2 coords");
 

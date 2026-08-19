@@ -389,8 +389,7 @@ mod tests {
             bgcolor: None,
         };
         let result = svc.handle(&WmsRequest::GetMap(params));
-        let err = result
-            .expect_err("GetMap without a raster backend must not pretend success");
+        let err = result.expect_err("GetMap without a raster backend must not pretend success");
         assert_eq!(err.exceptions[0].code, "OperationNotSupported");
         assert!(
             err.exceptions[0].text.contains("not implemented")

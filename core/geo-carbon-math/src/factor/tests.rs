@@ -57,8 +57,7 @@ fn test_gwp_values() {
 fn test_gwp_ar4_vs_ar5() {
     // AR4 had higher GWP for N₂O (298 vs 265)
     assert!(
-        gwp100(GreenhouseGas::N2O, GwpVersion::AR4)
-            > gwp100(GreenhouseGas::N2O, GwpVersion::AR5)
+        gwp100(GreenhouseGas::N2O, GwpVersion::AR4) > gwp100(GreenhouseGas::N2O, GwpVersion::AR5)
     );
 }
 

@@ -38,7 +38,10 @@ fn geo_cli_source_does_not_import_adapter_crates() {
     let mut files = Vec::new();
     walk_rs_files(&src_dir, &mut files);
 
-    assert!(!files.is_empty(), "no .rs source files found under {src_dir:?}");
+    assert!(
+        !files.is_empty(),
+        "no .rs source files found under {src_dir:?}"
+    );
 
     let mut offenders: Vec<String> = Vec::new();
     for file in &files {
@@ -63,14 +66,11 @@ fn geo_cli_source_does_not_import_adapter_crates() {
 #[test]
 fn geo_cli_manifest_does_not_depend_on_adapter_crates() {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let cargo_toml = std::fs::read_to_string(manifest_dir.join("Cargo.toml"))
-        .expect("read geo-cli Cargo.toml");
+    let cargo_toml =
+        std::fs::read_to_string(manifest_dir.join("Cargo.toml")).expect("read geo-cli Cargo.toml");
 
     // Only inspect the [dependencies] section (up to [features] / next table).
-    let deps_section = cargo_toml
-        .split("[features]")
-        .next()
-        .unwrap_or(&cargo_toml);
+    let deps_section = cargo_toml.split("[features]").next().unwrap_or(&cargo_toml);
 
     let offenders: Vec<&str> = ADAPTER_CRATES
         .iter()

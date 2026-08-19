@@ -15,8 +15,7 @@ fn make_service() -> WmtsService {
         formats: vec!["image/png".into()],
         styles: vec!["default".into()],
         resource_url: Some(
-            "https://example.com/tiles/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.png"
-                .into(),
+            "https://example.com/tiles/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.png".into(),
         ),
         renderer: None,
         mvt_source: None,
@@ -101,7 +100,9 @@ fn test_tile_cache_insert_get() {
 #[test]
 fn test_tile_cache_miss() {
     let cache = TileCache::new(100);
-    assert!(cache.get("nlcd", "EPSG:4326", "0", 0, 0, "image/png").is_none());
+    assert!(cache
+        .get("nlcd", "EPSG:4326", "0", 0, 0, "image/png")
+        .is_none());
 }
 
 #[test]
@@ -453,7 +454,9 @@ fn test_tile_cache_format_distinct() {
     // same tile do not collide (regression for PNG/MVT cross-talk).
     let cache = TileCache::new(100);
     cache.insert("layer", "EPSG:4326", "3", 2, 1, "image/png", vec![1, 2, 3]);
-    assert!(cache.get("layer", "EPSG:4326", "3", 2, 1, "image/png").is_some());
+    assert!(cache
+        .get("layer", "EPSG:4326", "3", 2, 1, "image/png")
+        .is_some());
     assert!(
         cache
             .get(

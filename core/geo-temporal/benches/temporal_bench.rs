@@ -27,10 +27,14 @@ fn make_ndvi_series(
 ) -> Vec<f64> {
     let mut state = seed;
     let mut next_noise = || {
-        state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         // Box-Muller to get ~N(0,1)
         let u1 = (state as f64) / (u64::MAX as f64);
-        state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let u2 = (state as f64) / (u64::MAX as f64);
         (-2.0 * u1.max(1e-10).ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos()
     };
@@ -170,7 +174,8 @@ fn bench_seasonal_decompose(c: &mut Criterion) {
         group.throughput(Throughput::Elements(n as u64));
         group.bench_function(&name, |b| {
             b.iter(|| {
-                let result = seasonal_decompose(black_box(&series), black_box(12), DecomposeMode::Additive);
+                let result =
+                    seasonal_decompose(black_box(&series), black_box(12), DecomposeMode::Additive);
                 black_box(result)
             })
         });

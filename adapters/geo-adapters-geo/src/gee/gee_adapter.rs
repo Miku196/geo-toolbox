@@ -89,7 +89,8 @@ impl ExternalAdapter for GeeAdapter {
     }
     async fn push(&self, _table: &str, _data: &[GeoFeature]) -> GeoResult<u64> {
         Err(GeoError::Unimplemented(
-            "GeeAdapter: push not supported — use submit_classification/execute to dispatch a task".into(),
+            "GeeAdapter: push not supported — use submit_classification/execute to dispatch a task"
+                .into(),
         ))
     }
     async fn pull(&self, _query: &str) -> GeoResult<Vec<GeoFeature>> {
@@ -111,9 +112,12 @@ impl ExternalAdapter for GeeAdapter {
             .as_u64()
             .ok_or_else(|| GeoError::invalid_input("year", "GEE execute requires a year"))?
             as u16;
-        let output_gcs = params["output_gcs"].as_str().map(str::to_owned).ok_or_else(
-            || GeoError::invalid_input("output_gcs", "GEE execute requires an output GCS URI"),
-        )?;
+        let output_gcs = params["output_gcs"]
+            .as_str()
+            .map(str::to_owned)
+            .ok_or_else(|| {
+                GeoError::invalid_input("output_gcs", "GEE execute requires an output GCS URI")
+            })?;
         let cid = self
             .dispatcher
             .dispatch_custom(command, &aoi, year, &output_gcs, params)
@@ -159,7 +163,10 @@ async fn test_gee_execute_dispatches_real_task() {
     let content = tokio::fs::read_to_string(&task_path)
         .await
         .expect("queue task file should exist after dispatch");
-    assert!(content.contains(cid), "queue file must contain dispatched task id");
+    assert!(
+        content.contains(cid),
+        "queue file must contain dispatched task id"
+    );
     assert!(content.contains("landcover_extra"));
 
     let _ = std::fs::remove_dir_all(&qdir);
@@ -182,7 +189,10 @@ async fn test_gee_push_pull_not_supported() {
         adapter.push("t", &[]).await,
         Err(GeoError::Unimplemented(_))
     ));
-    assert!(matches!(adapter.pull("q").await, Err(GeoError::Unimplemented(_))));
+    assert!(matches!(
+        adapter.pull("q").await,
+        Err(GeoError::Unimplemented(_))
+    ));
 }
 
 #[tokio::test]

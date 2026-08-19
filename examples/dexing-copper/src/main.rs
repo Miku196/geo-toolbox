@@ -36,8 +36,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  德兴铜矿 生态修复效果评估");
     println!("  Sentinel-2 NDVI + 碳汇 + DXF");
     println!("  geo-toolbox v0.1.0");
-    println!("══════════════════════════════════════════════════
-");
+    println!(
+        "══════════════════════════════════════════════════
+"
+    );
 
     // 1. STAC 搜索 Sentinel-2 场景
     println!("[1/6] STAC API 搜索...");
@@ -68,8 +70,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         output_dir.join("stac_search_results.json"),
         serde_json::to_string_pretty(&search_result)?,
     )?;
-    println!("  ✓ 搜索结果已保存
-");
+    println!(
+        "  ✓ 搜索结果已保存
+"
+    );
 
     // MODIS NDVI 验证 (NASA ORNL DAAC, 云掩膜 16 天合成)
 
@@ -100,8 +104,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // 3. 计算 NDVI
-    println!("
-[3/6] 计算 NDVI...");
+    println!(
+        "
+[3/6] 计算 NDVI..."
+    );
     let ndvi_result_2020 = compute_ndvi(&red_2020, &nir_2020)?;
     let ndvi_result_2025 = compute_ndvi(&red_2025, &nir_2025)?;
 
@@ -123,8 +129,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  变化: {:.3}", stats_2025.mean - stats_2020.mean);
 
     // 4. NDVI 差值分析
-    println!("
-[4/6] NDVI 差值分析...");
+    println!(
+        "
+[4/6] NDVI 差值分析..."
+    );
     let ndvi_diff = ndvi_difference(&ndvi_result_2020, &ndvi_result_2025)?;
 
     // 统计改善比例
@@ -168,8 +176,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // 5. 碳汇估算
-    println!("
-[5/6] 碳汇估算...");
+    println!(
+        "
+[5/6] 碳汇估算..."
+    );
     let labels_2020 = classify_to_landcover_map(&ndvi_result_2020.ndvi, &ndvi_diff);
     let labels_2025 = classify_to_landcover_map(&ndvi_result_2025.ndvi, &ndvi_diff);
     let carbon_2020 = calculate_carbon_balance(&labels_2020)?;
@@ -179,22 +189,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  变化: {:+.1} tCO₂/yr", carbon_2025 - carbon_2020);
 
     // 6. 综合评级
-    println!("
-[6/6] 综合评级...");
+    println!(
+        "
+[6/6] 综合评级..."
+    );
     let grade = assess_grade(improved_ratio, carbon_2020, carbon_2025);
     println!("  评级: {} (得分: {:.1}/100)", grade.grade, grade.score);
 
     // 7. 生成报告
-    println!("
-生成报告...");
+    println!(
+        "
+生成报告..."
+    );
     let report = generate_report(&stats_2020, &stats_2025, carbon_2020, carbon_2025, &grade);
     let report_path = output_dir.join("德兴铜矿生态修复评估报告.md");
     std::fs::write(&report_path, &report)?;
     println!("  ✓ 报告 → {}", report_path.display());
 
     // 8. 导出 DXF
-    println!("
-导出修复区 DXF...");
+    println!(
+        "
+导出修复区 DXF..."
+    );
     let improved_indices: Vec<usize> = valid_diff
         .iter()
         .enumerate()
@@ -256,8 +272,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  ✓ JSON → {}", json_path.display());
 
     // ── 汇总 ──
-    println!("
-══════════════════════════════════════════════════");
+    println!(
+        "
+══════════════════════════════════════════════════"
+    );
     println!("  评估完成!");
     println!(
         "  STAC 搜索: 2020年 {} 景 | 2025年 {} 景",
@@ -268,8 +286,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  碳汇变化: {:+.1} tCO₂/yr", carbon_2025 - carbon_2020);
     println!("  综合评级: {} ({:.1}/100)", grade.grade, grade.score);
     println!("  报告: {}", report_path.display());
-    println!("══════════════════════════════════════════════════
-");
+    println!(
+        "══════════════════════════════════════════════════
+"
+    );
 
     Ok(())
 }

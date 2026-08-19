@@ -52,19 +52,18 @@ impl ProcessPlugin for SocioeconomicPlugin {
         match command {
             "population" => {
                 let admin_pop = params["admin_pop"].as_f64().unwrap_or(0.0);
-                let landcover: Vec<f64> = serde_json::from_value(params["landcover_weights"].clone())
-                    .map_err(GeoError::Serde)?;
+                let landcover: Vec<f64> =
+                    serde_json::from_value(params["landcover_weights"].clone())
+                        .map_err(GeoError::Serde)?;
                 let cell_area = params["cell_area_km2"].as_f64().unwrap_or(0.01);
                 let ntl: Option<Vec<f64>> =
                     serde_json::from_value(params["ntl"].clone()).map_err(GeoError::Serde)?;
                 let calibration = params["calibration"].as_f64().unwrap_or(0.5);
-                let building: Option<Vec<f64>> = serde_json::from_value(
-                    params["building_density"].clone(),
-                )
-                .map_err(GeoError::Serde)?;
-                let road: Option<Vec<f64>> =
-                    serde_json::from_value(params["road_density"].clone())
+                let building: Option<Vec<f64>> =
+                    serde_json::from_value(params["building_density"].clone())
                         .map_err(GeoError::Serde)?;
+                let road: Option<Vec<f64>> = serde_json::from_value(params["road_density"].clone())
+                    .map_err(GeoError::Serde)?;
                 let result = full_population_pipeline(
                     admin_pop,
                     &landcover,
@@ -77,8 +76,8 @@ impl ProcessPlugin for SocioeconomicPlugin {
                 serde_json::to_value(result).map_err(GeoError::Serde)
             }
             "transition_matrix" => {
-                let from: Vec<u8> = serde_json::from_value(params["from_lulc"].clone())
-                    .map_err(GeoError::Serde)?;
+                let from: Vec<u8> =
+                    serde_json::from_value(params["from_lulc"].clone()).map_err(GeoError::Serde)?;
                 let to: Vec<u8> =
                     serde_json::from_value(params["to_lulc"].clone()).map_err(GeoError::Serde)?;
                 let n_classes = params["n_classes"].as_u64().unwrap_or(3) as u8;

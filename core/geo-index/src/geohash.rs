@@ -114,9 +114,7 @@ pub fn neighbors(hash: &str) -> Vec<String> {
     let step_lon = bbox.max_x - bbox.min_x;
     let step_lat = bbox.max_y - bbox.min_y;
     dirs.iter()
-        .map(|(dlon, dlat)| {
-            encode(lon + dlon * step_lon, lat + dlat * step_lat, precision)
-        })
+        .map(|(dlon, dlat)| encode(lon + dlon * step_lon, lat + dlat * step_lat, precision))
         .collect()
 }
 
@@ -218,8 +216,7 @@ mod tests {
 
             for (i, (dlon, dlat)) in dirs.iter().enumerate() {
                 // 与直接对相邻格中心 encode 一致
-                let expected =
-                    encode(clon + dlon * step_lon, clat + dlat * step_lat, precision);
+                let expected = encode(clon + dlon * step_lon, clat + dlat * step_lat, precision);
                 assert_eq!(nb[i], expected, "precision={precision} dir=({dlon},{dlat})");
 
                 // 解码后应恰为沿该方向 1 个网格步长的邻格中心

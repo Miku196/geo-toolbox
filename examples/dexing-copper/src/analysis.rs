@@ -1,4 +1,6 @@
-use crate::config::{BARE_FACTOR, BUILT_UP_FACTOR, CROPLAND_FACTOR, FOREST_FACTOR, GRASSLAND_FACTOR};
+use crate::config::{
+    BARE_FACTOR, BUILT_UP_FACTOR, CROPLAND_FACTOR, FOREST_FACTOR, GRASSLAND_FACTOR,
+};
 use geo_core::errors::GeoResult;
 use geo_raster::grid::RasterBand;
 

@@ -59,23 +59,17 @@ impl ProcessPlugin for VolcanologyPlugin {
                 let stability = params["stability"].as_str().unwrap_or("D");
                 let n_points = params["n_points"].as_u64().unwrap_or(20) as usize;
                 let result = ash_dispersion_assessment(
-                    emission,
-                    wind,
-                    plume_h,
-                    diameter_m,
-                    density,
-                    stability,
-                    n_points,
+                    emission, wind, plume_h, diameter_m, density, stability, n_points,
                 );
                 serde_json::to_value(result).map_err(GeoError::Serde)
             }
             "hazard_zone" => {
-                let ash_grid: Vec<f64> = serde_json::from_value(params["ash_grid"].clone())
-                    .map_err(GeoError::Serde)?;
-                let lava_grid: Vec<u8> = serde_json::from_value(params["lava_grid"].clone())
-                    .map_err(GeoError::Serde)?;
-                let dist_grid: Vec<f64> = serde_json::from_value(params["dist_grid"].clone())
-                    .map_err(GeoError::Serde)?;
+                let ash_grid: Vec<f64> =
+                    serde_json::from_value(params["ash_grid"].clone()).map_err(GeoError::Serde)?;
+                let lava_grid: Vec<u8> =
+                    serde_json::from_value(params["lava_grid"].clone()).map_err(GeoError::Serde)?;
+                let dist_grid: Vec<f64> =
+                    serde_json::from_value(params["dist_grid"].clone()).map_err(GeoError::Serde)?;
                 let slope_grid: Vec<f64> = serde_json::from_value(params["slope_grid"].clone())
                     .map_err(GeoError::Serde)?;
                 let n = params["n"].as_u64().unwrap_or(ash_grid.len() as u64) as usize;

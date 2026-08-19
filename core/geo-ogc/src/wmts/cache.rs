@@ -89,10 +89,7 @@ impl TileCache {
 
     /// Returns the number of cached tiles.
     pub fn len(&self) -> usize {
-        self.tiles
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .len()
+        self.tiles.lock().unwrap_or_else(|p| p.into_inner()).len()
     }
 
     /// Returns true if the cache is empty.
@@ -105,10 +102,7 @@ impl TileCache {
 
     /// Clear all cached tiles.
     pub fn clear(&self) {
-        self.tiles
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .clear();
+        self.tiles.lock().unwrap_or_else(|p| p.into_inner()).clear();
     }
 
     /// Pre-cache tiles for a layer over zoom levels 0-4 for a given format.

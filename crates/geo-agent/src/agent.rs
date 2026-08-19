@@ -85,7 +85,10 @@ impl Agent {
                 }
             })?;
 
-        let body: Value = response.json().await.map_err(|e| AgentError::Http(e.to_string()))?;
+        let body: Value = response
+            .json()
+            .await
+            .map_err(|e| AgentError::Http(e.to_string()))?;
 
         // Extract usage
         let usage = body
@@ -98,9 +101,9 @@ impl Agent {
             .unwrap_or_default();
 
         // Extract tool_calls
-        let choices = body["choices"].as_array().ok_or_else(|| {
-            AgentError::UnexpectedResponse("No choices in response".to_string())
-        })?;
+        let choices = body["choices"]
+            .as_array()
+            .ok_or_else(|| AgentError::UnexpectedResponse("No choices in response".to_string()))?;
 
         let mut tool_calls = Vec::new();
 
@@ -194,8 +197,10 @@ impl Agent {
                 }
             })?;
 
-        let resp_body: Value =
-            response.json().await.map_err(|e| AgentError::Http(e.to_string()))?;
+        let resp_body: Value = response
+            .json()
+            .await
+            .map_err(|e| AgentError::Http(e.to_string()))?;
 
         let mut tool_calls = Vec::new();
 

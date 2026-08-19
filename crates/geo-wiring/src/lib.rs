@@ -176,4 +176,3 @@ pub mod qgis {
     pub use geo_adapter_qgis::grpc_client::{QgisClient, QgisInput, QgisJob, QgisToolStep};
     pub use geo_adapter_qgis::process_runner::{BatchQgisRunner, QgisProcessConfig, QgisTool};
 }
-

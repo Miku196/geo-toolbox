@@ -507,15 +507,35 @@ mod tests {
     #[test]
     fn test_buffer_negative_precise_returns_err() {
         let a = square(0.0, 0.0, 10.0);
-        let res = buffer(&a, -1.0, BufferMode::Precise { quadrant_segments: 8 });
-        assert!(res.is_err(), "Precise negative buffer should return Err, got {:?}", res);
+        let res = buffer(
+            &a,
+            -1.0,
+            BufferMode::Precise {
+                quadrant_segments: 8,
+            },
+        );
+        assert!(
+            res.is_err(),
+            "Precise negative buffer should return Err, got {:?}",
+            res
+        );
     }
 
     #[test]
     fn test_buffer_negative_convexhull_returns_err() {
         let a = square(0.0, 0.0, 10.0);
-        let res = buffer(&a, -1.0, BufferMode::ConvexHull { quadrant_segments: 8 });
-        assert!(res.is_err(), "ConvexHull negative buffer should return Err, got {:?}", res);
+        let res = buffer(
+            &a,
+            -1.0,
+            BufferMode::ConvexHull {
+                quadrant_segments: 8,
+            },
+        );
+        assert!(
+            res.is_err(),
+            "ConvexHull negative buffer should return Err, got {:?}",
+            res
+        );
     }
 
     #[test]
@@ -530,8 +550,16 @@ mod tests {
     fn test_line_density_zero_grid_returns_err() {
         let lines = vec![(0.0, 0.0, 10.0, 10.0)];
         let res = line_density(&lines, 0, 10, (0.0, 0.0, 10.0, 10.0));
-        assert!(res.is_err(), "zero grid_cols should return Err, got {:?}", res);
+        assert!(
+            res.is_err(),
+            "zero grid_cols should return Err, got {:?}",
+            res
+        );
         let res2 = line_density(&lines, 10, 0, (0.0, 0.0, 10.0, 10.0));
-        assert!(res2.is_err(), "zero grid_rows should return Err, got {:?}", res2);
+        assert!(
+            res2.is_err(),
+            "zero grid_rows should return Err, got {:?}",
+            res2
+        );
     }
 }

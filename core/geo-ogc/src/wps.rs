@@ -292,7 +292,12 @@ impl WpsService {
     /// Advance an async job to "Succeeded" (used by the request-driven state
     /// machine and regression tests).
     pub fn run_job(&self, job_id: &str) {
-        if let Some(s) = self.jobs.lock().unwrap_or_else(|p| p.into_inner()).get_mut(job_id) {
+        if let Some(s) = self
+            .jobs
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .get_mut(job_id)
+        {
             *s = "Succeeded".into();
         }
     }
@@ -560,7 +565,10 @@ mod tests {
             status.contains("Accepted") || status.contains("Queued"),
             "fresh job must be Accepted/Queued, got: {status}"
         );
-        assert!(!status.contains("Succeeded"), "job must not already be succeeded");
+        assert!(
+            !status.contains("Succeeded"),
+            "job must not already be succeeded"
+        );
     }
 
     #[test]

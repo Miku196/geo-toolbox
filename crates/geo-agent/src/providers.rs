@@ -53,16 +53,14 @@ impl ProviderConfig {
                 std::env::var("DEEPSEEK_API_KEY").unwrap_or_default(),
                 std::env::var("DEEPSEEK_BASE_URL")
                     .unwrap_or_else(|_| "https://api.deepseek.com/v1".to_string()),
-                std::env::var("DEEPSEEK_MODEL")
-                    .unwrap_or_else(|_| "deepseek-chat".to_string()),
+                std::env::var("DEEPSEEK_MODEL").unwrap_or_else(|_| "deepseek-chat".to_string()),
             ),
             _ => (
                 // openai (default)
                 std::env::var("OPENAI_API_KEY").unwrap_or_default(),
                 std::env::var("OPENAI_BASE_URL")
                     .unwrap_or_else(|_| "https://api.openai.com/v1".to_string()),
-                std::env::var("OPENAI_MODEL")
-                    .unwrap_or_else(|_| "gpt-4o".to_string()),
+                std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o".to_string()),
             ),
         };
 

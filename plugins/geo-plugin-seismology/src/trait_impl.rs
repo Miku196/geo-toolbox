@@ -69,18 +69,17 @@ impl ProcessPlugin for SeismologyPlugin {
                     serde_json::from_value(params["sources"].clone()).map_err(GeoError::Serde)?;
                 let site_lon = params["site_lon"].as_f64().unwrap_or(0.0);
                 let site_lat = params["site_lat"].as_f64().unwrap_or(0.0);
-                let return_periods: Vec<f64> = serde_json::from_value(
-                    params["return_periods"].clone(),
-                )
-                .map_err(GeoError::Serde)?;
+                let return_periods: Vec<f64> =
+                    serde_json::from_value(params["return_periods"].clone())
+                        .map_err(GeoError::Serde)?;
                 let site_class = params["site_class"].as_str().unwrap_or("II");
                 let result =
                     psha_hazard_curve(&sources, site_lon, site_lat, &return_periods, site_class);
                 serde_json::to_value(result).map_err(GeoError::Serde)
             }
             "seismicity" => {
-                let magnitudes: Vec<f64> =
-                    serde_json::from_value(params["magnitudes"].clone()).map_err(GeoError::Serde)?;
+                let magnitudes: Vec<f64> = serde_json::from_value(params["magnitudes"].clone())
+                    .map_err(GeoError::Serde)?;
                 let min_mag = params["min_mag"].as_f64().unwrap_or(3.0);
                 let time_span = params["time_span_years"].as_f64().unwrap_or(50.0);
                 let result = seismicity_analysis(&magnitudes, min_mag, time_span);

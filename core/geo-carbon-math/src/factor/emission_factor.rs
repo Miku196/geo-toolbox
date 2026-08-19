@@ -1,5 +1,5 @@
 use super::fuel::{FuelType, GridEmissionFactor};
-use super::gas::{EmissionScope, GasFactor, GwpVersion, gwp100};
+use super::gas::{gwp100, EmissionScope, GasFactor, GwpVersion};
 use serde::{Deserialize, Serialize};
 
 /// A single emission factor entry for a landcover class or activity.

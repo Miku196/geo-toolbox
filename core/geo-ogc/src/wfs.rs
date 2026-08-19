@@ -434,9 +434,18 @@ mod tests {
             Ok(WfsResponse::Xml(xml)) => xml,
             other => panic!("expected XML schema, got {other:?}"),
         };
-        assert!(xml.contains("geo:landcover"), "schema must name the feature type");
-        assert!(xml.contains("complexType"), "schema must contain a complexType");
-        assert!(xml.contains("area_ha"), "schema must contain the area_ha field");
+        assert!(
+            xml.contains("geo:landcover"),
+            "schema must name the feature type"
+        );
+        assert!(
+            xml.contains("complexType"),
+            "schema must contain a complexType"
+        );
+        assert!(
+            xml.contains("area_ha"),
+            "schema must contain the area_ha field"
+        );
         assert!(
             xml.contains("xsd:double"),
             "schema must contain the area_ha type"
@@ -479,8 +488,7 @@ mod tests {
             property_name: vec![],
             srs_name: None,
         }));
-        let err = result
-            .expect_err("GetFeature without a data source must not pretend success");
+        let err = result.expect_err("GetFeature without a data source must not pretend success");
         assert_eq!(err.exceptions[0].code, "OperationNotSupported");
     }
 }

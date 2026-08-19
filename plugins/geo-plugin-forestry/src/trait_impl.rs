@@ -89,4 +89,3 @@ mod tests {
         assert_eq!(result["ccer_applicable"], false);
     }
 }
-

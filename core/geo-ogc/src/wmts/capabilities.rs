@@ -9,16 +9,20 @@ impl WmtsService {
             .iter()
             .map(|l| self.layer_to_xml(l))
             .collect::<Vec<_>>()
-            .join("
-");
+            .join(
+                "
+",
+            );
 
         let tms_xml: String = self
             .tile_matrix_sets
             .iter()
             .map(|t| self.tile_matrix_set_to_xml(t))
             .collect::<Vec<_>>()
-            .join("
-");
+            .join(
+                "
+",
+            );
 
         format!(
             r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -97,8 +101,10 @@ impl WmtsService {
             .iter()
             .map(|f| format!("      <Format>{f}</Format>"))
             .collect::<Vec<_>>()
-            .join("
-");
+            .join(
+                "
+",
+            );
 
         let styles_xml: String = if layer.styles.is_empty() {
             r#"      <Style isDefault="true">
@@ -119,19 +125,27 @@ impl WmtsService {
                     )
                 })
                 .collect::<Vec<_>>()
-                .join("
-")
+                .join(
+                    "
+",
+                )
         };
 
         let tms_refs: String = layer
             .tile_matrix_sets
             .iter()
-            .map(|t| format!("      <TileMatrixSetLink>
+            .map(|t| {
+                format!(
+                    "      <TileMatrixSetLink>
         <TileMatrixSet>{t}</TileMatrixSet>
-      </TileMatrixSetLink>"))
+      </TileMatrixSetLink>"
+                )
+            })
             .collect::<Vec<_>>()
-            .join("
-");
+            .join(
+                "
+",
+            );
 
         let resource_url = if let Some(url) = &layer.resource_url {
             format!(
@@ -201,8 +215,10 @@ impl WmtsService {
                 )
             })
             .collect::<Vec<_>>()
-            .join("
-");
+            .join(
+                "
+",
+            );
 
         format!(
             r#"    <TileMatrixSet>

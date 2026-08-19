@@ -124,7 +124,10 @@ mod tests {
         assert!((feature_area_ha(&poly) - m2 / 10000.0).abs() < 1.0);
         // 度面积仍是度数，不应与米制混淆
         let sq_deg = feature_area_sq_deg(&poly);
-        assert!((sq_deg - 1.0).abs() < 1e-9, "1x1 deg square is 1 sq deg, got {sq_deg}");
+        assert!(
+            (sq_deg - 1.0).abs() < 1e-9,
+            "1x1 deg square is 1 sq deg, got {sq_deg}"
+        );
     }
 
     /// 米制可验证矩形: 经度跨度 dLon 经米制换算后，随着纬度升高面积应减小（cos 校正）。

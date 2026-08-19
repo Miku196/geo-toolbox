@@ -65,7 +65,11 @@ pub fn tile_url(source: TileSource, x: u32, y: u32, z: u8) -> String {
             // 需要替换为实际的天地图 key
             {
                 let key = std::env::var("GEO_TIANDITU_KEY").unwrap_or_default();
-                let key_param = if key.is_empty() { String::new() } else { format!("&tk={key}") };
+                let key_param = if key.is_empty() {
+                    String::new()
+                } else {
+                    format!("&tk={key}")
+                };
                 format!("https://t{s}.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}{key_param}", s = (x + y) % 8)
             }
         }

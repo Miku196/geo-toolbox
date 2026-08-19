@@ -118,9 +118,7 @@ async fn main() {
             .json()
             .init();
     } else {
-        tracing_subscriber::fmt()
-            .with_env_filter(&log_level)
-            .init();
+        tracing_subscriber::fmt().with_env_filter(&log_level).init();
     }
 
     info!("🚀 geo-toolbox-agent starting...");
@@ -202,9 +200,8 @@ async fn handle_agent(
     State(state): State<Arc<AppState>>,
     Json(req): Json<AgentRequest>,
 ) -> Result<Json<AgentResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let fallback_enabled = std::env::var("FALLBACK_ENABLED")
-        .unwrap_or_else(|_| "true".to_string())
-        == "true";
+    let fallback_enabled =
+        std::env::var("FALLBACK_ENABLED").unwrap_or_else(|_| "true".to_string()) == "true";
 
     // Try LLM first
     if !req.force_fallback && fallback_enabled {
@@ -212,12 +209,9 @@ async fn handle_agent(
             Ok(result) => {
                 if !result.tool_calls.is_empty() {
                     // Record metrics
-                    state.metrics.record(
-                        &result.provider,
-                        &result.model,
-                        &result.usage,
-                        false,
-                    );
+                    state
+                        .metrics
+                        .record(&result.provider, &result.model, &result.usage, false);
                     metrics::log_to_file(
                         &state.log_dir,
                         &format!(
@@ -254,7 +248,9 @@ async fn handle_agent(
 
     // Fallback: keyword routing
     if let Some((tool, params)) = state.fallback.match_query(&req.query) {
-        state.metrics.record("fallback", "keyword", &Default::default(), true);
+        state
+            .metrics
+            .record("fallback", "keyword", &Default::default(), true);
         metrics::log_to_file(
             &state.log_dir,
             &format!(
@@ -267,10 +263,7 @@ async fn handle_agent(
             fallback: true,
             provider: "fallback".to_string(),
             model: "keyword-router".to_string(),
-            tool_calls: vec![ToolCall {
-                tool,
-                params,
-            }],
+            tool_calls: vec![ToolCall { tool, params }],
             usage: None,
         }));
     }
@@ -284,9 +277,7 @@ async fn handle_agent(
     ))
 }
 
-async fn handle_metrics(
-    State(state): State<Arc<AppState>>,
-) -> Json<MetricsResponse> {
+async fn handle_metrics(State(state): State<Arc<AppState>>) -> Json<MetricsResponse> {
     let snap = state.metrics.snapshot();
     Json(MetricsResponse {
         date: snap.date,
@@ -311,9 +302,7 @@ async fn handle_metrics(
     })
 }
 
-async fn handle_health(
-    State(state): State<Arc<AppState>>,
-) -> Json<HealthResponse> {
+async fn handle_health(State(state): State<Arc<AppState>>) -> Json<HealthResponse> {
     Json(HealthResponse {
         status: "ok",
         tools_count: state.tools.len(),

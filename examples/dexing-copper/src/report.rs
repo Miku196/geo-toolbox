@@ -169,7 +169,11 @@ pub(crate) struct RestorationGrade {
     pub(crate) carbon_change: f64,
 }
 
-pub(crate) fn assess_grade(improved_ratio: f64, carbon_2020: f64, carbon_2025: f64) -> RestorationGrade {
+pub(crate) fn assess_grade(
+    improved_ratio: f64,
+    carbon_2020: f64,
+    carbon_2025: f64,
+) -> RestorationGrade {
     let carbon_change = carbon_2025 - carbon_2020; // 负值=碳汇增强
 
     // 植被恢复得分 (目标 ≥30%)
@@ -432,4 +436,3 @@ pub(crate) fn generate_report(
         },
     )
 }
-

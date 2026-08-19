@@ -73,15 +73,7 @@ impl ProcessPlugin for RemoteSensingPlugin {
                 let red_idx = params["red_band_idx"].as_u64().unwrap_or(3) as usize;
                 let nir_idx = params["nir_band_idx"].as_u64().unwrap_or(4) as usize;
                 let result = full_radiometric_pipeline(
-                    &dn,
-                    &gain,
-                    &bias,
-                    sun_el,
-                    sun_dist,
-                    dark_pct,
-                    cloud_ndvi,
-                    red_idx,
-                    nir_idx,
+                    &dn, &gain, &bias, sun_el, sun_dist, dark_pct, cloud_ndvi, red_idx, nir_idx,
                 );
                 serde_json::to_value(result).map_err(GeoError::Serde)
             }
