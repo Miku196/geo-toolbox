@@ -5,7 +5,7 @@
 //! ## 功能
 //!
 //! - **MVT 编码** — GeoJSON FeatureCollection → Mapbox Vector Tile (protobuf)
-//! - **PMTiles 读写** — 单一文件栅格瓦片归档格式 v3
+//! - **内部瓦片归档读写** — Geo-toolbox GT v1 格式（非官方 PMTiles v3）
 //! - **瓦片索引** — 经纬度 ↔ z/x/y 互转，Geohash 辅助索引
 //!
 //! ## 示例

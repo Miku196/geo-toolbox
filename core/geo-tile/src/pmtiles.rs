@@ -17,7 +17,7 @@ use geo_core::errors::{GeoError, GeoResult};
 use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom, Write};
 
-/// PMTiles Header (127 bytes, v3).
+/// Geo-toolbox internal archive header (127 bytes, version 1; not official PMTiles v3).
 #[derive(Debug, Clone)]
 pub struct PmtilesHeader {
     /// Magic: "PM"
@@ -109,7 +109,7 @@ impl<R: Read + Seek> PmtilesReader<R> {
         let header = read_header(&mut reader)?;
         if header.magic != *b"GT" || header.version != 1 {
             return Err(GeoError::Validation(format!(
-                "Invalid PMTiles: magic={:?} version={}",
+                "Invalid Geo-toolbox tile archive: magic={:?} version={}",
                 header.magic, header.version
             )));
         }
