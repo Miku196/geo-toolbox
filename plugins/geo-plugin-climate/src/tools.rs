@@ -47,6 +47,17 @@ pub fn register_tools(registry: &mut PluginRegistry) {
                 let result = idf::idf_fit_params(&durations, &intensities);
                 Ok(serde_json::to_value(result)?)
             },
+        sync "climate_idf_return_period" => "Scale IDF Sherman parameters to a new return period"
+            ; json!({"type":"object","properties":{"params":{"type":"object","properties":{"a":{"type":"number"},"b":{"type":"number"},"c":{"type":"number"}}},"base_return_yr":{"type":"number","default":2.0},"target_return_yr":{"type":"number","default":100.0},"coef_a":{"type":"number","default":0.0},"coef_b":{"type":"number","default":0.0}},"required":["params"]})
+            => |args| -> ToolResult {
+                let base_params: idf::IdfParams = serde_json::from_value(args["params"].clone())?;
+                let base_return_yr = args["base_return_yr"].as_f64().unwrap_or(2.0);
+                let target_return_yr = args["target_return_yr"].as_f64().unwrap_or(100.0);
+                let coef_a = args["coef_a"].as_f64().unwrap_or(0.0);
+                let coef_b = args["coef_b"].as_f64().unwrap_or(0.0);
+                let result = idf::idf_return_period(&base_params, base_return_yr, target_return_yr, coef_a, coef_b);
+                Ok(serde_json::to_value(result)?)
+            },
         sync "climate_spi" => "Standardized Precipitation Index"
             ; json!({"type":"object","properties":{"precip":{"type":"array","items":{"type":"number"}},"scale_months":{"type":"integer","default":3}},"required":["precip"]})
             => |args| -> ToolResult {
@@ -82,6 +93,16 @@ pub fn register_tools(registry: &mut PluginRegistry) {
                 let cell_size = args["cell_size"].as_f64().unwrap_or(1.0);
                 let variogram: kriging::VariogramParams = serde_json::from_value(args["variogram"].clone())?;
                 let result = kriging::ordinary_kriging(&points, &bbox, cell_size, &variogram);
+                Ok(serde_json::to_value(result)?)
+            },
+        sync "climate_simple_kriging" => "Simple Kriging spatial interpolation (known mean 0)"
+            ; json!({"type":"object","properties":{"points":{"type":"array","items":{"type":"array","minItems":3,"maxItems":3,"items":{"type":"number"}}},"bbox":{"type":"object","properties":{"min_x":{"type":"number"},"min_y":{"type":"number"},"max_x":{"type":"number"},"max_y":{"type":"number"}}},"cell_size":{"type":"number","default":1.0},"variogram":{"type":"object"}},"required":["points","bbox","variogram"]})
+            => |args| -> ToolResult {
+                let points: Vec<(f64, f64, f64)> = serde_json::from_value(args["points"].clone())?;
+                let bbox: geo_core::types::BBox = serde_json::from_value(args["bbox"].clone())?;
+                let cell_size = args["cell_size"].as_f64().unwrap_or(1.0);
+                let variogram: kriging::VariogramParams = serde_json::from_value(args["variogram"].clone())?;
+                let result = kriging::simple_kriging(&points, &bbox, cell_size, &variogram);
                 Ok(serde_json::to_value(result)?)
             },
         sync "climate_variogram" => "Empirical semivariogram from point data"
