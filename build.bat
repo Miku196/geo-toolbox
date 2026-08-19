@@ -3,7 +3,7 @@ setlocal
 set RUSTPATH=%USERPROFILE%\.cargo\bin
 set PATH=C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;%RUSTPATH%
 set CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=rust-lld
-cd /d E:\geo\geo-toolbox
+cd /d "%~dp0"
 
 if "%1"=="" goto help
 if "%1"=="check"  goto check

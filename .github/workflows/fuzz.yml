@@ -15,6 +15,9 @@ jobs:
           - geojson_parse
           - nmea_parse
           - wkt_parse
+    defaults:
+      run:
+        working-directory: fuzz
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
