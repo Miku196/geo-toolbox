@@ -38,20 +38,7 @@ examples/china-risk-assessment/
 │   ├── ne_10m_lakes/              # 全球湖泊面
 │   ├── usgs_china_2026.geojson    # M3+ 地震事件 (440 条)
 │   └── usgs_china_2026_m4.geojson # M4+ 地震事件 (434 条)
-└── output/                     # 运行产物
-    ├── china_flood_risk_2026.png
-    ├── china_flood_risk_2026_regions.png
-    ├── china_flood_risk_2026_stats.png
-    ├── china_flood_high_risk_zones_2026.geojson
-    ├── china_flood_risk_all_2026.geojson
-    ├── 中国2026年洪水高风险区评估报告.pdf
-    ├── 中国2026年洪水高风险区评估报告.html
-    ├── china_seismic_2026.png
-    ├── china_seismic_2026_regions.png
-    ├── china_seismic_2026_stats.png
-    ├── china_seismic_high_risk_2026.geojson
-    ├── 中国2026年地震活动评估报告.pdf
-    └── 2026年中国地震活动评估报告.html
+└── output/                     # 运行时生成，已被 Git 忽略
 ```
 
 ---
