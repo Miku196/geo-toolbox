@@ -112,9 +112,17 @@ impl SpatialFilter {
         }
     }
 
-    /// Returns true if this filter can skip reading geometry data entirely.
+    /// Returns true if this filter requires reading the actual geometry
+    /// data to be evaluated exactly (as opposed to filters that can be fully
+    /// answered from row-group bbox metadata alone).
+    ///
+    /// - [`SpatialFilter::Bbox`] is answerable from bbox metadata → `false`.
+    /// - [`SpatialFilter::Radius`] needs exact distance to the real geometry
+    ///   (its bbox check only yields `Unknown`) → `true`.
+    /// - [`SpatialFilter::GeometryTypes`] needs the actual geometry to pick a
+    ///   type → `true`.
     pub fn requires_geometry(&self) -> bool {
-        matches!(self, SpatialFilter::Radius { .. })
+        !matches!(self, SpatialFilter::Bbox { .. })
     }
 }
 
@@ -179,5 +187,39 @@ mod tests {
             filter.evaluate_bbox(110.0, 30.5, 111.0, 31.5),
             SpatialPredicate::Disjoint
         );
+    }
+
+    #[test]
+    fn test_requires_geometry_radius_is_true() {
+        // Radius needs exact distance against the real geometry,
+        // so it must require geometry data.
+        let filter = SpatialFilter::Radius {
+            center_x: 104.0,
+            center_y: 30.5,
+            radius_m: 5000.0,
+        };
+        assert!(filter.requires_geometry());
+    }
+
+    #[test]
+    fn test_requires_geometry_bbox_is_false() {
+        // A bbox filter is fully answerable from row-group bbox metadata,
+        // so it must NOT require reading geometry data.
+        let filter = SpatialFilter::Bbox {
+            min_x: 103.0,
+            min_y: 30.0,
+            max_x: 105.0,
+            max_y: 31.0,
+        };
+        assert!(!filter.requires_geometry());
+    }
+
+    #[test]
+    fn test_requires_geometry_geometry_types_is_true() {
+        // Geometry-type filtering needs the actual geometry to be evaluated.
+        let filter = SpatialFilter::GeometryTypes {
+            types: vec!["Polygon".into()],
+        };
+        assert!(filter.requires_geometry());
     }
 }

@@ -185,12 +185,18 @@ impl RasterTimeSeries {
         let x_mean = years.iter().sum::<f64>() / years.len() as f64;
         let xx_var: f64 = years.iter().map(|&x| (x - x_mean).powi(2)).sum();
 
+        let bands: Vec<&RasterBand> = self.steps.values().collect();
         for (px, slope) in slopes.iter_mut().enumerate() {
-            let values: Vec<f64> = self.steps.values().map(|b| b.data[px]).collect();
-            if values.iter().any(|v| v.is_nan()) {
+            // 跳过含 nodata（NaN 或各波段 nodata 哨兵，如 -999）的像素，
+            // 与 pixelwise_trend / change_detection 的过滤约定保持一致。
+            if bands.iter().any(|b| {
+                let v = b.data[px];
+                v.is_nan() || v == b.nodata
+            }) {
                 *slope = nodata;
                 continue;
             }
+            let values: Vec<f64> = bands.iter().map(|b| b.data[px]).collect();
             let y_mean = values.iter().sum::<f64>() / values.len() as f64;
             let xy_cov: f64 = years
                 .iter()
@@ -281,5 +287,27 @@ mod tests {
         let slope = ts.pixelwise_slope().unwrap();
         assert!(slope.data[0] > 0.0); // 上升
         assert!(slope.data[1] < 0.0); // 下降
+    }
+
+    #[test]
+    // 回归：pixelwise_slope 只排 is_nan()，漏排 nodata 哨兵（-999），
+    // 与 pixelwise_trend 不一致，nodata 污染 OLS 斜率。此处应同样输出 NaN。
+    fn test_pixelwise_slope_ignores_nodata() {
+        let mut ts = RasterTimeSeries::new();
+        // 像素0 含 nodata(-999) 哨兵，像素1 为正常上升序列
+        ts.add(2020, make_band(vec![-999.0, 0.30])).unwrap();
+        ts.add(2021, make_band(vec![0.35, 0.35])).unwrap();
+        ts.add(2022, make_band(vec![-999.0, 0.41])).unwrap();
+
+        let slope = ts.pixelwise_slope().unwrap();
+        // nodata 像素应输出 NaN（与 pixelwise_trend 约定一致），不被哨兵污染
+        assert!(
+            slope.data[0].is_nan(),
+            "nodata pixel must be NaN, got {}",
+            slope.data[0]
+        );
+        // 正常像素仍应得到正的线性斜率
+        assert!(slope.data[1].is_finite());
+        assert!(slope.data[1] > 0.0);
     }
 }

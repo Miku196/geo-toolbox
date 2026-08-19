@@ -1,4 +1,5 @@
 use geo::algorithm::{BooleanOps, BoundingRect, ConvexHull};
+use geo_core::{GeoError, GeoResult};
 use geo_types::{Coord, LineString, MultiPolygon, Polygon};
 
 /// 缓冲区模式选择。
@@ -22,35 +23,56 @@ pub const MAX_BUFFER_VERTICES: usize = 500_000;
 /// - `poly`: 输入多边形
 /// - `distance`: 缓冲距离（正=外扩，负=内缩，0=原样返回）
 /// - `mode`: 缓冲区模式选择
-pub fn buffer(poly: &Polygon<f64>, distance: f64, mode: BufferMode) -> MultiPolygon<f64> {
+///
+/// # 错误
+/// - 负距离在 `Precise` / `ConvexHull` 模式下尚未实现，返回
+///   [`GeoError::Unimplemented`]，不会静默退化为 BBox 结果。负距离请使用
+///   [`BufferMode::Bbox`]。
+pub fn buffer(
+    poly: &Polygon<f64>,
+    distance: f64,
+    mode: BufferMode,
+) -> GeoResult<MultiPolygon<f64>> {
     let n = poly.exterior().0.len();
     if !(3..=MAX_BUFFER_VERTICES).contains(&n) {
-        return MultiPolygon::new(vec![poly.clone()]);
+        return Ok(MultiPolygon::new(vec![poly.clone()]));
     }
     if distance == 0.0 {
-        return MultiPolygon::new(vec![poly.clone()]);
+        return Ok(MultiPolygon::new(vec![poly.clone()]));
     }
 
     match mode {
         BufferMode::Bbox => {
             if distance > 0.0 {
-                bbox_buffer_outer(poly, distance)
+                Ok(bbox_buffer_outer(poly, distance))
             } else {
-                bbox_buffer_inner(poly, -distance)
+                Ok(bbox_buffer_inner(poly, -distance))
             }
         }
         BufferMode::ConvexHull { quadrant_segments } => {
             if distance > 0.0 {
-                convexhull_buffer_outer(poly, distance, quadrant_segments.clamp(4, 32) as usize)
+                Ok(convexhull_buffer_outer(
+                    poly,
+                    distance,
+                    quadrant_segments.clamp(4, 32) as usize,
+                ))
             } else {
-                bbox_buffer_inner(poly, -distance)
+                Err(GeoError::Unimplemented(
+                    "negative buffer not implemented for ConvexHull modes, use Bbox mode".into(),
+                ))
             }
         }
         BufferMode::Precise { quadrant_segments } => {
             if distance > 0.0 {
-                precise_buffer_outer(poly, distance, quadrant_segments.clamp(4, 32) as usize)
+                Ok(precise_buffer_outer(
+                    poly,
+                    distance,
+                    quadrant_segments.clamp(4, 32) as usize,
+                ))
             } else {
-                bbox_buffer_inner(poly, -distance)
+                Err(GeoError::Unimplemented(
+                    "negative buffer not implemented for Precise modes, use Bbox mode".into(),
+                ))
             }
         }
     }

@@ -41,7 +41,7 @@ pub fn register_tools(registry: &mut PluginRegistry) {
     register_plugin!(registry, "vector", "Pure-Rust vector ops: buffer, intersect, area, centroid", PluginCategory::Process, [
         sync "vector_buffer" => "Create a bbox buffer around a Polygon" ; serde_json::json!({"type":"object","properties":{"geojson":{"type":"string"},"distance_m":{"type":"number"}},"required":["geojson","distance_m"]}) => |args| -> ToolResult {
         let p = parse_polygon(args["geojson"].as_str().unwrap_or("{}"))?;
-        Ok(multipolygon_to_json(&crate::buffer::buffer(&p, args["distance_m"].as_f64().unwrap_or(0.0), crate::buffer::BufferMode::ConvexHull { quadrant_segments: 8 })))
+        Ok(multipolygon_to_json(&crate::buffer::buffer(&p, args["distance_m"].as_f64().unwrap_or(0.0), crate::buffer::BufferMode::ConvexHull { quadrant_segments: 8 })?))
     },
         sync "vector_intersect" => "Compute intersection of two Polygons" ; serde_json::json!({"type":"object","properties":{"geojson_a":{"type":"string"},"geojson_b":{"type":"string"}},"required":["geojson_a","geojson_b"]}) => |args| -> ToolResult {
         let a = parse_polygon(args["geojson_a"].as_str().unwrap_or("{}"))?;
@@ -51,8 +51,9 @@ pub fn register_tools(registry: &mut PluginRegistry) {
     },
         sync "vector_area" => "Compute area of a Polygon in m² and ha" ; serde_json::json!({"type":"object","properties":{"geojson":{"type":"string"}},"required":["geojson"]}) => |args| -> ToolResult {
         let p = parse_polygon(args["geojson"].as_str().unwrap_or("{}"))?;
-        let a = crate::stats::feature_area(&p);
-        Ok(serde_json::json!({"area_m2":a,"area_ha":a/10000.0}))
+        let m2 = crate::stats::feature_area_m2(&p);
+        let sq_deg = crate::stats::feature_area_sq_deg(&p);
+        Ok(serde_json::json!({"area_m2":m2,"area_ha":m2/10000.0,"area_sq_deg":sq_deg}))
     },
         sync "vector_centroid" => "Compute centroid of a Polygon" ; serde_json::json!({"type":"object","properties":{"geojson":{"type":"string"}},"required":["geojson"]}) => |args| -> ToolResult {
         let p = parse_polygon(args["geojson"].as_str().unwrap_or("{}"))?;

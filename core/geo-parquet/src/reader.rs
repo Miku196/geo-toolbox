@@ -6,6 +6,7 @@
 use crate::metadata::GeoParquetMetadata;
 use crate::predicate::SpatialFilter;
 use crate::schema::GeoSchema;
+use geo_core::{GeoError, GeoResult};
 
 /// Reads GeoParquet files with spatial predicate pushdown.
 #[derive(Debug)]
@@ -38,36 +39,43 @@ impl GeoParquetReader {
     }
 
     /// Open the file and parse GeoParquet metadata.
-    pub fn open(mut self) -> Result<Self, String> {
-        // In production, use parquet::file::reader::FileReader to parse the file,
-        // extract the "geo" key-value metadata, and populate self.metadata.
-        //
-        // For now: provide the metadata parsing logic.
-        self.metadata = Some(self.parse_file_metadata()?);
-        Ok(self)
+    ///
+    /// # Honest degradation
+    ///
+    /// Real GeoParquet file I/O is not implemented yet. This crate currently
+    /// provides only the schema/metadata structures; opening a real file would
+    /// silently fake success by returning defaulted metadata, which is unsafe.
+    /// Until a real [arrow]/parquet backend lands, this returns
+    /// [`GeoError::Unimplemented`] instead of pretending to read the file.
+    pub fn open(self) -> GeoResult<Self> {
+        Err(GeoError::Unimplemented(
+            "GeoParquet real I/O not implemented yet; this crate currently \
+             only provides schema/metadata structures"
+                .into(),
+        ))
     }
 
     /// Read all features, optionally filtered by spatial predicate.
     ///
-    /// With Arrow feature enabled, uses columnar batch reading.
-    /// Falls back to row-by-row otherwise.
-    pub fn read_with_filter(
-        &self,
-        _filter: Option<&SpatialFilter>,
-    ) -> Result<Vec<GeoRecord>, String> {
-        // Placeholder: in production, this would:
-        // 1. Read Parquet file metadata to get row groups and their bboxes
-        // 2. Apply predicate pushdown — skip row groups that don't intersect
-        // 3. Read only the qualifying row groups
-        // 4. Decode WKB geometry and attributes
-        // 5. Apply exact spatial filter on decoded geometries
-        // Reading GeoParquet (predicate pushdown enabled)
-        // In production: read & filter using parquet crate
-        Ok(vec![])
+    /// # Honest degradation
+    ///
+    /// Real GeoParquet read + predicate pushdown is not implemented yet.
+    /// Returning `Ok(vec![])` would silently pretend the file had no data.
+    /// Instead this returns [`GeoError::Unimplemented`] until a real backend
+    /// lands.
+    pub fn read_with_filter(&self, _filter: Option<&SpatialFilter>) -> GeoResult<Vec<GeoRecord>> {
+        Err(GeoError::Unimplemented(
+            "GeoParquet real I/O not implemented yet; this crate currently \
+             only provides schema/metadata structures"
+                .into(),
+        ))
     }
 
     /// Read all features without filtering.
-    pub fn read_all(&self) -> Result<Vec<GeoRecord>, String> {
+    ///
+    /// Delegates to [`Self::read_with_filter`], which currently returns
+    /// [`GeoError::Unimplemented`].
+    pub fn read_all(&self) -> GeoResult<Vec<GeoRecord>> {
         self.read_with_filter(None)
     }
 
@@ -85,22 +93,12 @@ impl GeoParquetReader {
     pub fn schema(&self) -> &GeoSchema {
         &self.schema
     }
-
-    // Internal: parse the "geo" key-value metadata from a Parquet file.
-    fn parse_file_metadata(&self) -> Result<GeoParquetMetadata, String> {
-        // In production: use parquet::file::reader::FileReader
-        //   let file = File::open(&self.path)?;
-        //   let reader = SerializedFileReader::new(file)?;
-        //   let kv_meta = reader.metadata().file_metadata().key_value_metadata();
-        //   let geo_json = kv_meta.iter().find(|kv| kv.key == "geo")...;
-        //   serde_json::from_str(&geo_json.value)
-        Ok(GeoParquetMetadata::default())
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use geo_core::GeoError;
 
     #[test]
     fn test_reader_construct() {
@@ -108,5 +106,36 @@ mod tests {
         let reader = GeoParquetReader::new("test.parquet", schema);
         assert_eq!(reader.path, "test.parquet");
         assert!(reader.metadata.is_none());
+    }
+
+    #[test]
+    fn test_open_returns_implemented_error_not_fake_success() {
+        let reader = GeoParquetReader::new("nonexistent.parquet", GeoSchema::default());
+        // Real GeoParquet I/O is not implemented: open must fail loudly,
+        // not silently return a defaulted metadata as a fake success.
+        let err = reader.open().unwrap_err();
+        assert!(matches!(err, GeoError::Unimplemented(_)), "got {err:?}");
+    }
+
+    #[test]
+    fn test_read_all_returns_implemented_error_not_empty() {
+        let reader = GeoParquetReader::new("test.parquet", GeoSchema::default());
+        // Must not silently return an empty Vec pretending nothing matched.
+        let err = reader.read_all().unwrap_err();
+        assert!(matches!(err, GeoError::Unimplemented(_)), "got {err:?}");
+    }
+
+    #[test]
+    fn test_read_with_filter_returns_implemented_error_not_empty() {
+        let reader = GeoParquetReader::new("test.parquet", GeoSchema::default());
+        let err = reader
+            .read_with_filter(Some(&SpatialFilter::Bbox {
+                min_x: 103.0,
+                min_y: 30.0,
+                max_x: 105.0,
+                max_y: 31.0,
+            }))
+            .unwrap_err();
+        assert!(matches!(err, GeoError::Unimplemented(_)), "got {err:?}");
     }
 }

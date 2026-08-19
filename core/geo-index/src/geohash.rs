@@ -104,24 +104,18 @@ pub fn neighbors(hash: &str) -> Vec<String> {
         (1.0, -1.0),
         (-1.0, -1.0),
     ];
-    let (lon, lat, _) = match decode(hash) {
+    // 用解码出的精确包围框推导网格步长，使偏移随精度正确缩放：
+    // 每增 1 位精度，lon/lat 各按其位数的 2^n 等比细化（标准 base32 geohash 语义）。
+    let (lon, lat, bbox) = match decode(hash) {
         Some(v) => v,
         None => return vec![],
     };
     let precision = hash.len();
+    let step_lon = bbox.max_x - bbox.min_x;
+    let step_lat = bbox.max_y - bbox.min_y;
     dirs.iter()
         .map(|(dlon, dlat)| {
-            let offset_lon = if hash.len().is_multiple_of(2) {
-                0.0001
-            } else {
-                0.001
-            };
-            let offset_lat = if hash.len().is_multiple_of(2) {
-                0.001
-            } else {
-                0.0001
-            };
-            encode(lon + dlon * offset_lon, lat + dlat * offset_lat, precision)
+            encode(lon + dlon * step_lon, lat + dlat * step_lat, precision)
         })
         .collect()
 }
@@ -188,6 +182,60 @@ mod tests {
         let hash = encode(104.0, 30.5, 6);
         let nb = neighbors(&hash);
         assert!(!nb.is_empty());
+    }
+
+    #[test]
+    // 高精度下 neighbors 应随精度缩放，8 个邻格各相距 1 个该精度网格步长，
+    // 且与直接对相邻格中心 encode 一致（回归：旧实现固定 0.001/0.0001 偏移导致错格/同格）。
+    #[allow(deprecated)]
+    fn test_neighbors_scales_with_precision() {
+        for precision in [8usize, 9, 10] {
+            let hash = encode(104.0657, 30.5723, precision);
+            let (clon, clat, cbbox) = decode(&hash).unwrap();
+            // BBox 的 x↔lon, y↔lat
+            let step_lon = cbbox.max_x - cbbox.min_x;
+            let step_lat = cbbox.max_y - cbbox.min_y;
+
+            let dirs: [(f64, f64); 8] = [
+                (0.0, 1.0),
+                (1.0, 0.0),
+                (0.0, -1.0),
+                (-1.0, 0.0),
+                (1.0, 1.0),
+                (-1.0, 1.0),
+                (1.0, -1.0),
+                (-1.0, -1.0),
+            ];
+
+            let nb = neighbors(&hash);
+            assert_eq!(nb.len(), 8);
+            // 8 个邻居互不相同，且都不等于中心格
+            let mut uniq = nb.clone();
+            uniq.sort();
+            uniq.dedup();
+            assert_eq!(uniq.len(), 8);
+            assert!(!nb.contains(&hash));
+
+            for (i, (dlon, dlat)) in dirs.iter().enumerate() {
+                // 与直接对相邻格中心 encode 一致
+                let expected =
+                    encode(clon + dlon * step_lon, clat + dlat * step_lat, precision);
+                assert_eq!(nb[i], expected, "precision={precision} dir=({dlon},{dlat})");
+
+                // 解码后应恰为沿该方向 1 个网格步长的邻格中心
+                let (nlon, nlat, _) = decode(&nb[i]).unwrap();
+                let dlon_actual = (nlon - clon) / step_lon;
+                let dlat_actual = (nlat - clat) / step_lat;
+                assert!(
+                    (dlon_actual - dlon).abs() < 1e-3,
+                    "precision={precision} dir=({dlon},{dlat}) lon off: {dlon_actual}"
+                );
+                assert!(
+                    (dlat_actual - dlat).abs() < 1e-3,
+                    "precision={precision} dir=({dlon},{dlat}) lat off: {dlat_actual}"
+                );
+            }
+        }
     }
 
     #[test]

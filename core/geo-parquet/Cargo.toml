@@ -6,8 +6,12 @@ edition.workspace = true
 license.workspace = true
 
 [features]
-default = ["arrow"]
-# Full Arrow/Parquet support for cloud-native pipelines
+# NOTE: This crate is currently a metadata/schema skeleton only — real
+# Parquet read/write I/O is NOT implemented (reader/writer return
+# GeoError::Unimplemented). Arrow/Parquet machinery is therefore NOT pulled
+# in by default. Enable the `arrow` feature once a real backend lands.
+default = []
+# Full Arrow/Parquet support for cloud-native pipelines (optional, opt-in)
 arrow = ["dep:parquet", "dep:arrow", "dep:arrow-array", "dep:arrow-schema", "dep:arrow-csv"]
 
 [dependencies]

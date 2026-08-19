@@ -6,7 +6,10 @@
 use crate::metadata::{projjson_for_epsg, ColumnMetadata, GeoParquetMetadata};
 use crate::reader::GeoRecord;
 use crate::schema::GeoSchema;
+use geo_core::{GeoError, GeoResult};
 use geo_types::Geometry;
+
+const WRITE_MSG: &str = "GeoParquet real I/O not implemented yet; this crate currently only provides schema/metadata structures. Writes must be handled by a real backend";
 
 /// Writes GeoParquet files from geometry records.
 #[derive(Debug)]
@@ -36,7 +39,7 @@ impl GeoParquetWriter {
         &mut self,
         wkb: Vec<u8>,
         properties: std::collections::HashMap<String, serde_json::Value>,
-    ) -> Result<(), String> {
+    ) -> GeoResult<()> {
         // Update bounding box
         if let Some(geom) = parse_wkb_bbox(&wkb) {
             self.update_bbox(&geom);
@@ -52,12 +55,14 @@ impl GeoParquetWriter {
 
     /// Add a feature from a geo_types Geometry.
     ///
-    /// Converts to WKB internally.
+    /// Converts to WKB internally. Only [`geo_types::Geometry::Point`]
+    /// encoding is currently implemented; any other geometry kind returns
+    /// [`GeoError::Unimplemented`] rather than emitting invalid WKB bytes.
     pub fn add_geometry(
         &mut self,
         geometry: &Geometry<f64>,
         properties: std::collections::HashMap<String, serde_json::Value>,
-    ) -> Result<(), String> {
+    ) -> GeoResult<()> {
         use geo::algorithm::bounding_rect::BoundingRect;
 
         // Update bbox
@@ -81,8 +86,9 @@ impl GeoParquetWriter {
             self.geometry_types.push(geom_type.to_string());
         }
 
-        // WKB encoding (simplified — in production use wkb crate)
-        let wkb = encode_to_wkb(geometry);
+        // WKB encoding — only Point is implemented; non-Point kinds
+        // return Err instead of pushing an invalid placeholder byte.
+        let wkb = encode_to_wkb(geometry)?;
 
         self.features.push(GeoRecord {
             geometry: wkb,
@@ -94,17 +100,14 @@ impl GeoParquetWriter {
 
     /// Write all buffered features to a GeoParquet file.
     ///
-    /// Produces a spec-compliant .parquet file with "geo" metadata.
-    pub fn write_to_file(&self, _path: &str, _epsg: Option<u32>) -> Result<usize, String> {
-        // In production:
-        // 1. Build Arrow schema from self.schema
-        // 2. Create columnar arrays for geometry (WKB bytes) and attributes
-        // 3. Write RecordBatch to Parquet file
-        // 4. Set "geo" key-value metadata on the file
-        // 5. Return number of features written
-        let count = self.features.len();
-        // GeoParquet: wrote {count} features to {_path}
-        Ok(count)
+    /// # Honest degradation
+    ///
+    /// Real GeoParquet disk writing is not implemented yet; writes must be
+    /// handled by a real backend. Returning the buffered feature count as if
+    /// the file had been written would silently fake success, so this returns
+    /// [`GeoError::Unimplemented`] until a real backend lands.
+    pub fn write_to_file(&self, _path: &str, _epsg: Option<u32>) -> GeoResult<usize> {
+        Err(GeoError::Unimplemented(WRITE_MSG.to_string()))
     }
 
     /// Build the GeoParquet metadata for the accumulated features.
@@ -169,13 +172,14 @@ impl GeoParquetWriter {
 
 // ── WKB helpers ──────────────────────────────────────────────────
 
-/// Encode a geo_types Geometry to WKB bytes.
+/// Encode a [`geo_types::Geometry`] to WKB bytes.
 ///
-/// Simplified implementation. In production, use the `wkb` crate
-/// for full WKB encoding support.
-fn encode_to_wkb(geom: &Geometry<f64>) -> Vec<u8> {
-    // Placeholder: returns a minimal byte representation
-    // In production: wkb::geom_to_wkb(geom)
+/// Only [`geo_types::Geometry::Point`] is currently implemented (the WKB
+/// point encoding: byte-order marker + wkbPoint type tag + x + y). Any other
+/// geometry kind returns [`GeoError::Unimplemented`] instead of emitting the
+/// invalid placeholder bytes the old skeleton produced. Full WKB encoding
+/// should use the `wkb` crate once a real backend lands.
+fn encode_to_wkb(geom: &Geometry<f64>) -> GeoResult<Vec<u8>> {
     let mut buf = Vec::new();
     buf.push(1u8); // little-endian byte order marker
     match geom {
@@ -183,13 +187,12 @@ fn encode_to_wkb(geom: &Geometry<f64>) -> Vec<u8> {
             buf.extend_from_slice(&1u32.to_le_bytes()); // wkbPoint
             buf.extend_from_slice(&p.x().to_le_bytes());
             buf.extend_from_slice(&p.y().to_le_bytes());
+            Ok(buf)
         }
-        _ => {
-            // For non-Point types, encode simplified WKB
-            buf.push(0u8); // place type marker
-        }
+        other => Err(GeoError::Unimplemented(format!(
+            "WKB encoding not implemented for non-Point geometry: {other:?}",
+        ))),
     }
-    buf
 }
 
 /// Parse WKB bytes to extract bounding box.
@@ -275,5 +278,43 @@ mod tests {
         assert!(meta.columns["geometry"]
             .geometry_types
             .contains(&"Point".to_string()));
+    }
+
+    #[test]
+    fn test_write_to_file_returns_implemented_error_not_fake_count() {
+        use geo_core::GeoError;
+        let schema = GeoSchema::default();
+        let mut writer = GeoParquetWriter::new(schema);
+        writer
+            .add_geometry(
+                &Geometry::Point(Point::new(104.0, 30.5)),
+                std::collections::HashMap::new(),
+            )
+            .unwrap();
+        assert_eq!(writer.len(), 1);
+
+        // Real disk write is not implemented: must fail loudly,
+        // not fake-return the feature count as if the file was written.
+        let err = writer.write_to_file("out.parquet", Some(4326)).unwrap_err();
+        assert!(matches!(err, GeoError::Unimplemented(_)), "got {err:?}");
+    }
+
+    #[test]
+    fn test_add_geometry_non_point_returns_error_not_invalid_wkb() {
+        use geo_core::GeoError;
+        let schema = GeoSchema::default();
+        let mut writer = GeoParquetWriter::new(schema);
+
+        let line = Geometry::LineString(geo_types::LineString::new(vec![
+            geo_types::Coord { x: 104.0, y: 30.0 },
+            geo_types::Coord { x: 105.0, y: 31.0 },
+        ]));
+
+        // Non-Point geometry must not be silently accepted with an
+        // invalid placeholder WKB byte.
+        let err = writer
+            .add_geometry(&line, std::collections::HashMap::new())
+            .unwrap_err();
+        assert!(matches!(err, GeoError::Unimplemented(_)), "got {err:?}");
     }
 }

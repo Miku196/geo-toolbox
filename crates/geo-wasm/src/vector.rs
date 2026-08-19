@@ -141,7 +141,7 @@ fn compute_buffer_inner(
         },
     };
 
-    let result = geo_vector::buffer(&poly, distance, buffer_mode);
+    let result = geo_vector::buffer(&poly, distance, buffer_mode)?;
     geojson_to_string(&multi_polygon_to_geojson(&result))
 }
 
@@ -438,8 +438,8 @@ pub fn line_density(
             }
         })
         .collect();
-    let result =
-        geo_vector::line_density(&segs, grid_cols, grid_rows, (min_x, min_y, max_x, max_y));
+    let result = geo_vector::line_density(&segs, grid_cols, grid_rows, (min_x, min_y, max_x, max_y))
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
     serde_json::to_string(&result).map_err(|e| JsValue::from_str(&e.to_string()))
 }
 

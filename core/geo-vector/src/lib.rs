@@ -29,4 +29,6 @@ pub use ops::{
     clip, difference, intersect, simplify, simplify_line, simplify_visvalingam,
     simplify_visvalingam_preserve, sym_difference, union_all,
 };
-pub use stats::{centroid, feature_area};
+pub use stats::{
+    centroid, feature_area, feature_area_ha, feature_area_m2, feature_area_sq_deg, multi_area_m2,
+};

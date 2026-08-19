@@ -1,3 +1,5 @@
+use geo_core::{GeoError, GeoResult};
+
 /// 核密度估计 (Kernel Density Estimation)。
 ///
 /// 对点集做高斯核密度估计，返回规则网格的密度值。
@@ -73,12 +75,22 @@ pub fn kernel_density(
 /// - `lines`: 线段 `(x1, y1, x2, y2)` 列表
 /// - `grid_cols`, `grid_rows`: 输出网格尺寸
 /// - `bbox`: 分析范围
+///
+/// # 错误
+/// - `grid_cols` / `grid_rows` 任一为 0 时返回 [`GeoError::InvalidInput`]，
+///   避免除零 / 越界，而不是 panic。
 pub fn line_density(
     lines: &[(f64, f64, f64, f64)],
     grid_cols: usize,
     grid_rows: usize,
     bbox: (f64, f64, f64, f64),
-) -> Vec<f64> {
+) -> GeoResult<Vec<f64>> {
+    if grid_cols == 0 || grid_rows == 0 {
+        return Err(GeoError::InvalidInput {
+            field: "grid".into(),
+            reason: "line_density requires non-zero grid_cols and grid_rows".into(),
+        });
+    }
     let (min_x, min_y, max_x, max_y) = bbox;
     let cell_w = (max_x - min_x) / grid_cols as f64;
     let cell_h = (max_y - min_y) / grid_rows as f64;
@@ -118,7 +130,7 @@ pub fn line_density(
             }
         }
     }
-    result
+    Ok(result)
 }
 
 /// 计算线段与矩形裁剪后的长度（Cohen-Sutherland 裁剪简化版）。

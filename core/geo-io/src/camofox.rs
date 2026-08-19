@@ -104,10 +104,12 @@ pub fn parse_camofox_file(
             continue;
         }
 
-        // Build geometry WKB (Point, little-endian)
+        // Build standard 2D Point WKB (little-endian)。
+        // 数据源仅有 (lng, lat) 两维，故写标准 2D：byte_order + type=1(Point) + 2 个 double。
+        // （旧实现置 0x20000000 EWKB Z/SRID 标志但 type=0 且只写两维，产生 PostGIS 拒读的畸形 WKB。）
         let mut wkb = Vec::with_capacity(21);
         wkb.push(0x01); // byte order: LE
-        wkb.extend_from_slice(&0x20000000u32.to_le_bytes()); // Point 2D
+        wkb.extend_from_slice(&1u32.to_le_bytes()); // type: 1 = Point (2D)
         wkb.extend_from_slice(&rec.lng.to_le_bytes());
         wkb.extend_from_slice(&rec.lat.to_le_bytes());
 
@@ -154,6 +156,39 @@ mod tests {
         assert_eq!(result.rejected, 0);
         assert_eq!(rows.len(), 1);
         assert!(rows[0].properties.contains("Wutong Mountain"));
+    }
+
+    #[test]
+    // 回归：WKB 头曾写 0x20000000（EWKB Z/SRID 标志）但 type=0 且只写 2 维，
+    // 生成畸形 WKB（PostGIS 拒读）。标准 2D Point 应为 byte_order=1, type=1, 2 个坐标。
+    fn test_wkb_is_valid_2d_point() {
+        let json = r#"{"name": "Wutong", "lat": 22.55, "lng": 114.06, "type": "forest"}"#;
+        let (rows, _) = parse_camofox_file(json, "test").unwrap();
+        let wkb = &rows[0].wkb;
+
+        // WKB Point(2D): byte_order(1) + type(4) + 2 * double(8)
+        assert_eq!(wkb.len(), 1 + 4 + 2 * 8, "WKB length for 2D point");
+        assert_eq!(wkb[0], 0x01, "byte order must be little-endian");
+
+        let type_raw = u32::from_le_bytes([wkb[1], wkb[2], wkb[3], wkb[4]]);
+        assert_eq!(type_raw & 0xFF, 1, "geometry type must be Point");
+        assert_eq!(
+            type_raw & 0xFF000000,
+            0,
+            "no EWKB Z/SRID flag for 2D data"
+        );
+        assert_eq!(type_raw, 1, "type must be exactly 1 (2D Point)");
+        assert_eq!((wkb.len() - 5) / 8, 2, "2D point has exactly 2 coords");
+
+        // 坐标应为 lng/lat 原生双精度
+        let lng = f64::from_le_bytes([
+            wkb[5], wkb[6], wkb[7], wkb[8], wkb[9], wkb[10], wkb[11], wkb[12],
+        ]);
+        let lat = f64::from_le_bytes([
+            wkb[13], wkb[14], wkb[15], wkb[16], wkb[17], wkb[18], wkb[19], wkb[20],
+        ]);
+        assert!((lng - 114.06).abs() < 1e-9);
+        assert!((lat - 22.55).abs() < 1e-9);
     }
 
     #[test]

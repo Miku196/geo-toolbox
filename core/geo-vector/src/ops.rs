@@ -177,7 +177,7 @@ mod tests {
     #[test]
     fn test_buffer_bbox_positive() {
         let a = square(0.0, 0.0, 5.0);
-        let buf = buffer(&a, 2.0, BufferMode::Bbox);
+        let buf = buffer(&a, 2.0, BufferMode::Bbox).unwrap();
         assert!(buf.unsigned_area() > a.unsigned_area());
         // BBox 面积 = (5+4)*(5+4) = 81
         assert!((buf.unsigned_area() - 81.0).abs() < 1e-6);
@@ -186,7 +186,7 @@ mod tests {
     #[test]
     fn test_buffer_bbox_negative() {
         let a = square(0.0, 0.0, 10.0);
-        let buf = buffer(&a, -1.0, BufferMode::Bbox);
+        let buf = buffer(&a, -1.0, BufferMode::Bbox).unwrap();
         // 内缩后面积 < 100
         assert!(buf.unsigned_area() < 100.0);
     }
@@ -200,7 +200,8 @@ mod tests {
             BufferMode::ConvexHull {
                 quadrant_segments: 16,
             },
-        );
+        )
+        .unwrap();
         assert!(buf.unsigned_area() > 100.0);
     }
 
@@ -213,7 +214,8 @@ mod tests {
             BufferMode::ConvexHull {
                 quadrant_segments: 8,
             },
-        );
+        )
+        .unwrap();
         assert!((buf.unsigned_area() - a.unsigned_area()).abs() < 1e-6);
     }
 
@@ -226,7 +228,8 @@ mod tests {
             BufferMode::Precise {
                 quadrant_segments: 16,
             },
-        );
+        )
+        .unwrap();
         // 精确偏移面积 = 原面积 + 4边×平行矩形 + 4角×扇形
         // ≈ 100 + 80 + 4π ≈ 192.57
         assert!(buf.unsigned_area() > 180.0, "area={}", buf.unsigned_area());
@@ -243,14 +246,16 @@ mod tests {
             BufferMode::Precise {
                 quadrant_segments: 8,
             },
-        );
+        )
+        .unwrap();
         let convex = buffer(
             &l,
             0.5,
             BufferMode::ConvexHull {
                 quadrant_segments: 8,
             },
-        );
+        )
+        .unwrap();
 
         // 凸壳面积 ≥ 精确偏移面积（凸壳会多填凹角区域）
         assert!(
@@ -271,7 +276,8 @@ mod tests {
             BufferMode::Precise {
                 quadrant_segments: 8,
             },
-        );
+        )
+        .unwrap();
 
         // 检查结果非空
         assert!(!buf.0.is_empty());
@@ -312,7 +318,7 @@ mod tests {
     #[test]
     fn test_line_density() {
         let lines = vec![(0.0, 0.0, 10.0, 10.0), (0.0, 10.0, 10.0, 0.0)];
-        let result = line_density(&lines, 10, 10, (0.0, 0.0, 10.0, 10.0));
+        let result = line_density(&lines, 10, 10, (0.0, 0.0, 10.0, 10.0)).unwrap();
         assert_eq!(result.len(), 100);
         // 交叉点附近应有更高密度
         let center = result[5 * 10 + 5];
@@ -493,8 +499,39 @@ mod tests {
     #[test]
     fn test_bbox_buffer_inner_via_buffer() {
         let a = square(0.0, 0.0, 10.0);
-        let buf = buffer(&a, -1.0, BufferMode::Bbox);
+        let buf = buffer(&a, -1.0, BufferMode::Bbox).unwrap();
         assert!(buf.unsigned_area() < 100.0);
         assert!(buf.unsigned_area() > 0.0);
+    }
+
+    #[test]
+    fn test_buffer_negative_precise_returns_err() {
+        let a = square(0.0, 0.0, 10.0);
+        let res = buffer(&a, -1.0, BufferMode::Precise { quadrant_segments: 8 });
+        assert!(res.is_err(), "Precise negative buffer should return Err, got {:?}", res);
+    }
+
+    #[test]
+    fn test_buffer_negative_convexhull_returns_err() {
+        let a = square(0.0, 0.0, 10.0);
+        let res = buffer(&a, -1.0, BufferMode::ConvexHull { quadrant_segments: 8 });
+        assert!(res.is_err(), "ConvexHull negative buffer should return Err, got {:?}", res);
+    }
+
+    #[test]
+    fn test_buffer_negative_bbox_still_works() {
+        let a = square(0.0, 0.0, 10.0);
+        let buf = buffer(&a, -1.0, BufferMode::Bbox).unwrap();
+        assert!(buf.unsigned_area() < 100.0);
+        assert!(buf.unsigned_area() > 0.0);
+    }
+
+    #[test]
+    fn test_line_density_zero_grid_returns_err() {
+        let lines = vec![(0.0, 0.0, 10.0, 10.0)];
+        let res = line_density(&lines, 0, 10, (0.0, 0.0, 10.0, 10.0));
+        assert!(res.is_err(), "zero grid_cols should return Err, got {:?}", res);
+        let res2 = line_density(&lines, 10, 0, (0.0, 0.0, 10.0, 10.0));
+        assert!(res2.is_err(), "zero grid_rows should return Err, got {:?}", res2);
     }
 }
