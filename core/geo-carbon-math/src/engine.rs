@@ -8,6 +8,7 @@ use std::collections::HashMap;
 
 use crate::factor::{gwp100, EmissionFactor, EmissionScope, FuelType, GreenhouseGas, GwpVersion};
 use crate::feature::GeoFeature;
+use crate::pools::round2;
 use crate::report::{
     AuditEntry, CarbonReport, ClassResult, FactorSourceUnit, GasBreakdown, ScopeSummary,
 };
@@ -23,10 +24,6 @@ struct ClassAggregate {
     uncertainty_pct: Option<f64>,
     gwp_version: Option<GwpVersion>,
     scope: Option<EmissionScope>,
-}
-
-fn round2(value: f64) -> f64 {
-    (value * 100.0).round() / 100.0
 }
 
 // ── Activity Record (industrial) ─────────────────────────────
@@ -398,35 +395,8 @@ impl CarbonEngine {
             }
         };
 
-        let mut scope_summary = ScopeSummary::default();
-        for cls in &classes {
-            match cls.scope {
-                Some(EmissionScope::Scope1) => scope_summary.scope1_tco2e += cls.emission_tco2e,
-                Some(EmissionScope::Scope2) => scope_summary.scope2_tco2e += cls.emission_tco2e,
-                Some(EmissionScope::Scope3) => scope_summary.scope3_tco2e += cls.emission_tco2e,
-                None => {}
-            }
-        }
-
-        let audit_trail: Vec<AuditEntry> = classes
-            .iter()
-            .map(|c| AuditEntry {
-                landcover_class: c.landcover_class.clone(),
-                lc_hash: String::new(),
-                factor_id: c.factor_source.source.clone(),
-                factor_hash: String::new(),
-                gwp_version: String::new(),
-                uncertainty_pct: c.uncertainty_tco2e.and_then(|u| {
-                    if c.emission_tco2e.abs() > f64::EPSILON {
-                        Some(round2(u / c.emission_tco2e.abs() * 100.0))
-                    } else {
-                        None
-                    }
-                }),
-                complete: true,
-                scope: c.scope,
-            })
-            .collect();
+        let scope_summary = self.compute_scope_summary(&classes);
+        let audit_trail = self.compute_audit_trail(&classes);
 
         Ok(CarbonReport {
             aoi_name: None,

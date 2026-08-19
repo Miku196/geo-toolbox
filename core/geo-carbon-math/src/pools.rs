@@ -87,7 +87,7 @@ impl CarbonPool {
 
 /// IPCC ecological zone classification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum EcoZone {
+pub enum EcoZoneKind {
     /// Tropical moist forest (warm, wet year-round).
     TropicalMoist,
     /// Temperate coniferous forest.
@@ -140,9 +140,9 @@ impl Default for BiomassParams {
 
 impl BiomassParams {
     /// Get IPCC default biomass parameters for a given ecological zone.
-    pub fn for_eco_zone(zone: EcoZone) -> Self {
+    pub fn for_eco_zone(zone: EcoZoneKind) -> Self {
         match zone {
-            EcoZone::TropicalMoist => Self {
+            EcoZoneKind::TropicalMoist => Self {
                 wood_density: 0.60,
                 bef: 2.2,
                 carbon_fraction: 0.47,
@@ -152,7 +152,7 @@ impl BiomassParams {
                 litter_turnover: 0.6,
                 deadwood_decay_rate: 0.10,
             },
-            EcoZone::TemperateConiferous => Self {
+            EcoZoneKind::TemperateConiferous => Self {
                 wood_density: 0.45,
                 bef: 1.5,
                 carbon_fraction: 0.47,
@@ -162,7 +162,7 @@ impl BiomassParams {
                 litter_turnover: 0.4,
                 deadwood_decay_rate: 0.05,
             },
-            EcoZone::TemperateBroadleaf => Self {
+            EcoZoneKind::TemperateBroadleaf => Self {
                 wood_density: 0.58,
                 bef: 2.0,
                 carbon_fraction: 0.47,
@@ -172,7 +172,7 @@ impl BiomassParams {
                 litter_turnover: 0.5,
                 deadwood_decay_rate: 0.07,
             },
-            EcoZone::Boreal => Self {
+            EcoZoneKind::Boreal => Self {
                 wood_density: 0.40,
                 bef: 1.3,
                 carbon_fraction: 0.47,
@@ -187,22 +187,22 @@ impl BiomassParams {
 
     /// IPCC default for tropical moist forest.
     pub fn tropical_moist() -> Self {
-        Self::for_eco_zone(EcoZone::TropicalMoist)
+        Self::for_eco_zone(EcoZoneKind::TropicalMoist)
     }
 
     /// IPCC default for temperate coniferous.
     pub fn temperate_coniferous() -> Self {
-        Self::for_eco_zone(EcoZone::TemperateConiferous)
+        Self::for_eco_zone(EcoZoneKind::TemperateConiferous)
     }
 
     /// IPCC default for temperate broadleaf.
     pub fn temperate_broadleaf() -> Self {
-        Self::for_eco_zone(EcoZone::TemperateBroadleaf)
+        Self::for_eco_zone(EcoZoneKind::TemperateBroadleaf)
     }
 
     /// IPCC default for boreal forest.
     pub fn boreal() -> Self {
-        Self::for_eco_zone(EcoZone::Boreal)
+        Self::for_eco_zone(EcoZoneKind::Boreal)
     }
 }
 
@@ -312,7 +312,7 @@ impl SocParams {
 /// Covers all 4×4 = 16 combinatorially-valid eco-zone × land-use scenarios.
 ///
 /// ```rust,ignore
-/// let params = scenario_matrix(EcoZone::TropicalMoist, LandUseScenario::NativeForest, 60.0);
+/// let params = scenario_matrix(EcoZoneKind::TropicalMoist, LandUseScenario::NativeForest, 60.0);
 /// let agb = compute_agb_tco2e_ha(vol, params.biomass.wood_density, params.biomass.bef, params.biomass.carbon_fraction);
 /// let soc_stock = params.soc.compute_stock_tc_ha();
 /// ```
@@ -323,7 +323,7 @@ pub struct ScenarioParams {
     /// Soil organic carbon parameters for the selected land-use scenario.
     pub soc: SocParams,
     /// Ecological zone classification.
-    pub eco_zone: EcoZone,
+    pub eco_zone: EcoZoneKind,
     /// Land-use scenario.
     pub land_use: LandUseScenario,
 }
@@ -333,7 +333,7 @@ pub struct ScenarioParams {
 /// Serves as the canonical data table for all IPCC Tier 1 eco-zone × land-use combos.
 /// For new eco-zones or land-use scenarios: only this function + the two enums need updating.
 pub fn scenario_matrix(
-    eco_zone: EcoZone,
+    eco_zone: EcoZoneKind,
     land_use: LandUseScenario,
     soc_ref: f64,
 ) -> ScenarioParams {
