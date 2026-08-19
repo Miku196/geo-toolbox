@@ -69,17 +69,61 @@ impl WmtsService {
                 )
             })?;
 
-        // Validate tile matrix set exists
-        if !self
+        // Validate tile matrix set exists and resolve the exact zoom-level matrix.
+        let tms = self
             .tile_matrix_sets
             .iter()
-            .any(|t| t.identifier == params.tile_matrix_set)
-        {
+            .find(|t| t.identifier == params.tile_matrix_set)
+            .ok_or_else(|| {
+                OgcError::new(
+                    ServiceType::WMTS,
+                    "1.0.0",
+                    "InvalidParameterValue",
+                    format!("TileMatrixSet '{}' not found", params.tile_matrix_set),
+                )
+            })?;
+
+        // Reject unknown / non-numeric / out-of-scale zoom levels rather than
+        // silently downgrading to zoom 0.
+        let matrix = tms
+            .tile_matrices
+            .iter()
+            .find(|m| m.identifier == params.tile_matrix)
+            .ok_or_else(|| {
+                OgcError::new(
+                    ServiceType::WMTS,
+                    "1.0.0",
+                    "InvalidParameterValue",
+                    format!(
+                        "TileMatrix '{}' not found in set '{}'",
+                        params.tile_matrix, params.tile_matrix_set
+                    ),
+                )
+            })?;
+
+        // Reject out-of-range tile column/row for the resolved matrix.
+        if params.tile_col >= matrix.matrix_width || params.tile_row >= matrix.matrix_height {
             return Err(OgcError::new(
                 ServiceType::WMTS,
                 "1.0.0",
                 "InvalidParameterValue",
-                format!("TileMatrixSet '{}' not found", params.tile_matrix_set),
+                format!(
+                    "Tile ({},{}) out of range for matrix {}x{}",
+                    params.tile_col, params.tile_row, matrix.matrix_width, matrix.matrix_height
+                ),
+            ));
+        }
+
+        // Reject formats the layer does not advertise.
+        if !layer.formats.iter().any(|f| f == &params.format) {
+            return Err(OgcError::new(
+                ServiceType::WMTS,
+                "1.0.0",
+                "InvalidParameterValue",
+                format!(
+                    "Format '{}' not supported by layer '{}' (supported: {:?})",
+                    params.format, params.layer, layer.formats
+                ),
             ));
         }
 
@@ -90,6 +134,7 @@ impl WmtsService {
             &params.tile_matrix,
             params.tile_col,
             params.tile_row,
+            &params.format,
         ) {
             return Ok(WmtsResponse::Tile {
                 data: data.to_vec(),
@@ -103,22 +148,44 @@ impl WmtsService {
             .starts_with("application/vnd.mapbox-vector-tile")
             || params.format == "application/x-protobuf";
 
-        if is_mvt {
-            return self.handle_mvt_tile(layer, params);
-        }
-
-        // Generate raster tile using layer renderer, fallback to default, then checkerboard
-        let tm: u32 = params.tile_matrix.parse().unwrap_or(0);
-        let renderer = layer.renderer.as_ref().or(self.default_renderer.as_ref());
-        let data = match renderer {
-            Some(r) => r(tm, params.tile_col, params.tile_row),
-            None => renderers::checkerboard(tm, params.tile_col, params.tile_row),
+        let (data, mime_type) = if is_mvt {
+            let resp = self.handle_mvt_tile(layer, params)?;
+            match resp {
+                WmtsResponse::Tile { data, mime_type } => (data, mime_type),
+                _ => {
+                    return Err(OgcError::new(
+                        ServiceType::WMTS,
+                        "1.0.0",
+                        "InternalError",
+                        "MVT handler returned a non-tile response",
+                    ))
+                }
+            }
+        } else {
+            // Generate raster tile using layer renderer, fallback to default,
+            // then checkerboard.
+            let tm: u32 = params.tile_matrix.parse().unwrap_or(0);
+            let renderer = layer.renderer.as_ref().or(self.default_renderer.as_ref());
+            let data = match renderer {
+                Some(r) => r(tm, params.tile_col, params.tile_row),
+                None => renderers::checkerboard(tm, params.tile_col, params.tile_row),
+            };
+            (data, params.format.clone())
         };
 
-        Ok(WmtsResponse::Tile {
-            data,
-            mime_type: params.format.clone(),
-        })
+        // Cache the served tile so subsequent requests hit (the cache key now
+        // includes the output format, so PNG/MVT of the same tile do not collide).
+        self.cache.insert(
+            &params.layer,
+            &params.tile_matrix_set,
+            &params.tile_matrix,
+            params.tile_col,
+            params.tile_row,
+            &mime_type,
+            data.clone(),
+        );
+
+        Ok(WmtsResponse::Tile { data, mime_type })
     }
 
     /// Handle an MVT (vector tile) request.

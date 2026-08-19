@@ -178,19 +178,12 @@ impl WmsService {
             }
         }
 
-        // Placeholder: render map image
-        // In production, this would:
-        // 1. Query spatial data for the requested layers + bbox
-        // 2. Rasterize features to an image (using GDAL or software renderer)
-        // 3. Encode as PNG/JPEG/GeoTIFF
-        let image_bytes = vec![0u8; (params.width * params.height) as usize];
-
-        Ok(WmsResponse::Image {
-            data: image_bytes,
-            mime_type: params.format.clone(),
-            width: params.width,
-            height: params.height,
-        })
+        Err(OgcError::new(
+            ServiceType::WMS,
+            "1.3.0",
+            "OperationNotSupported",
+            "GetMap is not implemented: no raster rendering backend is registered",
+        ))
     }
 
     fn handle_get_feature_info(
@@ -221,16 +214,12 @@ impl WmsService {
             }
         }
 
-        // Placeholder: query features at pixel
-        // In production: convert pixel coords → map coords, query spatial index
-        let features = serde_json::json!({
-            "type": "FeatureCollection",
-            "features": [],
-            "totalFeatures": 0
-        });
-
-        let json_str = serde_json::to_string_pretty(&features).unwrap_or_default();
-        Ok(WmsResponse::Xml(json_str))
+        Err(OgcError::new(
+            ServiceType::WMS,
+            "1.3.0",
+            "OperationNotSupported",
+            "GetFeatureInfo is not implemented: no queryable feature backend is registered",
+        ))
     }
 
     /// Build WMS 1.3.0 GetCapabilities XML document.
@@ -384,7 +373,9 @@ mod tests {
     }
 
     #[test]
-    fn test_get_map_valid() {
+    fn test_get_map_honest_error_no_fake_png() {
+        // Regression: GetMap must NOT return a fabricated all-zero "PNG".
+        // With no raster backend, it must degrade to an explicit OGC error.
         let svc = make_service();
         let params = GetMapParams {
             layers: vec!["landcover".into()],
@@ -398,7 +389,43 @@ mod tests {
             bgcolor: None,
         };
         let result = svc.handle(&WmsRequest::GetMap(params));
-        assert!(result.is_ok());
+        let err = result
+            .expect_err("GetMap without a raster backend must not pretend success");
+        assert_eq!(err.exceptions[0].code, "OperationNotSupported");
+        assert!(
+            err.exceptions[0].text.contains("not implemented")
+                || err.exceptions[0].text.contains("no raster backend")
+        );
+    }
+
+    #[test]
+    fn test_get_feature_info_honest_error_no_fake_json() {
+        // Regression: GetFeatureInfo must not fabricate an empty feature
+        // collection JSON masquerading as an XML response.
+        let svc = make_service();
+        let params = GetFeatureInfoParams {
+            map_params: GetMapParams {
+                layers: vec!["landcover".into()],
+                styles: vec![],
+                crs: "EPSG:4326".into(),
+                bbox: Wgs84Bbox::new(-180.0, -90.0, 180.0, 90.0),
+                width: 256,
+                height: 256,
+                format: "image/png".into(),
+                transparent: false,
+                bgcolor: None,
+            },
+            i: 10,
+            j: 10,
+            query_layers: vec!["landcover".into()],
+            info_format: "application/json".into(),
+            feature_count: 5,
+        };
+        let result = svc.handle(&WmsRequest::GetFeatureInfo(params));
+        assert!(
+            result.is_err(),
+            "GetFeatureInfo without a data source must not fabricate empty results"
+        );
     }
 
     #[test]

@@ -90,10 +90,10 @@ fn test_global_mercator_tms() {
 
 #[test]
 fn test_tile_cache_insert_get() {
-    let mut cache = TileCache::new(100);
+    let cache = TileCache::new(100);
     let data = vec![1u8, 2, 3, 4];
-    cache.insert("nlcd", "EPSG:4326", "0", 0, 0, data.clone());
-    let result = cache.get("nlcd", "EPSG:4326", "0", 0, 0);
+    cache.insert("nlcd", "EPSG:4326", "0", 0, 0, "image/png", data.clone());
+    let result = cache.get("nlcd", "EPSG:4326", "0", 0, 0, "image/png");
     assert!(result.is_some());
     assert_eq!(result.unwrap(), &[1, 2, 3, 4]);
 }
@@ -101,23 +101,23 @@ fn test_tile_cache_insert_get() {
 #[test]
 fn test_tile_cache_miss() {
     let cache = TileCache::new(100);
-    assert!(cache.get("nlcd", "EPSG:4326", "0", 0, 0).is_none());
+    assert!(cache.get("nlcd", "EPSG:4326", "0", 0, 0, "image/png").is_none());
 }
 
 #[test]
 fn test_tile_cache_pre_cache() {
-    let mut cache = TileCache::new(10000);
-    let count = cache.pre_cache("nlcd", "EPSG:4326", 2, 2);
+    let cache = TileCache::new(10000);
+    let count = cache.pre_cache("nlcd", "EPSG:4326", "image/png", 2, 2);
     assert!(count > 0);
     assert_eq!(cache.len(), count as usize);
-    let result = cache.get("nlcd", "EPSG:4326", "0", 0, 0);
+    let result = cache.get("nlcd", "EPSG:4326", "0", 0, 0, "image/png");
     assert!(result.is_some());
 }
 
 #[test]
 fn test_tile_cache_clear() {
-    let mut cache = TileCache::new(100);
-    cache.insert("nlcd", "EPSG:4326", "0", 0, 0, vec![1, 2, 3]);
+    let cache = TileCache::new(100);
+    cache.insert("nlcd", "EPSG:4326", "0", 0, 0, "image/png", vec![1, 2, 3]);
     assert!(!cache.is_empty());
     cache.clear();
     assert!(cache.is_empty());
@@ -174,6 +174,7 @@ fn test_wmts_cache_integration() {
         "0",
         0,
         0,
+        "image/png",
         vec![0xFF; 256 * 256 * 4],
     );
     let params = WmtsGetTileParams {
@@ -441,5 +442,147 @@ fn test_estimate_mvt_tile_count_no_mvt() {
     assert!(
         count.is_none(),
         "Layer without MVT source should return None"
+    );
+}
+
+// ── Honest cache & validation tests ──
+
+#[test]
+fn test_tile_cache_format_distinct() {
+    // The cache key must include the output format so PNG and MVT for the
+    // same tile do not collide (regression for PNG/MVT cross-talk).
+    let cache = TileCache::new(100);
+    cache.insert("layer", "EPSG:4326", "3", 2, 1, "image/png", vec![1, 2, 3]);
+    assert!(cache.get("layer", "EPSG:4326", "3", 2, 1, "image/png").is_some());
+    assert!(
+        cache
+            .get(
+                "layer",
+                "EPSG:4326",
+                "3",
+                2,
+                1,
+                "application/vnd.mapbox-vector-tile"
+            )
+            .is_none(),
+        "MVT request must not hit the PNG cache entry"
+    );
+    assert_eq!(cache.len(), 1);
+}
+
+fn make_single_zoom_service() -> WmtsService {
+    let mut svc = WmtsService::new("Test", "http://localhost/test");
+    svc.add_layer(WmtsLayer {
+        name: "zonly".into(),
+        title: "Zoom-only".into(),
+        abstract_: None,
+        keywords: vec![],
+        wgs84_bbox: None,
+        crs: vec![],
+        tile_matrix_sets: vec!["EPSG:4326".into()],
+        formats: vec!["image/png".into()],
+        styles: vec![],
+        resource_url: None,
+        renderer: None,
+        mvt_source: None,
+    });
+    svc.add_tile_matrix_set(TileMatrixSet {
+        identifier: "EPSG:4326".into(),
+        bounding_box: Wgs84Bbox {
+            west: -180.0,
+            south: -90.0,
+            east: 180.0,
+            north: 90.0,
+        },
+        supported_crs: "EPSG:4326".into(),
+        tile_matrices: vec![TileMatrix {
+            identifier: "0".into(),
+            scale_denominator: 2.0,
+            top_left_x: -180.0,
+            top_left_y: 90.0,
+            tile_width: 256,
+            tile_height: 256,
+            matrix_width: 1,
+            matrix_height: 1,
+        }],
+    });
+    svc
+}
+
+#[test]
+fn test_get_tile_zoom_out_of_bounds_errors() {
+    // A tile_matrix that does not exist in the tile matrix set must be
+    // rejected, not silently downgraded to zoom 0.
+    let svc = make_single_zoom_service();
+    let params = WmtsGetTileParams {
+        layer: "zonly".into(),
+        tile_matrix_set: "EPSG:4326".into(),
+        tile_matrix: "5".into(),
+        tile_col: 0,
+        tile_row: 0,
+        format: "image/png".into(),
+    };
+    assert!(svc.handle(&WmtsRequest::GetTile(params)).is_err());
+}
+
+#[test]
+fn test_get_tile_invalid_zoom_garbage_errors() {
+    let svc = make_single_zoom_service();
+    let params = WmtsGetTileParams {
+        layer: "zonly".into(),
+        tile_matrix_set: "EPSG:4326".into(),
+        tile_matrix: "abc".into(),
+        tile_col: 0,
+        tile_row: 0,
+        format: "image/png".into(),
+    };
+    assert!(svc.handle(&WmtsRequest::GetTile(params)).is_err());
+}
+
+#[test]
+fn test_get_tile_column_out_of_range_errors() {
+    let svc = make_single_zoom_service();
+    let params = WmtsGetTileParams {
+        layer: "zonly".into(),
+        tile_matrix_set: "EPSG:4326".into(),
+        tile_matrix: "0".into(),
+        tile_col: 7, // matrix_width is 1
+        tile_row: 0,
+        format: "image/png".into(),
+    };
+    assert!(svc.handle(&WmtsRequest::GetTile(params)).is_err());
+}
+
+#[test]
+fn test_get_tile_unsupported_format_errors() {
+    // An arbitrary format must not pass through unchanged.
+    let svc = make_single_zoom_service();
+    let params = WmtsGetTileParams {
+        layer: "zonly".into(),
+        tile_matrix_set: "EPSG:4326".into(),
+        tile_matrix: "0".into(),
+        tile_col: 0,
+        tile_row: 0,
+        format: "application/x-arbitrary".into(),
+    };
+    assert!(svc.handle(&WmtsRequest::GetTile(params)).is_err());
+}
+
+#[test]
+fn test_wmts_get_tile_populates_cache() {
+    // The previously "read-only, always-miss" cache must now really insert.
+    let svc = make_single_zoom_service();
+    let params = WmtsGetTileParams {
+        layer: "zonly".into(),
+        tile_matrix_set: "EPSG:4326".into(),
+        tile_matrix: "0".into(),
+        tile_col: 0,
+        tile_row: 0,
+        format: "image/png".into(),
+    };
+    svc.handle(&WmtsRequest::GetTile(params)).unwrap();
+    assert!(
+        !svc.cache.is_empty(),
+        "serving a tile must populate the cache"
     );
 }

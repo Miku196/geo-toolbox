@@ -88,6 +88,9 @@ pub struct FeatureType {
     /// Supported CRS for output.
     #[serde(default)]
     pub other_crs: Vec<String>,
+    /// Property definitions used to render the DescribeFeatureType schema.
+    #[serde(default)]
+    pub properties: Vec<FeatureProperty>,
 }
 
 fn default_crs() -> String {
@@ -202,18 +205,30 @@ impl WfsService {
             ));
         }
 
-        // Placeholder: query features
-        // In production: query spatial database / GeoParquet with filter
-        let features_json = serde_json::json!({
-            "type": "FeatureCollection",
-            "features": [],
-            "numberMatched": 0,
-            "numberReturned": 0,
-            "timeStamp": chrono::Utc::now().to_rfc3339(),
-        });
+        // Validate the bbox before deciding what happens: an inverted bbox is an
+        // invalid parameter and must be rejected regardless of backend state.
+        if let Some(b) = &params.bbox {
+            if b.west > b.east || b.south > b.north {
+                return Err(OgcError::new(
+                    ServiceType::WFS,
+                    "2.0.0",
+                    "InvalidParameterValue",
+                    format!(
+                        "Invalid bbox: west {} > east {} or south {} > north {}",
+                        b.west, b.east, b.south, b.north
+                    ),
+                ));
+            }
+        }
 
-        let json_str = serde_json::to_string_pretty(&features_json).unwrap_or_default();
-        Ok(WfsResponse::Json(json_str))
+        // No real spatial data backend is wired; fail honestly rather than
+        // fabricating an empty FeatureCollection.
+        Err(OgcError::new(
+            ServiceType::WFS,
+            "2.0.0",
+            "OperationNotSupported",
+            "GetFeature is not implemented: no spatial data backend is registered",
+        ))
     }
 
     /// Build WFS 2.0 GetCapabilities XML.
@@ -259,17 +274,52 @@ impl WfsService {
         )
     }
 
-    fn build_describe_feature_type_xml(&self, _type_names: &[String]) -> String {
-        // Simplified GML Application Schema
-        r#"<?xml version="1.0" encoding="UTF-8"?>
+    fn build_describe_feature_type_xml(&self, type_names: &[String]) -> String {
+        // Build a real GML Application Schema from the registered feature types'
+        // properties instead of an empty stub. Each requested type contributes a
+        // named complexType with an element per property.
+        let mut complex_types = String::new();
+        for name in type_names {
+            let Some(ft) = self.feature_types.iter().find(|ft| ft.name == *name) else {
+                continue;
+            };
+            let props_xml: String = ft
+                .properties
+                .iter()
+                .map(|p| {
+                    let max = p.max_occurs.map(|m| m.to_string()).unwrap_or_else(|| "unbounded".into());
+                    format!(
+                        r#"      <element name="{name}" type="{type_name}" minOccurs="{min}" maxOccurs="{max}"/>"#,
+                        name = p.name,
+                        type_name = p.type_name,
+                        min = p.min_occurs,
+                        max = max,
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("
+");
+            complex_types.push_str(&format!(
+                r#"  <complexType name="{ft_name}Type">
+{props_xml}
+  </complexType>
+"#,
+                ft_name = ft.name,
+                props_xml = props_xml,
+            ));
+        }
+
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
 <schema xmlns="http://www.w3.org/2001/XMLSchema"
         xmlns:geo="http://geo-toolbox.dev/geo"
         targetNamespace="http://geo-toolbox.dev/geo"
         elementFormDefault="qualified">
   <import namespace="http://www.opengis.net/gml/3.2"
           schemaLocation="http://schemas.opengis.net/gml/3.2.1/gml.xsd"/>
-</schema>"#
-            .to_string()
+{complex_types}</schema>"#,
+            complex_types = complex_types,
+        )
     }
 
     fn empty_stored_queries_xml(&self) -> String {
@@ -307,6 +357,29 @@ mod tests {
             wgs84_bbox: Some(Wgs84Bbox::new(-180.0, -90.0, 180.0, 90.0)),
             default_crs: "EPSG:4326".into(),
             other_crs: vec!["EPSG:3857".into()],
+            properties: vec![
+                FeatureProperty {
+                    name: "geometry".into(),
+                    type_name: "gml:MultiPolygonPropertyType".into(),
+                    min_occurs: 1,
+                    max_occurs: Some(1),
+                    nillable: true,
+                },
+                FeatureProperty {
+                    name: "class".into(),
+                    type_name: "xsd:string".into(),
+                    min_occurs: 1,
+                    max_occurs: Some(1),
+                    nillable: false,
+                },
+                FeatureProperty {
+                    name: "area_ha".into(),
+                    type_name: "xsd:double".into(),
+                    min_occurs: 1,
+                    max_occurs: Some(1),
+                    nillable: true,
+                },
+            ],
         });
         svc
     }
@@ -345,5 +418,69 @@ mod tests {
             srs_name: None,
         }));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_describe_feature_type_schema_nonempty_with_fields() {
+        // Regression: DescribeFeatureType must generate a real schema with the
+        // feature type name and its property fields, not an empty stub.
+        let svc = make_service();
+        let result = svc.handle(&WfsRequest::DescribeFeatureType(
+            DescribeFeatureTypeParams {
+                type_names: vec!["geo:landcover".into()],
+            },
+        ));
+        let xml = match result {
+            Ok(WfsResponse::Xml(xml)) => xml,
+            other => panic!("expected XML schema, got {other:?}"),
+        };
+        assert!(xml.contains("geo:landcover"), "schema must name the feature type");
+        assert!(xml.contains("complexType"), "schema must contain a complexType");
+        assert!(xml.contains("area_ha"), "schema must contain the area_ha field");
+        assert!(
+            xml.contains("xsd:double"),
+            "schema must contain the area_ha type"
+        );
+        assert!(xml.contains("class"), "schema must contain the class field");
+    }
+
+    #[test]
+    fn test_get_feature_invalid_bbox_errors() {
+        // Regression: GetFeature must APPLY the bbox parameter — an invalid
+        // (inverted) bbox must be rejected, not silently ignored.
+        let svc = make_service();
+        let result = svc.handle(&WfsRequest::GetFeature(GetFeatureParams {
+            type_names: vec!["geo:landcover".into()],
+            count: Some(10),
+            filter: None,
+            bbox: Some(Wgs84Bbox::new(180.0, -90.0, -180.0, 90.0)), // west > east
+            output_format: "application/json".into(),
+            start_index: None,
+            sort_by: None,
+            property_name: vec![],
+            srs_name: None,
+        }));
+        assert!(result.is_err(), "inverted bbox must be rejected");
+    }
+
+    #[test]
+    fn test_get_feature_honest_not_implemented_without_data_source() {
+        // Regression: without a data backend, GetFeature must not fabricate a
+        // "0 features" FeatureCollection; it must degrade to an explicit error.
+        let svc = make_service();
+        let result = svc.handle(&WfsRequest::GetFeature(GetFeatureParams {
+            type_names: vec!["geo:landcover".into()],
+            count: Some(10),
+            filter: None,
+            bbox: None,
+            output_format: "application/json".into(),
+            start_index: None,
+            sort_by: None,
+            property_name: vec![],
+            srs_name: None,
+        }));
+        let err = result
+            .expect_err("GetFeature without a data source must not pretend success");
+        assert_eq!(err.exceptions[0].code, "OperationNotSupported");
     }
 }

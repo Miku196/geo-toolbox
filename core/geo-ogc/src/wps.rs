@@ -7,6 +7,8 @@
 
 use crate::common::{OgcError, ServiceType};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Mutex;
 
 /// WPS request types per OGC WPS 2.0 spec.
 #[derive(Debug, Clone)]
@@ -171,6 +173,8 @@ pub struct WpsService {
     pub online_resource: String,
     /// Registered processes.
     pub processes: Vec<WpsProcess>,
+    /// Async job registry: job_id -> status ("Accepted"/"Queued"/"Succeeded"/"Failed").
+    jobs: Mutex<HashMap<String, String>>,
 }
 
 impl WpsService {
@@ -180,6 +184,7 @@ impl WpsService {
             title: title.into(),
             online_resource: online_resource.into(),
             processes: Vec::new(),
+            jobs: Mutex::new(HashMap::new()),
         }
     }
 
@@ -234,6 +239,10 @@ impl WpsService {
 
         if params.mode == "async" {
             let job_id = uuid::Uuid::new_v4().to_string();
+            self.jobs
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .insert(job_id.clone(), "Accepted".into());
             return Ok(WpsResponse::Xml(format!(
                 r#"<wps:StatusInfo>
   <wps:JobID>{job_id}</wps:JobID>
@@ -243,24 +252,49 @@ impl WpsService {
             )));
         }
 
-        // Placeholder: execute process synchronously
-        Ok(WpsResponse::Xml(
-            r#"<wps:ProcessOutputs>
-  <wps:Output id="result">
-    <wps:Data>Processing complete.</wps:Data>
-  </wps:Output>
-</wps:ProcessOutputs>"#
-                .to_string(),
+        // No real sync executor is wired; fail honestly rather than fabricate a result.
+        Err(OgcError::new(
+            ServiceType::WPS,
+            "2.0.0",
+            "OperationNotSupported",
+            format!(
+                "Synchronous execution of '{}' is not implemented: no executor backend is wired",
+                params.identifier
+            ),
         ))
     }
 
-    fn handle_get_status(&self, _job_id: &str) -> Result<WpsResponse, OgcError> {
-        Ok(WpsResponse::Xml(
+    fn handle_get_status(&self, job_id: &str) -> Result<WpsResponse, OgcError> {
+        let status = self
+            .jobs
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .get(job_id)
+            .cloned()
+            .ok_or_else(|| {
+                OgcError::new(
+                    ServiceType::WPS,
+                    "2.0.0",
+                    "NotFound",
+                    format!("Unknown job '{job_id}'"),
+                )
+            })?;
+        Ok(WpsResponse::Xml(format!(
             r#"<wps:StatusInfo>
-  <wps:Status>Succeeded</wps:Status>
-</wps:StatusInfo>"#
-                .to_string(),
-        ))
+  <wps:JobID>{job_id}</wps:JobID>
+  <wps:Status>{status}</wps:Status>
+</wps:StatusInfo>"#,
+            job_id = job_id,
+            status = status,
+        )))
+    }
+
+    /// Advance an async job to "Succeeded" (used by the request-driven state
+    /// machine and regression tests).
+    pub fn run_job(&self, job_id: &str) {
+        if let Some(s) = self.jobs.lock().unwrap_or_else(|p| p.into_inner()).get_mut(job_id) {
+            *s = "Succeeded".into();
+        }
     }
 
     fn handle_get_result(&self, _job_id: &str) -> Result<WpsResponse, OgcError> {
@@ -481,7 +515,7 @@ mod tests {
     }
 
     #[test]
-    fn test_async_execute() {
+    fn test_async_execute_returns_job_id() {
         let svc = make_service();
         let result = svc.handle(&WpsRequest::Execute(ExecuteParams {
             identifier: "crs:transform".into(),
@@ -490,9 +524,79 @@ mod tests {
             mode: "async".into(),
             response: "raw".into(),
         }));
-        assert!(result.is_ok());
-        if let Ok(WpsResponse::Xml(xml)) = result {
-            assert!(xml.contains("JobID"));
-        }
+        let xml = match result {
+            Ok(WpsResponse::Xml(xml)) => xml,
+            other => panic!("expected async execute to return StatusInfo XML, got {other:?}"),
+        };
+        assert!(xml.contains("JobID"));
+    }
+
+    #[test]
+    fn test_async_status_starts_queued_not_fake_succeeded() {
+        // Regression: a freshly submitted async job must report its real state
+        // (Accepted/Queued), NOT the old hard-coded "Succeeded".
+        let svc = make_service();
+        let id;
+        let Ok(WpsResponse::Xml(xml)) = svc.handle(&WpsRequest::Execute(ExecuteParams {
+            identifier: "crs:transform".into(),
+            inputs: vec![],
+            outputs: vec![],
+            mode: "async".into(),
+            response: "raw".into(),
+        })) else {
+            panic!("async execute should succeed");
+        };
+        id = xml
+            .split("<wps:JobID>")
+            .nth(1)
+            .and_then(|s| s.split("</wps:JobID>").next())
+            .expect("JobID in response")
+            .to_string();
+
+        let Ok(WpsResponse::Xml(status)) = svc.handle(&WpsRequest::GetStatus(id.clone())) else {
+            panic!("GetStatus should return StatusInfo");
+        };
+        assert!(
+            status.contains("Accepted") || status.contains("Queued"),
+            "fresh job must be Accepted/Queued, got: {status}"
+        );
+        assert!(!status.contains("Succeeded"), "job must not already be succeeded");
+    }
+
+    #[test]
+    fn test_async_status_transitions_to_succeeded() {
+        // The job queue must produce a real queued → succeeded transition.
+        let svc = make_service();
+        let Ok(WpsResponse::Xml(xml)) = svc.handle(&WpsRequest::Execute(ExecuteParams {
+            identifier: "crs:transform".into(),
+            inputs: vec![],
+            outputs: vec![],
+            mode: "async".into(),
+            response: "raw".into(),
+        })) else {
+            panic!("async execute should succeed");
+        };
+        let id = xml
+            .split("<wps:JobID>")
+            .nth(1)
+            .and_then(|s| s.split("</wps:JobID>").next())
+            .expect("JobID")
+            .to_string();
+
+        svc.run_job(&id);
+        let Ok(WpsResponse::Xml(status)) = svc.handle(&WpsRequest::GetStatus(id.clone())) else {
+            panic!("GetStatus should return StatusInfo");
+        };
+        assert!(
+            status.contains("Succeeded"),
+            "after run_job the job must report Succeeded, got: {status}"
+        );
+    }
+
+    #[test]
+    fn test_get_status_unknown_job_errors() {
+        let svc = make_service();
+        let result = svc.handle(&WpsRequest::GetStatus("no-such-job".into()));
+        assert!(result.is_err(), "unknown job must error, not fake-succeed");
     }
 }
