@@ -43,15 +43,15 @@ pub fn tile_to_latlon(x: u32, y: u32, zoom: u8) -> (f64, f64) {
 pub enum TileSource {
     /// OpenStreetMap 标准瓦片。
     OpenStreetMap,
-    /// 高德地图 (GCJ-02 坐标系)。
+    /// 高德地图瓦片（URL 使用 Web Mercator 的 z/x/y 索引）。
     Gaode,
-    /// 天地图 (需 key，GCJ-02)。
+    /// 天地图瓦片（需要通过 GEO_TIANDITU_KEY 提供访问 key）。
     TianDiTu,
 }
 
 /// 根据数据源生成瓦片 URL。
 ///
-/// 高德和天地图使用 GCJ-02 坐标系，URL 中的 x/y/z 需用 GCJ-02 坐标计算。
+/// URL 使用 Web Mercator 的标准 z/x/y 索引；坐标系转换不在本模块内完成。
 pub fn tile_url(source: TileSource, x: u32, y: u32, z: u8) -> String {
     match source {
         TileSource::OpenStreetMap => {
@@ -63,7 +63,11 @@ pub fn tile_url(source: TileSource, x: u32, y: u32, z: u8) -> String {
         }
         TileSource::TianDiTu => {
             // 需要替换为实际的天地图 key
-            format!("https://t{s}.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=YOUR_KEY", s = (x + y) % 8)
+            {
+                let key = std::env::var("GEO_TIANDITU_KEY").unwrap_or_default();
+                let key_param = if key.is_empty() { String::new() } else { format!("&tk={key}") };
+                format!("https://t{s}.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}{key_param}", s = (x + y) % 8)
+            }
         }
     }
 }

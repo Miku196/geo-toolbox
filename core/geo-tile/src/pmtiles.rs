@@ -1,4 +1,4 @@
-//! PMTiles v3 读写器。
+//! Geo-toolbox 内部瓦片归档读写器（非官方 PMTiles v3）。
 //!
 //! PMTiles 是 Protomaps 提出的单一文件栅格瓦片归档格式。
 //! 将百万级瓦片打包成一个文件，支持 HTTP Range 请求按需拉取。
@@ -94,7 +94,7 @@ pub struct TileEntry {
     pub length: u32,
 }
 
-/// PMTiles v3 读取器。
+/// Geo-toolbox internal archive reader (not an official PMTiles reader).
 pub struct PmtilesReader<R: Read + Seek> {
     reader: R,
     /// PMTiles 文件头信息。
@@ -107,7 +107,7 @@ impl<R: Read + Seek> PmtilesReader<R> {
     /// 从实现了 Read + Seek 的源（如 File）打开 PMTiles。
     pub fn open(mut reader: R) -> GeoResult<Self> {
         let header = read_header(&mut reader)?;
-        if header.magic != *b"PM" || header.version != 3 {
+        if header.magic != *b"GT" || header.version != 1 {
             return Err(GeoError::Validation(format!(
                 "Invalid PMTiles: magic={:?} version={}",
                 header.magic, header.version
@@ -159,7 +159,7 @@ impl<R: Read + Seek> PmtilesReader<R> {
     }
 }
 
-/// PMTiles v3 写入器。
+/// Geo-toolbox internal archive writer (not an official PMTiles writer).
 pub struct PmtilesWriter<W: Write + Seek> {
     writer: W,
     header: PmtilesHeader,
@@ -172,8 +172,8 @@ impl<W: Write + Seek> PmtilesWriter<W> {
         Self {
             writer,
             header: PmtilesHeader {
-                magic: *b"PM",
-                version: 3,
+                magic: *b"GT",
+                version: 1,
                 tile_type,
                 min_zoom: 22,
                 max_zoom: 0,
@@ -288,8 +288,8 @@ impl<W: Write + Seek> PmtilesWriter<W> {
 
         // 写入 Header
         let mut header_buf = vec![0u8; 127];
-        header_buf[0..2].copy_from_slice(b"PM");
-        header_buf[2] = 3;
+        header_buf[0..2].copy_from_slice(b"GT");
+        header_buf[2] = 1;
         header_buf[3] = self.header.tile_type as u8;
         header_buf[4] = self.header.min_zoom;
         header_buf[5] = self.header.max_zoom;

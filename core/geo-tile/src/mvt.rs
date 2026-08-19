@@ -23,7 +23,9 @@ use serde_json::Value;
 #[derive(Debug, Clone, Copy)]
 enum WireType {
     Varint = 0,
+    Fixed64 = 1,
     LengthDelimited = 2,
+    Fixed32 = 5,
 }
 
 /// 写入 varint。
@@ -168,8 +170,17 @@ impl MvtEncoder {
 
         let (geom_type, commands) = match gtype {
             "Point" => {
-                let x = coords[0].as_f64().unwrap_or(0.0);
-                let y = coords[1].as_f64().unwrap_or(0.0);
+                let arr = coords.as_array().ok_or_else(|| {
+                    GeoError::Validation(format!(
+                        "Point coordinates must be an array [lon, lat], got: {coords}"
+                    ))
+                })?;
+                let x = arr.get(0).and_then(|v| v.as_f64()).ok_or_else(|| {
+                    GeoError::Validation("Point longitude (coordinates[0]) must be a number".into())
+                })?;
+                let y = arr.get(1).and_then(|v| v.as_f64()).ok_or_else(|| {
+                    GeoError::Validation("Point latitude (coordinates[1]) must be a number".into())
+                })?;
                 let (tx, ty) = to_tile(x, y);
                 (GeomType::Point, encode_point(tx, ty))
             }
@@ -379,22 +390,26 @@ const CMD_LINE_TO: u32 = 2;
 const CMD_CLOSE_PATH: u32 = 7;
 
 /// 编码 MoveTo + 坐标。
+///
+/// MVT 命令整数 = command_id | (count << 3)（低 3 位是 command_id，高位移 count）。
 fn encode_move_to(x: u32, y: u32) -> Vec<u32> {
     vec![
-        (CMD_MOVE_TO << 3) | 1, // command_id=1, count=1
+        CMD_MOVE_TO | (1 << 3), // command_id=1, count=1
         zigzag(x as i32, 0),
         zigzag(y as i32, 0),
     ]
 }
 
 /// 编码 LineTo + 多个坐标（delta encoding）。
-fn encode_line_to(points: &[(u32, u32)]) -> Vec<u32> {
+///
+/// 增量基准必须是 MoveTo 的终点 `base`，而不是 (0,0)，否则线与多边形整体偏移。
+fn encode_line_to(base: (u32, u32), points: &[(u32, u32)]) -> Vec<u32> {
     if points.is_empty() {
         return vec![];
     }
-    let mut cmds = vec![(CMD_LINE_TO << 3) | (points.len() as u32)];
-    let mut prev_x = 0i32;
-    let mut prev_y = 0i32;
+    let mut cmds = vec![CMD_LINE_TO | ((points.len() as u32) << 3)];
+    let mut prev_x = base.0 as i32;
+    let mut prev_y = base.1 as i32;
     for &(x, y) in points {
         let ix = x as i32;
         let iy = y as i32;
@@ -417,7 +432,7 @@ fn encode_linestring(points: &[(u32, u32)]) -> Vec<u32> {
         return vec![];
     }
     let mut cmds = encode_move_to(points[0].0, points[0].1);
-    cmds.extend(encode_line_to(&points[1..]));
+    cmds.extend(encode_line_to(points[0], &points[1..]));
     cmds
 }
 
@@ -429,15 +444,15 @@ fn encode_polygon(rings: &[Vec<(u32, u32)>]) -> Vec<u32> {
             continue;
         }
         cmds.extend(encode_move_to(ring[0].0, ring[0].1));
-        cmds.extend(encode_line_to(&ring[1..]));
-        cmds.push((CMD_CLOSE_PATH << 3) | 1);
+        cmds.extend(encode_line_to((ring[0].0, ring[0].1), &ring[1..]));
+        cmds.push(CMD_CLOSE_PATH | (1 << 3));
     }
     cmds
 }
 
 /// 编码多点 (多个 MoveTo)。
 fn encode_multipoint(points: &[(u32, u32)]) -> Vec<u32> {
-    let mut cmds = vec![(CMD_MOVE_TO << 3) | (points.len() as u32)];
+    let mut cmds = vec![CMD_MOVE_TO | ((points.len() as u32) << 3)];
     let mut prev_x = 0i32;
     let mut prev_y = 0i32;
     for &(x, y) in points {
@@ -495,12 +510,14 @@ fn encode_mvt_value(buf: &mut Vec<u8>, field_number: u32, value: &MvtValue) {
     match value {
         MvtValue::String(s) => write_string(&mut val_buf, 1, s),
         MvtValue::Float(f) => {
-            write_tag(&mut val_buf, 2, WireType::Varint);
-            write_varint(&mut val_buf, f.to_bits() as u64);
+            // protobuf 的 float 是 wire type 5 (fixed32)，4 字节小端位模式。
+            write_tag(&mut val_buf, 2, WireType::Fixed32);
+            val_buf.extend_from_slice(&f.to_bits().to_le_bytes());
         }
         MvtValue::Double(d) => {
-            write_tag(&mut val_buf, 3, WireType::Varint);
-            write_varint(&mut val_buf, d.to_bits());
+            // protobuf 的 double 是 wire type 1 (fixed64)，8 字节小端位模式。
+            write_tag(&mut val_buf, 3, WireType::Fixed64);
+            val_buf.extend_from_slice(&d.to_bits().to_le_bytes());
         }
         MvtValue::Int(i) => {
             write_tag(&mut val_buf, 4, WireType::Varint);
@@ -681,5 +698,150 @@ mod tests {
         assert!(!bytes2.is_empty());
         assert!(bytes1.len() > 10);
         assert!(bytes2.len() > 10);
+    }
+
+    // ── TDD RED: spec-compliant geometry encoding ──
+
+    /// Zigzag value of an absolute coordinate delta from 0.
+    fn zz(delta: i32) -> u32 {
+        ((delta << 1) ^ (delta >> 31)) as u32
+    }
+
+    #[test]
+    fn test_command_integer_spec_encoding() {
+        // MVT command integer = command_id | (count << 3).
+        // LineTo count=1 -> 2 | (1<<3) == 10 (old code wrote (2<<3)|1 == 17).
+        let two_pt = encode_linestring(&[(10, 10), (20, 20)]);
+        // MoveTo = cmd+dx+dy (3) + LineTo(count=1) = cmd+dx+dy (3) => 6
+        assert_eq!(two_pt.len(), 6);
+        assert_eq!(two_pt[0], 1 | (1 << 3), "MoveTo count must be 1|(1<<3)=9");
+        assert_eq!(two_pt[3], 2 | (1 << 3), "LineTo count=1 must be 2|(1<<3)=10");
+
+        // ClosePath count=1 -> 7 | (1<<3) == 15 (old code wrote (7<<3)|1 == 57).
+        let poly = encode_polygon(&[vec![(10, 10), (20, 20), (30, 30)]]);
+        let last = *poly.last().unwrap();
+        assert_eq!(last, 7 | (1 << 3), "ClosePath must be 7|(1<<3)=15, got {last}");
+
+        // A spec decoder reads the ClosePath back as command_id 7, count 1.
+        assert_eq!(last & 0x07, 7);
+        assert_eq!(last >> 3, 1);
+    }
+
+    #[test]
+    fn test_line_to_delta_is_relative_to_move_endpoint() {
+        // MoveTo(100,100) then LineTo(200,200),(350,50). LineTo deltas are relative
+        // to the MoveTo endpoint (100,100), NOT (0,0).
+        let cmds = encode_linestring(&[(100, 100), (200, 200), (350, 50)]);
+        // [9, dx(100), dy(100), 18(count=2), dx(100), dy(100), dx(150), dy(-150)]
+        assert_eq!(
+            cmds,
+            vec![
+                1 | (1 << 3),
+                zz(100),
+                zz(100),
+                2 | (2 << 3),
+                zz(200 - 100),
+                zz(200 - 100),
+                zz(350 - 200),
+                zz(50 - 200),
+            ]
+        );
+    }
+
+    // ── TDD RED: Float/Double protobuf wire types ──
+
+    /// Parse a single varint from `data` starting at `pos`, returning (value, new_pos).
+    fn rd_varint(data: &[u8], mut pos: usize) -> (u64, usize) {
+        let mut result: u64 = 0;
+        let mut shift = 0;
+        loop {
+            let b = data[pos];
+            pos += 1;
+            result |= ((b & 0x7F) as u64) << shift;
+            if b & 0x80 == 0 {
+                return (result, pos);
+            }
+            shift += 7;
+        }
+    }
+
+    #[test]
+    fn test_float_uses_wire_type_5_fixed32() {
+        // MvtValue::Float field 2 is protobuf 'float' => wire type 5 (32-bit), not varint.
+        let mut buf = Vec::new();
+        encode_mvt_value(&mut buf, 4, &MvtValue::Float(1.5));
+
+        // write_bytes(buf, 4, val): tag=(4<<3)|2, len, val.
+        // val: tag=(2<<3)|5 == 0x15, then 4 fixed LE bytes of 1.5f32 bits.
+        // 1.5f32 bits = 0x3FC00000, LE = 00 00 C0 3F
+        assert_eq!(buf, vec![0x22, 0x05, 0x15, 0x00, 0x00, 0xC0, 0x3F]);
+    }
+
+    #[test]
+    fn test_double_uses_wire_type_1_fixed64() {
+        let mut buf = Vec::new();
+        encode_mvt_value(&mut buf, 4, &MvtValue::Double(1.5));
+
+        // val: tag=(3<<3)|1 == 0x19, then 8 fixed LE bytes of 1.5f64 bits.
+        // 1.5f64 bits = 0x3FF8000000000000, LE = 00 00 00 00 00 00 F8 3F
+        assert_eq!(
+            buf,
+            vec![0x22, 0x09, 0x19, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF8, 0x3F]
+        );
+    }
+
+    #[test]
+    fn test_float_double_parse_as_fixed_width_by_spec_reader() {
+        // Literal spec reader: float field 2 must be wire type 5 (fixed 32-bit LE),
+        // double field 3 must be wire type 1 (fixed 64-bit LE).
+        let mut buf = Vec::new();
+        encode_mvt_value(&mut buf, 4, &MvtValue::Float(1.5));
+        encode_mvt_value(&mut buf, 4, &MvtValue::Double(2.5));
+
+        // First message: [0x22][len][field2 tag][4 bytes]
+        let (_, p1) = rd_varint(&buf, 1);
+        let (tag, p2) = rd_varint(&buf, p1);
+        assert_eq!(tag >> 3, 2, "float is field 2");
+        assert_eq!(tag & 0x07, 5, "float must use wire type 5");
+        let fbits = u32::from_le_bytes(buf[p2..p2 + 4].try_into().unwrap());
+        assert_eq!(f32::from_bits(fbits), 1.5);
+
+        // Second message begins after the 4-byte float payload.
+        let p3 = p2 + 4;
+        let (_, p4) = rd_varint(&buf, p3 + 1);
+        let (tag2, p5) = rd_varint(&buf, p4);
+        assert_eq!(tag2 >> 3, 3, "double is field 3");
+        assert_eq!(tag2 & 0x07, 1, "double must use wire type 1");
+        let dbits = u64::from_le_bytes(buf[p5..p5 + 8].try_into().unwrap());
+        assert_eq!(f64::from_bits(dbits), 2.5);
+    }
+
+    // ── TDD RED: malformed Point coordinates -> Err, not silent/panic ──
+
+    #[test]
+    fn test_point_malformed_coordinates_returns_err() {
+        let encoder = MvtEncoder::new(4096);
+
+        // Only one coordinate element.
+        let f1 = serde_json::json!({
+            "type": "Feature",
+            "properties": {},
+            "geometry": {"type": "Point", "coordinates": [104.06]}
+        });
+        assert!(
+            encoder.feature_from_geojson(&f1, 3270, 1671, 12).is_err(),
+            "Point with a single coordinate must be an Err, not silent"
+        );
+
+        // Coordinates not an array at all.
+        let f2 = serde_json::json!({
+            "type": "Feature",
+            "properties": {},
+            "geometry": {"type": "Point", "coordinates": "oops"}
+        });
+        assert!(
+            encoder.feature_from_geojson(&f2, 3270, 1671, 12).is_err(),
+            "Point with non-array coordinates must be an Err, not silent"
+        );
     }
 }
