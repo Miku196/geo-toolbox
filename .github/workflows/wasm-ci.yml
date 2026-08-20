@@ -145,19 +145,15 @@ jobs:
 
       - name: Setup Chrome (Ubuntu)
         if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq chromium-browser chromium-chromedriver 2>/dev/null || true
-          which chromium-browser && export CHROMEDRIVER=$(which chromedriver) || true
-          echo "CHROMEDRIVER=$(which chromedriver 2>/dev/null || echo '')" >> $GITHUB_ENV
-        shell: bash
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
 
       - name: Setup Chrome (Windows)
         if: runner.os == 'Windows'
-        run: |
-          choco install googlechrome chromedriver -y --no-progress 2>/dev/null || true
-          echo "CHROMEDRIVER=C:/ProgramData/chocolatey/bin/chromedriver.exe" >> $GITHUB_ENV
-        shell: bash
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
 
       - name: Run WASM tests
         run: |
