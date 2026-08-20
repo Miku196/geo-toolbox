@@ -115,8 +115,12 @@ impl DecisionTree {
     /// * `samples` - 每行为一个样本，每列为特征
     /// * `labels` - 每行对应的类别索引
     /// * `max_depth` - 最大树深度
+    ///
+    /// Invalid, ragged, or out-of-range LULC training data clears the model
+    /// instead of panicking during recursive splitting.
     pub fn train(&mut self, samples: &[Vec<f64>], labels: &[usize], max_depth: usize) {
-        if samples.is_empty() {
+        self.root = None;
+        if !valid_training_data(samples, labels) {
             return;
         }
         let n_features = samples[0].len();
@@ -339,13 +343,23 @@ impl RandomForest {
     /// * `labels` - 对应的类别标签
     /// * `num_trees` - 树的数量（默认 10）
     /// * `max_depth` - 每棵树的最大深度（默认 5）
+    ///
+    /// Invalid training data returns an empty, six-class forest so callers can
+    /// handle an untrained model without an indexing panic.
     pub fn train(
         samples: &[Vec<f64>],
         labels: &[usize],
         num_trees: usize,
         max_depth: usize,
     ) -> Self {
-        let num_classes = labels.iter().max().map(|&m| m + 1).unwrap_or(1);
+        if !valid_training_data(samples, labels) {
+            return RandomForest {
+                trees: Vec::new(),
+                num_classes: LulcClass::NUM_CLASSES,
+            };
+        }
+
+        let num_classes = LulcClass::NUM_CLASSES;
         let mut trees = Vec::with_capacity(num_trees);
 
         for _ in 0..num_trees {
@@ -389,6 +403,17 @@ impl RandomForest {
     pub fn predict_batch(&self, features_batch: &[Vec<f64>]) -> Vec<(usize, Vec<f64>)> {
         features_batch.iter().map(|f| self.predict(f)).collect()
     }
+}
+
+/// Validate the rectangular, six-class training matrix accepted by the classifier.
+fn valid_training_data(samples: &[Vec<f64>], labels: &[usize]) -> bool {
+    let Some(first) = samples.first() else {
+        return false;
+    };
+    !first.is_empty()
+        && samples.len() == labels.len()
+        && samples.iter().all(|sample| sample.len() == first.len())
+        && labels.iter().all(|&label| label < LulcClass::NUM_CLASSES)
 }
 
 /// Bootstrap 采样（有放回）。
@@ -596,5 +621,29 @@ mod tests {
         // Deterministic bootstrap should be reproducible
         assert_eq!(bs1.len(), bs2.len());
         assert_eq!(bl1, bl2);
+    }
+
+    #[test]
+    fn test_training_data_validation_rejects_mismatched_and_ragged_rows() {
+        assert!(!valid_training_data(&[vec![0.1, 0.2]], &[]));
+        assert!(!valid_training_data(&[vec![0.1], vec![0.2, 0.3]], &[0, 1]));
+        assert!(!valid_training_data(
+            &[vec![0.1]],
+            &[LulcClass::NUM_CLASSES]
+        ));
+    }
+
+    #[test]
+    fn test_invalid_training_data_does_not_panic_or_leave_stale_tree() {
+        let mut tree = DecisionTree::new();
+        tree.train(&[vec![0.1], vec![0.9]], &[0, 1], 2);
+        assert_eq!(tree.predict_one(&[0.1]), Some(0));
+
+        tree.train(&[vec![0.1]], &[], 2);
+        assert_eq!(tree.predict_one(&[0.1]), None);
+
+        let forest = RandomForest::train(&[vec![0.1]], &[], 3, 2);
+        let (_, probabilities) = forest.predict(&[0.1]);
+        assert_eq!(probabilities, vec![0.0; LulcClass::NUM_CLASSES]);
     }
 }
