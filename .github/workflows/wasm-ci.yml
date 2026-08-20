@@ -92,6 +92,7 @@ jobs:
           test -f crates/geo-wasm/pkg/geo_wasm.d.ts     || (echo "Missing .d.ts" && exit 1)
           echo "=== WASM size ==="
           ls -lh crates/geo-wasm/pkg/geo_wasm_bg.wasm
+        shell: bash
 
       - name: Check WASM size regression
         if: github.event_name == 'pull_request'
@@ -102,6 +103,7 @@ jobs:
           if [ "$SIZE_MB" -gt 10 ]; then
             echo "⚠️  WASM binary >10MB — consider optimizing"
           fi
+        shell: bash
 
   # ── Stage 2: Browser tests (Chrome headless) ──
   wasm-test:
@@ -154,6 +156,7 @@ jobs:
         run: |
           choco install googlechrome chromedriver -y --no-progress 2>/dev/null || true
           echo "CHROMEDRIVER=C:/ProgramData/chocolatey/bin/chromedriver.exe" >> $GITHUB_ENV
+        shell: bash
 
       - name: Run WASM tests
         run: |
@@ -167,6 +170,7 @@ jobs:
           if [ ! -f /tmp/wasm-test-output.txt ]; then
             wasm-pack test --headless --chrome crates/geo-wasm 2>&1 | tee /tmp/wasm-test-output.txt
           fi
+        shell: bash
 
       - name: Test summary
         if: always()
