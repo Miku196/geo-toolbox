@@ -84,6 +84,12 @@ curl -X POST http://127.0.0.1:3000/agent \
 | `/metrics` | GET | Token 用量/成本统计 |
 | `/health` | GET | 健康检查 |
 
+## 嵌入式宿主与测试
+
+`geo_agent::build_app()` 保持独立启动程序的环境变量兼容行为。嵌入其他 Rust 宿主或编写 HTTP 集成测试时，使用 `AgentAppConfig` 与 `build_app_with_config(config)` 显式传入 provider、日志目录和 fallback 开关，避免测试修改进程环境或向仓库目录写运行日志。
+
+`run()` 只负责 dotenv、tracing 与 TCP listener 生命周期；router 构造不绑定端口，可直接用 Axum/Tower 的 in-process service 测试 `/health`、`/agent` 和 `/metrics`。
+
 ## 多提供商切换
 
 环境变量 `AI_PROVIDER=openai|claude|deepseek`

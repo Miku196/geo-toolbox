@@ -78,9 +78,41 @@ struct ErrorResponse {
 struct AppState {
     agent: Agent,
     fallback: KeywordRouter,
+    fallback_enabled: bool,
     metrics: MetricsStore,
     tools: Arc<ToolRegistry>,
     log_dir: PathBuf,
+}
+
+/// Runtime configuration for an embedded GeoAgent application.
+///
+/// It separates process environment parsing from router construction, so hosts and
+/// tests can select a provider, log directory, and fallback policy explicitly.
+#[derive(Debug, Clone)]
+pub struct AgentAppConfig {
+    pub provider: ProviderConfig,
+    pub log_dir: PathBuf,
+    pub fallback_enabled: bool,
+}
+
+impl Default for AgentAppConfig {
+    /// Load the compatibility defaults used by the standalone binary.
+    fn default() -> Self {
+        Self {
+            provider: ProviderConfig::from_env(),
+            log_dir: PathBuf::from(std::env::var("LOG_DIR").unwrap_or_else(|_| "logs".to_string())),
+            fallback_enabled: std::env::var("FALLBACK_ENABLED")
+                .unwrap_or_else(|_| "true".to_string())
+                == "true",
+        }
+    }
+}
+
+impl AgentAppConfig {
+    /// Load configuration from the environment for compatibility with the binary.
+    pub fn from_env() -> Self {
+        Self::default()
+    }
 }
 
 /// Build the GeoAgent router without binding a network socket.
@@ -88,20 +120,26 @@ struct AppState {
 /// This boundary keeps route and state assembly available to integration tests and
 /// alternative hosts while run owns only process startup and listener lifetime.
 pub fn build_app() -> Result<Router, Box<dyn std::error::Error + Send + Sync>> {
+    build_app_with_config(AgentAppConfig::default())
+}
+
+/// Build the GeoAgent router from explicit runtime configuration.
+pub fn build_app_with_config(
+    config: AgentAppConfig,
+) -> Result<Router, Box<dyn std::error::Error + Send + Sync>> {
     let tools_json = include_str!("../tools_schema.json");
     let tool_registry = ToolRegistry::from_json(tools_json).map(Arc::new)?;
     let keywords_yaml = include_str!("../keywords.yaml");
     let keyword_router = KeywordRouter::from_yaml(keywords_yaml)?;
-    let config = ProviderConfig::from_env();
-    let log_dir = PathBuf::from(std::env::var("LOG_DIR").unwrap_or_else(|_| "logs".to_string()));
-    let metrics = MetricsStore::new(log_dir.clone());
-    let agent = Agent::new(config, tool_registry.clone());
+    let metrics = MetricsStore::new(config.log_dir.clone());
+    let agent = Agent::new(config.provider, tool_registry.clone());
     let state = Arc::new(AppState {
         agent,
         fallback: keyword_router,
+        fallback_enabled: config.fallback_enabled,
         metrics,
         tools: tool_registry,
-        log_dir,
+        log_dir: config.log_dir,
     });
     Ok(Router::new()
         .route("/agent", post(handle_agent))
@@ -142,9 +180,7 @@ async fn handle_agent(
     State(state): State<Arc<AppState>>,
     Json(req): Json<AgentRequest>,
 ) -> Result<Json<AgentResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let fallback_enabled =
-        std::env::var("FALLBACK_ENABLED").unwrap_or_else(|_| "true".to_string()) == "true";
-    if !req.force_fallback && fallback_enabled {
+    if !req.force_fallback && state.fallback_enabled {
         match state.agent.route(&req.query).await {
             Ok(result) if !result.tool_calls.is_empty() => {
                 state
@@ -240,13 +276,39 @@ async fn handle_health(State(state): State<Arc<AppState>>) -> Json<HealthRespons
 
 #[cfg(test)]
 mod tests {
-    use super::build_app;
+    use super::{build_app_with_config, AgentAppConfig};
+    use crate::providers::ProviderConfig;
     use axum::{body::Body, http::Request};
+    use std::{
+        fs,
+        time::{SystemTime, UNIX_EPOCH},
+    };
     use tower::ServiceExt;
+
+    fn test_config() -> AgentAppConfig {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        AgentAppConfig {
+            provider: ProviderConfig {
+                provider: "test".to_string(),
+                api_key: String::new(),
+                base_url: "http://127.0.0.1".to_string(),
+                model: "test-model".to_string(),
+                timeout_seconds: 1,
+            },
+            log_dir: std::env::temp_dir()
+                .join(format!("geo-agent-test-{}-{nonce}", std::process::id())),
+            fallback_enabled: false,
+        }
+    }
 
     #[tokio::test]
     async fn health_route_is_available_without_binding_a_socket() {
-        let app = build_app().expect("embedded Agent configuration should load");
+        let config = test_config();
+        let log_dir = config.log_dir.clone();
+        let app = build_app_with_config(config).expect("test Agent configuration should load");
         let response = app
             .oneshot(
                 Request::builder()
@@ -258,11 +320,14 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), axum::http::StatusCode::OK);
+        fs::remove_dir_all(log_dir).unwrap();
     }
 
     #[tokio::test]
-    async fn agent_route_returns_local_fallback_tool_call() {
-        let app = build_app().expect("embedded Agent configuration should load");
+    async fn forced_fallback_bypasses_disabled_provider_routing() {
+        let config = test_config();
+        let log_dir = config.log_dir.clone();
+        let app = build_app_with_config(config).expect("test Agent configuration should load");
         let request = Request::builder()
             .method("POST")
             .uri("/agent")
@@ -280,5 +345,32 @@ mod tests {
         let payload: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(payload["fallback"], true);
         assert!(!payload["tool_calls"].as_array().unwrap().is_empty());
+        fs::remove_dir_all(log_dir).unwrap();
+    }
+
+    #[tokio::test]
+    async fn metrics_route_reports_empty_usage_for_a_new_app() {
+        let config = test_config();
+        let log_dir = config.log_dir.clone();
+        let app = build_app_with_config(config).expect("test Agent configuration should load");
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/metrics")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 1024 * 1024)
+            .await
+            .unwrap();
+        let payload: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(payload["calls"], 0);
+        assert_eq!(payload["total_tokens"], 0);
+        assert_eq!(payload["by_provider"], serde_json::json!([]));
+        fs::remove_dir_all(log_dir).unwrap();
     }
 }
