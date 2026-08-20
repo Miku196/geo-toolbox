@@ -259,4 +259,26 @@ mod tests {
 
         assert_eq!(response.status(), axum::http::StatusCode::OK);
     }
+
+    #[tokio::test]
+    async fn agent_route_returns_local_fallback_tool_call() {
+        let app = build_app().expect("embedded Agent configuration should load");
+        let request = Request::builder()
+            .method("POST")
+            .uri("/agent")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"query":"calculate NDVI for this area","force_fallback":true}"#,
+            ))
+            .unwrap();
+
+        let response = app.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 1024 * 1024)
+            .await
+            .unwrap();
+        let payload: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(payload["fallback"], true);
+        assert!(!payload["tool_calls"].as_array().unwrap().is_empty());
+    }
 }
