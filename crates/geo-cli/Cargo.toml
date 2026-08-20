@@ -51,7 +51,8 @@ chrono = { version = "0.4", features = ["serde"] }
 futures.workspace = true
 
 [features]
-default = ["postgis", "cad", "gee", "qgis", "gdal", "duckdb", "stac", "osm"]
+default = ["full"]
+full = ["postgis", "cad", "gee", "qgis", "gdal", "duckdb", "stac", "osm"]
 postgis = ["geo-wiring/postgis", "sqlx"]
 cad = ["geo-wiring/cad"]
 duckdb = ["geo-wiring/duckdb"]

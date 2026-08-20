@@ -42,7 +42,8 @@ tracing.workspace = true
 
 [features]
 # Default = full functionality: both heavy adapter families + I/O adapters.
-default = ["geo-adapters-geo", "geo-adapters-sim", "duckdb", "stac", "osm"]
+default = ["full"]
+full = ["geo-adapters-geo", "geo-adapters-sim", "duckdb", "stac", "osm"]
 # Explicit opt-in features for the optional adapter dependencies.
 geo-adapters-geo = ["dep:geo-adapters-geo"]
 geo-adapters-sim = ["dep:geo-adapters-sim"]

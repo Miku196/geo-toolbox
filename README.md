@@ -58,9 +58,13 @@ cargo run -p geo-cli -- hydro basin dem.tif
 cargo run -p geo-cli -- mcp-serve
 ```
 
-For the minimal CLI build:
+The default CLI build keeps the existing full adapter behavior. The feature group is named `full` so CI and downstream packaging can select it explicitly. Use `minimal` for a portable build without optional adapters:
 
 ```bash
+# Full CLI, equivalent to the historical default.
+cargo build --release --features full -p geo-cli
+
+# Portable CLI with no optional adapter family.
 cargo build --release --no-default-features --features minimal -p geo-cli
 ```
 

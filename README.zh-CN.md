@@ -58,9 +58,13 @@ cargo run -p geo-cli -- hydro basin dem.tif
 cargo run -p geo-cli -- mcp-serve
 ```
 
-构建最小 CLI：
+默认 CLI 仍然保持原来的全量适配器行为；现在将这组能力显式命名为 `full`，便于 CI 和下游打包选择。需要便携构建时使用 `minimal`，不启用可选适配器：
 
 ```bash
+# 全量 CLI，与历史默认行为等价。
+cargo build --release --features full -p geo-cli
+
+# 不启用可选适配器族的便携 CLI。
 cargo build --release --no-default-features --features minimal -p geo-cli
 ```
 
