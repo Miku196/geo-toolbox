@@ -18,7 +18,7 @@ use providers::{ProviderConfig, ToolCall};
 use schema::ToolRegistry;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, sync::Arc};
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 #[derive(Debug, Deserialize)]
 struct AgentRequest {
@@ -83,6 +83,33 @@ struct AppState {
     log_dir: PathBuf,
 }
 
+/// Build the GeoAgent router without binding a network socket.
+///
+/// This boundary keeps route and state assembly available to integration tests and
+/// alternative hosts while run owns only process startup and listener lifetime.
+pub fn build_app() -> Result<Router, Box<dyn std::error::Error + Send + Sync>> {
+    let tools_json = include_str!("../tools_schema.json");
+    let tool_registry = ToolRegistry::from_json(tools_json).map(Arc::new)?;
+    let keywords_yaml = include_str!("../keywords.yaml");
+    let keyword_router = KeywordRouter::from_yaml(keywords_yaml)?;
+    let config = ProviderConfig::from_env();
+    let log_dir = PathBuf::from(std::env::var("LOG_DIR").unwrap_or_else(|_| "logs".to_string()));
+    let metrics = MetricsStore::new(log_dir.clone());
+    let agent = Agent::new(config, tool_registry.clone());
+    let state = Arc::new(AppState {
+        agent,
+        fallback: keyword_router,
+        metrics,
+        tools: tool_registry,
+        log_dir,
+    });
+    Ok(Router::new()
+        .route("/agent", post(handle_agent))
+        .route("/metrics", get(handle_metrics))
+        .route("/health", get(handle_health))
+        .with_state(state))
+}
+
 /// Start the GeoAgent HTTP service. The binary only handles process-level errors.
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     dotenv::dotenv().ok();
@@ -98,45 +125,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
     info!("geo-toolbox-agent starting");
 
-    let tools_json = include_str!("../tools_schema.json");
-    let tool_registry = match ToolRegistry::from_json(tools_json) {
-        Ok(registry) => {
-            info!(count = registry.len(), "Tools schema loaded");
-            Arc::new(registry)
-        }
-        Err(error) => {
-            error!(error = %error, "Failed to load tools_schema.json");
-            return Err(error.into());
-        }
-    };
-    let keywords_yaml = include_str!("../keywords.yaml");
-    let keyword_router = match KeywordRouter::from_yaml(keywords_yaml) {
-        Ok(router) => {
-            info!(rules = router.rule_count(), "Keyword router loaded");
-            router
-        }
-        Err(error) => {
-            error!(error = %error, "Failed to load keywords.yaml");
-            return Err(error.into());
-        }
-    };
-    let config = ProviderConfig::from_env();
-    info!(provider = %config.provider, model = %config.model, "AI provider configured");
-    let log_dir = PathBuf::from(std::env::var("LOG_DIR").unwrap_or_else(|_| "logs".to_string()));
-    let metrics = MetricsStore::new(log_dir.clone());
-    let agent = Agent::new(config, tool_registry.clone());
-    let state = Arc::new(AppState {
-        agent,
-        fallback: keyword_router,
-        metrics,
-        tools: tool_registry,
-        log_dir,
-    });
-    let app = Router::new()
-        .route("/agent", post(handle_agent))
-        .route("/metrics", get(handle_metrics))
-        .route("/health", get(handle_health))
-        .with_state(state);
+    let app = build_app()?;
     let host = std::env::var("SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port: u16 = std::env::var("SERVER_PORT")
         .ok()
@@ -247,4 +236,27 @@ async fn handle_health(State(state): State<Arc<AppState>>) -> Json<HealthRespons
         tools_count: state.tools.len(),
         fallback_rules_count: state.fallback.rule_count(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_app;
+    use axum::{body::Body, http::Request};
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn health_route_is_available_without_binding_a_socket() {
+        let app = build_app().expect("embedded Agent configuration should load");
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+    }
 }
