@@ -150,6 +150,7 @@ jobs:
           sudo apt-get install -y -qq chromium-browser chromium-chromedriver 2>/dev/null || true
           which chromium-browser && export CHROMEDRIVER=$(which chromedriver) || true
           echo "CHROMEDRIVER=$(which chromedriver 2>/dev/null || echo '')" >> $GITHUB_ENV
+        shell: bash
 
       - name: Setup Chrome (Windows)
         if: runner.os == 'Windows'
@@ -160,16 +161,11 @@ jobs:
 
       - name: Run WASM tests
         run: |
-          # Build test wasm first
-          cargo test --target wasm32-unknown-unknown -p geo-wasm --no-run 2>&1
-          # Run with wasm-bindgen-test-runner (more reliable than wasm-pack test for CI)
-          for wasm in target/wasm32-unknown-unknown/debug/deps/web-*.wasm; do
-            [ -f "$wasm" ] && wasm-bindgen-test-runner "$wasm" 2>&1 | tee /tmp/wasm-test-output.txt
-          done
-          # Fallback: try wasm-pack test if no wasm found
-          if [ ! -f /tmp/wasm-test-output.txt ]; then
-            wasm-pack test --headless --chrome crates/geo-wasm 2>&1 | tee /tmp/wasm-test-output.txt
-          fi
+          # Run the wasm-bindgen tests through the officially-installed wasm-pack
+          # runner. wasm-pack test --headless --chrome is supported by the
+          # taiki-e/install-action@wasm-pack binary and uses the CHROMEDRIVER
+          # setup in the Setup Chrome step above.
+          wasm-pack test --headless --chrome crates/geo-wasm 2>&1 | tee /tmp/wasm-test-output.txt
         shell: bash
 
       - name: Test summary
