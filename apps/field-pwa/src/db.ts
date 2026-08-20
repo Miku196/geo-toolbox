@@ -40,7 +40,7 @@ function getDb(): Promise<IDBPDatabase> {
 
 export async function saveRecord(record: SurveyRecord): Promise<number> {
   const db = await getDb();
-  return db.add(STORE_NAME, { ...record, synced: false });
+  return (await db.add(STORE_NAME, { ...record, synced: false })) as number;
 }
 
 export async function getAllRecords(): Promise<SurveyRecord[]> {
@@ -50,7 +50,7 @@ export async function getAllRecords(): Promise<SurveyRecord[]> {
 
 export async function getUnsyncedRecords(): Promise<SurveyRecord[]> {
   const db = await getDb();
-  return db.getAllFromIndex(STORE_NAME, 'synced', false);
+  return db.getAllFromIndex(STORE_NAME, 'synced', IDBKeyRange.only(false));
 }
 
 export async function markSynced(id: number): Promise<void> {

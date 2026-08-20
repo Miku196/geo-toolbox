@@ -7,7 +7,7 @@ description = "Facade layer — unified re-export surface for geo-io / geo-index
 
 [dependencies]
 geo-core = { path = "../geo-core" }
-geo-io = { path = "../geo-io" }
+geo-io = { path = "../geo-io", default-features = false }
 geo-index = { path = "../geo-index" }
 geo-raster = { path = "../geo-raster" }
 serde.workspace = true

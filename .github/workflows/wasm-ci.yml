@@ -2,7 +2,7 @@ name: WASM CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, develop]
     paths:
       - 'crates/geo-wasm/**'
       - 'core/geo-core/**'
@@ -13,9 +13,10 @@ on:
       - 'core/geo-parquet/**'
       - 'core/geo-stats/**'
       - 'core/geo-ogc/**'
+      - 'apps/field-pwa/**'
       - '.github/workflows/wasm-ci.yml'
   pull_request:
-    branches: [main]
+    branches: [master]
     paths:
       - 'crates/geo-wasm/**'
       - 'core/geo-core/**'
@@ -26,6 +27,7 @@ on:
       - 'core/geo-parquet/**'
       - 'core/geo-stats/**'
       - 'core/geo-ogc/**'
+      - 'apps/field-pwa/**'
       - '.github/workflows/wasm-ci.yml'
   workflow_dispatch:
 
@@ -226,9 +228,34 @@ jobs:
           grep -q "geo_wasm\.js" crates/geo-wasm/pkg/demo.html && echo "✅ demo imports correct module"
 
       - name: Upload WASM artifacts
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/master'
         uses: actions/upload-artifact@v4
         with:
           name: geo-wasm-pkg
           path: crates/geo-wasm/pkg/
           retention-days: 7
+
+  # ── Stage 4: Offline field browser build ──
+  field-pwa-build:
+    name: Build Offline Field PWA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apps/field-pwa/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: apps/field-pwa
+        run: npm ci --no-audit --no-fund
+
+      - name: Build offline PWA
+        working-directory: apps/field-pwa
+        run: npm run build
+
+      - name: Verify PWA output
+        run: test -f apps/field-pwa/dist/index.html

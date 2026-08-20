@@ -28,7 +28,6 @@ export function initMap(container: string): MapInstance {
     new maplibregl.GeolocateControl({
       positionOptions: { enableHighAccuracy: true },
       trackUserLocation: true,
-      showUserHeading: true,
     }),
     'top-left'
   );
