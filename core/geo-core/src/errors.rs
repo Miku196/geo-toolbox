@@ -217,22 +217,28 @@ impl GeoError {
 /// Validate that a SQL string contains only SELECT-like statements.
 /// Returns `Ok(())` if safe, `Err(Validation)` if destructive keywords found.
 pub fn validate_select_sql(sql: &str) -> GeoResult<()> {
-    let upper = sql.to_uppercase();
+    let trimmed = sql.trim();
+    let upper = trimmed.to_ascii_uppercase();
+    if trimmed.is_empty() || !(upper.starts_with("SELECT") || upper.starts_with("WITH")) {
+        return Err(GeoError::Validation(
+            "SQL query rejected: only SELECT or WITH queries are allowed.".into(),
+        ));
+    }
+    if trimmed.contains(';') || trimmed.contains('\\') || upper.contains("PROGRAM") {
+        return Err(GeoError::Validation(
+            "SQL query rejected: contains unsafe statement separators or characters".into(),
+        ));
+    }
     let forbidden = [
         "DROP", "DELETE", "INSERT", "UPDATE", "ALTER", "CREATE", "TRUNCATE", "GRANT", "REVOKE",
         "COPY", "EXECUTE", "CALL",
     ];
-    for kw in &forbidden {
-        if upper.contains(kw) {
+    for keyword in forbidden {
+        if upper.contains(keyword) {
             return Err(GeoError::Validation(format!(
-                "SQL query rejected: contains forbidden keyword '{kw}'. Only SELECT queries are allowed."
+                "SQL query rejected: contains forbidden keyword '{keyword}'. Only SELECT queries are allowed."
             )));
         }
-    }
-    if upper.contains('\\') || upper.contains("PROGRAM") {
-        return Err(GeoError::Validation(
-            "SQL query rejected: contains unsafe characters".into(),
-        ));
     }
     Ok(())
 }
@@ -242,30 +248,35 @@ pub fn validate_select_sql(sql: &str) -> GeoResult<()> {
 /// Rejects paths containing directory traversal, shell metacharacters,
 /// or absolute system paths that should not be accessible.
 pub fn validate_safe_path(path: &str) -> GeoResult<()> {
-    // 禁止路径遍历
-    if path.contains("..") {
+    let trimmed = path.trim();
+    if trimmed.is_empty() || trimmed.contains('\u{0}') {
         return Err(GeoError::Validation(
-            "Path rejected: contains '..' (directory traversal)".into(),
+            "Path rejected: must be non-empty and cannot contain NUL".into(),
         ));
     }
-    // 禁止 shell 元字符
+    let normalized = trimmed.replace('\\', "/");
+    if normalized.starts_with("//") {
+        return Err(GeoError::Validation(
+            "Path rejected: UNC paths are not allowed".into(),
+        ));
+    }
+    if normalized.split('/').any(|segment| segment == "..") {
+        return Err(GeoError::Validation(
+            "Path rejected: contains '..' directory traversal".into(),
+        ));
+    }
     let forbidden = [';', '|', '&', '$', '`', '(', ')', '<', '>', '\n', '\r'];
-    if path.contains(forbidden.as_slice()) {
+    if trimmed.contains(forbidden.as_slice()) {
         return Err(GeoError::Validation(
             "Path rejected: contains shell metacharacters".into(),
         ));
     }
-    // 禁止绝对系统路径（/etc /proc /sys /dev）
-    let lower = path.to_lowercase();
-    for sensitive in &[
-        "/etc/",
-        "/proc/",
-        "/sys/",
-        "/dev/",
-        "c:\\windows",
-        "c:\\windows\\system32",
-    ] {
-        if lower.starts_with(sensitive) || lower.contains(sensitive) {
+    let lower = normalized.to_ascii_lowercase();
+    for sensitive in ["/etc", "/proc", "/sys", "/dev", "c:/windows"] {
+        if lower == sensitive
+            || lower.starts_with(&format!("{sensitive}/"))
+            || lower.contains(&format!("{sensitive}/"))
+        {
             return Err(GeoError::Validation(
                 "Path rejected: references sensitive system location".into(),
             ));
@@ -275,44 +286,119 @@ pub fn validate_safe_path(path: &str) -> GeoResult<()> {
 }
 
 /// Validate a SQL identifier (table name, column name) to prevent SQL injection.
-///
-/// Only allows `[a-zA-Z_][a-zA-Z0-9_]*` optionally qualified with `.` or `::`.
-/// Rejects spaces, semicolons, quotes, and other SQL metacharacters.
 pub fn validate_sql_identifier(name: &str) -> GeoResult<()> {
     if name.is_empty() {
         return Err(GeoError::Validation("SQL identifier is empty".into()));
     }
 
-    // Reject any metacharacters that could break out of an identifier context
-    let forbidden = [
-        ';', '\'', '"', ' ', '\t', '\n', '\r', '-', '/', '(', ')', ',', '=',
-    ];
-    for ch in name.chars() {
-        if forbidden.contains(&ch) {
-            return Err(GeoError::Validation(format!(
-                "SQL identifier '{name}' rejected: contains forbidden character '{ch}'"
-            )));
+    for namespace in name.split("::") {
+        for segment in namespace.split('.') {
+            let mut chars = segment.chars();
+            let Some(first) = chars.next() else {
+                return Err(GeoError::Validation(format!(
+                    "SQL identifier '{name}' rejected: contains an empty qualifier"
+                )));
+            };
+            if !first.is_ascii_alphabetic() && first != '_' {
+                return Err(GeoError::Validation(format!(
+                    "SQL identifier '{name}' rejected: each segment must start with ASCII letter or underscore"
+                )));
+            }
+            if !chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_') {
+                return Err(GeoError::Validation(format!(
+                    "SQL identifier '{name}' rejected: contains illegal character"
+                )));
+            }
         }
-    }
-
-    // Allow: alphanumeric, underscore, dot (schema.table), colon (for schema::table)
-    for ch in name.chars() {
-        if !ch.is_alphanumeric() && ch != '_' && ch != '.' && ch != ':' {
-            return Err(GeoError::Validation(format!(
-                "SQL identifier '{name}' rejected: contains illegal character '{ch}'"
-            )));
-        }
-    }
-
-    // Must start with alpha or underscore
-    let first = name.chars().next().unwrap();
-    if !first.is_alphabetic() && first != '_' {
-        return Err(GeoError::Validation(format!(
-            "SQL identifier '{name}' rejected: must start with letter or underscore"
-        )));
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn select_sql_accepts_select_and_cte_queries() {
+        for query in [
+            "SELECT id, name FROM parcels",
+            "  select * from parcels where id = 1",
+            "WITH recent AS (SELECT id FROM parcels) SELECT * FROM recent",
+        ] {
+            assert!(
+                validate_select_sql(query).is_ok(),
+                "query should be accepted: {query}"
+            );
+        }
+    }
+
+    #[test]
+    fn select_sql_rejects_non_read_only_and_multi_statement_input() {
+        for query in [
+            "",
+            "VACUUM",
+            "PRAGMA table_info(parcels)",
+            "SET role = admin",
+            "SELECT * FROM parcels; DELETE FROM parcels",
+            "SELECT * FROM parcels;",
+            "SELECT * FROM parcels COPY data TO PROGRAM 'sh'",
+        ] {
+            assert!(
+                validate_select_sql(query).is_err(),
+                "query should be rejected: {query}"
+            );
+        }
+    }
+
+    #[test]
+    fn safe_path_rejects_empty_nul_and_sensitive_system_locations() {
+        for path in [
+            "",
+            "   ",
+            "dataset\0.gpkg",
+            "/etc",
+            "/etc/passwd",
+            "C:/Windows/System32/config",
+            r"\\server\share\file.gpkg",
+            "../outside.gpkg",
+        ] {
+            assert!(
+                validate_safe_path(path).is_err(),
+                "path should be rejected: {path:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn safe_path_accepts_relative_data_paths() {
+        for path in [
+            "data/input.gpkg",
+            "outputs/2026/result.geojson",
+            "file..name.gpkg",
+        ] {
+            assert!(
+                validate_safe_path(path).is_ok(),
+                "path should be accepted: {path}"
+            );
+        }
+    }
+
+    #[test]
+    fn sql_identifier_rejects_empty_segments_and_accepts_qualified_names() {
+        for identifier in ["schema.table", "schema::table", "_private.column_2"] {
+            assert!(
+                validate_sql_identifier(identifier).is_ok(),
+                "identifier should be accepted: {identifier}"
+            );
+        }
+        for identifier in ["schema..table", "schema.", "::table", "table;drop"] {
+            assert!(
+                validate_sql_identifier(identifier).is_err(),
+                "identifier should be rejected: {identifier}"
+            );
+        }
+    }
 }
 
 // Higher-level crates (geo-store, geo-ingest, etc.) provide their own
