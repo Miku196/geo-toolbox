@@ -487,9 +487,14 @@ mod tests {
         // Path validation runs before any backend call, so an unsafe output
         // must be rejected with a Validation error without invoking qgis.
         let adapter = QgisAdapter::new_subprocess(QgisProcessConfig::default());
-        let mut bad_outputs = vec!["../../../../etc/evil", "/etc/evil"];
         #[cfg(windows)]
-        bad_outputs.push("C:\\Windows\\System32\\evil");
+        let bad_outputs = vec![
+            "../../../../etc/evil",
+            "/etc/evil",
+            "C:\\Windows\\System32\\evil",
+        ];
+        #[cfg(not(windows))]
+        let bad_outputs = vec!["../../../../etc/evil", "/etc/evil"];
 
         for bad in bad_outputs {
             let params = serde_json::json!({
