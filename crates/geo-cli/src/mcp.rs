@@ -30,8 +30,6 @@ const CONNECTION_TIMEOUT_SECS: u64 = 3600;
 // ── Entry point ──
 
 /// Run the MCP server loop over stdio.
-
-/// Run the MCP server loop over stdio.
 pub async fn serve(registry: PluginRegistry) -> Result<(), Box<dyn std::error::Error>> {
     let registry = Arc::new(registry);
     let reader = BufReader::new(stdin());
