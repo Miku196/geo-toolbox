@@ -40,6 +40,9 @@ output/
 # Agent/tool caches
 .pi/
 
+# GeoAgent runtime metrics and request logs
+crates/geo-agent/logs/
+
 # Local runtime configuration (commit config.example.json instead)
 /config.json
 # Build artifacts
