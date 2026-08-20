@@ -73,7 +73,29 @@ curl -X POST http://127.0.0.1:3000/agent \
   -d '{"query":"calculate NDVI for this area"}'
 ```
 
-See [crates/geo-agent/README.md](crates/geo-agent/README.md) for provider and endpoint configuration.
+See [crates/geo-agent/README.md](crates/geo-agent/README.md) for provider and endpoint configuration. The main CI also builds and tests this target explicitly as the AI edge gateway.
+
+### Build the Browser and Offline Targets
+
+The project has two browser-facing delivery paths:
+
+- **WASM library**: `crates/geo-wasm` exposes CRS, vector, raster, carbon, geohash, tile, statistics, and IndexedDB-backed local storage to browser JavaScript. It is paired with the MapLibre integration in `crates/geo-wasm-maplibre` and `bindings/maplibre-gl-geo-toolbox`.
+- **Offline Field PWA**: `apps/field-pwa` is a Vite PWA for offline field collection, local IndexedDB storage, map-based area capture, and carbon calculation. Its production build includes a service worker and precache manifest.
+
+```bash
+# Compile the browser target without native network backends.
+cargo check -p geo-wasm --target wasm32-unknown-unknown
+
+# Create a web-consumable WASM package.
+wasm-pack build --target web --out-dir pkg crates/geo-wasm
+
+# Build the offline browser application.
+cd apps/field-pwa
+npm ci
+npm run build
+```
+
+`WASM CI` runs on `master` and `develop`. It validates the WASM package, browser tests, demo output, and the Field PWA production build. The build artifact is produced locally or by CI; it is distinct from the source-controlled field application and examples.
 
 ## Configuration
 
@@ -105,6 +127,17 @@ The internal `GT v1` tile archive is not PMTiles v3. Do not present it as intero
 - [Jupyter integration](bindings/jupyter/README.md)
 - [ObservableHQ examples](docs/observablehq/README.md)
 - [China risk assessment example](examples/china-risk-assessment/README.md)
+
+### Versioned China Risk Assessment Outputs
+
+The China risk assessment example includes source data, reproducible Python pipelines, and four checked-in reference outputs. These files are intentionally versioned so the example can be reviewed without running its data pipeline:
+
+- `china_flood_risk_2026.png`: national flood-risk thematic map.
+- `china_flood_risk_2026_regions.png`: regional risk-distribution map.
+- `china_flood_risk_2026_stats.png`: risk statistics chart.
+- `中国2026年洪水高风险区评估报告.pdf`: Chinese flood high-risk assessment report.
+
+Do not delete these reference images or the PDF as build artifacts. The two generated GeoJSON result layers remain reproducible pipeline outputs; the PNG maps and PDF report are retained as project documentation and visual regression references.
 
 ## License
 

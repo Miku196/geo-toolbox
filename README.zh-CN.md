@@ -73,7 +73,29 @@ curl -X POST http://127.0.0.1:3000/agent \
   -d '{"query":"calculate NDVI for this area"}'
 ```
 
-Provider 与 endpoint 配置见 [crates/geo-agent/README.md](crates/geo-agent/README.md)。
+Provider 与 endpoint 配置见 [crates/geo-agent/README.md](crates/geo-agent/README.md)。主 CI 也会对这个 AI 边缘网关目标执行独立构建和测试。
+
+### 构建浏览器与离线目标
+
+项目提供两条浏览器侧交付线：
+
+- **WASM 库**：`crates/geo-wasm` 向浏览器 JavaScript 提供 CRS、矢量、栅格、碳核算、Geohash、瓦片、统计以及基于 IndexedDB 的本地存储能力；可配合 `crates/geo-wasm-maplibre` 与 `bindings/maplibre-gl-geo-toolbox` 接入 MapLibre。
+- **离线 Field PWA**：`apps/field-pwa` 是基于 Vite 的离线野外采集应用，提供 IndexedDB 本地存储、地图面积采集和碳核算。生产构建会生成 service worker 与离线预缓存清单。
+
+```bash
+# 不引入原生网络后端地检查浏览器目标。
+cargo check -p geo-wasm --target wasm32-unknown-unknown
+
+# 生成可供 Web 使用的 WASM 包。
+wasm-pack build --target web --out-dir pkg crates/geo-wasm
+
+# 构建离线浏览器应用。
+cd apps/field-pwa
+npm ci
+npm run build
+```
+
+`WASM CI` 会在 `master` 与 `develop` 上触发，验证 WASM 包、浏览器测试、Demo 输出和 Field PWA 生产构建。构建目录属于本地或 CI 产物；它不同于受版本控制的应用源码和案例成果。
 
 ## 配置
 
@@ -105,6 +127,17 @@ cp config.example.json config.json
 - [Jupyter 集成](bindings/jupyter/README.md)
 - [ObservableHQ 示例](docs/observablehq/README.md)
 - [中国自然灾害风险评估示例](examples/china-risk-assessment/README.md)
+
+### 受版本控制的中国灾害评估成果
+
+中国灾害评估示例包含源数据、可复现 Python 管线和 4 个受 Git 跟踪的参考成果。这些文件保留在仓库中，使读者无需先运行完整数据管线也能审阅示例结果：
+
+- `china_flood_risk_2026.png`：全国洪水风险专题图。
+- `china_flood_risk_2026_regions.png`：区域风险分布图。
+- `china_flood_risk_2026_stats.png`：风险统计图表。
+- `中国2026年洪水高风险区评估报告.pdf`：中文洪水高风险区评估报告。
+
+不得把这些参考图件和 PDF 作为构建垃圾删除。两份生成的 GeoJSON 结果图层仍可由管线复现；PNG 地图和 PDF 报告则保留为项目文档与视觉回归参考。
 
 ## 许可证
 
