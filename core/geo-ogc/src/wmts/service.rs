@@ -164,7 +164,17 @@ impl WmtsService {
         } else {
             // Generate raster tile using layer renderer, fallback to default,
             // then checkerboard.
-            let tm: u32 = params.tile_matrix.parse().unwrap_or(0);
+            let tm: u32 = params.tile_matrix.parse().map_err(|_| {
+                OgcError::new(
+                    ServiceType::WMTS,
+                    "1.0.0",
+                    "InvalidParameterValue",
+                    format!(
+                        "TileMatrix '{}' must be a numeric zoom for raster rendering",
+                        params.tile_matrix
+                    ),
+                )
+            })?;
             let renderer = layer.renderer.as_ref().or(self.default_renderer.as_ref());
             let data = match renderer {
                 Some(r) => r(tm, params.tile_col, params.tile_row),

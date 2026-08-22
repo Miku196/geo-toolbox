@@ -543,6 +543,28 @@ fn test_get_tile_invalid_zoom_garbage_errors() {
 }
 
 #[test]
+fn test_get_tile_registered_nonnumeric_matrix_errors_for_raster_renderer() {
+    // A TileMatrix may be registered by string identity, but the raster
+    // renderer accepts only a numeric zoom and must not silently use zoom 0.
+    let mut svc = make_single_zoom_service();
+    svc.tile_matrix_sets[0].tile_matrices[0].identifier = "custom-level".into();
+    let params = WmtsGetTileParams {
+        layer: "zonly".into(),
+        tile_matrix_set: "EPSG:4326".into(),
+        tile_matrix: "custom-level".into(),
+        tile_col: 0,
+        tile_row: 0,
+        format: "image/png".into(),
+    };
+
+    let error = svc
+        .handle(&WmtsRequest::GetTile(params))
+        .expect_err("a raster renderer requires a numeric TileMatrix zoom");
+    assert_eq!(error.exceptions[0].code, "InvalidParameterValue");
+    assert!(error.exceptions[0].text.contains("custom-level"));
+}
+
+#[test]
 fn test_get_tile_column_out_of_range_errors() {
     let svc = make_single_zoom_service();
     let params = WmtsGetTileParams {
