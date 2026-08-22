@@ -81,6 +81,77 @@ impl ExternalAdapter for CadAdapter {
 // DxfExporter
 // ---------------------------------------------------------------------------
 
+fn parse_geometry(geojson_str: &str, row_index: usize) -> GeoResult<serde_json::Value> {
+    if geojson_str.trim().is_empty() {
+        return Err(GeoError::Validation(format!(
+            "row {row_index} has an empty geom_json value"
+        )));
+    }
+
+    let geometry: serde_json::Value = serde_json::from_str(geojson_str).map_err(|err| {
+        GeoError::Validation(format!("row {row_index} has invalid geom_json: {err}"))
+    })?;
+    let geometry_type = geometry["type"].as_str().ok_or_else(|| {
+        GeoError::Validation(format!(
+            "row {row_index} geom_json is missing a geometry type"
+        ))
+    })?;
+    if !matches!(
+        geometry_type,
+        "Point" | "LineString" | "MultiPoint" | "Polygon"
+    ) {
+        return Err(GeoError::Validation(format!(
+            "row {row_index} has unsupported geometry type '{geometry_type}'"
+        )));
+    }
+    if !geometry["coordinates"].is_array() {
+        return Err(GeoError::Validation(format!(
+            "row {row_index} geom_json is missing an array of coordinates"
+        )));
+    }
+
+    Ok(geometry)
+}
+
+fn transform_coordinate(
+    crs: &geo_core::crs::CrsRegistry,
+    source_epsg: u16,
+    target_epsg: u16,
+    x: f64,
+    y: f64,
+    row_index: usize,
+) -> GeoResult<(f64, f64)> {
+    if source_epsg == target_epsg {
+        return Ok((x, y));
+    }
+
+    crs.transform_point(source_epsg, target_epsg, x, y)
+        .map_err(|err| {
+            GeoError::CrsTransform(format!(
+                "row {row_index}: EPSG:{source_epsg} to EPSG:{target_epsg} at ({x}, {y}): {err}"
+            ))
+        })
+}
+
+fn point_coordinates(
+    value: &serde_json::Value,
+    row_index: usize,
+    geometry_type: &str,
+) -> GeoResult<(f64, f64)> {
+    let coordinates = value.as_array().ok_or_else(|| {
+        GeoError::Validation(format!(
+            "row {row_index} {geometry_type} has invalid coordinates"
+        ))
+    })?;
+    let x = coordinates.first().and_then(serde_json::Value::as_f64);
+    let y = coordinates.get(1).and_then(serde_json::Value::as_f64);
+    x.zip(y).ok_or_else(|| {
+        GeoError::Validation(format!(
+            "row {row_index} {geometry_type} has invalid coordinates"
+        ))
+    })
+}
+
 pub struct DxfExporter {
     pool: sqlx::postgres::PgPool,
 }
@@ -101,126 +172,102 @@ impl DxfExporter {
         let rows = sqlx::query(sql)
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| GeoError::Database(e.to_string()))?;
+            .map_err(|err| GeoError::Database(err.to_string()))?;
 
         let mut drawing = dxf::Drawing::new();
         let crs = geo_core::crs::CrsRegistry::new();
         let mut count = 0usize;
 
-        for row in &rows {
-            let geojson_str: String = row.try_get("geom_json").unwrap_or_default();
-            if geojson_str.is_empty() {
-                continue;
-            }
-
-            let geom: serde_json::Value = serde_json::from_str(&geojson_str).unwrap_or_default();
-            let gtype = geom["type"].as_str().unwrap_or("Point");
+        for (row_index, row) in rows.iter().enumerate() {
+            let row_index = row_index + 1;
+            let geojson_str: String = row
+                .try_get("geom_json")
+                .map_err(|err| GeoError::Database(format!("row {row_index} geom_json: {err}")))?;
+            let geom = parse_geometry(&geojson_str, row_index)?;
+            let gtype = geom["type"]
+                .as_str()
+                .expect("parse_geometry validates the geometry type");
             let coords = &geom["coordinates"];
-
-            let xform = |x: f64, y: f64| -> (f64, f64) {
-                if source_epsg != target_epsg {
-                    crs.transform_point(source_epsg, target_epsg, x, y)
-                        .unwrap_or((x, y))
-                } else {
-                    (x, y)
-                }
+            let xform = |x: f64, y: f64| {
+                transform_coordinate(&crs, source_epsg, target_epsg, x, y, row_index)
             };
 
             match gtype {
                 "Point" => {
-                    if let (Some(x), Some(y)) = (coords[0].as_f64(), coords[1].as_f64()) {
-                        let (dx, dy) = xform(x, y);
+                    let (x, y) = (coords[0].as_f64(), coords[1].as_f64());
+                    let (x, y) = x.zip(y).ok_or_else(|| {
+                        GeoError::Validation(format!(
+                            "row {row_index} Point has invalid coordinates"
+                        ))
+                    })?;
+                    let (x, y) = xform(x, y)?;
+                    drawing.add_entity(dxf::entities::Entity::new(
+                        dxf::entities::EntityType::Line(dxf::entities::Line::new(
+                            dxf::Point::new(x, y, 0.0),
+                            dxf::Point::new(x + 0.1, y + 0.1, 0.0),
+                        )),
+                    ));
+                    count += 1;
+                }
+                "LineString" | "MultiPoint" => {
+                    let points = coords.as_array().ok_or_else(|| {
+                        GeoError::Validation(format!(
+                            "row {row_index} {gtype} has invalid coordinates"
+                        ))
+                    })?;
+                    for pair in points.windows(2) {
+                        let start = point_coordinates(&pair[0], row_index, gtype)?;
+                        let end = point_coordinates(&pair[1], row_index, gtype)?;
+                        let start = xform(start.0, start.1)?;
+                        let end = xform(end.0, end.1)?;
                         drawing.add_entity(dxf::entities::Entity::new(
                             dxf::entities::EntityType::Line(dxf::entities::Line::new(
-                                dxf::Point::new(dx, dy, 0.0),
-                                dxf::Point::new(dx + 0.1, dy + 0.1, 0.0),
+                                dxf::Point::new(start.0, start.1, 0.0),
+                                dxf::Point::new(end.0, end.1, 0.0),
                             )),
                         ));
                         count += 1;
                     }
                 }
-                "LineString" | "MultiPoint" => {
-                    let pts: Vec<&serde_json::Value> = coords
-                        .as_array()
-                        .map(|a| a.iter().collect())
-                        .unwrap_or_default();
-                    for w in pts.windows(2) {
-                        if let (Some(x1), Some(y1), Some(x2), Some(y2)) = (
-                            w[0][0].as_f64(),
-                            w[0][1].as_f64(),
-                            w[1][0].as_f64(),
-                            w[1][1].as_f64(),
-                        ) {
-                            let (d1x, d1y) = xform(x1, y1);
-                            let (d2x, d2y) = xform(x2, y2);
+                "Polygon" => {
+                    let rings = coords.as_array().ok_or_else(|| {
+                        GeoError::Validation(format!(
+                            "row {row_index} Polygon has invalid coordinates"
+                        ))
+                    })?;
+                    for ring in rings {
+                        let points = ring.as_array().ok_or_else(|| {
+                            GeoError::Validation(format!(
+                                "row {row_index} Polygon ring has invalid coordinates"
+                            ))
+                        })?;
+                        if points.len() < 2 {
+                            continue;
+                        }
+                        for pair in points.windows(2).chain(std::iter::once(
+                            &[points[points.len() - 1].clone(), points[0].clone()][..],
+                        )) {
+                            let start = point_coordinates(&pair[0], row_index, "Polygon")?;
+                            let end = point_coordinates(&pair[1], row_index, "Polygon")?;
+                            let start = xform(start.0, start.1)?;
+                            let end = xform(end.0, end.1)?;
                             drawing.add_entity(dxf::entities::Entity::new(
                                 dxf::entities::EntityType::Line(dxf::entities::Line::new(
-                                    dxf::Point::new(d1x, d1y, 0.0),
-                                    dxf::Point::new(d2x, d2y, 0.0),
+                                    dxf::Point::new(start.0, start.1, 0.0),
+                                    dxf::Point::new(end.0, end.1, 0.0),
                                 )),
                             ));
                             count += 1;
                         }
                     }
                 }
-                "Polygon" => {
-                    if let Some(rings) = coords.as_array() {
-                        for ring in rings {
-                            if let Some(pts) = ring.as_array() {
-                                let points: Vec<&serde_json::Value> = pts.iter().collect();
-                                for w in points.windows(2) {
-                                    if let (Some(x1), Some(y1), Some(x2), Some(y2)) = (
-                                        w[0][0].as_f64(),
-                                        w[0][1].as_f64(),
-                                        w[1][0].as_f64(),
-                                        w[1][1].as_f64(),
-                                    ) {
-                                        let (d1x, d1y) = xform(x1, y1);
-                                        let (d2x, d2y) = xform(x2, y2);
-                                        drawing.add_entity(dxf::entities::Entity::new(
-                                            dxf::entities::EntityType::Line(
-                                                dxf::entities::Line::new(
-                                                    dxf::Point::new(d1x, d1y, 0.0),
-                                                    dxf::Point::new(d2x, d2y, 0.0),
-                                                ),
-                                            ),
-                                        ));
-                                        count += 1;
-                                    }
-                                }
-                                if points.len() >= 2 {
-                                    let first = &points[0];
-                                    let last = &points[points.len() - 1];
-                                    if let (Some(x1), Some(y1), Some(x2), Some(y2)) = (
-                                        last[0].as_f64(),
-                                        last[1].as_f64(),
-                                        first[0].as_f64(),
-                                        first[1].as_f64(),
-                                    ) {
-                                        let (d1x, d1y) = xform(x1, y1);
-                                        let (d2x, d2y) = xform(x2, y2);
-                                        drawing.add_entity(dxf::entities::Entity::new(
-                                            dxf::entities::EntityType::Line(
-                                                dxf::entities::Line::new(
-                                                    dxf::Point::new(d1x, d1y, 0.0),
-                                                    dxf::Point::new(d2x, d2y, 0.0),
-                                                ),
-                                            ),
-                                        ));
-                                        count += 1;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                _ => {}
+                _ => unreachable!("parse_geometry validates supported geometry types"),
             }
         }
 
         drawing
             .save_file(output_path)
-            .map_err(|e| GeoError::Other(format!("dxf: {e}")))?;
+            .map_err(|err| GeoError::Other(format!("dxf: {err}")))?;
         tracing::info!("DXF: {output_path} ({count} entities)");
         Ok(count)
     }
@@ -587,8 +634,31 @@ mod tests {
             Err(GeoError::Unimplemented(_))
         ));
     }
+    #[test]
+    fn test_malformed_geometry_returns_validation_error() {
+        let err = parse_geometry("{not valid json", 3).expect_err("malformed geometry must fail");
+        assert!(matches!(err, GeoError::Validation(_)), "got {err:?}");
+        assert!(err.to_string().contains("row 3"), "got {err}");
+    }
 
     #[test]
+    fn test_crs_transform_failure_returns_contextual_error() {
+        let crs = geo_core::crs::CrsRegistry::new();
+        let err = transform_coordinate(&crs, 4326, 9999, 116.4, 39.9, 2)
+            .expect_err("unsupported CRS conversion must fail");
+        assert!(matches!(err, GeoError::CrsTransform(_)), "got {err:?}");
+        assert!(err.to_string().contains("row 2"), "got {err}");
+    }
+
+    #[test]
+    fn test_parse_geometry_rejects_malformed_json() {
+        let err = parse_geometry("{not valid json", 3).expect_err("malformed geometry must fail");
+        assert!(matches!(err, GeoError::Validation(_)), "got {err:?}");
+        assert!(err.to_string().contains("row 3"), "got {err}");
+    }
+
+    #[test]
+
     fn test_empty_fc() {
         let fc = serde_json::json!({
             "type": "FeatureCollection",
