@@ -53,66 +53,98 @@ impl DuckDbStore {
             .as_array()
             .ok_or_else(|| GeoError::Validation("no features array".into()))?;
 
-        self.conn
-            .lock()
-            .unwrap()
-            .execute(
-                &format!(
-                    "CREATE TABLE IF NOT EXISTS \"{table}\" (\
+        let coordinates = |index: usize, feature: &serde_json::Value| -> GeoResult<(f64, f64)> {
+            let geometry = feature.get("geometry").ok_or_else(|| {
+                GeoError::Validation(format!("feature {index}: missing geometry"))
+            })?;
+            let geometry_type = geometry["type"].as_str().ok_or_else(|| {
+                GeoError::Validation(format!(
+                    "feature {index}: geometry type is missing or invalid"
+                ))
+            })?;
+            let raw = geometry.get("coordinates").ok_or_else(|| {
+                GeoError::Validation(format!("feature {index}: missing coordinates"))
+            })?;
+            let position = match geometry_type {
+                "Point" => raw.as_array(),
+                "MultiPoint" | "LineString" => raw.get(0).and_then(serde_json::Value::as_array),
+                "MultiLineString" | "Polygon" => raw
+                    .get(0)
+                    .and_then(|line| line.get(0))
+                    .and_then(serde_json::Value::as_array),
+                _ => {
+                    return Err(GeoError::Validation(format!(
+                        "feature {index}: unsupported geometry type '{geometry_type}'"
+                    )))
+                }
+            }
+            .ok_or_else(|| {
+                GeoError::Validation(format!(
+                    "feature {index}: geometry coordinates are malformed"
+                ))
+            })?;
+            let lon = position
+                .first()
+                .and_then(serde_json::Value::as_f64)
+                .ok_or_else(|| {
+                    GeoError::Validation(format!(
+                        "feature {index}: longitude is missing or invalid"
+                    ))
+                })?;
+            let lat = position
+                .get(1)
+                .and_then(serde_json::Value::as_f64)
+                .ok_or_else(|| {
+                    GeoError::Validation(format!("feature {index}: latitude is missing or invalid"))
+                })?;
+            if !lon.is_finite()
+                || !lat.is_finite()
+                || !(-180.0..=180.0).contains(&lon)
+                || !(-90.0..=90.0).contains(&lat)
+            {
+                return Err(GeoError::Validation(format!(
+                    "feature {index}: coordinates are outside valid longitude/latitude bounds"
+                )));
+            }
+            Ok((lon, lat))
+        };
+
+        let mut conn = self.conn.lock().unwrap();
+        let tx = conn
+            .transaction()
+            .map_err(|e| GeoError::Database(e.to_string()))?;
+        tx.execute(
+            &format!(
+                "CREATE TABLE IF NOT EXISTS \"{table}\" (\
                 id INTEGER PRIMARY KEY AUTOINCREMENT, \
                 name TEXT, category TEXT, \
-                lon REAL, lat REAL, area_ha REAL, \
-                props TEXT)"
-                ),
-                [],
-            )
-            .map_err(|e| GeoError::Database(e.to_string()))?;
-
-        let mut count = 0;
-        let conn = self.conn.lock().unwrap();
-        let mut stmt = conn
+                lon REAL, lat REAL, area_ha REAL, props TEXT)"
+            ),
+            [],
+        )
+        .map_err(|e| GeoError::Database(e.to_string()))?;
+        let mut stmt = tx
             .prepare(&format!(
                 "INSERT INTO \"{table}\" (name, category, lon, lat, area_ha, props) VALUES (?,?,?,?,?,?)"
             ))
             .map_err(|e| GeoError::Database(e.to_string()))?;
-
-        for feat in features {
-            let props = &feat["properties"];
-            let geom = &feat["geometry"];
-            let coords = &geom["coordinates"];
-            let (lon, lat) = if geom["type"] == "Point" {
-                (
-                    coords[0].as_f64().unwrap_or(0.0),
-                    coords[1].as_f64().unwrap_or(0.0),
-                )
-            } else {
-                let c = &coords[0];
-                if c.is_array() && c[0].is_array() {
-                    (
-                        c[0][0].as_f64().unwrap_or(0.0),
-                        c[0][1].as_f64().unwrap_or(0.0),
-                    )
-                } else {
-                    (c[0].as_f64().unwrap_or(0.0), c[1].as_f64().unwrap_or(0.0))
-                }
-            };
-
-            let name = props["name"].as_str().unwrap_or("").to_string();
-            let cat = props["type"]
+        for (index, feature) in features.iter().enumerate() {
+            let (lon, lat) = coordinates(index, feature)?;
+            let props = &feature["properties"];
+            let name = props["name"].as_str().unwrap_or("");
+            let category = props["type"]
                 .as_str()
                 .or(props["class"].as_str())
-                .unwrap_or("")
-                .to_string();
+                .unwrap_or("");
             let area = props["area_ha"].as_f64();
-            let props_str = serde_json::to_string(props).unwrap_or_default();
-
-            stmt.execute(params![name, cat, lon, lat, area, props_str])
+            let props_json = serde_json::to_string(props).map_err(GeoError::Serde)?;
+            stmt.execute(params![name, category, lon, lat, area, props_json])
                 .map_err(|e| GeoError::Database(e.to_string()))?;
-            count += 1;
         }
-
-        info!(count, table = %table, "geo-io ingested features");
-        Ok(count)
+        drop(stmt);
+        tx.commit().map_err(|e| GeoError::Database(e.to_string()))?;
+        info!(count = features.len(), table = %table, "geo-io ingested features");
+        Ok(features.len())
     }
 
     pub fn query_json(&self, sql: &str) -> GeoResult<Vec<serde_json::Value>> {
@@ -356,6 +388,41 @@ mod tests {
         assert_eq!(count, 2);
         let rows = store.query_json("SELECT * FROM sites").unwrap();
         assert_eq!(rows.len(), 2);
+    }
+
+    #[test]
+    fn test_ingest_rejects_invalid_coordinates_without_partial_inserts() {
+        let store = DuckDbStore::in_memory().unwrap();
+        let geojson = r#"{
+            "type": "FeatureCollection",
+            "features": [
+                {"type":"Feature","properties":{"name":"valid"},
+                 "geometry":{"type":"Point","coordinates":[104.06,30.57]}},
+                {"type":"Feature","properties":{"name":"invalid"},
+                 "geometry":{"type":"Point","coordinates":[104.07]}}
+            ]
+        }"#;
+
+        let err = store.ingest_geojson_raw("sites", geojson).unwrap_err();
+        assert!(matches!(err, GeoError::Validation(_)));
+        assert!(!store.list_tables().unwrap().contains(&"sites".to_string()));
+    }
+
+    #[test]
+    fn test_ingest_rejects_unsupported_geometry() {
+        let store = DuckDbStore::in_memory().unwrap();
+        let geojson = r#"{
+            "type": "FeatureCollection",
+            "features": [{
+                "type":"Feature",
+                "properties":{"name":"unsupported"},
+                "geometry":{"type":"GeometryCollection","geometries":[]}
+            }]
+        }"#;
+
+        let err = store.ingest_geojson_raw("sites", geojson).unwrap_err();
+        assert!(matches!(err, GeoError::Validation(_)));
+        assert!(!store.list_tables().unwrap().contains(&"sites".to_string()));
     }
 
     #[test]
